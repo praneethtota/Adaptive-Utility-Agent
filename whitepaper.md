@@ -295,11 +295,11 @@ Phase 6 — Feedback into Training
 ## 9. Open Questions
 
 1. **Contradiction detection across sessions**: requires persistent memory and a knowledge graph — non-trivial engineering
-2. **Efficacy baseline for creative fields**: double-blind studies are expensive; need a scalable proxy
-3. **Field classifier robustness**: multi-domain queries need graceful handling
-4. **Personality stability**: how to prevent runaway drift in personality weights
-5. **Utility gaming**: could the agent learn to avoid hard problems to protect its score? Curiosity term is the mitigation but needs tuning
-6. **Grounding confidence in reality**: internal consistency ≠ truth; a self-consistent wrong model is still wrong
+2. **Efficacy baseline for creative fields**: double-blind studies are expensive; need a scalable proxy (maybe views/listens and up/down votes)
+3. **Field classifier robustness**: multi-domain queries need graceful handling 
+4. **Personality stability**: how to prevent runaway drift in personality weights (maybe field based min/max values)
+5. **Utility gaming**: could the agent learn to avoid hard problems to protect its score? Curiosity term is the mitigation but needs tuning (maybe a growing fucntion over time )
+6. **Grounding confidence in reality**: internal consistency ≠ truth; a self-consistent wrong model is still wrong 
 
 ---
 
