@@ -294,12 +294,115 @@ Phase 6 — Feedback into Training
 
 ## 9. Open Questions
 
-1. **Contradiction detection across sessions**: requires persistent memory and a knowledge graph — non-trivial engineering
-2. **Efficacy baseline for creative fields**: double-blind studies are expensive; need a scalable proxy (maybe views/listens and up/down votes)
-3. **Field classifier robustness**: multi-domain queries need graceful handling 
-4. **Personality stability**: how to prevent runaway drift in personality weights (maybe field based min/max values)
-5. **Utility gaming**: could the agent learn to avoid hard problems to protect its score? Curiosity term is the mitigation but needs tuning (maybe a growing function over time )
-6. **Grounding confidence in reality**: internal consistency ≠ truth; a self-consistent wrong model is still wrong 
+### 9.1 Resolved / Refined
+
+**1. Utility gaming** *(resolved)*
+
+The risk: the agent learns to avoid hard problems to protect its score, converging to a narrow high-confidence comfort zone.
+
+Resolution: two mechanisms working together.
+
+First, a **growing curiosity function** that increases pressure to explore the longer the agent stays without encountering novelty:
+
+```
+K_raw(task, t) = potential_ceiling
+               × (1 - C(task))
+               × (1 + α(field) × log(1 + interactions_without_novelty))
+
+Where α(field) is field-specific:
+    α → high for research/creative fields
+    α → near zero for surgery/aviation
+```
+
+The counter `interactions_without_novelty` resets each time the agent successfully handles a genuinely new problem type — rewarding exploration when it occurs.
+
+Second, a **50% curiosity cap** that prevents curiosity from becoming the dominant utility term and sending the agent into useless tangents:
+
+```
+K_effective = min(K_raw, (w_e · E + w_c · C) / w_k)
+
+U = w_e · E + w_c · C + w_k · K_effective
+```
+
+This constraint is self-scaling: when E and C are high, the cap is loose and curiosity can push hard. When the agent is weak (low E and C), curiosity is automatically constrained — preventing exploration before the basics are solid. K can never exceed 50% of total U.
+
+---
+
+**2. Personality stability** *(resolved)*
+
+The risk: the personality evolution service applies small consistent deltas every cycle, causing traits to drift monotonically — e.g. caution rising to 0.95 and making the agent refuse almost everything.
+
+Resolution: three layered safeguards.
+
+**Layer 1 — Field-specific bounds (hard floor and ceiling per trait):**
+
+```
+Trait              Surgery        Software Eng    Creative
+─────────────────────────────────────────────────────────
+caution            [0.70, 0.95]   [0.30, 0.70]   [0.10, 0.40]
+curiosity          [0.10, 0.20]   [0.30, 0.80]   [0.60, 0.95]
+assertiveness      [0.20, 0.40]   [0.40, 0.80]   [0.50, 0.90]
+analytical_rigor   [0.70, 0.95]   [0.50, 0.85]   [0.10, 0.50]
+creativity         [0.10, 0.20]   [0.30, 0.70]   [0.70, 0.95]
+```
+
+The floor prevents complete suppression of any trait. The ceiling prevents pathological dominance.
+
+**Layer 2 — Drift rate cap (max delta per evolution cycle):**
+
+```
+max_delta_per_cycle = 0.05   (general fields)
+                    = 0.02   (high-stakes fields: surgery, aviation)
+```
+
+A single bad run of contradictions cannot spike a trait to its ceiling in one step.
+
+**Layer 3 — Mean reversion (soft pull toward field baseline between cycles):**
+
+```
+Δ_adjusted = Δ_raw - β × (current_score - neutral_score(trait, field))
+```
+
+Where β = 0.01. Creates a gentle pull back toward the field's natural personality baseline after drift.
+
+---
+
+**3. Contradiction detection across sessions** *(simplified)*
+
+The original framing — "requires a full knowledge graph" — was an overcomplication. The contradiction detector already acts as a parser, stripping outputs down to structured assertions. These just need to be persisted rather than discarded.
+
+The approach is a **"meeting minutes" store** — only structured facts are saved, not raw text:
+
+```
+{
+  session_id, timestamp, domain,
+  assertions: [
+    { type: "complexity",     subject: "sorting",       value: "O(n log n)" },
+    { type: "best_practice",  subject: "db autocommit", value: "avoid"      },
+    { type: "data_structure", subject: "two_sum",       value: "hashmap"    }
+  ]
+}
+```
+
+At the start of each session the agent queries the store for prior assertions on the same subject and injects them as context. Synonym matching is handled by lightweight embedding similarity — not a knowledge graph.
+
+```
+Parser (already built) → extracts structured assertions
+       ↓
+Key-value store (simple DB) → persists by subject + domain
+       ↓
+Embedding similarity → handles synonym matching at lookup
+       ↓
+Contradiction check (already built) → compares structured values
+```
+
+---
+
+### 9.2 Still Open
+
+4. **Efficacy baseline for creative fields**: double-blind studies are expensive; need a scalable proxy
+5. **Field classifier robustness**: multi-domain queries need graceful handling
+6. **Grounding confidence in reality**: internal consistency ≠ truth; a self-consistent wrong model is still wrong
 
 ---
 
