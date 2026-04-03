@@ -398,10 +398,140 @@ Contradiction check (already built) → compares structured values
 
 ---
 
-### 9.2 Still Open
+### 9.2 Resolved / Refined (continued)
 
-4. **Efficacy baseline for creative fields**: double-blind studies are expensive; need a scalable proxy
-5. **Field classifier robustness**: multi-domain queries need graceful handling
+**4. Efficacy baseline for creative fields** *(resolved)*
+
+The risk: creative quality is subjective. Double-blind studies are expensive, slow, and small sample — not scalable.
+
+Resolution: **float AI work on existing public platforms** (YouTube, SoundCloud, Pinterest, iStockPhoto, Unsplash, Medium, Behance) under realistic author identities, then read existing human preference signals at scale. No new measurement infrastructure required — the signal already exists.
+
+```
+Creative Field    Platform          Signal
+──────────────────────────────────────────────────────
+Music             SoundCloud        plays, likes, reposts
+                  Spotify           streams, saves, playlist adds
+Visual Art        Pinterest         saves, clicks, reposts
+                  iStockPhoto       downloads, purchases  ← strongest signal
+Photography       Unsplash          downloads, likes
+Writing           Medium            claps, reads, reading time
+Video             YouTube           views, likes, watch time, shares
+Design            Behance           appreciations, views, saves
+```
+
+Signals are weighted by intent strength:
+
+```
+purchase / download    1.0   (strongest — actual economic behavior)
+save / bookmark        0.8
+share / repost         0.7
+like / upvote          0.5
+comment                0.4
+view / listen          0.1   (weakest — could be accidental)
+```
+
+Stock sites (iStockPhoto, Unsplash) are the cleanest signal: a download or license use represents real economic intent with no algorithmic amplification distortion and built-in category taxonomy for like-for-like comparison.
+
+**Creative efficacy is two-component, not one:**
+
+A key insight: in STEM fields, efficacy and skill are the same thing — write correct code, that's the whole job. In creative fields they are separable and both matter:
+
+```
+Creative_Efficacy = Content_Efficacy × Discoverability_Efficacy
+
+Content_Efficacy      = conversion rate (likes/saves given views)
+                        → can the work hold attention when shown?
+
+Discoverability_Efficacy = impressions, search ranking, recommendation rate
+                        → can it find an audience at all?
+```
+
+Marketing and platform discoverability are **not noise to control for** — they are part of the skill. Every successful human creator has to crack this. If the agent cannot, that is a real efficacy gap, not a measurement artifact. This means the agent has a natural curriculum:
+
+```
+Stage 1: Generate work that converts well → optimize content quality
+Stage 2: Learn to title, tag, describe effectively → optimize search/recommendation
+Stage 3: Build cross-platform presence → optimize network effects and retention
+```
+
+**The baseline is self-updating:** Human creative work on these platforms gives a continuously updated category benchmark for free. As human creative output evolves, the baseline evolves with it — no periodic re-calibration needed.
+
+**Attribution:** Author identities should be realistic but not attributed to AI, preserving the blind nature of the study. Human collaborators acting as the "face" of accounts (already common in the creator economy via ghostwriting and session work) avoids platform ToS exposure while maintaining the same measurement property.
+
+**Confidence function:**
+
+```python
+def creative_efficacy(ai_signals, category_baseline, min_observations=50):
+    if ai_signals.total_observations < min_observations:
+        return None  # insufficient data — do not score yet
+
+    ai_score    = weighted_engagement(ai_signals)
+    baseline    = weighted_engagement(category_baseline)
+    ratio       = ai_score / baseline
+
+    # Same sigmoid normalization as STEM — ai == human → 0.5
+    return 1.0 - 1.0 / (1.0 + ratio)
+```
+
+This also unlocks **cross-field efficacy comparison** for the first time: if music efficacy is 0.60 and software engineering efficacy is 0.70, both are on the same [0,1] scale and directly comparable.
+
+---
+
+**5. Field classifier robustness** *(resolved)*
+
+The risk: the classifier collapses multi-domain queries to a single dominant field, misses field drift mid-conversation, and handles ambiguous queries without appropriate conservatism.
+
+Three failure modes and their resolutions:
+
+**Failure mode 1 — False confidence in a single field:**
+
+```
+"Write a Python script to analyze patient drug dosage data"
+→ naive: {"software_engineering": 0.95, "medicine": 0.05}  ← wrong
+→ correct: {"software_engineering": 0.65, "medicine": 0.35}
+```
+
+Resolution: **high-stakes floor** — any high-stakes field with any meaningful presence is floored at a minimum representation threshold (0.15), preventing dilution of dangerous fields.
+
+**Failure mode 2 — Field drift mid-conversation:**
+
+A conversation that starts as software engineering may drift into medicine and then law over several turns. Single-turn classification misses this.
+
+Resolution: **sliding window EMA** over the conversation's field history, weighted toward recent turns:
+
+```
+effective_field_dist = EMA(per_turn_classifications, alpha=0.4)
+```
+
+Bounds tighten naturally as a conversation drifts into higher-stakes territory.
+
+**Failure mode 3 — Genuine ambiguity:**
+
+Resolution: **entropy-based conservative fallback** — when the distribution's entropy is high (agent genuinely doesn't know the field), bounds shift toward the most conservative present field proportional to entropy. High entropy increases caution, it does not average toward the middle.
+
+```
+if entropy_ratio > 0.7:
+    c_min → lerp toward most conservative present field's c_min
+```
+
+Full pipeline:
+
+```
+Per-turn classifier
+       ↓
+High-stakes floor enforcement
+       ↓
+Sliding window EMA over conversation history
+       ↓
+Entropy check → conservative fallback if ambiguous
+       ↓
+Blended config with hardened bounds
+```
+
+---
+
+### 9.3 Still Open
+
 6. **Grounding confidence in reality**: internal consistency ≠ truth; a self-consistent wrong model is still wrong
 
 ---
