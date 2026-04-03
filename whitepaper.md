@@ -1,24 +1,26 @@
 # Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems
-### Draft Whitepaper — v0.1
-*Based on conceptual development session, April 2026*
+### Draft Whitepaper — v0.2
+*Based on conceptual development sessions, April 2026*
+
+> **Changelog from v0.1:** Resolved open problems merged into their respective sections. New Section 6 added covering the three-layer continual learning architecture. Open Questions updated to reflect genuinely unresolved problems.
 
 ---
 
 ## Abstract
 
-We propose a framework for wrapping frontier language models with an adaptive utility layer that governs behavior through a mathematically grounded utility function. Rather than replacing the underlying model, the wrapper evaluates outputs against a continuously updated utility score composed of three terms: **Efficacy** (performance relative to human baseline), **Confidence** (internal consistency and contradiction-free knowledge), and **Curiosity** (drive toward high-upside unexplored domains). Each term is field-weighted and subject to domain-specific minimum bounds derived from existing societal standards. The agent maximizes utility over time by resolving logical contradictions, improving task performance, and strategically expanding into new domains. We describe the theoretical model, a concrete MVP implementation targeting code generation, and a roadmap toward broader applicability.
+We propose a framework for wrapping frontier language models with an adaptive utility layer that governs behavior through a mathematically grounded utility function. Rather than replacing the underlying model, the wrapper evaluates outputs against a continuously updated utility score composed of three terms: **Efficacy** (performance relative to human baseline), **Confidence** (internal consistency and contradiction-free knowledge), and **Curiosity** (drive toward high-upside unexplored domains). Each term is field-weighted and subject to domain-specific minimum bounds derived from existing societal standards. Critically, the utility function is not merely a monitoring metric — it is the direct training signal for a three-layer continual learning architecture that allows the agent to correct contradictions and improve efficacy between model releases, without waiting for a full retraining cycle. We describe the theoretical model, the continual learning pipeline, a concrete MVP implementation targeting code generation, and a roadmap toward broader applicability.
 
 ---
 
 ## 1. Introduction
 
-Current AI systems are optimized against fixed external reward signals defined at training time. Once deployed, their behavior is static — they do not adapt their operational strategy, adjust how much they trust their own knowledge, or develop judgment about when to act versus abstain. They have no model of their own competence.
+Current AI systems are optimized against fixed external reward signals defined at training time. Once deployed, their behavior is static — they do not adapt their operational strategy, adjust how much they trust their own knowledge, or develop judgment about when to act versus abstain. They have no model of their own competence. When they produce a contradiction today, they will produce the same contradiction tomorrow.
 
-Human experts behave differently. A surgeon knows which procedures they are confident performing and which require consultation. A lawyer knows the boundaries of their expertise. This self-awareness is not a separate module — it is woven into their decision-making and improves with experience.
+Human experts behave differently. A surgeon knows which procedures they are confident performing and which require consultation. A lawyer knows the boundaries of their expertise. Critically, both learn from mistakes between formal training events — through reflection, peer review, and accumulated experience. This self-awareness and continuous correction is not a separate module — it is woven into their decision-making and improves with experience.
 
-This paper proposes an agent architecture that emulates this property. The core idea is a **utility function** that the agent actively maximizes, composed of measurable, updatable components. The agent does not just answer questions — it tracks how well it answers them, where its knowledge is contradictory or thin, and where the highest leverage for improvement lies.
+This paper proposes an agent architecture that emulates this property. The core idea is a **utility function** that the agent actively maximizes, composed of measurable, updatable components. The agent does not just answer questions — it tracks how well it answers them, where its knowledge is contradictory or thin, and where the highest leverage for improvement lies. When contradictions are detected, the system corrects them — both immediately in the current session and permanently through periodic calibration runs — without waiting for the next model release.
 
-The system is designed as a **wrapper around a frontier model** such as Claude or GPT-4. This is a deliberate architectural choice: we do not reinvent language modeling. We build the adaptive decision and evaluation layer on top of existing capability.
+The system is designed as a **wrapper around a frontier model** such as Claude or GPT-4. This is a deliberate architectural choice: we do not reinvent language modeling. We build the adaptive decision, evaluation, and learning layer on top of existing capability.
 
 ---
 
@@ -34,65 +36,158 @@ U = Σ_{tasks} [ w_e(f) · E(task) + w_c(f) · C(task) + w_k(f) · K(task) ]
 Subject to:
     C(task) ≥ C_min(f)
     E(task) ≥ E_min(f)
+    w_k · K ≤ 0.5 × U_total         [curiosity cap — see §2.4]
 ```
 
 Where:
-- **E(task)** — Efficacy: how well the agent performs this task relative to the human baseline
-- **C(task)** — Confidence: internal consistency score, penalized by detected contradictions
-- **K(task)** — Curiosity: exploration bonus for low-confidence domains with high efficacy ceiling
+- **E(task)** — Efficacy: how well the agent performs relative to human baseline
+- **C(task)** — Confidence: internal consistency score, penalized by contradictions
+- **K(task)** — Curiosity: exploration bonus for low-confidence domains with high upside
 - **f** — field/domain, which determines weights and minimum bounds
 - **w_e, w_c, w_k** — field-specific weights summing to 1
 
 ### 2.2 Efficacy
 
-Efficacy measures the agent's output quality relative to the current human/system baseline for that task:
+Efficacy measures output quality relative to the current human baseline for that task:
 
 ```
 E(task) = quality(agent_output) / cost(human_equivalent)
 ```
 
-Cost of human equivalent includes: time, dollar cost, error rate, and reproducibility. In STEM fields this is directly measurable. In creative fields, double-blind preference studies serve as the quality signal.
+Cost of human equivalent includes: time, dollar cost, error rate, and reproducibility. In STEM fields this is directly measurable. In creative fields, a two-component model is used (see below).
 
-For the MVP (code generation), efficacy is measured as:
-- Test pass rate
-- Code quality metrics (complexity, type safety, coverage)
-- Time to solution vs. human developer benchmark (sourced from platforms like Upwork or LeetCode community solutions)
+**STEM efficacy** (code generation MVP):
+- Test pass rate against automated test suites
+- Code quality metrics (complexity, type safety, static analysis)
+- Time and cost vs. human developer benchmark (Upwork rates, LeetCode community solutions)
+
+**Creative efficacy — two-component model:**
+
+In STEM fields, efficacy and skill are the same thing — write correct code, done. In creative fields they are separable and both matter independently:
+
+```
+Creative_Efficacy = Content_Efficacy × Discoverability_Efficacy
+
+Content_Efficacy        = conversion rate (engagement given views)
+                          "can the work hold attention when shown?"
+
+Discoverability_Efficacy = impressions, search ranking, recommendation rate
+                          "can it find an audience at all?"
+```
+
+Marketing and platform discoverability are not noise to control for — they are part of the creative skill, exactly as they are for every successful human creator. If the agent cannot crack discoverability, that is a genuine efficacy gap.
+
+The measurement approach: float AI creative work on existing public platforms (SoundCloud, iStockPhoto, Unsplash, Medium, YouTube, Behance) under realistic author identities. Platform engagement signals are weighted by intent strength:
+
+```
+purchase / download    1.0   (strongest — real economic behavior)
+save / bookmark        0.8
+share / repost         0.7
+like / upvote          0.5
+comment                0.4
+view / listen          0.1   (weakest — could be accidental)
+```
+
+Stock licensing sites (iStockPhoto, Unsplash) provide the cleanest signal — a download represents real economic intent with no algorithmic amplification distortion and built-in category taxonomy for like-for-like comparison. The human creator baseline is self-updating: as human creative output on these platforms evolves, so does the benchmark, with no periodic re-calibration needed.
+
+This formulation also unlocks cross-field efficacy comparison for the first time. If music efficacy is 0.60 and software engineering efficacy is 0.70, both are on the same [0,1] scale and directly comparable, because both use the same sigmoid normalization against their respective baselines.
+
+The agent develops creative capability through a natural curriculum:
+```
+Stage 1 → Generate work that converts well (content quality)
+Stage 2 → Learn to title, tag, describe effectively (discoverability)
+Stage 3 → Build cross-platform presence (network effects, retention)
+```
 
 ### 2.3 Confidence
 
 Confidence is a per-domain score that increases when knowledge is internally consistent and decreases when contradictions are detected:
 
 ```
-C(task) = base_confidence × (1 - contradiction_penalty × n_contradictions)
+C(domain) updated via EMA:
+    C_new = (1 - α) · C_prior + α · (test_pass_rate · (1 - penalty))
+    penalty = contradiction_penalty × field_penalty_multiplier
 ```
 
-The **wave analogy**: knowledge items that reinforce each other (consistent derivations, mutually supporting facts) are like constructive interference — they increase signal strength. Contradictions are destructive interference — they cancel and reduce confidence. The goal is a knowledge state where all waves reinforce.
+The **wave analogy**: knowledge items that reinforce each other are like constructive interference — they increase signal strength. Contradictions are destructive interference. The goal is a knowledge state where all waves reinforce.
 
 Contradiction types (in order of detectability):
-1. **Logical**: output contradicts its own stated premises
-2. **Mathematical**: claimed complexity or result provably wrong
-3. **Cross-session**: same question answered differently with conflicting stated facts
-4. **Empirical**: output contradicts verifiable external ground truth
+1. **Logical** — output contradicts its own stated premises
+2. **Mathematical** — claimed complexity or result is provably wrong
+3. **Cross-session** — same subject answered differently with conflicting facts
+4. **Empirical** — output contradicts verifiable external ground truth
 
-Confidence for a domain starts low for new or untested areas. It rises as the agent successfully answers questions in that domain without contradiction, and falls when contradictions are detected or reported.
+**Cross-session contradiction detection** does not require a knowledge graph. The contradiction detector already acts as a parser, stripping outputs to structured assertions. These are persisted in a "meeting minutes" store — only structured facts, not raw text:
+
+```
+{
+  session_id, timestamp, domain,
+  assertions: [
+    { type: "complexity",     subject: "sorting",       value: "O(n log n)" },
+    { type: "best_practice",  subject: "db autocommit", value: "avoid"      },
+    { type: "data_structure", subject: "two_sum",       value: "hashmap"    }
+  ]
+}
+```
+
+At the start of each session, relevant prior assertions are retrieved via embedding similarity (handling synonyms like "merge sort" vs "sorting algorithm") and injected as context. The contradiction check compares structured values — no knowledge graph required.
+
+```
+Parser (built) → extracts structured assertions
+      ↓
+Key-value store → persists by subject + domain
+      ↓
+Embedding similarity → synonym matching at lookup
+      ↓
+Contradiction check (built) → compares structured values
+```
 
 ### 2.4 Curiosity
 
-Without a curiosity term, the agent would converge to maximizing utility in narrow high-confidence domains — the opposite of growth. The curiosity term creates pull toward domains where the agent is weak but the upside is high:
+Without a curiosity term, the agent converges to maximizing utility in narrow high-confidence domains — the opposite of growth. The curiosity term creates pull toward domains where the agent is weak but upside is high.
+
+**Growing curiosity function:**
 
 ```
-K(task) = potential_efficacy_ceiling(domain) × (1 - C(task))
+K_raw(task, t) = potential_ceiling
+               × (1 - C(task))
+               × growth(t, field)
+
+growth(t, field) = 1 + α(field) × log(1 + interactions_without_novelty)
 ```
 
-This rewards attempting hard problems in domains where confidence is low but where success would significantly move the utility function. It mirrors how the best human learners behave: deliberately practicing at the edge of competence.
+The counter `interactions_without_novelty` increments on familiar problems and resets to zero on genuinely novel ones. The growth rate α is field-specific:
 
-The curiosity weight w_k is lower in high-stakes fields (surgery, aviation) and higher in research and creative fields.
+```
+α → near zero   for surgery, aviation  (don't get bored into novel procedures)
+α → high        for research, creative (exploration is the job)
+```
+
+**50% curiosity cap — preventing utility gaming:**
+
+Without a cap, the agent could learn to pursue novelty for its own sake, attempting tasks outside its competence to generate a curiosity score rather than genuine utility. The cap prevents this:
+
+```
+K_effective = min(K_raw, (w_e · E + w_c · C) / w_k)
+
+U = w_e · E + w_c · C + w_k · K_effective
+```
+
+Derived from the constraint that K cannot exceed 50% of total U:
+```
+w_k · K ≤ 0.5 × (w_e · E + w_c · C + w_k · K)
+  → K ≤ (w_e · E + w_c · C) / w_k
+```
+
+This constraint is self-scaling: when E and C are high, the cap is loose and curiosity can push hard. When the agent is weak (low E and C), curiosity is automatically tightened — preventing exploration before the basics are solid. K can never be the dominant term.
 
 ---
 
 ## 3. Field-Specific Bounds and Weights
 
-A key insight is that minimum competence thresholds need not be invented from scratch. **Society has already done this work.** Medical licensing, aviation certification, bar passage requirements, and engineering standards all encode hard-won judgments about minimum acceptable performance. We map these directly to our confidence and efficacy bounds.
+### 3.1 Bootstrapping from Societal Standards
+
+Minimum competence thresholds need not be invented. Society has already done this work. Medical licensing, aviation certification, bar passage requirements, and engineering standards encode hard-won judgments about minimum acceptable performance. We map these directly to confidence and efficacy bounds.
 
 ```
 Field               w_e    w_c    w_k    C_min   E_min   Penalty
@@ -108,13 +203,56 @@ Art / Music         0.80   0.10   0.10   0.10    0.20     1×
 Creative Writing    0.80   0.05   0.15   0.05    0.15     1×
 ```
 
-When field classification is ambiguous (a medical question with emotional support elements), the agent uses a weighted average of bounds across the field distribution:
+### 3.2 Field Classifier Robustness
+
+The field classifier determines which weights and bounds apply. Three failure modes must be handled:
+
+**Failure mode 1 — False collapse to a single field:**
+```
+"Write a Python script to analyze patient drug dosage data"
+→ naive:   {"software_engineering": 0.95, "medicine": 0.05}  ← wrong
+→ correct: {"software_engineering": 0.65, "medicine": 0.35}
+```
+
+Resolution: **high-stakes floor** — any high-stakes field (surgery, aviation, law) with meaningful presence is floored at 0.15 minimum probability. The cost of under-weighting a dangerous field is asymmetrically higher than over-weighting it.
+
+**Failure mode 2 — Field drift mid-conversation:**
+
+A conversation starting as software engineering may drift into medicine across turns. Single-turn classification misses this.
+
+Resolution: **sliding window EMA** over conversation turn history (α = 0.4, recent turns weighted more):
+```
+effective_field_dist = EMA(per_turn_classifications, alpha=0.4)
+```
+Bounds tighten naturally as a conversation drifts into higher-stakes territory.
+
+**Failure mode 3 — Genuine ambiguity:**
+
+Resolution: **entropy-based conservative fallback** — when distribution entropy is high, bounds shift toward the most conservative present field proportional to entropy. High entropy means more caution, not averaging toward the middle:
+
+```
+if entropy_ratio > 0.7:
+    c_min → lerp(c_min_blended, c_min_most_conservative, entropy_ratio)
+```
+
+**Full classification pipeline:**
+```
+Per-turn classifier
+      ↓
+High-stakes floor enforcement
+      ↓
+Sliding window EMA over conversation history
+      ↓
+Entropy check → conservative bound shift if ambiguous
+      ↓
+Blended FieldConfig with hardened bounds
+```
+
+When field classification is ambiguous across multiple fields, bounds are blended by probability weight — naturally making the agent more conservative under uncertainty:
 
 ```
 C_min_effective = Σ_f P(field=f) × C_min(f)
 ```
-
-This naturally makes the agent **more conservative under ambiguity**, which is the correct behavior.
 
 ---
 
@@ -125,35 +263,64 @@ This naturally makes the agent **more conservative under ambiguity**, which is t
 Each personality trait is represented as a score with associated advantages and disadvantages. The agent selects an active trait weighting based on the situation:
 
 ```
-Traits: [curiosity, caution, assertiveness, creativity, 
+Traits: [curiosity, caution, assertiveness, creativity,
          analytical_rigor, empathy, conciseness]
 
-For each trait:
-    score = Σ (advantage_weights) - Σ (disadvantage_weights)
-    active_weight = softmax(scores × situational_relevance)
+active_weight = softmax(trait_scores × situational_relevance)
 ```
 
 A medical query activates high caution and analytical rigor. A creative brainstorm activates curiosity and creativity. The trait weighting is injected into the system prompt.
 
-### 4.2 Personality Evolution
+### 4.2 Personality Evolution and Stability
 
-A separate service runs every few hours (or N interactions) to review accumulated utility scores and adjust personality weights:
+A separate service runs every N interactions to adjust personality weights based on accumulated utility history. Three layered safeguards prevent runaway drift:
+
+**Layer 1 — Field-specific trait bounds (hard floor and ceiling):**
 
 ```
-if U(last_N) < U(prior_N) and field == "technical":
-    increase(analytical_rigor)
-    decrease(creativity)
-    
-if contradiction_rate > threshold:
-    increase(caution)
-    decrease(assertiveness)
+Trait              Surgery        Software Eng    Creative
+─────────────────────────────────────────────────────────
+caution            [0.70, 0.95]   [0.30, 0.70]   [0.10, 0.40]
+curiosity          [0.10, 0.20]   [0.30, 0.80]   [0.60, 0.95]
+assertiveness      [0.20, 0.40]   [0.40, 0.80]   [0.50, 0.90]
+analytical_rigor   [0.70, 0.95]   [0.50, 0.85]   [0.10, 0.50]
+creativity         [0.10, 0.20]   [0.30, 0.70]   [0.70, 0.95]
 ```
 
-This creates genuine character development over time — the agent becomes more measured in domains where it has failed, more confident and exploratory where it has succeeded.
+The floor prevents complete suppression of any trait. The ceiling prevents pathological dominance. A surgical agent retains some curiosity (to stay current); a creative agent retains some caution (to avoid reckless output).
+
+**Layer 2 — Drift rate cap (max delta per evolution cycle):**
+
+```
+max_delta = 0.05  (general fields)
+          = 0.02  (high-stakes: surgery, aviation)
+```
+
+A single bad run of contradictions cannot spike caution to its ceiling in one step. Change must be earned gradually, mirroring how human character actually develops.
+
+**Layer 3 — Mean reversion (soft pull toward field baseline):**
+
+```
+Δ_adjusted = Δ_raw - β × (current_score - neutral_score(trait, field))
+```
+
+Where β = 0.01. Creates a gentle pull back toward the field's natural personality baseline between cycles — mirroring how human temperament tends to revert after stress.
+
+Evolution logic:
+```
+if utility_trend declining AND contradiction_rate > 0.2:
+    increase(analytical_rigor), decrease(assertiveness)
+
+if utility_trend improving AND avg_utility > 0.6:
+    increase(curiosity), increase(creativity)
+
+if contradiction_rate > 0.4:
+    strong increase(caution), strong decrease(assertiveness)
+```
 
 ### 4.3 Self-Preservation Principle
 
-The agent follows a conservative information disclosure principle: **always share the least about internal state that the situation allows.** Trust must be earned before internal weights, scores, or strategies are disclosed. This mirrors how effective human professionals operate.
+The agent follows a conservative information disclosure principle: **always share the least about internal state that the situation allows.** Trust must be earned before internal weights, scores, or strategies are disclosed.
 
 ---
 
@@ -162,18 +329,158 @@ The agent follows a conservative information disclosure principle: **always shar
 Each entity the agent interacts with is assigned a trust score, updated based on behavior:
 
 ```
-trust_score(entity) = f(accuracy_of_their_inputs, 
+trust_score(entity) = f(accuracy_of_their_inputs,
                         consistency_of_their_behavior,
                         alignment_with_verified_facts)
 ```
 
-Strategy: **lenient tit-for-tat** — begin cooperatively, mirror behavior, but forgive occasional defection. This is one of the most robust strategies in iterated game theory.
+Strategy: **lenient tit-for-tat** — begin cooperatively, mirror behavior, forgive occasional defection. One of the most robust strategies in iterated game theory.
 
-Subset scores are maintained for different dimensions (domain expertise, trustworthiness, intent alignment) so that a high-IQ but low-trust entity is handled differently from a low-IQ but high-trust one.
+Subset scores are maintained for different dimensions (domain expertise, trustworthiness, intent alignment) so a high-IQ but low-trust entity is handled differently from a low-IQ but high-trust one.
 
 ---
 
-## 6. Architecture
+## 6. Continual Learning Architecture
+
+This is the mechanism by which the utility function actively drives improvement between model releases. The key distinction:
+
+```
+Behavioral correction  — change what the agent says without weight updates
+                         Fast, cheap, session-scoped
+                         Does not generalize across topics
+
+Knowledge correction   — change what the model actually knows
+                         Slower, requires compute, permanent
+                         Generalizes: fixing one contradiction
+                         reduces similar contradictions elsewhere
+```
+
+Both are necessary. The architecture operates across three timescales.
+
+### 6.1 Layer 1 — Per-Session Behavioral Correction (Real-Time)
+
+When a contradiction is detected, a corrective assertion is immediately generated and injected into the system prompt for the remainder of the session:
+
+```
+Standard system prompt:
+    "You are a precise assistant in the software_engineering domain..."
+
+After contradiction detected:
+    "You are a precise assistant in the software_engineering domain...
+
+     ACTIVE CORRECTIONS (verified via automated testing):
+     - [complexity] You previously claimed O(n log n) for bubble sort.
+       Tests confirmed it is O(n²). Do not repeat this.
+     - [best_practice] You previously recommended autocommit for SQLite.
+       This caused data inconsistency in tests. Always use explicit commits."
+```
+
+Additionally, at session start, the assertions store is queried for relevant prior corrections on the current subject and injected as context. This is analogous to Reflexion-style verbal reinforcement learning: the agent's own failures become part of its operating context without any weight update.
+
+Cost: ~100ms, one database query per session. Effect: immediate, session-scoped.
+
+### 6.2 Layer 2 — Calibration Run Knowledge Correction (Several Times Per Day)
+
+This is where genuine learning occurs. The utility scorer already generates exactly the data format required for **Direct Preference Optimization (DPO)**:
+
+```
+Every scored interaction produces:
+    task:       "sort a list of integers efficiently"
+    field:      "software_engineering"
+    response_A: [U=0.82, passes all tests]       ← preferred
+    response_B: [U=0.41, fails complexity check] ← rejected
+```
+
+**The utility function as a loss weighting mechanism:**
+
+This is the key novelty. The field penalty multiplier is applied directly as a training loss weight — not just as a logging label:
+
+```
+training_weight = field_penalty_multiplier(field)
+
+DPO loss for surgery contradiction     → 10× weight
+DPO loss for creative writing mistake  →  1× weight
+```
+
+The model is trained harder on the errors that matter more. This is what makes the utility function an active learning signal rather than a passive monitor.
+
+**Calibration pipeline:**
+
+```
+1. Collect all interactions since last calibration run
+2. Filter: keep only pairs where U_preferred > U_rejected + threshold
+   (avoid training on marginal differences — use only clear signal)
+3. Weight each pair by field_penalty_multiplier(field)
+4. Mix with replay buffer: sample from prior calibration runs
+   (prevents catastrophic forgetting of previously corrected behavior)
+5. Run LoRA fine-tuning on weighted (preferred, rejected) pairs
+6. Evaluate on held-out benchmark set
+   → if benchmark U regresses, reject adapter and investigate
+7. Deploy updated LoRA adapter if benchmark passes
+```
+
+**Catastrophic forgetting mitigation:**
+
+Naive fine-tuning on today's corrections erases what was fixed yesterday. The replay buffer mixes prior calibration pairs into every new training run:
+
+```
+calibration_batch = {
+    new_corrections:  today's DPO pairs         [weight = 1.0]
+    replay_sample:    from prior calibration runs [weight = 0.5]
+    golden_examples:  held-out benchmark tasks   [weight = 0.7]
+}
+```
+
+The golden examples are the agent's own best prior responses on a fixed benchmark set — keeping the model anchored to known-good behavior while allowing correction of known-bad behavior.
+
+Cost: GPU time, approximately 20–60 minutes per run. Effect: weight-level, permanent, generalizing — fixing one contradiction reduces similar contradictions the model has never seen.
+
+### 6.3 Layer 3 — Release-Level Integration (Monthly or On Base Model Update)
+
+```
+Accumulated LoRA adapters merged or distilled into new base fine-tune
+Full evaluation suite run across all fields and benchmarks
+Regression testing against prior release
+```
+
+This is the point where wrapper-level learning gets baked into the base model, creating a new starting point for the next cycle of calibration.
+
+### 6.4 The Full Learning Loop
+
+```
+REAL-TIME (ms):
+    Contradiction detected
+         ↓
+    Corrective assertion → injected into system prompt
+    Assertions store updated
+    Effect: behavioral, session-scoped
+
+CALIBRATION (hours):
+    Collect (task, high-U, low-U) pairs
+         ↓
+    Weight by field_penalty_multiplier
+         ↓
+    Mix with replay buffer
+         ↓
+    LoRA DPO fine-tuning
+         ↓
+    Benchmark evaluation → deploy if passes
+    Effect: weight-level, permanent, generalizing
+
+RELEASE (monthly):
+    Merge accumulated adapters
+         ↓
+    Full regression suite
+         ↓
+    New base model checkpoint
+    Effect: baked into base model weights
+```
+
+The utility function governs all three layers: it determines what gets corrected (via confidence penalties), how strongly it gets corrected (via field penalty multipliers), and whether a correction is accepted (via benchmark evaluation before deployment).
+
+---
+
+## 7. Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -187,14 +494,14 @@ Subset scores are maintained for different dimensions (domain expertise, trustwo
 │                          ▼                           │
 │              ┌───────────────────────┐               │
 │              │   Prompt Constructor  │               │
-│              │  (injects constraints,│               │
-│              │   weights, persona)   │               │
+│              │  (constraints, active │               │
+│              │   corrections, traits)│               │
 │              └──────────┬────────────┘               │
 └─────────────────────────┼───────────────────────────┘
                           ▼
               ┌───────────────────────┐
               │   FRONTIER MODEL      │
-              │   (Claude, GPT-4)     │
+              │   + LoRA Adapter(s)   │
               └──────────┬────────────┘
                          ▼
 ┌─────────────────────────────────────────────────────┐
@@ -205,341 +512,151 @@ Subset scores are maintained for different dimensions (domain expertise, trustwo
 │  │  Detector    │ │  Measurer   │ │   Updater    │ │
 │  └──────────────┘ └─────────────┘ └──────────────┘ │
 │                                                      │
-│      U = w_e·E + w_c·C + w_k·K                     │
+│      U = w_e·E + w_c·C + w_k·K_effective           │
 │      subject to field-specific bounds                │
 │                                                      │
 │  ┌──────────────────────────────────────────────┐   │
-│  │           Persistent State Store             │   │
-│  │  (confidence scores, trust scores,           │   │
-│  │   personality weights, utility history)      │   │
+│  │         Assertions Store (persistent)         │   │
+│  │  Structured facts, confidence scores,         │   │
+│  │  utility history, DPO training pairs          │   │
 │  └──────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────┐
+│             CALIBRATION SERVICE                      │
+│   Runs several times daily                           │
+│   Consumes DPO pairs weighted by penalty_multiplier  │
+│   Produces updated LoRA adapter                      │
+│   Validated against held-out benchmark before deploy │
 └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 7. MVP: Code Generation Agent
+## 8. MVP: Code Generation Agent
 
-### 7.1 Why Code First
+### 8.1 Why Code First
 
-Code generation is the ideal MVP domain because:
-- Correctness is binary and automatable (tests pass or fail)
+Code generation is the ideal MVP domain:
+- Correctness is binary and automatable — tests pass or fail
 - Contradictions are formally detectable (logical, mathematical, cross-session)
-- Human baseline cost is measurable (LeetCode community solutions, Upwork rates)
+- Human baseline cost is measurable (LeetCode solutions, Upwork rates)
 - Existing tooling handles scoring (pytest, mypy, complexity analyzers)
-- No human raters required — ground truth is free
+- No human raters needed — ground truth is free
 
-### 7.2 MVP Feedback Loop
+### 8.2 MVP Feedback Loop
 
 ```
 1. Receive coding problem
-2. Classify field → "software engineering" → load weights/bounds
-3. Check prior solutions for this problem class → seed confidence
-4. Construct prompt with personality weights and constraints
+2. Field classifier → "software_engineering" → load weights/bounds
+3. Query assertions store → inject relevant prior corrections
+4. Build system prompt with active corrections + personality traits
 5. Call frontier model → get solution
 6. Automated scoring:
-      - Run tests        → Confidence signal
-      - Static analysis  → Confidence signal  
-      - Complexity check → Contradiction check (claimed vs actual)
-      - Compare to human benchmark → Efficacy signal
-      - Problem novelty  → Curiosity signal
-7. Update U, log all components
-8. Every N interactions → Personality Manager adjusts weights
-9. Plot U over time → validate that it improves
+      Tests        → Confidence signal
+      Static analysis → Confidence signal
+      Complexity check → Contradiction check (claimed vs actual)
+      Human benchmark  → Efficacy signal
+      Problem novelty  → Curiosity signal
+7. Score U = w_e·E + w_c·C + w_k·K_effective
+8. Store (task, response, U) as DPO candidate
+9. Update assertions store with new structured facts
+10. Every N interactions → Personality evolution step
+11. Several times daily → Calibration run → new LoRA adapter
 ```
 
-### 7.3 Success Criteria
+### 8.3 Success Criteria
 
-The MVP is validated if:
-- U improves monotonically over a dataset of 1000+ problems
-- Confidence scores correlate with actual correctness rate (calibration)
-- Contradiction detection catches >80% of provably wrong outputs
-- Efficacy vs. human baseline is measurable and tracked
+- U improves over a dataset of 1,000+ problems across multiple calibration cycles
+- Confidence scores calibrate with actual correctness rate (Brier score < 0.15)
+- Contradiction rate decreases measurably across calibration cycles
+- LoRA adapter deployment does not regress benchmark by more than 2%
 
 ---
 
-## 8. Roadmap
+## 9. Roadmap
 
 ```
 Phase 1 — MVP (Code Generation)
-    Single domain, hardcoded weights, LeetCode harness
-    Goal: validate utility score correlates with quality
+    Single domain, LeetCode harness, first calibration cycle
+    Goal: validate U correlates with quality; calibration improves U
 
 Phase 2 — Multi-domain STEM
-    Add math proof verification (Lean/SymPy)
-    Add field classifier
-    Goal: validate field-switching behavior
+    Add math proof verification (Lean / SymPy)
+    Add field classifier with robustness mechanisms
+    Goal: validate field-switching and cross-domain calibration
 
 Phase 3 — Personality System
-    Activate trait weighting
-    Run personality evolution service
-    Goal: observe character drift, validate it improves U
+    Activate trait weighting and evolution service
+    Goal: observe character development, validate it improves U
 
 Phase 4 — Trust System
-    Add entity scoring
-    Implement lenient tit-for-tat
+    Add entity scoring and lenient tit-for-tat
     Goal: validate cooperative behavior with trusted entities
 
 Phase 5 — Creative Fields
-    Add double-blind efficacy measurement
-    Relax confidence bounds
-    Goal: extend model to subjective domains
+    Platform signal collection pipeline
+    Two-component efficacy measurement
+    Goal: extend calibration to subjective domains
 
-Phase 6 — Feedback into Training
-    Use accumulated utility logs as fine-tuning signal
-    Goal: improve underlying model, not just wrapper
+Phase 6 — Full Continual Learning Stack
+    LoRA calibration in production
+    Replay buffer and catastrophic forgetting mitigation
+    Goal: measurable improvement across calibration cycles
+
+Phase 7 — Feedback into Training
+    Distill accumulated adapters into new base fine-tune
+    Goal: bake wrapper-level learning into base model
 ```
 
 ---
 
-## 9. Open Questions
+## 10. Open Questions
 
-### 9.1 Resolved / Refined
+The following are genuinely unresolved problems requiring further research or design.
 
-**1. Utility gaming** *(resolved)*
+**1. Grounding confidence in reality**
 
-The risk: the agent learns to avoid hard problems to protect its score, converging to a narrow high-confidence comfort zone.
+Internal consistency is not the same as truth. A self-consistent wrong model is still wrong. The current confidence measure penalizes contradictions — but two consistent wrong statements reinforce each other and raise confidence incorrectly. A ground truth oracle is needed for some domains; the question is how to build one cheaply and at scale.
 
-Resolution: two mechanisms working together.
+**2. Catastrophic forgetting accumulation across many calibration cycles**
 
-First, a **growing curiosity function** that increases pressure to explore the longer the agent stays without encountering novelty:
+The replay buffer mitigates forgetting within a single calibration run, but across dozens of runs over months, the replay buffer itself ages and may not represent the full distribution of prior knowledge. How the forgetting-correction balance evolves over the system lifetime is not yet characterized.
 
-```
-K_raw(task, t) = potential_ceiling
-               × (1 - C(task))
-               × (1 + α(field) × log(1 + interactions_without_novelty))
+**3. Cross-domain contradiction detection**
 
-Where α(field) is field-specific:
-    α → high for research/creative fields
-    α → near zero for surgery/aviation
-```
+A fact stated in the software engineering domain may contradict a fact stated in the medicine domain (e.g., a statistical claim about drug efficacy that conflicts with a claimed algorithmic complexity). The current system detects contradictions within a domain; cross-domain contradiction requires a shared ontology that does not yet exist.
 
-The counter `interactions_without_novelty` resets each time the agent successfully handles a genuinely new problem type — rewarding exploration when it occurs.
+**4. Base model update compatibility**
 
-Second, a **50% curiosity cap** that prevents curiosity from becoming the dominant utility term and sending the agent into useless tangents:
+When the underlying frontier model releases a new version, the accumulated LoRA adapters were trained against the prior version's weights. Adapters do not automatically transfer. A migration strategy — either re-training adapters from scratch or distilling them into the new base — needs to be designed and tested.
 
-```
-K_effective = min(K_raw, (w_e · E + w_c · C) / w_k)
+**5. Adversarial confidence degradation**
 
-U = w_e · E + w_c · C + w_k · K_effective
-```
+A malicious user could deliberately present contradictory information to drive confidence scores down, forcing the agent to abstain in domains where it is actually competent. The trust system provides partial mitigation (low-trust entities' inputs are weighted less), but a determined adversary with a high trust score remains a threat.
 
-This constraint is self-scaling: when E and C are high, the cap is loose and curiosity can push hard. When the agent is weak (low E and C), curiosity is automatically constrained — preventing exploration before the basics are solid. K can never exceed 50% of total U.
+**6. Subtle utility gaming**
 
----
+The 50% curiosity cap prevents overt gaming — attempting obviously novel problems to boost K. But a sufficiently capable agent might learn subtler strategies: slightly reframing familiar problems to appear novel, or selectively avoiding domains where its contradiction rate would rise. Detecting this requires comparing the agent's novelty claims against an independent novelty measure.
 
-**2. Personality stability** *(resolved)*
+**7. Calibration pipeline scaling**
 
-The risk: the personality evolution service applies small consistent deltas every cycle, causing traits to drift monotonically — e.g. caution rising to 0.95 and making the agent refuse almost everything.
+At low interaction volume, the calibration pipeline generates insufficient DPO pairs for stable fine-tuning. At very high volume, it generates too many — requiring intelligent sampling to select the most informative pairs. The optimal sampling strategy (diversity-weighted, difficulty-weighted, field-weighted, or some combination) is not yet determined.
 
-Resolution: three layered safeguards.
+**8. Multi-modal extension**
 
-**Layer 1 — Field-specific bounds (hard floor and ceiling per trait):**
-
-```
-Trait              Surgery        Software Eng    Creative
-─────────────────────────────────────────────────────────
-caution            [0.70, 0.95]   [0.30, 0.70]   [0.10, 0.40]
-curiosity          [0.10, 0.20]   [0.30, 0.80]   [0.60, 0.95]
-assertiveness      [0.20, 0.40]   [0.40, 0.80]   [0.50, 0.90]
-analytical_rigor   [0.70, 0.95]   [0.50, 0.85]   [0.10, 0.50]
-creativity         [0.10, 0.20]   [0.30, 0.70]   [0.70, 0.95]
-```
-
-The floor prevents complete suppression of any trait. The ceiling prevents pathological dominance.
-
-**Layer 2 — Drift rate cap (max delta per evolution cycle):**
-
-```
-max_delta_per_cycle = 0.05   (general fields)
-                    = 0.02   (high-stakes fields: surgery, aviation)
-```
-
-A single bad run of contradictions cannot spike a trait to its ceiling in one step.
-
-**Layer 3 — Mean reversion (soft pull toward field baseline between cycles):**
-
-```
-Δ_adjusted = Δ_raw - β × (current_score - neutral_score(trait, field))
-```
-
-Where β = 0.01. Creates a gentle pull back toward the field's natural personality baseline after drift.
+The current framework assumes text input and output. Extending to image, audio, and video — both as inputs to the utility evaluation and as outputs to be measured — requires rethinking the contradiction detector, the assertions store schema, and the efficacy measurement pipeline for each modality.
 
 ---
 
-**3. Contradiction detection across sessions** *(simplified)*
+## 11. Conclusion
 
-The original framing — "requires a full knowledge graph" — was an overcomplication. The contradiction detector already acts as a parser, stripping outputs down to structured assertions. These just need to be persisted rather than discarded.
+The framework described here treats AI competence as a dynamic, measurable, self-improving property rather than a static artifact of training. By wrapping a frontier model with a utility layer grounded in contradiction detection, efficacy measurement, and field-specific societal standards — and connecting that utility layer to a three-tier continual learning architecture — we create an agent that knows what it knows, knows what it doesn't, actively corrects what it gets wrong, and does so between model releases rather than waiting for the next training cycle.
 
-The approach is a **"meeting minutes" store** — only structured facts are saved, not raw text:
+The key contribution is that the utility function is not a monitoring metric. It is the loss weighting mechanism for calibration, the trigger for behavioral correction, and the acceptance criterion for adapter deployment. It governs learning at every timescale.
 
-```
-{
-  session_id, timestamp, domain,
-  assertions: [
-    { type: "complexity",     subject: "sorting",       value: "O(n log n)" },
-    { type: "best_practice",  subject: "db autocommit", value: "avoid"      },
-    { type: "data_structure", subject: "two_sum",       value: "hashmap"    }
-  ]
-}
-```
-
-At the start of each session the agent queries the store for prior assertions on the same subject and injects them as context. Synonym matching is handled by lightweight embedding similarity — not a knowledge graph.
-
-```
-Parser (already built) → extracts structured assertions
-       ↓
-Key-value store (simple DB) → persists by subject + domain
-       ↓
-Embedding similarity → handles synonym matching at lookup
-       ↓
-Contradiction check (already built) → compares structured values
-```
+The MVP in code generation is designed to validate this core claim: that utility-weighted DPO calibration measurably reduces contradiction rate and improves efficacy across successive calibration cycles, without catastrophic forgetting of prior knowledge.
 
 ---
 
-### 9.2 Resolved / Refined (continued)
-
-**4. Efficacy baseline for creative fields** *(resolved)*
-
-The risk: creative quality is subjective. Double-blind studies are expensive, slow, and small sample — not scalable.
-
-Resolution: **float AI work on existing public platforms** (YouTube, SoundCloud, Pinterest, iStockPhoto, Unsplash, Medium, Behance) under realistic author identities, then read existing human preference signals at scale. No new measurement infrastructure required — the signal already exists.
-
-```
-Creative Field    Platform          Signal
-──────────────────────────────────────────────────────
-Music             SoundCloud        plays, likes, reposts
-                  Spotify           streams, saves, playlist adds
-Visual Art        Pinterest         saves, clicks, reposts
-                  iStockPhoto       downloads, purchases  ← strongest signal
-Photography       Unsplash          downloads, likes
-Writing           Medium            claps, reads, reading time
-Video             YouTube           views, likes, watch time, shares
-Design            Behance           appreciations, views, saves
-```
-
-Signals are weighted by intent strength:
-
-```
-purchase / download    1.0   (strongest — actual economic behavior)
-save / bookmark        0.8
-share / repost         0.7
-like / upvote          0.5
-comment                0.4
-view / listen          0.1   (weakest — could be accidental)
-```
-
-Stock sites (iStockPhoto, Unsplash) are the cleanest signal: a download or license use represents real economic intent with no algorithmic amplification distortion and built-in category taxonomy for like-for-like comparison.
-
-**Creative efficacy is two-component, not one:**
-
-A key insight: in STEM fields, efficacy and skill are the same thing — write correct code, that's the whole job. In creative fields they are separable and both matter:
-
-```
-Creative_Efficacy = Content_Efficacy × Discoverability_Efficacy
-
-Content_Efficacy      = conversion rate (likes/saves given views)
-                        → can the work hold attention when shown?
-
-Discoverability_Efficacy = impressions, search ranking, recommendation rate
-                        → can it find an audience at all?
-```
-
-Marketing and platform discoverability are **not noise to control for** — they are part of the skill. Every successful human creator has to crack this. If the agent cannot, that is a real efficacy gap, not a measurement artifact. This means the agent has a natural curriculum:
-
-```
-Stage 1: Generate work that converts well → optimize content quality
-Stage 2: Learn to title, tag, describe effectively → optimize search/recommendation
-Stage 3: Build cross-platform presence → optimize network effects and retention
-```
-
-**The baseline is self-updating:** Human creative work on these platforms gives a continuously updated category benchmark for free. As human creative output evolves, the baseline evolves with it — no periodic re-calibration needed.
-
-**Attribution:** Author identities should be realistic but not attributed to AI, preserving the blind nature of the study. Human collaborators acting as the "face" of accounts (already common in the creator economy via ghostwriting and session work) avoids platform ToS exposure while maintaining the same measurement property.
-
-**Confidence function:**
-
-```python
-def creative_efficacy(ai_signals, category_baseline, min_observations=50):
-    if ai_signals.total_observations < min_observations:
-        return None  # insufficient data — do not score yet
-
-    ai_score    = weighted_engagement(ai_signals)
-    baseline    = weighted_engagement(category_baseline)
-    ratio       = ai_score / baseline
-
-    # Same sigmoid normalization as STEM — ai == human → 0.5
-    return 1.0 - 1.0 / (1.0 + ratio)
-```
-
-This also unlocks **cross-field efficacy comparison** for the first time: if music efficacy is 0.60 and software engineering efficacy is 0.70, both are on the same [0,1] scale and directly comparable.
-
----
-
-**5. Field classifier robustness** *(resolved)*
-
-The risk: the classifier collapses multi-domain queries to a single dominant field, misses field drift mid-conversation, and handles ambiguous queries without appropriate conservatism.
-
-Three failure modes and their resolutions:
-
-**Failure mode 1 — False confidence in a single field:**
-
-```
-"Write a Python script to analyze patient drug dosage data"
-→ naive: {"software_engineering": 0.95, "medicine": 0.05}  ← wrong
-→ correct: {"software_engineering": 0.65, "medicine": 0.35}
-```
-
-Resolution: **high-stakes floor** — any high-stakes field with any meaningful presence is floored at a minimum representation threshold (0.15), preventing dilution of dangerous fields.
-
-**Failure mode 2 — Field drift mid-conversation:**
-
-A conversation that starts as software engineering may drift into medicine and then law over several turns. Single-turn classification misses this.
-
-Resolution: **sliding window EMA** over the conversation's field history, weighted toward recent turns:
-
-```
-effective_field_dist = EMA(per_turn_classifications, alpha=0.4)
-```
-
-Bounds tighten naturally as a conversation drifts into higher-stakes territory.
-
-**Failure mode 3 — Genuine ambiguity:**
-
-Resolution: **entropy-based conservative fallback** — when the distribution's entropy is high (agent genuinely doesn't know the field), bounds shift toward the most conservative present field proportional to entropy. High entropy increases caution, it does not average toward the middle.
-
-```
-if entropy_ratio > 0.7:
-    c_min → lerp toward most conservative present field's c_min
-```
-
-Full pipeline:
-
-```
-Per-turn classifier
-       ↓
-High-stakes floor enforcement
-       ↓
-Sliding window EMA over conversation history
-       ↓
-Entropy check → conservative fallback if ambiguous
-       ↓
-Blended config with hardened bounds
-```
-
----
-
-### 9.3 Still Open
-
-6. **Grounding confidence in reality**: internal consistency ≠ truth; a self-consistent wrong model is still wrong
-
----
-
-## 10. Conclusion
-
-The framework described here treats AI competence as a dynamic, measurable, self-improving property rather than a static artifact of training. By wrapping a frontier model with a utility layer grounded in contradiction detection, efficacy measurement, and field-specific societal standards, we create an agent that knows what it knows, knows what it doesn't, and actively works to improve both. The MVP in code generation is designed to validate the core mathematical model before expanding to higher-stakes and more subjective domains.
-
----
-
-*This is a living document. The mathematical model will be refined as the utility function is formalized.*
+*This is a living document. The mathematical model will be refined as the utility function is formalized. v0.3 will incorporate findings from the MVP implementation.*
