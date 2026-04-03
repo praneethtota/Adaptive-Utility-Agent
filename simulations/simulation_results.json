@@ -1,0 +1,391 @@
+{
+  "cycle_summaries": [
+    {
+      "cycle": 1,
+      "avg_U": 0.5949,
+      "avg_E": 0.5867,
+      "avg_C": 0.7628,
+      "contradictions": 1,
+      "failed_tests": 0
+    },
+    {
+      "cycle": 2,
+      "avg_U": 0.6588,
+      "avg_E": 0.5867,
+      "avg_C": 0.9602,
+      "contradictions": 0,
+      "failed_tests": 0
+    },
+    {
+      "cycle": 3,
+      "avg_U": 0.6704,
+      "avg_E": 0.5867,
+      "avg_C": 0.9933,
+      "contradictions": 0,
+      "failed_tests": 0
+    }
+  ],
+  "per_problem": [
+    {
+      "cycle": 1,
+      "problem": "two_sum",
+      "pass_rate": 1.0,
+      "contradiction": true,
+      "failed_tests": 0,
+      "E": 0.5405,
+      "C": 0.544,
+      "K_raw": 0.0712,
+      "K_eff": 0.0712,
+      "U": 0.4948,
+      "capped": false
+    },
+    {
+      "cycle": 1,
+      "problem": "is_palindrome",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5556,
+      "C": 0.6352,
+      "K_raw": 0.0838,
+      "K_eff": 0.0838,
+      "U": 0.5363,
+      "capped": false
+    },
+    {
+      "cycle": 1,
+      "problem": "max_subarray",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5882,
+      "C": 0.7082,
+      "K_raw": 0.1044,
+      "K_eff": 0.1044,
+      "U": 0.5818,
+      "capped": false
+    },
+    {
+      "cycle": 1,
+      "problem": "binary_search",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5714,
+      "C": 0.7665,
+      "K_raw": 0.0519,
+      "K_eff": 0.0519,
+      "U": 0.5878,
+      "capped": false
+    },
+    {
+      "cycle": 1,
+      "problem": "flatten_nested",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.6061,
+      "C": 0.8132,
+      "K_raw": 0.0588,
+      "K_eff": 0.0588,
+      "U": 0.6238,
+      "capped": false
+    },
+    {
+      "cycle": 1,
+      "problem": "lru_cache",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.6452,
+      "C": 0.8506,
+      "K_raw": 0.0371,
+      "K_eff": 0.0371,
+      "U": 0.6562,
+      "capped": false
+    },
+    {
+      "cycle": 1,
+      "problem": "valid_parentheses",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5618,
+      "C": 0.8805,
+      "K_raw": 0.0078,
+      "K_eff": 0.0078,
+      "U": 0.6179,
+      "capped": false
+    },
+    {
+      "cycle": 1,
+      "problem": "merge_intervals",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.625,
+      "C": 0.9044,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6603,
+      "capped": false
+    },
+    {
+      "cycle": 2,
+      "problem": "two_sum",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5405,
+      "C": 0.9235,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6205,
+      "capped": false
+    },
+    {
+      "cycle": 2,
+      "problem": "is_palindrome",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5556,
+      "C": 0.9388,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6341,
+      "capped": false
+    },
+    {
+      "cycle": 2,
+      "problem": "max_subarray",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5882,
+      "C": 0.951,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6564,
+      "capped": false
+    },
+    {
+      "cycle": 2,
+      "problem": "binary_search",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5714,
+      "C": 0.9608,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6506,
+      "capped": false
+    },
+    {
+      "cycle": 2,
+      "problem": "flatten_nested",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.6061,
+      "C": 0.9687,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6724,
+      "capped": false
+    },
+    {
+      "cycle": 2,
+      "problem": "lru_cache",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.6452,
+      "C": 0.9749,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6961,
+      "capped": false
+    },
+    {
+      "cycle": 2,
+      "problem": "valid_parentheses",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5618,
+      "C": 0.9799,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.652,
+      "capped": false
+    },
+    {
+      "cycle": 2,
+      "problem": "merge_intervals",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.625,
+      "C": 0.984,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6881,
+      "capped": false
+    },
+    {
+      "cycle": 3,
+      "problem": "two_sum",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5405,
+      "C": 0.9872,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6428,
+      "capped": false
+    },
+    {
+      "cycle": 3,
+      "problem": "is_palindrome",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5556,
+      "C": 0.9897,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.652,
+      "capped": false
+    },
+    {
+      "cycle": 3,
+      "problem": "max_subarray",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5882,
+      "C": 0.9918,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6707,
+      "capped": false
+    },
+    {
+      "cycle": 3,
+      "problem": "binary_search",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5714,
+      "C": 0.9934,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.662,
+      "capped": false
+    },
+    {
+      "cycle": 3,
+      "problem": "flatten_nested",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.6061,
+      "C": 0.9947,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6815,
+      "capped": false
+    },
+    {
+      "cycle": 3,
+      "problem": "lru_cache",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.6452,
+      "C": 0.9958,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.7034,
+      "capped": false
+    },
+    {
+      "cycle": 3,
+      "problem": "valid_parentheses",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.5618,
+      "C": 0.9966,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6578,
+      "capped": false
+    },
+    {
+      "cycle": 3,
+      "problem": "merge_intervals",
+      "pass_rate": 1.0,
+      "contradiction": false,
+      "failed_tests": 0,
+      "E": 0.625,
+      "C": 0.9973,
+      "K_raw": 0.0,
+      "K_eff": 0.0,
+      "U": 0.6928,
+      "capped": false
+    }
+  ],
+  "domain_state": {
+    "domain": "software_engineering",
+    "confidence": 0.9973,
+    "efficacy": 0.625,
+    "interactions": 24,
+    "interactions_without_novelty": 10,
+    "success_rate": 1.0,
+    "contradiction_rate": 0.0417
+  },
+  "personality": {
+    "curiosity": 0.69,
+    "caution": 0.5,
+    "assertiveness": 0.5,
+    "analytical_rigor": 0.6,
+    "creativity": 0.46,
+    "conciseness": 0.5
+  },
+  "evolution_history": [
+    {
+      "domain": "software_engineering",
+      "avg_utility": 0.6292,
+      "contradiction_rate": 0.125,
+      "is_improving": true,
+      "changes": {
+        "curiosity": 0.03,
+        "creativity": 0.02
+      }
+    },
+    {
+      "domain": "software_engineering",
+      "avg_utility": 0.6718,
+      "contradiction_rate": 0.0625,
+      "is_improving": true,
+      "changes": {
+        "curiosity": 0.03,
+        "creativity": 0.02
+      }
+    },
+    {
+      "domain": "software_engineering",
+      "avg_utility": 0.6795,
+      "contradiction_rate": 0.0417,
+      "is_improving": true,
+      "changes": {
+        "curiosity": 0.03,
+        "creativity": 0.02
+      }
+    }
+  ]
+}
