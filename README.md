@@ -1,7 +1,7 @@
 # Adaptive Utility Agent — MVP
 
 A wrapper around frontier language models that governs behavior through a
-mathematically grounded utility function. The core idea is a utility function that the agent actively maximizes, composed of measurable, updatable components. The agent does not just answer questions — it tracks how well it answers them, where its knowledge is contradictory or thin, and where the highest leverage for improvement lies.
+mathematically grounded utility function. The core idea is a utility function that the agent actively maximizes, composed of measurable, updatable components. The agent does not just answer questions — it tracks how well it answers them, where its knowledge is contradictory or thin, and where the highest leverage for improvement lies. Critically, the utility function is not merely a monitoring metric — it is the direct training signal for a three-layer continual learning architecture that allows the agent to correct contradictions and improve efficacy between model releases, without waiting for a full retraining cycle.
 
 ## Core Idea
 
