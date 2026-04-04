@@ -8,7 +8,7 @@
 
 ## Abstract
 
-We propose a framework for wrapping frontier language models with an adaptive utility layer that governs behavior through a mathematically grounded utility function. Rather than replacing the underlying model, the wrapper evaluates outputs against a continuously updated utility score composed of three terms: **Efficacy** (performance relative to human baseline), **Confidence** (internal consistency and contradiction-free knowledge), and **Curiosity** (drive toward high-upside unexplored domains). Each term is field-weighted and subject to domain-specific minimum bounds derived from existing societal standards. Critically, the utility function is not merely a monitoring metric — it is the direct training signal for a three-layer continual learning architecture that allows the agent to correct contradictions and improve efficacy between model releases, without waiting for a full retraining cycle. We describe the theoretical model, the continual learning pipeline, a concrete MVP implementation targeting code generation, and a roadmap toward broader applicability.
+We propose a framework for wrapping frontier language models with an adaptive utility layer that governs behavior through a mathematically grounded utility function. Rather than replacing the underlying model, the wrapper evaluates outputs against a continuously updated utility score composed of three terms: **Efficacy** (performance relative to human baseline), **Confidence** (internal consistency and contradiction-free knowledge), and **Curiosity** (drive toward high-upside unexplored domains). Each term is field-weighted and subject to domain-specific minimum bounds derived from existing societal standards. Critically, the utility function is not merely a monitoring metric — it is the direct training signal for a three-layer continual learning architecture that allows the agent to correct contradictions and improve efficacy between model releases, without waiting for a full retraining cycle. We describe the theoretical model, the continual learning pipeline, a hardware-adaptive distributed model graph architecture, a concrete MVP implementation targeting code generation, and a roadmap toward broader applicability.
 
 ---
 
@@ -737,6 +737,80 @@ Traffic %  │
 **Cost:** Only the relevant 1–3 submodels activate per query. Total inference cost scales with query complexity, not total graph size. The 20-model graph costs roughly the same per query as a single-domain model.
 
 **Auditability:** Every submodel update has a logged trigger (which utility deviation, over which window), a logged promotion trajectory (traffic split over time), and a clear rollback path. This is significantly more auditable than a monolithic model release.
+
+
+### 8.7 Hardware-Adaptive Decomposition
+
+The granularity of the model graph is not fixed — it is relative to the hardware it runs on. This is a deliberate design property, not a constraint.
+
+**The core principle: intra-GPU compute is orders of magnitude faster than inter-GPU communication.**
+
+When a model operation stays within a single GPU's memory, it executes at full memory bandwidth (up to ~3.35 TB/s on an H100). The moment computation crosses a GPU boundary, it is throttled by the interconnect — NVLink at ~900 GB/s for close neighbors, PCIe at ~64 GB/s for further nodes, and network fabric at much lower speeds for cross-node communication. The implication is direct: the larger the submodel that fits on a single GPU, the less inter-GPU communication overhead per query.
+
+**Decomposition depth therefore scales with GPU memory:**
+
+```
+Hardware tier          GPU VRAM    Submodel fit     Graph shape
+──────────────────────────────────────────────────────────────────
+High-end  (H100 80GB)   80 GB     ~70B params      Shallow graph,
+                                   per GPU          few large nodes
+
+Mid-range (A100 40GB)   40 GB     ~35B params      Medium depth,
+                                   per GPU          more nodes
+
+Consumer  (RTX 4090)    24 GB     ~20B params      Deeper graph,
+                                   per GPU          many small nodes
+
+Edge / older            8–16 GB   ~7B params       Deep graph,
+                                   per GPU          many fine-grained
+                                                    specialist nodes
+```
+
+On a cluster of high-VRAM GPUs, the graph is shallow — a small number of large, capable submodels. Each submodel covers a broad domain (e.g. all of medicine, or all of software engineering) without subdivision. The router makes few hops, communication overhead is minimal, and per-query latency is low.
+
+On a cluster of smaller or older GPUs, the same total capability is achieved through a deeper, more finely branched graph. The surgery submodel that ran as a single 35B model on an A100 becomes a cluster of smaller specialist nodes (radiology, pharmacology, surgical procedures) each fitting on a consumer GPU. More inter-node communication occurs, but the system remains functional and still benefits from the same independent deployability and blue-green update properties.
+
+**Emulating a larger submodel across multiple small GPUs:**
+
+When no single GPU is large enough to hold the desired submodel, the submodel is sharded across multiple GPUs using standard tensor parallelism — the same technique used to run large models in production today. From the router's perspective, this sharded submodel is still a single logical node in the graph; the sharding is an implementation detail invisible to the rest of the system.
+
+```
+Logical graph (router's view):
+    ┌──────────────┐
+    │  CS submodel │  ← appears as one node
+    └──────────────┘
+
+Physical deployment (2× RTX 4090):
+    ┌─────────────┐     NVLink      ┌─────────────┐
+    │  GPU 0      │ ◄────────────► │  GPU 1      │
+    │  layers 1-24│                 │  layers 25-48│
+    └─────────────┘                 └─────────────┘
+```
+
+The branching heuristic from §8.3 therefore has a hardware-relative interpretation: *stop branching when the submodel fits on the available hardware without sharding across slow interconnects.* A team with H100s stops earlier (fewer, larger nodes). A team with consumer GPUs branches further (more, smaller nodes). Both produce equivalent logical graphs — they just have different physical topologies.
+
+**Cost and performance implications:**
+
+This property makes the architecture accessible across a wide range of deployment environments. A research lab with a handful of H100s can run the same logical system as an enterprise with a large A100 cluster — the graph just has different depth. A startup can begin with deep graphs of small models and consolidate nodes as they upgrade hardware, with no architectural change required. The blue-green deployment mechanism works identically regardless of graph depth.
+
+More significantly: because only the active subgraph is loaded per query, a deep graph of small models on consumer GPUs may actually have *lower* per-query cost than a single large model on expensive hardware — the relevant specialist nodes activate, the rest stay idle. This inverts the typical assumption that large models require large hardware.
+
+```
+Query: "Explain the Krebs cycle"
+
+Shallow graph (H100):          Deep graph (consumer GPUs):
+  Router → Medicine (70B)        Router → Biology (7B)
+  1 hop, 1 large model             → Cell metabolism (7B)
+  High per-model cost              2 hops, 2 small models
+  Low communication overhead       Lower per-model cost
+                                   Some communication overhead
+
+Both produce equivalent answers. Cost depends on utilization pattern.
+```
+
+**The practical guidance:**
+
+Branch to the depth that keeps each submodel comfortably within a single GPU's VRAM without aggressive sharding. Prefer fewer, larger submodels when high-VRAM hardware is available — the intra-GPU speed advantage is significant. Accept more nodes and more inter-GPU communication when hardware is constrained. The architecture accommodates both extremes without modification.
 
 ---
 
