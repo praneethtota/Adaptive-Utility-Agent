@@ -1,49 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Adaptive Utility Agents — Whitepaper v0.3</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body { font-family: Georgia, "Times New Roman", serif; font-size: 16px; line-height: 1.75; color: #1a1a1a; background: #fafaf8; margin: 0; padding: 0; }
-  .page { max-width: 780px; margin: 0 auto; padding: 3rem 2rem 5rem; background: #fff; border-left: 1px solid #e8e4de; border-right: 1px solid #e8e4de; min-height: 100vh; }
-  h1 { font-size: 1.9rem; font-weight: 700; margin: 0 0 0.25rem; line-height: 1.3; color: #111; }
-  h2 { font-size: 1.35rem; font-weight: 700; margin: 2.5rem 0 0.75rem; border-bottom: 2px solid #e8e4de; padding-bottom: 0.4rem; color: #111; }
-  h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 0.6rem; color: #222; }
-  h4 { font-size: 0.95rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: #444; }
-  p { margin: 0 0 1rem; }
-  strong { font-weight: 700; }
-  em { font-style: italic; }
-  blockquote { border-left: 3px solid #c0bab2; margin: 1.5rem 0; padding: 0.75rem 1rem; background: #f5f3ef; font-size: 0.9rem; color: #555; }
-  code { font-family: "Courier New", monospace; font-size: 0.82rem; background: #f2f0eb; padding: 2px 5px; border-radius: 3px; color: #333; }
-  pre { background: #f2f0eb; border: 1px solid #e0dbd4; border-radius: 5px; padding: 1rem 1.25rem; overflow-x: auto; margin: 1rem 0 1.5rem; font-size: 0.8rem; line-height: 1.6; }
-  pre code { background: none; padding: 0; font-size: inherit; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 1rem 0 1.5rem; font-family: "Courier New", monospace; }
-  th { text-align: left; border-bottom: 2px solid #c0bab2; padding: 6px 10px; font-family: Georgia, serif; font-size: 0.82rem; color: #444; }
-  td { padding: 5px 10px; border-bottom: 1px solid #e8e4de; vertical-align: top; }
-  tr:nth-child(even) td { background: #f9f8f5; }
-  ul, ol { margin: 0 0 1rem; padding-left: 1.5rem; }
-  li { margin-bottom: 0.3rem; }
-  hr { border: none; border-top: 1px solid #e0dbd4; margin: 2rem 0; }
-  .chart-section { background: #f9f8f5; border: 1px solid #e0dbd4; border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; }
-  .chart-section h4 { margin-top: 0; color: #333; }
-  .chart-wrap { position: relative; width: 100%; height: 240px; margin: 0.75rem 0; }
-  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #666; margin-bottom: 4px; }
-  .legend span { display: flex; align-items: center; gap: 5px; }
-  .dot { width: 22px; height: 3px; border-radius: 2px; display: inline-block; }
-  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 1.25rem; }
-  .metric { background: #fff; border: 1px solid #e0dbd4; border-radius: 6px; padding: 0.75rem 1rem; }
-  .metric .label { font-size: 11px; color: #888; margin-bottom: 3px; }
-  .metric .value { font-size: 20px; font-weight: 700; color: #111; }
-  .metric .sub { font-size: 11px; color: #aaa; font-family: "Courier New", monospace; }
-  @media print { body { background: white; } .page { border: none; padding: 1rem; } }
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:Georgia,"Times New Roman",serif;font-size:16px;line-height:1.75;color:#1a1a1a;background:#fafaf8;margin:0;padding:0}
+.page{max-width:780px;margin:0 auto;padding:3rem 2rem 5rem;background:#fff;border-left:1px solid #e8e4de;border-right:1px solid #e8e4de;min-height:100vh}
+h1{font-size:1.9rem;font-weight:700;margin:0 0 0.25rem;line-height:1.3;color:#111}
+h2{font-size:1.35rem;font-weight:700;margin:2.5rem 0 0.75rem;border-bottom:2px solid #e8e4de;padding-bottom:0.4rem;color:#111}
+h3{font-size:1.1rem;font-weight:700;margin:2rem 0 0.6rem;color:#222}
+h4{font-size:0.95rem;font-weight:700;margin:1.5rem 0 0.5rem;color:#444}
+p{margin:0 0 1rem}strong{font-weight:700}em{font-style:italic}
+blockquote{border-left:3px solid #c0bab2;margin:1.5rem 0;padding:0.75rem 1rem;background:#f5f3ef;font-size:0.9rem;color:#555}
+code{font-family:"Courier New",monospace;font-size:0.82rem;background:#f2f0eb;padding:2px 5px;border-radius:3px;color:#333}
+pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:5px;padding:1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:0.8rem;line-height:1.6}
+pre code{background:none;padding:0;font-size:inherit}
+table{width:100%;border-collapse:collapse;font-size:0.85rem;margin:1rem 0 1.5rem;font-family:"Courier New",monospace}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:6px 10px;font-family:Georgia,serif;font-size:0.82rem;color:#444}
+td{padding:5px 10px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#f9f8f5}
+ul,ol{margin:0 0 1rem;padding-left:1.5rem}li{margin-bottom:0.3rem}
+hr{border:none;border-top:1px solid #e0dbd4;margin:2rem 0}
+.chart-section{background:#f9f8f5;border:1px solid #e0dbd4;border-radius:8px;padding:1.5rem;margin:1.5rem 0}
+.chart-section h4{margin-top:0;color:#333}
+.chart-wrap{position:relative;width:100%;height:240px;margin:0.75rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:#666;margin-bottom:4px}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{width:22px;height:3px;border-radius:2px;display:inline-block}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1.25rem}
+.metric{background:#fff;border:1px solid #e0dbd4;border-radius:6px;padding:0.75rem 1rem}
+.metric .label{font-size:11px;color:#888;margin-bottom:3px}
+.metric .value{font-size:20px;font-weight:700;color:#111}
+.metric .sub{font-size:11px;color:#aaa;font-family:"Courier New",monospace}
+@media print{body{background:white}.page{border:none;padding:1rem}}
 </style>
 </head>
-<body>
-<div class="page">
-<h1>Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems</h1>
+<body><div class="page"><h1>Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems</h1>
 <h3>Draft Whitepaper — v0.3</h3>
 <p><em>Based on conceptual development sessions, April 2026</em></p>
 <blockquote>
@@ -478,8 +472,238 @@ Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
 5. Arbitration: if CS and Medicine models contradict each other,
          escalate to parent model or flag for human review
 </code></pre>
-<p>The arbitration layer is the hardest engineering problem in this architecture — it is essentially the distributed systems consensus problem applied to model outputs.</p>
-<h3>8.5 Blue-Green Deployment for Submodel Updates</h3>
+<p>The arbitration layer is addressed in §8.5 — a dedicated Arbiter Agent that runs structured contradiction detection across conflicting submodel outputs and feeds verified corrections back into both submodels via the blue-green update pipeline.</p>
+<h3>8.5 The Arbiter Agent</h3>
+<p>When two submodels produce conflicting answers to the same query, the system does not escalate to a human or fall back to a parent model — both of which are slow and expensive. Instead, a dedicated <strong>Arbiter Agent</strong> resolves the conflict using the same structured contradiction detection pipeline already built into the system, determines which submodel is correct (or whether both are wrong), and feeds verified corrections back into both submodels simultaneously via the blue-green update mechanism.</p>
+<p><strong>The Arbiter Agent is not a general-purpose reasoner.</strong> It has a single job: given two conflicting outputs A and B on subject S in domain D, determine ground truth and issue correction signals. Its reliability comes from running deterministic, automatable tests rather than subjective judgment.</p>
+<p><strong>Arbitration pipeline:</strong></p>
+<pre><code>INPUT:
+    output_A   from submodel_A (e.g. CS model)
+    output_B   from submodel_B (e.g. Medicine model)
+    subject    S  (the conflicting claim)
+    domain     D  (field context for penalty weighting)
+
+STEP 1 — Classify conflict type (in order of detectability):
+
+    Logical check:
+        Does A contradict its own stated premises?
+        Does B contradict its own stated premises?
+        Tool: contradiction_detector.check(A) / check(B)
+        Cost: O(1), fully automated
+
+    Mathematical check:
+        Are any numerical claims in A or B provably wrong?
+        Tool: symbolic verifier (SymPy, Lean), complexity analyzer
+        Cost: O(1) for formal domains, not available for all
+
+    Cross-session check:
+        Does A or B contradict prior verified assertions
+        in the assertions store for subject S?
+        Tool: assertions_store.query(S, domain=D)
+        Cost: one DB lookup + embedding similarity
+
+    Empirical check:
+        Does A or B contradict verifiable external ground truth?
+        Tool: web search, curated knowledge base, field-specific APIs
+              (e.g. PubMed for medicine, arXiv for CS)
+        Cost: highest — only run if prior checks inconclusive
+
+STEP 2 — Verdict:
+
+    Case 1: A correct, B wrong
+        → issue correction to submodel_B
+        → reinforce submodel_A (add to its DPO preferred set)
+
+    Case 2: B correct, A wrong
+        → issue correction to submodel_A
+        → reinforce submodel_B
+
+    Case 3: Both wrong
+        → issue corrections to both submodels
+        → log as high-priority gap — neither model has this right
+
+    Case 4: Arbiter inconclusive
+        → flag for deferred resolution (internal)
+        → serve minimal hedge to user: no internal state disclosed
+        → initiate controlled external escalation protocol
+          (see §8.5 External Escalation — only when all four
+           check types return no clear winner)
+
+STEP 3 — Correction signal (internal only):
+
+    For each submodel receiving a correction:
+        correction = {
+            subject:     S,
+            domain:      D,
+            wrong_claim: extracted from losing output,
+            correct_claim: verified ground truth,
+            evidence:    [sources — internal, never disclosed externally],
+            weight:      field_penalty_multiplier(D)
+        }
+        → add to submodel's DPO rejected set
+        → add verified claim to assertions store
+        → if correction_count(S) &gt; threshold:
+              trigger blue-green update cycle for that submodel
+
+    External response: the user receives only the verified answer.
+    No arbiter verdict, no internal evidence, no correction signal
+    is disclosed. If the system is uncertain (Case 4), the user
+    sees only a minimal hedge (&quot;I am not fully confident in this
+    answer&quot;) — not the reason, not the conflict, not which models
+    disagreed.
+</code></pre>
+<p><strong>Why corrections feed both submodels simultaneously:</strong></p>
+<p>A contradiction between two submodels means at least one of them has a knowledge gap. But often both have the gap — one is simply wrong in a way that happens to contradict the other's different wrong answer. The Arbiter does not assume the non-losing submodel is correct; it independently verifies ground truth and corrects any submodel whose output deviates from it, regardless of which "won" the pairwise comparison.</p>
+<p><strong>The correction threshold before triggering blue-green:</strong></p>
+<p>Not every arbitrated correction immediately triggers a model update — single corrections are noisy. The trigger uses the same δ and T mechanism from §8.6:</p>
+<pre><code>trigger blue-green IF:
+    corrections on subject S &gt; T_arbiter     [enough evidence]
+    AND avg_correction_confidence &gt; 0.85     [arbiter is sure]
+    AND field_penalty(D) × n_corrections &gt; θ [weighted severity]
+
+T_arbiter = T(field) / 2
+    [half the normal detection window — arbiter corrections
+     are higher quality signal than routine utility drift]
+</code></pre>
+<p>The half-window shortcut is justified because arbiter corrections are backed by structured internal verification — logical, mathematical, cross-session, and empirical checks — rather than aggregate utility drift alone. Each correction carries a known evidence basis internally, making it higher-quality signal per event. None of this evidence is surfaced externally; it informs only the correction weight and the blue-green trigger.</p>
+<p><strong>Arbiter confidence scoring:</strong></p>
+<p>The Arbiter itself maintains a confidence score per verdict, built from how many check types converged on the same answer:</p>
+<pre><code>arbiter_confidence = Σ checks_passed × check_weight / Σ check_weight
+
+check_weights:
+    logical:       0.30   (always run, but weakest alone)
+    mathematical:  0.40   (strongest — formal proof is definitive)
+    cross-session: 0.20   (prior assertions are verified but may be stale)
+    empirical:     0.10   (slowest, but grounds the verdict in reality)
+
+If arbiter_confidence &lt; 0.85 → Case 4 (inconclusive), do not correct
+</code></pre>
+<p>This prevents the Arbiter from propagating its own errors — a low-confidence verdict does less damage held in the internal review queue than being applied as a correction to two submodels.</p>
+<p><strong>Full arbitration flow integrated with blue-green:</strong></p>
+<pre><code>Cross-domain query → conflicting outputs detected
+         ↓
+Arbiter Agent invoked
+         ↓
+Run 4 contradiction checks (logical → mathematical →
+cross-session → empirical, stop when confident)
+         ↓
+         ├── Case 1/2: one submodel wrong
+         │       → correction → DPO rejected pair
+         │       → assertions store updated
+         │       → if threshold met → blue-green triggered
+         │
+         ├── Case 3: both wrong
+         │       → corrections to both
+         │       → both DPO rejected sets updated
+         │       → both blue-green cycles may trigger
+         │
+         └── Case 4: inconclusive
+                 → serve minimal hedge (no internal detail)
+                 → external escalation protocol (§8.5)
+                 → responses feed back to submodels
+                 → blue-green if merit threshold met
+</code></pre>
+<p><strong>Information disclosure boundary:</strong></p>
+<p>The Arbiter Agent maintains a strict internal/external split consistent with §4.3. Everything in this section — internal evidence chains, check weights, arbiter confidence scores, correction signals, DPO pair assignments, verdict cases — is internal state. The external boundary exposes exactly two things:</p>
+<pre><code>External output (what the user sees):
+    1. The verified answer                (when arbiter is confident)
+    2. A minimal hedge: &quot;I have limited   (when arbiter is inconclusive —
+       confidence in this answer&quot;          Case 4 only; external escalation
+                                          proceeds invisibly in background)
+
+Everything else stays inside the system:
+    - Which submodels conflicted
+    - What the arbiter checked
+    - What evidence was found
+    - Which model was wrong
+    - That a correction was issued
+    - That a blue-green cycle was triggered
+</code></pre>
+<p>The trust principle from §4.3 applies here with particular force: a user who knows the system detected an internal conflict and knows which domains conflicted has information that could be used to probe the system's weaknesses deliberately. The minimum disclosure posture protects against this.</p>
+<p><strong>External escalation protocol (Case 4 only):</strong></p>
+<p>When all four internal check types fail to produce a confident verdict, the Arbiter initiates a controlled external consultation. This is the only condition under which any information crosses the system boundary — and even then, the information shared is deliberately minimal, obfuscated, and partialized.</p>
+<p><em>Eligibility gating — who receives the query:</em></p>
+<p>External consultation is restricted to entities whose trust scores meet two independent thresholds simultaneously:</p>
+<pre><code>Eligible consultant IF:
+    entity_score.domain_expertise(D) &gt; median_expertise(D)
+    AND entity_score.trust &gt; trust_threshold(field)
+
+trust_threshold(field):
+    Surgery, Aviation:    0.90   (near-maximum trust required)
+    Law, Engineering:     0.80
+    Software Eng:         0.70
+    Research, Education:  0.65
+
+domain_expertise measured from:
+    verifiable professional experience (years in field)
+    educational qualifications (degree level, institution tier)
+    field-specific certifications (board certification, PE, bar)
+    prior interaction accuracy with this system (tracked internally)
+</code></pre>
+<p>Only entities who clear both gates receive the query. A highly trusted entity with shallow domain expertise is not eligible. A deep domain expert with low trust is not eligible. Both dimensions must exceed threshold.</p>
+<p><em>Query construction — obfuscation and partialization:</em></p>
+<p>The external query is constructed to extract useful signal while revealing as little internal state as possible:</p>
+<pre><code>What is NEVER included in the external query:
+    - That two submodels conflicted
+    - Which submodels or domains were involved
+    - The specific outputs that caused the conflict
+    - That an internal arbitration process ran
+    - Any internal confidence scores or check results
+    - That this is a system-generated query
+
+What IS included (minimum viable context):
+    - The subject S, generalized to remove system-specific framing
+    - The specific claim that cannot be verified internally
+    - A neutral domain label (e.g. &quot;medicine&quot;) if necessary
+      for the expert to answer, stripped of subdomain specifics
+    - A prompt framed as a professional judgment question,
+      not a conflict resolution request
+</code></pre>
+<p>Example transformation:</p>
+<pre><code>Internal conflict:
+    CS model:  &quot;bubble sort is O(n log n) average case&quot;
+    Med model: &quot;ibuprofen reduces fever via COX-2 inhibition only&quot;
+    [unrelated models, each internally inconsistent]
+
+External query to CS expert (generalized, partialized):
+    &quot;What is the average-case time complexity of bubble sort?&quot;
+    [No mention of conflict, no mention of other model, no context]
+
+External query to pharmacology expert (generalized, partialized):
+    &quot;Does ibuprofen reduce fever exclusively via COX-2 inhibition,
+     or are other mechanisms involved?&quot;
+    [Same treatment — clean professional question, no system context]
+</code></pre>
+<p>The external expert sees a professional question indistinguishable from a standard query. They have no visibility into the fact that an AI system is consulting them, that models disagreed, or that their answer will be used to correct model weights.</p>
+<p><em>Response handling and feedback:</em></p>
+<p>Expert responses are not applied directly as corrections. They re-enter the Arbiter pipeline as high-weight empirical evidence:</p>
+<pre><code>Expert response received
+        ↓
+Arbiter re-runs contradiction checks with response as
+additional evidence (weight = entity_score.trust × 
+entity_score.domain_expertise)
+        ↓
+If arbiter now confident → proceed to Case 1, 2, or 3
+        ↓
+Correction signal issued to relevant submodel(s)
+        ↓
+Correction added to DPO training pairs
+        ↓
+Blue-green triggered IF:
+    correction_merit &gt; field_threshold
+    AND system load within stability bounds
+    AND no other blue-green cycle active for this submodel
+
+Blue-green is NOT automatically triggered — it depends on
+merit and current system state. System stability takes
+priority over any individual correction.
+</code></pre>
+<p><em>Stability preservation:</em></p>
+<p>The external escalation path is designed to never compromise system stability. Expert responses feed the Arbiter as evidence, not as direct commands. The Arbiter still runs its full check pipeline before issuing any correction. Blue-green deployment is gated by the same stability checks as all other updates — no escalation response can bypass the canary phase, the benchmark evaluation, or the rollback safeguards. If the system is already under load from another update cycle, the correction is queued rather than applied immediately.</p>
+<p>This means the escalation path is informational, not operational: it enriches the Arbiter's evidence base without granting external entities any control over the system's update mechanism.</p>
+<p><strong>What this resolves about the arbitration problem:</strong></p>
+<p>The original concern was that multi-model conflict resolution requires consensus — a notoriously hard distributed systems problem. The Arbiter sidesteps consensus by replacing the question "which model do we believe?" with "what does the internal evidence say?" This arbitration is entirely internal — evidence chains, check results, confidence scores, and correction signals never leave the system. Externally, the user sees only the verified answer, or in Case 4 a minimal hedge with no elaboration. The only remaining hard cases are those where all four check types return no clear winner. These are not left unresolved — they trigger a controlled external escalation protocol (§8.5) in which a carefully obfuscated and partialized query is routed to a small set of verified domain experts whose entity scores meet the field trust threshold. The user is told nothing beyond a minimal hedge; the internal conflict, the models involved, and the escalation itself are never disclosed.</p>
+<h3>8.6 Blue-Green Deployment for Submodel Updates</h3>
 <p>This is the mechanism by which individual submodels update without disrupting the rest of the graph, and without waiting for a monolithic release cycle.</p>
 <p><strong>Trigger condition:</strong></p>
 <p>A submodel monitors its own utility score over a sliding window. An update cycle is triggered when deviation from baseline is both significant and sustained:</p>
@@ -571,13 +795,13 @@ Rollback (any phase):
            │  Canary    Gradual shift        Promotion
            │  (5/95)    (utility-driven)     (100% green)
 </code></pre>
-<h3>8.6 System Properties</h3>
+<h3>8.7 System Properties</h3>
 <p><strong>Catastrophic forgetting:</strong> Eliminated at the domain level. Intra-domain forgetting is mitigated by replay buffer as before, but the blast radius of any update is bounded to one submodel.</p>
 <p><strong>Independent deployability:</strong> Each submodel has its own blue-green cycle. A surgery model update in progress does not block a CS model update. They are fully decoupled.</p>
 <p><strong>Graceful degradation:</strong> If a submodel is mid-update (blue-green in progress), the router falls back to the parent model or a sibling domain model rather than failing. This requires the router to maintain a fallback graph.</p>
 <p><strong>Cost:</strong> Only the relevant 1–3 submodels activate per query. Total inference cost scales with query complexity, not total graph size. The 20-model graph costs roughly the same per query as a single-domain model.</p>
 <p><strong>Auditability:</strong> Every submodel update has a logged trigger (which utility deviation, over which window), a logged promotion trajectory (traffic split over time), and a clear rollback path. This is significantly more auditable than a monolithic model release.</p>
-<h3>8.7 Hardware-Adaptive Decomposition</h3>
+<h3>8.8 Hardware-Adaptive Decomposition</h3>
 <p>The granularity of the model graph is not fixed — it is relative to the hardware it runs on. This is a deliberate design property, not a constraint.</p>
 <p><strong>The core principle: intra-GPU compute is orders of magnitude faster than inter-GPU communication.</strong></p>
 <p>When a model operation stays within a single GPU's memory, it executes at full memory bandwidth (up to ~3.35 TB/s on an H100). The moment computation crosses a GPU boundary, it is throttled by the interconnect — NVLink at ~900 GB/s for close neighbors, PCIe at ~64 GB/s for further nodes, and network fabric at much lower speeds for cross-node communication. The implication is direct: the larger the submodel that fits on a single GPU, the less inter-GPU communication overhead per query.</p>
@@ -753,46 +977,15 @@ valid_parentheses        0.6179     0.6520     0.6578     ↑ improving
 merge_intervals          0.6603     0.6881     0.6928     ↑ improving
 </code></pre>
 <hr />
-
 <div class="chart-section">
   <h4>Figure 1 — Utility function components across calibration cycles</h4>
-  <div class="legend">
-    <span><span class="dot" style="background:#534AB7"></span>avg U (total utility)</span>
-    <span><span class="dot" style="background:#1D9E75"></span>avg E (efficacy)</span>
-    <span><span class="dot" style="background:#D85A30"></span>avg C (confidence)</span>
-  </div>
+  <div class="legend"><span><span class="dot" style="background:#534AB7"></span>avg U</span><span><span class="dot" style="background:#1D9E75"></span>avg E</span><span><span class="dot" style="background:#D85A30"></span>avg C</span></div>
   <div class="chart-wrap"><canvas id="utilityChart"></canvas></div>
-
-  <h4 style="margin-top:2rem;">Figure 2 — Personality trait evolution across calibration cycles</h4>
-  <div class="legend">
-    <span><span class="dot" style="background:#534AB7"></span>curiosity</span>
-    <span><span class="dot" style="background:#1D9E75"></span>analytical rigor</span>
-    <span><span class="dot" style="background:#D85A30"></span>creativity</span>
-    <span><span class="dot" style="background:#888780"></span>caution</span>
-    <span><span class="dot" style="background:#378ADD"></span>assertiveness</span>
-    <span><span class="dot" style="background:#BA7517"></span>conciseness</span>
-  </div>
+  <h4 style="margin-top:2rem;">Figure 2 — Personality trait evolution</h4>
+  <div class="legend"><span><span class="dot" style="background:#534AB7"></span>curiosity</span><span><span class="dot" style="background:#1D9E75"></span>analytical rigor</span><span><span class="dot" style="background:#D85A30"></span>creativity</span><span><span class="dot" style="background:#888780"></span>caution</span><span><span class="dot" style="background:#378ADD"></span>assertiveness</span><span><span class="dot" style="background:#BA7517"></span>conciseness</span></div>
   <div class="chart-wrap"><canvas id="personalityChart"></canvas></div>
-
-  <div class="metrics">
-    <div class="metric">
-      <div class="label">U improvement</div>
-      <div class="value">+0.0755</div>
-      <div class="sub">0.5949 → 0.6704</div>
-    </div>
-    <div class="metric">
-      <div class="label">Contradictions</div>
-      <div class="value">1 → 0</div>
-      <div class="sub">eliminated by cycle 2</div>
-    </div>
-    <div class="metric">
-      <div class="label">Confidence gain</div>
-      <div class="value">+0.231</div>
-      <div class="sub">0.763 → 0.993</div>
-    </div>
-  </div>
-</div>
-<h3>A.3 Key Observations</h3>
+  <div class="metrics"><div class="metric"><div class="label">U improvement</div><div class="value">+0.0755</div><div class="sub">0.5949 → 0.6704</div></div><div class="metric"><div class="label">Contradictions</div><div class="value">1 → 0</div><div class="sub">eliminated by cycle 2</div></div><div class="metric"><div class="label">Confidence gain</div><div class="value">+0.231</div><div class="sub">0.763 → 0.993</div></div></div>
+</div><h3>A.3 Key Observations</h3>
 <p><strong>Contradiction detection and penalization are working correctly.</strong> In cycle 1, <code>two_sum</code> claimed O(n) complexity while using a nested loop — a clear mathematical contradiction. The scorer correctly penalized this, producing the lowest U score in the run (0.4948). Once corrected in cycle 2, two_sum showed the largest single-problem U jump (+0.1257), validating that the penalty is both meaningful and recoverable.</p>
 <p><strong>Confidence is the primary driver of U improvement across cycles</strong>, not efficacy. E remained flat at 0.5867 across all three cycles — a known limitation of the simulation (fixed human baselines and no accumulating efficacy state). In the live system, efficacy would grow as calibrated responses outperform the human benchmark. C however moved dramatically: 0.763 → 0.960 → 0.993, driving almost the entire U improvement. This is expected behavior: contradiction elimination is the fastest path to early U gains.</p>
 <p><strong>Curiosity collapses to zero after cycle 1.</strong> K = 0.000 for all problems in cycles 2 and 3, because confidence rises fast enough to eliminate potential_gain = ceiling - C. In the simulation this is an artifact of fixed-difficulty problems — in the live system, the agent's growing confidence would drive it toward harder problems, resetting the novelty counter and reactivating the curiosity signal. This identifies a gap in the simulation design: future harness versions should introduce progressively harder problems as calibration cycles proceed.</p>
@@ -815,54 +1008,9 @@ conciseness         0.500      0.500       0.500       0.500   →
 <p>Two concrete issues surfaced from the simulation:</p>
 <p><strong>1. Efficacy does not accumulate.</strong> The <code>_compute_efficacy</code> function computes per-interaction against a fixed baseline rather than maintaining a running domain-level efficacy state like confidence does. In the live system this will self-correct because improving solutions genuinely score better against the human benchmark. But the simulation reveals the design asymmetry: confidence has an EMA; efficacy should too.</p>
 <p><strong>2. Curiosity requires dynamic problem difficulty.</strong> The 50% cap and growth function work correctly in isolation, but the simulation's fixed-difficulty problem bank prevents the novelty counter from resetting after cycle 1. Future simulation runs should implement a difficulty escalation mechanism — routing to harder problems as per-domain confidence rises past a threshold — to exercise the curiosity dynamics properly.</p>
-<p>Both gaps are simulation artifacts, not flaws in the live architecture. They are tracked as implementation items for v0.3.</p>
-</div>
+<p>Both gaps are simulation artifacts, not flaws in the live architecture. They are tracked as implementation items for v0.3.</p></div>
 <script>
-const gridColor = "rgba(0,0,0,0.07)";
-const tickColor = "#888";
-
-new Chart(document.getElementById("utilityChart"), {
-  type: "line",
-  data: {
-    labels: ["Cycle 1", "Cycle 2", "Cycle 3"],
-    datasets: [
-      { label: "avg U", data: [0.5949, 0.6588, 0.6704], borderColor: "#534AB7", pointBackgroundColor: "#534AB7", borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3 },
-      { label: "avg E", data: [0.5867, 0.5867, 0.5867], borderColor: "#1D9E75", pointBackgroundColor: "#1D9E75", borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3, borderDash: [6,3] },
-      { label: "avg C", data: [0.7628, 0.9602, 0.9933], borderColor: "#D85A30", pointBackgroundColor: "#D85A30", borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3 }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => " " + ctx.dataset.label + ": " + ctx.parsed.y.toFixed(4) } } },
-    scales: {
-      x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 12 } } },
-      y: { min: 0.50, max: 1.05, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 12 }, callback: v => v.toFixed(2), stepSize: 0.1 } }
-    }
-  }
-});
-
-new Chart(document.getElementById("personalityChart"), {
-  type: "line",
-  data: {
-    labels: ["Initial", "After cycle 1", "After cycle 2", "After cycle 3"],
-    datasets: [
-      { label: "curiosity",        data: [0.60,0.63,0.66,0.69], borderColor: "#534AB7", pointBackgroundColor: "#534AB7", borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3 },
-      { label: "analytical rigor", data: [0.60,0.60,0.60,0.60], borderColor: "#1D9E75", pointBackgroundColor: "#1D9E75", borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3, borderDash: [5,3] },
-      { label: "creativity",       data: [0.40,0.42,0.44,0.46], borderColor: "#D85A30", pointBackgroundColor: "#D85A30", borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3 },
-      { label: "caution",          data: [0.50,0.50,0.50,0.50], borderColor: "#888780", pointBackgroundColor: "#888780", borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3, borderDash: [5,3] },
-      { label: "assertiveness",    data: [0.50,0.50,0.50,0.50], borderColor: "#378ADD", pointBackgroundColor: "#378ADD", borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3, borderDash: [3,3] },
-      { label: "conciseness",      data: [0.50,0.50,0.50,0.50], borderColor: "#BA7517", pointBackgroundColor: "#BA7517", borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3, borderDash: [3,3] }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => " " + ctx.dataset.label + ": " + ctx.parsed.y.toFixed(3) } } },
-    scales: {
-      x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 12 } } },
-      y: { min: 0.30, max: 0.80, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 12 }, callback: v => v.toFixed(2), stepSize: 0.1 } }
-    }
-  }
-});
-</script>
-</body>
-</html>
+const g="rgba(0,0,0,0.07)",t="#888";
+new Chart(document.getElementById("utilityChart"),{type:"line",data:{labels:["Cycle 1","Cycle 2","Cycle 3"],datasets:[{label:"avg U",data:[0.5949,0.6588,0.6704],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},{label:"avg E",data:[0.5867,0.5867,0.5867],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[6,3]},{label:"avg C",data:[0.7628,0.9602,0.9933],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:12}}},y:{min:0.50,max:1.05,grid:{color:g},ticks:{color:t,font:{size:12},callback:v=>v.toFixed(2),stepSize:0.1}}}}});
+new Chart(document.getElementById("personalityChart"),{type:"line",data:{labels:["Initial","After cycle 1","After cycle 2","After cycle 3"],datasets:[{label:"curiosity",data:[0.60,0.63,0.66,0.69],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},{label:"analytical rigor",data:[0.60,0.60,0.60,0.60],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[5,3]},{label:"creativity",data:[0.40,0.42,0.44,0.46],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},{label:"caution",data:[0.50,0.50,0.50,0.50],borderColor:"#888780",pointBackgroundColor:"#888780",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[5,3]},{label:"assertiveness",data:[0.50,0.50,0.50,0.50],borderColor:"#378ADD",pointBackgroundColor:"#378ADD",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[3,3]},{label:"conciseness",data:[0.50,0.50,0.50,0.50],borderColor:"#BA7517",pointBackgroundColor:"#BA7517",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[3,3]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:12}}},y:{min:0.30,max:0.80,grid:{color:g},ticks:{color:t,font:{size:12},callback:v=>v.toFixed(2),stepSize:0.1}}}}});
+</script></body></html>
