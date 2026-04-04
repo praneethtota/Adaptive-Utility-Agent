@@ -336,7 +336,7 @@ trust_score(entity) = f(accuracy_of_their_inputs,
 
 Strategy: **lenient tit-for-tat** — begin cooperatively, mirror behavior, forgive occasional defection. One of the most robust strategies in iterated game theory.
 
-Subset scores are maintained for different dimensions (domain expertise, trustworthiness, intent alignment) so a high-IQ but low-trust entity is handled differently from a low-IQ but high-trust one.
+Subset scores are maintained for different dimensions (domain expertise, trustworthiness, intent alignment) so a high domain-knowledge but low-trust entity is handled differently from a low domain-knowladge but high-trust one. We can measeure domain expertise based on their experience/educational qualifications and/or certifications.
 
 ---
 
