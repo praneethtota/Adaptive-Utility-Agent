@@ -617,9 +617,292 @@ Multi-domain queries (e.g. "Write a Python script to analyze patient drug dosage
          escalate to parent model or flag for human review
 ```
 
-The arbitration layer is the hardest engineering problem in this architecture — it is essentially the distributed systems consensus problem applied to model outputs.
+The arbitration layer is addressed in §8.5 — a dedicated Arbiter Agent that runs structured contradiction detection across conflicting submodel outputs and feeds verified corrections back into both submodels via the blue-green update pipeline.
 
-### 8.5 Blue-Green Deployment for Submodel Updates
+
+### 8.5 The Arbiter Agent
+
+When two submodels produce conflicting answers to the same query, the system does not escalate to a human or fall back to a parent model — both of which are slow and expensive. Instead, a dedicated **Arbiter Agent** resolves the conflict using the same structured contradiction detection pipeline already built into the system, determines which submodel is correct (or whether both are wrong), and feeds verified corrections back into both submodels simultaneously via the blue-green update mechanism.
+
+**The Arbiter Agent is not a general-purpose reasoner.** It has a single job: given two conflicting outputs A and B on subject S in domain D, determine ground truth and issue correction signals. Its reliability comes from running deterministic, automatable tests rather than subjective judgment.
+
+**Arbitration pipeline:**
+
+```
+INPUT:
+    output_A   from submodel_A (e.g. CS model)
+    output_B   from submodel_B (e.g. Medicine model)
+    subject    S  (the conflicting claim)
+    domain     D  (field context for penalty weighting)
+
+STEP 1 — Classify conflict type (in order of detectability):
+
+    Logical check:
+        Does A contradict its own stated premises?
+        Does B contradict its own stated premises?
+        Tool: contradiction_detector.check(A) / check(B)
+        Cost: O(1), fully automated
+
+    Mathematical check:
+        Are any numerical claims in A or B provably wrong?
+        Tool: symbolic verifier (SymPy, Lean), complexity analyzer
+        Cost: O(1) for formal domains, not available for all
+
+    Cross-session check:
+        Does A or B contradict prior verified assertions
+        in the assertions store for subject S?
+        Tool: assertions_store.query(S, domain=D)
+        Cost: one DB lookup + embedding similarity
+
+    Empirical check:
+        Does A or B contradict verifiable external ground truth?
+        Tool: web search, curated knowledge base, field-specific APIs
+              (e.g. PubMed for medicine, arXiv for CS)
+        Cost: highest — only run if prior checks inconclusive
+
+STEP 2 — Verdict:
+
+    Case 1: A correct, B wrong
+        → issue correction to submodel_B
+        → reinforce submodel_A (add to its DPO preferred set)
+
+    Case 2: B correct, A wrong
+        → issue correction to submodel_A
+        → reinforce submodel_B
+
+    Case 3: Both wrong
+        → issue corrections to both submodels
+        → log as high-priority gap — neither model has this right
+
+    Case 4: Arbiter inconclusive
+        → flag for deferred resolution (internal)
+        → serve minimal hedge to user: no internal state disclosed
+        → initiate controlled external escalation protocol
+          (see §8.5 External Escalation — only when all four
+           check types return no clear winner)
+
+STEP 3 — Correction signal (internal only):
+
+    For each submodel receiving a correction:
+        correction = {
+            subject:     S,
+            domain:      D,
+            wrong_claim: extracted from losing output,
+            correct_claim: verified ground truth,
+            evidence:    [sources — internal, never disclosed externally],
+            weight:      field_penalty_multiplier(D)
+        }
+        → add to submodel's DPO rejected set
+        → add verified claim to assertions store
+        → if correction_count(S) > threshold:
+              trigger blue-green update cycle for that submodel
+
+    External response: the user receives only the verified answer.
+    No arbiter verdict, no internal evidence, no correction signal
+    is disclosed. If the system is uncertain (Case 4), the user
+    sees only a minimal hedge ("I am not fully confident in this
+    answer") — not the reason, not the conflict, not which models
+    disagreed.
+```
+
+**Why corrections feed both submodels simultaneously:**
+
+A contradiction between two submodels means at least one of them has a knowledge gap. But often both have the gap — one is simply wrong in a way that happens to contradict the other's different wrong answer. The Arbiter does not assume the non-losing submodel is correct; it independently verifies ground truth and corrects any submodel whose output deviates from it, regardless of which "won" the pairwise comparison.
+
+**The correction threshold before triggering blue-green:**
+
+Not every arbitrated correction immediately triggers a model update — single corrections are noisy. The trigger uses the same δ and T mechanism from §8.6:
+
+```
+trigger blue-green IF:
+    corrections on subject S > T_arbiter     [enough evidence]
+    AND avg_correction_confidence > 0.85     [arbiter is sure]
+    AND field_penalty(D) × n_corrections > θ [weighted severity]
+
+T_arbiter = T(field) / 2
+    [half the normal detection window — arbiter corrections
+     are higher quality signal than routine utility drift]
+```
+
+The half-window shortcut is justified because arbiter corrections are backed by structured internal verification — logical, mathematical, cross-session, and empirical checks — rather than aggregate utility drift alone. Each correction carries a known evidence basis internally, making it higher-quality signal per event. None of this evidence is surfaced externally; it informs only the correction weight and the blue-green trigger.
+
+**Arbiter confidence scoring:**
+
+The Arbiter itself maintains a confidence score per verdict, built from how many check types converged on the same answer:
+
+```
+arbiter_confidence = Σ checks_passed × check_weight / Σ check_weight
+
+check_weights:
+    logical:       0.30   (always run, but weakest alone)
+    mathematical:  0.40   (strongest — formal proof is definitive)
+    cross-session: 0.20   (prior assertions are verified but may be stale)
+    empirical:     0.10   (slowest, but grounds the verdict in reality)
+
+If arbiter_confidence < 0.85 → Case 4 (inconclusive), do not correct
+```
+
+This prevents the Arbiter from propagating its own errors — a low-confidence verdict does less damage held in the internal review queue than being applied as a correction to two submodels.
+
+**Full arbitration flow integrated with blue-green:**
+
+```
+Cross-domain query → conflicting outputs detected
+         ↓
+Arbiter Agent invoked
+         ↓
+Run 4 contradiction checks (logical → mathematical →
+cross-session → empirical, stop when confident)
+         ↓
+         ├── Case 1/2: one submodel wrong
+         │       → correction → DPO rejected pair
+         │       → assertions store updated
+         │       → if threshold met → blue-green triggered
+         │
+         ├── Case 3: both wrong
+         │       → corrections to both
+         │       → both DPO rejected sets updated
+         │       → both blue-green cycles may trigger
+         │
+         └── Case 4: inconclusive
+                 → serve minimal hedge (no internal detail)
+                 → external escalation protocol (§8.5)
+                 → responses feed back to submodels
+                 → blue-green if merit threshold met
+```
+
+**Information disclosure boundary:**
+
+The Arbiter Agent maintains a strict internal/external split consistent with §4.3. Everything in this section — internal evidence chains, check weights, arbiter confidence scores, correction signals, DPO pair assignments, verdict cases — is internal state. The external boundary exposes exactly two things:
+
+```
+External output (what the user sees):
+    1. The verified answer                (when arbiter is confident)
+    2. A minimal hedge: "I have limited   (when arbiter is inconclusive —
+       confidence in this answer"          Case 4 only; external escalation
+                                          proceeds invisibly in background)
+
+Everything else stays inside the system:
+    - Which submodels conflicted
+    - What the arbiter checked
+    - What evidence was found
+    - Which model was wrong
+    - That a correction was issued
+    - That a blue-green cycle was triggered
+```
+
+The trust principle from §4.3 applies here with particular force: a user who knows the system detected an internal conflict and knows which domains conflicted has information that could be used to probe the system's weaknesses deliberately. The minimum disclosure posture protects against this.
+
+
+**External escalation protocol (Case 4 only):**
+
+When all four internal check types fail to produce a confident verdict, the Arbiter initiates a controlled external consultation. This is the only condition under which any information crosses the system boundary — and even then, the information shared is deliberately minimal, obfuscated, and partialized.
+
+*Eligibility gating — who receives the query:*
+
+External consultation is restricted to entities whose trust scores meet two independent thresholds simultaneously:
+
+```
+Eligible consultant IF:
+    entity_score.domain_expertise(D) > median_expertise(D)
+    AND entity_score.trust > trust_threshold(field)
+
+trust_threshold(field):
+    Surgery, Aviation:    0.90   (near-maximum trust required)
+    Law, Engineering:     0.80
+    Software Eng:         0.70
+    Research, Education:  0.65
+
+domain_expertise measured from:
+    verifiable professional experience (years in field)
+    educational qualifications (degree level, institution tier)
+    field-specific certifications (board certification, PE, bar)
+    prior interaction accuracy with this system (tracked internally)
+```
+
+Only entities who clear both gates receive the query. A highly trusted entity with shallow domain expertise is not eligible. A deep domain expert with low trust is not eligible. Both dimensions must exceed threshold.
+
+*Query construction — obfuscation and partialization:*
+
+The external query is constructed to extract useful signal while revealing as little internal state as possible:
+
+```
+What is NEVER included in the external query:
+    - That two submodels conflicted
+    - Which submodels or domains were involved
+    - The specific outputs that caused the conflict
+    - That an internal arbitration process ran
+    - Any internal confidence scores or check results
+    - That this is a system-generated query
+
+What IS included (minimum viable context):
+    - The subject S, generalized to remove system-specific framing
+    - The specific claim that cannot be verified internally
+    - A neutral domain label (e.g. "medicine") if necessary
+      for the expert to answer, stripped of subdomain specifics
+    - A prompt framed as a professional judgment question,
+      not a conflict resolution request
+```
+
+Example transformation:
+```
+Internal conflict:
+    CS model:  "bubble sort is O(n log n) average case"
+    Med model: "ibuprofen reduces fever via COX-2 inhibition only"
+    [unrelated models, each internally inconsistent]
+
+External query to CS expert (generalized, partialized):
+    "What is the average-case time complexity of bubble sort?"
+    [No mention of conflict, no mention of other model, no context]
+
+External query to pharmacology expert (generalized, partialized):
+    "Does ibuprofen reduce fever exclusively via COX-2 inhibition,
+     or are other mechanisms involved?"
+    [Same treatment — clean professional question, no system context]
+```
+
+The external expert sees a professional question indistinguishable from a standard query. They have no visibility into the fact that an AI system is consulting them, that models disagreed, or that their answer will be used to correct model weights.
+
+*Response handling and feedback:*
+
+Expert responses are not applied directly as corrections. They re-enter the Arbiter pipeline as high-weight empirical evidence:
+
+```
+Expert response received
+        ↓
+Arbiter re-runs contradiction checks with response as
+additional evidence (weight = entity_score.trust × 
+entity_score.domain_expertise)
+        ↓
+If arbiter now confident → proceed to Case 1, 2, or 3
+        ↓
+Correction signal issued to relevant submodel(s)
+        ↓
+Correction added to DPO training pairs
+        ↓
+Blue-green triggered IF:
+    correction_merit > field_threshold
+    AND system load within stability bounds
+    AND no other blue-green cycle active for this submodel
+
+Blue-green is NOT automatically triggered — it depends on
+merit and current system state. System stability takes
+priority over any individual correction.
+```
+
+*Stability preservation:*
+
+The external escalation path is designed to never compromise system stability. Expert responses feed the Arbiter as evidence, not as direct commands. The Arbiter still runs its full check pipeline before issuing any correction. Blue-green deployment is gated by the same stability checks as all other updates — no escalation response can bypass the canary phase, the benchmark evaluation, or the rollback safeguards. If the system is already under load from another update cycle, the correction is queued rather than applied immediately.
+
+This means the escalation path is informational, not operational: it enriches the Arbiter's evidence base without granting external entities any control over the system's update mechanism.
+
+
+**What this resolves about the arbitration problem:**
+
+The original concern was that multi-model conflict resolution requires consensus — a notoriously hard distributed systems problem. The Arbiter sidesteps consensus by replacing the question "which model do we believe?" with "what does the internal evidence say?" This arbitration is entirely internal — evidence chains, check results, confidence scores, and correction signals never leave the system. Externally, the user sees only the verified answer, or in Case 4 a minimal hedge with no elaboration. The only remaining hard cases are those where all four check types return no clear winner. These are not left unresolved — they trigger a controlled external escalation protocol (§8.5) in which a carefully obfuscated and partialized query is routed to a small set of verified domain experts whose entity scores meet the field trust threshold. The user is told nothing beyond a minimal hedge; the internal conflict, the models involved, and the escalation itself are never disclosed.
+
+
+### 8.6 Blue-Green Deployment for Submodel Updates
 
 This is the mechanism by which individual submodels update without disrupting the rest of the graph, and without waiting for a monolithic release cycle.
 
@@ -726,7 +1009,7 @@ Traffic %  │
            │  (5/95)    (utility-driven)     (100% green)
 ```
 
-### 8.6 System Properties
+### 8.7 System Properties
 
 **Catastrophic forgetting:** Eliminated at the domain level. Intra-domain forgetting is mitigated by replay buffer as before, but the blast radius of any update is bounded to one submodel.
 
@@ -739,7 +1022,7 @@ Traffic %  │
 **Auditability:** Every submodel update has a logged trigger (which utility deviation, over which window), a logged promotion trajectory (traffic split over time), and a clear rollback path. This is significantly more auditable than a monolithic model release.
 
 
-### 8.7 Hardware-Adaptive Decomposition
+### 8.8 Hardware-Adaptive Decomposition
 
 The granularity of the model graph is not fixed — it is relative to the hardware it runs on. This is a deliberate design property, not a constraint.
 
