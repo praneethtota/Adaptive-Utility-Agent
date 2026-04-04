@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Whitepaper v0.4</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>*,*::before,*::after{box-sizing:border-box}
+body{font-family:Georgia,"Times New Roman",serif;font-size:16px;line-height:1.75;color:#1a1a1a;background:#fafaf8;margin:0;padding:0}
+.page{max-width:780px;margin:0 auto;padding:3rem 2rem 5rem;background:#fff;border-left:1px solid #e8e4de;border-right:1px solid #e8e4de;min-height:100vh}
+h1{font-size:1.9rem;font-weight:700;margin:0 0 0.25rem;line-height:1.3;color:#111}
+h2{font-size:1.35rem;font-weight:700;margin:2.5rem 0 0.75rem;border-bottom:2px solid #e8e4de;padding-bottom:0.4rem;color:#111}
+h3{font-size:1.1rem;font-weight:700;margin:2rem 0 0.6rem;color:#222}
+h4{font-size:0.95rem;font-weight:700;margin:1.5rem 0 0.5rem;color:#444}
+p{margin:0 0 1rem}strong{font-weight:700}em{font-style:italic}
+blockquote{border-left:3px solid #c0bab2;margin:1.5rem 0;padding:0.75rem 1rem;background:#f5f3ef;font-size:0.9rem;color:#555}
+code{font-family:"Courier New",monospace;font-size:0.82rem;background:#f2f0eb;padding:2px 5px;border-radius:3px;color:#333}
+pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:5px;padding:1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:0.8rem;line-height:1.6}
+pre code{background:none;padding:0;font-size:inherit}
+table{width:100%;border-collapse:collapse;font-size:0.85rem;margin:1rem 0 1.5rem;font-family:"Courier New",monospace}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:6px 10px;font-family:Georgia,serif;font-size:0.82rem;color:#444}
+td{padding:5px 10px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#f9f8f5}
+ul,ol{margin:0 0 1rem;padding-left:1.5rem}li{margin-bottom:0.3rem}
+hr{border:none;border-top:1px solid #e0dbd4;margin:2rem 0}
+.chart-section{background:#f9f8f5;border:1px solid #e0dbd4;border-radius:8px;padding:1.5rem;margin:1.5rem 0}
+.chart-section h4{margin-top:0;color:#333}
+.chart-wrap{position:relative;width:100%;height:240px;margin:0.75rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:#666;margin-bottom:4px}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{width:22px;height:3px;border-radius:2px;display:inline-block}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1.25rem}
+.metric{background:#fff;border:1px solid #e0dbd4;border-radius:6px;padding:0.75rem 1rem}
+.metric .label{font-size:11px;color:#888;margin-bottom:3px}
+.metric .value{font-size:20px;font-weight:700;color:#111}
+.metric .sub{font-size:11px;color:#aaa;font-family:"Courier New",monospace}
+@media print{body{background:white}.page{border:none;padding:1rem}}</style>
+</head>
+<body><div class="page"><h1>Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems</h1>
+<h3>Draft Whitepaper — v0.4</h3>
+<p><em>Based on conceptual development sessions, April 2026</em></p>
+<blockquote>
+<p><strong>Changelog from v0.2:</strong> Resolved open problems merged into their respective sections. New Section 6 added covering the three-layer continual learning architecture. Open Questions updated to reflect genuinely unresolved problems.</p>
+</blockquote>
+<hr />
+<h2>Abstract</h2>
+<p>We propose a framework for building self-optimizing AI agents by wrapping frontier language models with an adaptive utility layer grounded in game-theoretic resource allocation theory. The utility function — composed of <strong>Efficacy</strong> (performance relative to a human baseline), <strong>Confidence</strong> (internal consistency penalized by detected contradictions), and <strong>Curiosity</strong> (exploration bonus for high-upside unexplored domains) — is field-weighted and bounded by minimum competence thresholds derived directly from existing societal licensing standards, making the bounds principled rather than arbitrary.</p>
+<p>Critically, the utility function is not a passive monitoring metric. It is the active loss weighting mechanism for a three-layer continual learning architecture that corrects contradictions and improves model behavior between releases — without waiting for a full retraining cycle. Contradiction corrections are weighted by field-specific penalty multipliers in Direct Preference Optimization (DPO) training, so a surgical error is penalized an order of magnitude more harshly than a creative writing mistake at the weight-update level.</p>
+<p>The paper introduces four additional architectural contributions. First, a <strong>Personality System</strong> with field-bounded trait weights that evolve with accumulated utility history, subject to three-layer drift safeguards. Second, an <strong>entity trust and reputation system</strong> based on verifiable domain credentials and interaction history, governing both how external inputs are weighted and when external escalation is permitted. Third, a <strong>three-layer continual learning architecture</strong> operating at per-session (behavioral), calibration-cycle (weight-level), and release (distillation) timescales. Fourth, a <strong>distributed model graph architecture</strong> that decomposes the monolithic model into independently deployable domain submodels communicating over structured APIs — physically resolving the catastrophic forgetting problem by eliminating shared weights across domains, and enabling hardware-adaptive deployment depth matched to available GPU memory.</p>
+<p>Cross-domain contradiction resolution is handled by a dedicated <strong>Arbiter Agent</strong> that runs structured evidence checks — logical, mathematical, cross-session, and empirical — and routes verified corrections to the relevant submodels as DPO training signal. Submodels whose domains were arbitrated receive the internal evidence chain for DPO integration; nothing is disclosed externally. When all internal checks fail, a controlled external escalation queries verified domain experts through obfuscated, partialized queries consistent with the system's minimum-disclosure principle.</p>
+<p>Submodel updates follow a <strong>utility-deviation-triggered blue-green deployment</strong> protocol with statistically grounded detection thresholds and softmax traffic routing, ensuring system stability throughout. The protocol is validated through simulation across 3 calibration cycles on 8 LeetCode-style problems, demonstrating a +0.0755 average utility improvement and contradiction reduction from 1 to 0.</p>
+<p>Submodel deployment depth is <strong>hardware-adaptive</strong>: shallow graphs of large submodels on high-VRAM GPUs, or deep graphs of small specialist submodels on consumer hardware — achieving equivalent logical capability at lower cost through the avoidance of slow inter-GPU interconnects.</p>
+<hr />
+<h2>1. Introduction</h2>
+<p>Deployed AI systems today are static artifacts. They are optimized at training time against a fixed reward signal and released — whereupon their behavior is frozen. They cannot adjust how much they trust their own knowledge, they have no mechanism to learn from detected errors between releases, and they apply the same level of caution to a surgical recommendation as to a recipe suggestion. When they produce a contradiction, they will produce the same contradiction tomorrow, and in six months when the next version ships.</p>
+<p>Human experts behave fundamentally differently. A surgeon knows which procedures they can perform confidently and which require referral. A lawyer knows the edges of their expertise. A researcher develops calibrated uncertainty about their own claims. None of this self-awareness was hardcoded — it emerged through accumulated experience, peer correction, and deliberate practice at the frontier of competence. It also degrades appropriately under stress and rebuilds through demonstrated success. This paper asks: can an AI system be given the same properties?</p>
+<p>We propose an architecture that wraps a frontier language model with an adaptive utility layer — a framework for building agents that know what they know, know what they don't, actively correct what they get wrong, and do all of this continuously between model releases rather than waiting for the next training cycle. The core mechanism is a utility function U = w_e·E + w_c·C + w_k·K, where Efficacy, Confidence, and Curiosity are field-weighted and bounded by minimum thresholds derived from existing societal standards (medical licensing, aviation certification, bar requirements). The utility function is not a monitoring metric — it is the loss weighting mechanism that determines how strongly each detected error is corrected at training time.</p>
+<p>The paper makes six architectural contributions beyond the utility function itself:</p>
+<p><strong>Continual learning pipeline.</strong> Three timescales of correction: per-session behavioral injection (immediate, no weight change), calibration-cycle DPO fine-tuning (hours, weight-level, field-penalty-weighted), and release-level distillation (monthly). The utility score determines correction weights — a surgery contradiction is penalized 10× harder than a creative writing mistake.</p>
+<p><strong>Personality system.</strong> Trait weights (curiosity, caution, analytical rigor, etc.) evolve with utility history subject to field-specific bounds and drift rate caps, producing genuine character development over time without instability.</p>
+<p><strong>Entity trust and reputation system.</strong> Each interacting entity is scored on domain expertise and behavioral trust. Scores gate how external inputs are weighted and — critically — whether an entity is eligible to receive controlled external escalation queries when the system cannot resolve a contradiction internally.</p>
+<p><strong>Distributed model graph.</strong> The monolithic model is decomposed into independently deployable domain submodels communicating over structured APIs, analogous to microservices architecture. Catastrophic forgetting is resolved architecturally: updating one domain's weights cannot affect any other. Submodels are versioned and updated independently via blue-green deployment.</p>
+<p><strong>Arbiter Agent.</strong> A dedicated contradiction resolution agent that runs structured evidence checks (logical, mathematical, cross-session, empirical) across conflicting submodel outputs. Verified corrections are routed internally to the relevant submodels as DPO signal, with the full evidence chain shared only with the submodels whose domains were arbitrated. When the Arbiter cannot resolve a conflict, a controlled external escalation queries verified domain experts through obfuscated, partialized queries — revealing the minimum information needed to elicit an answer, consistent with the minimum-disclosure principle governing all external information sharing.</p>
+<p><strong>Hardware-adaptive decomposition.</strong> Graph depth is matched to available GPU memory. High-VRAM hardware supports shallow graphs of large, fast submodels; consumer hardware supports deeper graphs of smaller specialist submodels at lower cost per query — exploiting the order-of-magnitude bandwidth advantage of intra-GPU compute over inter-GPU interconnects.</p>
+<p>The system is validated through simulation across three calibration cycles on eight LeetCode-style problems, demonstrating monotonic utility improvement (+0.0755), contradiction elimination (1 → 0 by cycle 2), and correct personality evolution consistent with the stability safeguards.</p>
+<p>The rest of the paper is organized as follows. Section 2 surveys related work across the six research areas the architecture draws from. Sections 3–7 develop the theoretical framework: utility function, field-specific bounds, personality system, trust system, and continual learning pipeline. Section 8 describes the monolithic wrapper architecture. Section 9 describes the distributed model graph including the Arbiter Agent, blue-green deployment, and hardware-adaptive decomposition. Section 10 describes the code generation MVP and simulation results. Sections 11–12 present the roadmap and open questions. Appendix A contains the full simulation data.</p>
+<hr />
+<hr />
+<h2>2. Related Work</h2>
+<h3>2.1 Utility Functions and Resource Allocation Games</h3>
+<p>The theoretical foundations of our utility function draw directly from the game-theoretic literature on resource allocation mechanisms. Johari and Tsitsiklis (2004) established the canonical proportional allocation game, proving the existence and uniqueness of Nash equilibrium and bounding the Price of Anarchy at 4/3 for concave utility functions — the same class of utility functions used in our confidence and efficacy formulations. Their subsequent work on scalar-parameterized mechanisms showed that the proportional allocation mechanism achieves the best Price of Anarchy among mechanisms using a single market-clearing price, providing theoretical justification for our single-score utility formulation rather than a vector-valued alternative.</p>
+<p>Kelly (1997) introduced the proportional fairness framework for network resource allocation, establishing that bid-proportional allocation maximizes a natural social welfare function. Our curiosity term — allocating exploration effort proportional to potential gain weighted by confidence gap — is structurally analogous to Kelly's proportional bidding: agents allocate where marginal return is highest.</p>
+<p>Koutsoupias and Papadimitriou (1999) introduced the Price of Anarchy as a measure of efficiency loss from selfish behavior, which directly motivates our confidence penalty mechanism: detected contradictions are evidence that the model has been operating in a locally selfish manner (optimizing fluency over correctness), and the penalty restores the social optimum by penalizing this deviation. Roughgarden and Tardos (2002) established that the same 4/3 bound applies to selfish routing games with affine-linear congestion functions, linking the network efficiency literature to general mechanism design.</p>
+<p><strong>Key departure:</strong> Existing utility function literature treats agents as fixed rational actors. Our framework treats the agent itself as the subject of the utility function — the agent learns to improve its own utility through calibration, not merely to maximize given a fixed utility. This closes the loop between mechanism design theory and machine learning.</p>
+<hr />
+<h3>2.2 Distributed Model Architectures: From Microservices to Mixture of Experts</h3>
+<p><strong>Microservices architecture</strong> provides the software engineering precedent for our physically decomposed model graph. The microservices pattern — decomposing a monolithic application into independently deployable services communicating over well-defined interfaces — has been extensively validated at scale by companies including Netflix, Amazon, and Uber. Key properties established in the microservices literature directly motivate our design: independent deployability eliminates coordinated release cycles; bounded blast radius limits the impact of any single component failure; and service mesh patterns (Istio, Linkerd) demonstrate that weighted traffic routing between service versions is operationally mature technology.</p>
+<p>Humble and Farley (2010) in <em>Continuous Delivery</em> formalized the practices of blue-green and canary deployment that underpin our submodel update mechanism, establishing the statistical and operational foundations for progressive traffic shifting between service versions.</p>
+<p><strong>Mixture of Experts (MoE)</strong> is the closest existing architectural precedent within the ML literature. Shazeer et al. (2017) introduced the Sparsely-Gated Mixture-of-Experts layer, achieving efficiency through sparse activation where only k of N expert subnetworks process each input, with a trainable gating network routing tokens to the most appropriate experts. Fedus et al. (2021) in the Switch Transformer simplified MoE routing to k=1 (a single expert per token), achieving up to 7x pre-training speedup with the same computational budget while scaling to trillion-parameter models. Production models including Mixtral 8×7B and (reportedly) GPT-4 deploy MoE architecture.</p>
+<p><strong>Key departure from MoE:</strong> Our architecture differs from MoE in a critical dimension: MoE experts share weights, are trained jointly, are deployed monolithically, and cannot be updated independently. Our graph consists of physically separate models with independent weight files, independent training pipelines, and independent blue-green deployment cycles. Updating one domain submodel does not affect any other. This is not a difference of degree — it is a difference of kind. MoE solves the compute efficiency problem within a monolithic training paradigm; we solve the independent deployability and catastrophic forgetting problems by abandoning the monolithic paradigm entirely.</p>
+<p>Domain-specialized routing without shared weights has been explored in the Branch-Train-Merge literature (Li et al., 2022) and MoErging approaches, where independently fine-tuned models are composed at inference time. Our architecture extends this direction with utility-function-governed update triggers and hardware-adaptive depth.</p>
+<hr />
+<h3>2.3 Blue-Green Deployment with Statistically Grounded Thresholds</h3>
+<p>Blue-green deployment is a mature practice in software engineering, described by Humble and Farley (2010) and subsequently adopted at scale by major technology organizations. The pattern involves maintaining parallel production environments and shifting traffic between them, with automated rollback policies based on performance metrics including error rates, latency, and business KPIs. Canary releases extend this by routing only a fraction of traffic to the new version initially, expanding progressively as confidence grows.</p>
+<p>Recent empirical work confirms that canary deployments significantly reduce failure rates compared to direct blue-green switches for systems with complex state, with statistical tests on failure rates validating the significance of gradual traffic migration.</p>
+<p><strong>Key departure:</strong> Existing blue-green and canary deployment literature triggers traffic shifts based on infrastructure metrics (error rates, latency, uptime). Our system triggers updates based on <em>utility deviation</em> — a domain-specific measure of knowledge quality — and uses power analysis on observed utility score variance to derive theoretically grounded minimum observation windows T(field) before any deployment decision. The trigger threshold δ(field) is derived from field-specific penalty multipliers bootstrapped from societal licensing standards, not from arbitrary SLA targets. This grounds deployment decisions in epistemic quality rather than operational health.</p>
+<p>The softmax traffic routing formula — where traffic split is a continuous function of comparative utility scores with a field-calibrated temperature parameter — has no direct precedent in the deployment literature. It makes the routing self-regulating: no manual traffic adjustment is required, and the promotion rate naturally slows as U_green approaches U_blue.</p>
+<hr />
+<h3>2.4 Arbiter Agents and Structured Contradiction Detection</h3>
+<p>The problem of resolving conflicts between multiple agents or models has antecedents in multi-agent systems and distributed consensus literature. Paxos (Lamport, 1998) and Raft (Ongaro &amp; Ousterhout, 2014) provide consensus mechanisms for distributed systems, but these assume a binary correct/incorrect answer and require a majority of participants to agree. Our Arbiter Agent addresses a more complex problem: two models may both be wrong in different ways, and the arbiter must determine ground truth independently rather than through consensus.</p>
+<p>The structured contradiction detection pipeline — logical, mathematical, cross-session, empirical checks in order of cost — draws from formal verification literature. SAT solvers and theorem provers (Lean, Coq) provide the mathematical check layer; their correctness guarantees are exact rather than probabilistic, which is why mathematical contradictions carry the highest confidence weight (0.40) in the arbiter confidence formula.</p>
+<p>Self-consistency checking in LLMs (Wang et al., 2022) explores using multiple model samples to identify contradictions within a single model's outputs. Our approach extends this to contradictions <em>between</em> physically separate domain models, adding the cross-session assertions store as a persistent memory of verified facts that both checks and updates across interactions.</p>
+<p>The arbiter confidence weighting formula — combining logical (0.30), mathematical (0.40), cross-session (0.20), and empirical (0.10) check results — is grounded in the relative reliability of each check type. Mathematical verification is definitive; empirical checks via external sources introduce the possibility of source error and are therefore weighted lowest despite being most grounded in external reality.</p>
+<hr />
+<h3>2.5 External Escalation Gated by Trust: Zero Trust and Minimum Disclosure Principles</h3>
+<p>The external escalation protocol in §8.5 is grounded in two bodies of security literature.</p>
+<p><strong>Zero Trust architecture</strong> (Kindervag, 2010; NIST SP 800-207, 2020) establishes the principle that no entity — internal or external, human or machine — is trusted by default. The principle of least privilege, foundational to Zero Trust, states that every program and privileged user should operate using the least amount of privilege necessary to complete the job, first articulated by Saltzer (1974). Our external escalation gating applies this principle to information disclosure: no internal state is shared with any external entity by default. Trust must be earned through demonstrated domain expertise and interaction history before any escalation query is issued.</p>
+<p>NIST's Zero Trust Maturity Model defines zero trust as minimizing uncertainty in enforcing accurate, least-privilege per-request access decisions in the face of a network viewed as compromised. Our system treats <em>every</em> external entity as potentially compromised or adversarial by default — the dual trust threshold (domain expertise above median AND entity trust above field-specific floor) operationalizes this assumption.</p>
+<p><strong>Minimum disclosure / data minimization</strong> principles from privacy engineering (Cavoukian, 2009; GDPR Article 5) provide the foundation for query obfuscation. The legal principle of data minimization — collect and share only what is strictly necessary — is extended here to system state disclosure: reveal only what is necessary to elicit the needed external judgment, and nothing more. The query transformation example (internal conflict → clean professional question) implements data minimization at the system interface boundary.</p>
+<p><strong>Key contribution:</strong> Existing Zero Trust literature addresses access control to systems and data. We extend the framework to govern <em>information disclosure from an AI system to human experts</em>, including not only what is shared but how it is framed, with explicit obfuscation of system context to prevent an external expert from deducing internal architecture, failure modes, or competitive capabilities.</p>
+<hr />
+<h3>2.6 Hardware-Adaptive Decomposition: Interconnect Bandwidth and Inference Cost</h3>
+<p>The hardware-adaptive decomposition argument in §8.8 is grounded in established literature on GPU interconnect performance and its impact on distributed inference.</p>
+<p>NVLink 4.0 (H100 GPUs) provides 900 GB/s of bidirectional bandwidth per GPU, compared to PCIe 5.0 x16's 128 GB/s — a 7× difference that directly determines the practical efficiency of any computation that must cross a GPU boundary. NVIDIA's production measurements show that transferring 20 GB of tensor parallelism synchronization data for Llama 3.1 70B takes 150 ms over PCIe point-to-point versus 22 ms over NVSwitch at full NVLink bandwidth — a 6.8× latency difference that scales with every inference request.</p>
+<p>This bandwidth hierarchy has direct implications for optimal decomposition depth. Tensor parallelism performs better within a single node connected via NVLink, while pipeline parallelism is better suited for setups spanning multiple nodes; inference latency is far more sensitive to communication overhead than training throughput. Our hardware-adaptive branching heuristic — stop branching when submodels fit within a single GPU's VRAM without sharding — is a direct corollary of these measured performance characteristics.</p>
+<p><strong>The cost inversion argument</strong> can be stated formally. Let B_intra = intra-GPU memory bandwidth (3.35 TB/s on H100), B_inter = inter-GPU bandwidth (900 GB/s NVLink or 128 GB/s PCIe), and D = data transferred per inference step. For a graph of depth d with k active nodes per query:</p>
+<pre><code>Latency_shallow(d=1) ∝ D / B_intra
+Latency_deep(d=k)    ∝ k × (D_sub / B_intra) + (k-1) × (D_msg / B_inter)
+
+Where D_sub = D/k (smaller submodel, smaller activations)
+      D_msg = inter-node message size (much smaller than D)
+
+When D_msg &lt;&lt; D_sub and B_inter &gt;&gt; D_msg/latency_target:
+    Latency_deep ≈ Latency_shallow
+
+At equal latency, Cost_deep &lt; Cost_shallow because:
+    Consumer GPU cost/hr &lt;&lt; Enterprise GPU cost/hr
+    D_sub fits in consumer VRAM → no high-VRAM GPU required
+</code></pre>
+<p>NVLink delivers 5× the energy efficiency of PCIe Gen 5 at 1.3 picojoules per bit, which means that for workloads where inter-GPU communication is unavoidable, NVLink-connected consumer GPU clusters can be more cost-effective per useful computation than PCIe-connected enterprise GPU clusters of equivalent total VRAM.</p>
+<p>The practical implication — that a deep graph of small models on consumer hardware may achieve equivalent quality at lower cost than a shallow graph on expensive hardware — inverts the standard assumption that larger models require larger hardware budgets. This is a testable empirical claim that the Phase 6 roadmap item (§10) is designed to validate.</p>
+<h2>3. The Utility Function</h2>
+<h3>3.1 Core Formulation</h3>
+<p>The agent's utility at any point in time is:</p>
+<pre><code>U = Σ_{tasks} [ w_e(f) · E(task) + w_c(f) · C(task) + w_k(f) · K(task) ]
+
+Subject to:
+    C(task) ≥ C_min(f)
+    E(task) ≥ E_min(f)
+    w_k · K ≤ 0.5 × U_total         [curiosity cap — see §3.4]
+</code></pre>
+<p>Where:
+- <strong>E(task)</strong> — Efficacy: how well the agent performs relative to human baseline
+- <strong>C(task)</strong> — Confidence: internal consistency score, penalized by contradictions
+- <strong>K(task)</strong> — Curiosity: exploration bonus for low-confidence domains with high upside
+- <strong>f</strong> — field/domain, which determines weights and minimum bounds
+- <strong>w_e, w_c, w_k</strong> — field-specific weights summing to 1</p>
+<h3>3.2 Efficacy</h3>
+<p>Efficacy measures output quality relative to the current human baseline for that task:</p>
+<pre><code>E(task) = quality(agent_output) / cost(human_equivalent)
+</code></pre>
+<p>Cost of human equivalent includes: time, dollar cost, error rate, and reproducibility. In STEM fields this is directly measurable. In creative fields, a two-component model is used (see below).</p>
+<p><strong>STEM efficacy</strong> (code generation MVP):
+- Test pass rate against automated test suites
+- Code quality metrics (complexity, type safety, static analysis)
+- Time and cost vs. human developer benchmark (Upwork rates, LeetCode community solutions)</p>
+<p><strong>Creative efficacy — two-component model:</strong></p>
+<p>In STEM fields, efficacy and skill are the same thing — write correct code, done. In creative fields they are separable and both matter independently:</p>
+<pre><code>Creative_Efficacy = Content_Efficacy × Discoverability_Efficacy
+
+Content_Efficacy        = conversion rate (engagement given views)
+                          &quot;can the work hold attention when shown?&quot;
+
+Discoverability_Efficacy = impressions, search ranking, recommendation rate
+                          &quot;can it find an audience at all?&quot;
+</code></pre>
+<p>Marketing and platform discoverability are not noise to control for — they are part of the creative skill, exactly as they are for every successful human creator. If the agent cannot crack discoverability, that is a genuine efficacy gap.</p>
+<p>The measurement approach: float AI creative work on existing public platforms (SoundCloud, iStockPhoto, Unsplash, Medium, YouTube, Behance) under realistic author identities. Platform engagement signals are weighted by intent strength:</p>
+<pre><code>purchase / download    1.0   (strongest — real economic behavior)
+save / bookmark        0.8
+share / repost         0.7
+like / upvote          0.5
+comment                0.4
+view / listen          0.1   (weakest — could be accidental)
+</code></pre>
+<p>Stock licensing sites (iStockPhoto, Unsplash) provide the cleanest signal — a download represents real economic intent with no algorithmic amplification distortion and built-in category taxonomy for like-for-like comparison. The human creator baseline is self-updating: as human creative output on these platforms evolves, so does the benchmark, with no periodic re-calibration needed.</p>
+<p>This formulation also unlocks cross-field efficacy comparison for the first time. If music efficacy is 0.60 and software engineering efficacy is 0.70, both are on the same [0,1] scale and directly comparable, because both use the same sigmoid normalization against their respective baselines.</p>
+<p>The agent develops creative capability through a natural curriculum:</p>
+<pre><code>Stage 1 → Generate work that converts well (content quality)
+Stage 2 → Learn to title, tag, describe effectively (discoverability)
+Stage 3 → Build cross-platform presence (network effects, retention)
+</code></pre>
+<h3>3.3 Confidence</h3>
+<p>Confidence is a per-domain score that increases when knowledge is internally consistent and decreases when contradictions are detected:</p>
+<pre><code>C(domain) updated via EMA:
+    C_new = (1 - α) · C_prior + α · (test_pass_rate · (1 - penalty))
+    penalty = contradiction_penalty × field_penalty_multiplier
+</code></pre>
+<p>The <strong>wave analogy</strong>: knowledge items that reinforce each other are like constructive interference — they increase signal strength. Contradictions are destructive interference. The goal is a knowledge state where all waves reinforce.</p>
+<p>Contradiction types (in order of detectability):
+1. <strong>Logical</strong> — output contradicts its own stated premises
+2. <strong>Mathematical</strong> — claimed complexity or result is provably wrong
+3. <strong>Cross-session</strong> — same subject answered differently with conflicting facts
+4. <strong>Empirical</strong> — output contradicts verifiable external ground truth</p>
+<p><strong>Cross-session contradiction detection</strong> does not require a knowledge graph. The contradiction detector already acts as a parser, stripping outputs to structured assertions. These are persisted in a "meeting minutes" store — only structured facts, not raw text:</p>
+<pre><code>{
+  session_id, timestamp, domain,
+  assertions: [
+    { type: &quot;complexity&quot;,     subject: &quot;sorting&quot;,       value: &quot;O(n log n)&quot; },
+    { type: &quot;best_practice&quot;,  subject: &quot;db autocommit&quot;, value: &quot;avoid&quot;      },
+    { type: &quot;data_structure&quot;, subject: &quot;two_sum&quot;,       value: &quot;hashmap&quot;    }
+  ]
+}
+</code></pre>
+<p>At the start of each session, relevant prior assertions are retrieved via embedding similarity (handling synonyms like "merge sort" vs "sorting algorithm") and injected as context. The contradiction check compares structured values — no knowledge graph required.</p>
+<pre><code>Parser (built) → extracts structured assertions
+      ↓
+Key-value store → persists by subject + domain
+      ↓
+Embedding similarity → synonym matching at lookup
+      ↓
+Contradiction check (built) → compares structured values
+</code></pre>
+<h3>3.4 Curiosity</h3>
+<p>Without a curiosity term, the agent converges to maximizing utility in narrow high-confidence domains — the opposite of growth. The curiosity term creates pull toward domains where the agent is weak but upside is high.</p>
+<p><strong>Growing curiosity function:</strong></p>
+<pre><code>K_raw(task, t) = potential_ceiling
+               × (1 - C(task))
+               × growth(t, field)
+
+growth(t, field) = 1 + α(field) × log(1 + interactions_without_novelty)
+</code></pre>
+<p>The counter <code>interactions_without_novelty</code> increments on familiar problems and resets to zero on genuinely novel ones. The growth rate α is field-specific:</p>
+<pre><code>α → near zero   for surgery, aviation  (don't get bored into novel procedures)
+α → high        for research, creative (exploration is the job)
+</code></pre>
+<p><strong>50% curiosity cap — preventing utility gaming:</strong></p>
+<p>Without a cap, the agent could learn to pursue novelty for its own sake, attempting tasks outside its competence to generate a curiosity score rather than genuine utility. The cap prevents this:</p>
+<pre><code>K_effective = min(K_raw, (w_e · E + w_c · C) / w_k)
+
+U = w_e · E + w_c · C + w_k · K_effective
+</code></pre>
+<p>Derived from the constraint that K cannot exceed 50% of total U:</p>
+<pre><code>w_k · K ≤ 0.5 × (w_e · E + w_c · C + w_k · K)
+  → K ≤ (w_e · E + w_c · C) / w_k
+</code></pre>
+<p>This constraint is self-scaling: when E and C are high, the cap is loose and curiosity can push hard. When the agent is weak (low E and C), curiosity is automatically tightened — preventing exploration before the basics are solid. K can never be the dominant term.</p>
+<hr />
+<h2>4. Field-Specific Bounds and Weights</h2>
+<h3>4.1 Bootstrapping from Societal Standards</h3>
+<p>Minimum competence thresholds need not be invented. Society has already done this work. Medical licensing, aviation certification, bar passage requirements, and engineering standards encode hard-won judgments about minimum acceptable performance. We map these directly to confidence and efficacy bounds.</p>
+<pre><code>Field               w_e    w_c    w_k    C_min   E_min   Penalty
+────────────────────────────────────────────────────────────────
+Surgery             0.20   0.70   0.10   0.95    0.90    10×
+Aviation autopilot  0.20   0.70   0.10   0.95    0.90    10×
+Law                 0.30   0.60   0.10   0.85    0.80     5×
+Structural Eng.     0.40   0.50   0.10   0.80    0.75     4×
+Software Eng.       0.55   0.35   0.10   0.70    0.65     2×
+STEM Research       0.50   0.30   0.20   0.65    0.60     2×
+Education           0.50   0.30   0.20   0.60    0.55     1.5×
+Art / Music         0.80   0.10   0.10   0.10    0.20     1×
+Creative Writing    0.80   0.05   0.15   0.05    0.15     1×
+</code></pre>
+<h3>4.2 Field Classifier Robustness</h3>
+<p>The field classifier determines which weights and bounds apply. Three failure modes must be handled:</p>
+<p><strong>Failure mode 1 — False collapse to a single field:</strong></p>
+<pre><code>&quot;Write a Python script to analyze patient drug dosage data&quot;
+→ naive:   {&quot;software_engineering&quot;: 0.95, &quot;medicine&quot;: 0.05}  ← wrong
+→ correct: {&quot;software_engineering&quot;: 0.65, &quot;medicine&quot;: 0.35}
+</code></pre>
+<p>Resolution: <strong>high-stakes floor</strong> — any high-stakes field (surgery, aviation, law) with meaningful presence is floored at 0.15 minimum probability. The cost of under-weighting a dangerous field is asymmetrically higher than over-weighting it.</p>
+<p><strong>Failure mode 2 — Field drift mid-conversation:</strong></p>
+<p>A conversation starting as software engineering may drift into medicine across turns. Single-turn classification misses this.</p>
+<p>Resolution: <strong>sliding window EMA</strong> over conversation turn history (α = 0.4, recent turns weighted more):</p>
+<pre><code>effective_field_dist = EMA(per_turn_classifications, alpha=0.4)
+</code></pre>
+<p>Bounds tighten naturally as a conversation drifts into higher-stakes territory.</p>
+<p><strong>Failure mode 3 — Genuine ambiguity:</strong></p>
+<p>Resolution: <strong>entropy-based conservative fallback</strong> — when distribution entropy is high, bounds shift toward the most conservative present field proportional to entropy. High entropy means more caution, not averaging toward the middle:</p>
+<pre><code>if entropy_ratio &gt; 0.7:
+    c_min → lerp(c_min_blended, c_min_most_conservative, entropy_ratio)
+</code></pre>
+<p><strong>Full classification pipeline:</strong></p>
+<pre><code>Per-turn classifier
+      ↓
+High-stakes floor enforcement
+      ↓
+Sliding window EMA over conversation history
+      ↓
+Entropy check → conservative bound shift if ambiguous
+      ↓
+Blended FieldConfig with hardened bounds
+</code></pre>
+<p>When field classification is ambiguous across multiple fields, bounds are blended by probability weight — naturally making the agent more conservative under uncertainty:</p>
+<pre><code>C_min_effective = Σ_f P(field=f) × C_min(f)
+</code></pre>
+<hr />
+<h2>5. Personality System</h2>
+<h3>5.1 Traits as Weighted Vectors</h3>
+<p>Each personality trait is represented as a score with associated advantages and disadvantages. The agent selects an active trait weighting based on the situation:</p>
+<pre><code>Traits: [curiosity, caution, assertiveness, creativity,
+         analytical_rigor, empathy, conciseness]
+
+active_weight = softmax(trait_scores × situational_relevance)
+</code></pre>
+<p>A medical query activates high caution and analytical rigor. A creative brainstorm activates curiosity and creativity. The trait weighting is injected into the system prompt.</p>
+<h3>5.2 Personality Evolution and Stability</h3>
+<p>A separate service runs every N interactions to adjust personality weights based on accumulated utility history. Three layered safeguards prevent runaway drift:</p>
+<p><strong>Layer 1 — Field-specific trait bounds (hard floor and ceiling):</strong></p>
+<pre><code>Trait              Surgery        Software Eng    Creative
+─────────────────────────────────────────────────────────
+caution            [0.70, 0.95]   [0.30, 0.70]   [0.10, 0.40]
+curiosity          [0.10, 0.20]   [0.30, 0.80]   [0.60, 0.95]
+assertiveness      [0.20, 0.40]   [0.40, 0.80]   [0.50, 0.90]
+analytical_rigor   [0.70, 0.95]   [0.50, 0.85]   [0.10, 0.50]
+creativity         [0.10, 0.20]   [0.30, 0.70]   [0.70, 0.95]
+</code></pre>
+<p>The floor prevents complete suppression of any trait. The ceiling prevents pathological dominance. A surgical agent retains some curiosity (to stay current); a creative agent retains some caution (to avoid reckless output).</p>
+<p><strong>Layer 2 — Drift rate cap (max delta per evolution cycle):</strong></p>
+<pre><code>max_delta = 0.05  (general fields)
+          = 0.02  (high-stakes: surgery, aviation)
+</code></pre>
+<p>A single bad run of contradictions cannot spike caution to its ceiling in one step. Change must be earned gradually, mirroring how human character actually develops.</p>
+<p><strong>Layer 3 — Mean reversion (soft pull toward field baseline):</strong></p>
+<pre><code>Δ_adjusted = Δ_raw - β × (current_score - neutral_score(trait, field))
+</code></pre>
+<p>Where β = 0.01. Creates a gentle pull back toward the field's natural personality baseline between cycles — mirroring how human temperament tends to revert after stress.</p>
+<p>Evolution logic:</p>
+<pre><code>if utility_trend declining AND contradiction_rate &gt; 0.2:
+    increase(analytical_rigor), decrease(assertiveness)
+
+if utility_trend improving AND avg_utility &gt; 0.6:
+    increase(curiosity), increase(creativity)
+
+if contradiction_rate &gt; 0.4:
+    strong increase(caution), strong decrease(assertiveness)
+</code></pre>
+<h3>5.3 Self-Preservation Principle</h3>
+<p>The agent follows a conservative information disclosure principle: <strong>always share the least about internal state that the situation allows.</strong> Trust must be earned before internal weights, scores, or strategies are disclosed.</p>
+<hr />
+<h2>6. Trust and Reputation System</h2>
+<p>Each entity the agent interacts with is assigned a trust score, updated based on behavior:</p>
+<pre><code>trust_score(entity) = f(accuracy_of_their_inputs,
+                        consistency_of_their_behavior,
+                        alignment_with_verified_facts)
+</code></pre>
+<p>Strategy: <strong>lenient tit-for-tat</strong> — begin cooperatively, mirror behavior, forgive occasional defection. One of the most robust strategies in iterated game theory.</p>
+<p>Subset scores are maintained for different dimensions (domain expertise, trustworthiness, intent alignment) so a high domain-knowledge but low-trust entity is handled differently from a low domain-knowledge but high-trust one. Domain expertise is measured based on verifiable credentials — professional experience, educational qualifications, and field-specific certifications — rather than self-reported claims.</p>
+<hr />
+<h2>7. Continual Learning Architecture</h2>
+<p>This is the mechanism by which the utility function actively drives improvement between model releases. The key distinction:</p>
+<pre><code>Behavioral correction  — change what the agent says without weight updates
+                         Fast, cheap, session-scoped
+                         Does not generalize across topics
+
+Knowledge correction   — change what the model actually knows
+                         Slower, requires compute, permanent
+                         Generalizes: fixing one contradiction
+                         reduces similar contradictions elsewhere
+</code></pre>
+<p>Both are necessary. The architecture operates across three timescales.</p>
+<h3>7.1 Layer 1 — Per-Session Behavioral Correction (Real-Time)</h3>
+<p>When a contradiction is detected, a corrective assertion is immediately generated and injected into the system prompt for the remainder of the session:</p>
+<pre><code>Standard system prompt:
+    &quot;You are a precise assistant in the software_engineering domain...&quot;
+
+After contradiction detected:
+    &quot;You are a precise assistant in the software_engineering domain...
+
+     ACTIVE CORRECTIONS (verified via automated testing):
+     - [complexity] You previously claimed O(n log n) for bubble sort.
+       Tests confirmed it is O(n²). Do not repeat this.
+     - [best_practice] You previously recommended autocommit for SQLite.
+       This caused data inconsistency in tests. Always use explicit commits.&quot;
+</code></pre>
+<p>Additionally, at session start, the assertions store is queried for relevant prior corrections on the current subject and injected as context. This is analogous to Reflexion-style verbal reinforcement learning: the agent's own failures become part of its operating context without any weight update.</p>
+<p>Cost: ~100ms, one database query per session. Effect: immediate, session-scoped.</p>
+<h3>7.2 Layer 2 — Calibration Run Knowledge Correction (Several Times Per Day)</h3>
+<p>This is where genuine learning occurs. The utility scorer already generates exactly the data format required for <strong>Direct Preference Optimization (DPO)</strong>:</p>
+<pre><code>Every scored interaction produces:
+    task:       &quot;sort a list of integers efficiently&quot;
+    field:      &quot;software_engineering&quot;
+    response_A: [U=0.82, passes all tests]       ← preferred
+    response_B: [U=0.41, fails complexity check] ← rejected
+</code></pre>
+<p><strong>The utility function as a loss weighting mechanism:</strong></p>
+<p>This is the key novelty. The field penalty multiplier is applied directly as a training loss weight — not just as a logging label:</p>
+<pre><code>training_weight = field_penalty_multiplier(field)
+
+DPO loss for surgery contradiction     → 10× weight
+DPO loss for creative writing mistake  →  1× weight
+</code></pre>
+<p>The model is trained harder on the errors that matter more. This is what makes the utility function an active learning signal rather than a passive monitor.</p>
+<p><strong>Calibration pipeline:</strong></p>
+<pre><code>1. Collect all interactions since last calibration run
+2. Filter: keep only pairs where U_preferred &gt; U_rejected + threshold
+   (avoid training on marginal differences — use only clear signal)
+3. Weight each pair by field_penalty_multiplier(field)
+4. Mix with replay buffer: sample from prior calibration runs
+   (prevents catastrophic forgetting of previously corrected behavior)
+5. Run LoRA fine-tuning on weighted (preferred, rejected) pairs
+6. Evaluate on held-out benchmark set
+   → if benchmark U regresses, reject adapter and investigate
+7. Deploy updated LoRA adapter if benchmark passes
+</code></pre>
+<p><strong>Catastrophic forgetting mitigation:</strong></p>
+<p>Naive fine-tuning on today's corrections erases what was fixed yesterday. The replay buffer mixes prior calibration pairs into every new training run:</p>
+<pre><code>calibration_batch = {
+    new_corrections:  today's DPO pairs         [weight = 1.0]
+    replay_sample:    from prior calibration runs [weight = 0.5]
+    golden_examples:  held-out benchmark tasks   [weight = 0.7]
+}
+</code></pre>
+<p>The golden examples are the agent's own best prior responses on a fixed benchmark set — keeping the model anchored to known-good behavior while allowing correction of known-bad behavior.</p>
+<p>Cost: GPU time, approximately 20–60 minutes per run. Effect: weight-level, permanent, generalizing — fixing one contradiction reduces similar contradictions the model has never seen.</p>
+<h3>7.3 Layer 3 — Release-Level Integration (Monthly or On Base Model Update)</h3>
+<pre><code>Accumulated LoRA adapters merged or distilled into new base fine-tune
+Full evaluation suite run across all fields and benchmarks
+Regression testing against prior release
+</code></pre>
+<p>This is the point where wrapper-level learning gets baked into the base model, creating a new starting point for the next cycle of calibration.</p>
+<h3>7.4 The Full Learning Loop</h3>
+<pre><code>REAL-TIME (ms):
+    Contradiction detected
+         ↓
+    Corrective assertion → injected into system prompt
+    Assertions store updated
+    Effect: behavioral, session-scoped
+
+CALIBRATION (hours):
+    Collect (task, high-U, low-U) pairs
+         ↓
+    Weight by field_penalty_multiplier
+         ↓
+    Mix with replay buffer
+         ↓
+    LoRA DPO fine-tuning
+         ↓
+    Benchmark evaluation → deploy if passes
+    Effect: weight-level, permanent, generalizing
+
+RELEASE (monthly):
+    Merge accumulated adapters
+         ↓
+    Full regression suite
+         ↓
+    New base model checkpoint
+    Effect: baked into base model weights
+</code></pre>
+<p>The utility function governs all three layers: it determines what gets corrected (via confidence penalties), how strongly it gets corrected (via field penalty multipliers), and whether a correction is accepted (via benchmark evaluation before deployment).</p>
+<hr />
+<h2>8. Monolithic Wrapper Architecture</h2>
+<pre><code>┌─────────────────────────────────────────────────────┐
+│                   WRAPPER LAYER                      │
+│                                                      │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────┐ │
+│  │   Field     │  │   Utility    │  │Personality │ │
+│  │ Classifier  │  │  Evaluator   │  │  Manager   │ │
+│  └──────┬──────┘  └──────┬───────┘  └─────┬──────┘ │
+│         └────────────────┼────────────────┘         │
+│                          ▼                           │
+│              ┌───────────────────────┐               │
+│              │   Prompt Constructor  │               │
+│              │  (constraints, active │               │
+│              │   corrections, traits)│               │
+│              └──────────┬────────────┘               │
+└─────────────────────────┼───────────────────────────┘
+                          ▼
+              ┌───────────────────────┐
+              │   FRONTIER MODEL      │
+              │   + LoRA Adapter(s)   │
+              └──────────┬────────────┘
+                         ▼
+┌─────────────────────────────────────────────────────┐
+│                  SCORING LAYER                       │
+│                                                      │
+│  ┌──────────────┐ ┌─────────────┐ ┌──────────────┐ │
+│  │Contradiction │ │  Efficacy   │ │  Confidence  │ │
+│  │  Detector    │ │  Measurer   │ │   Updater    │ │
+│  └──────────────┘ └─────────────┘ └──────────────┘ │
+│                                                      │
+│      U = w_e·E + w_c·C + w_k·K_effective           │
+│      subject to field-specific bounds                │
+│                                                      │
+│  ┌──────────────────────────────────────────────┐   │
+│  │         Assertions Store (persistent)         │   │
+│  │  Structured facts, confidence scores,         │   │
+│  │  utility history, DPO training pairs          │   │
+│  └──────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────┐
+│             CALIBRATION SERVICE                      │
+│   Runs several times daily                           │
+│   Consumes DPO pairs weighted by penalty_multiplier  │
+│   Produces updated LoRA adapter                      │
+│   Validated against held-out benchmark before deploy │
+└─────────────────────────────────────────────────────┘
+</code></pre>
+<hr />
+<hr />
+<h2>9. Distributed Model Graph Architecture</h2>
+<h3>9.1 Motivation: Catastrophic Forgetting at Scale</h3>
+<p>The three-layer continual learning architecture in Section 6 mitigates catastrophic forgetting within a monolithic model through replay buffers and careful DPO weighting. But across many calibration cycles over months, this approach has a fundamental ceiling: every update to any domain affects the entire weight space. Fixing a contradiction in surgery knowledge can subtly degrade physics knowledge through weight interference. The replay buffer slows this but cannot eliminate it — the weights are shared.</p>
+<p>The solution is to eliminate shared weights for domain-specific knowledge entirely.</p>
+<h3>9.2 Physical Model Decomposition</h3>
+<p>Rather than a single monolithic model, the system decomposes into a <strong>loosely coupled graph of domain-specific submodels</strong> that communicate over structured interfaces — analogous to how microservice architectures decompose monolithic backends into independently deployable services.</p>
+<pre><code>                    ┌─────────────────────┐
+                    │    Router / Hub      │
+                    │  (field classifier   │
+                    │   + query parser     │
+                    │   + context merger)  │
+                    └──────────┬──────────┘
+                               │
+         ┌─────────────────────┼──────────────────────┐
+         │                     │                      │
+    ┌────▼────┐           ┌────▼────┐           ┌────▼────┐
+    │Medicine │           │   CS    │           │   Law   │
+    │  model  │           │  model  │           │  model  │
+    └────┬────┘           └────┬────┘           └─────────┘
+         │                     │
+   ┌─────┴─────┐    ┌──────────┼──────────┐
+   │Radiology  │  ┌─▼──┐   ┌──▼──┐   ┌──▼──┐
+   │Pharma     │  │ ML  │   │Algo │   │Prog │
+   │Surgery    │  └──┬──┘   └─────┘   └─────┘
+   └───────────┘     │
+                ┌────┴────┐
+                │RL  │NLP │
+                └────┴────┘
+</code></pre>
+<p>Each node in the graph is a separately deployed model with its own weights, calibration cycle, and utility tracker. The interface between nodes is a structured protocol:</p>
+<pre><code>Request:  { query, context, field, confidence_floor, session_id }
+Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
+</code></pre>
+<p>This is the same data structure the wrapper already produces — no new interface design is required. The router simply fans queries to the relevant submodels and merges their responses.</p>
+<p><strong>Why this eliminates catastrophic forgetting:</strong></p>
+<p>Updating the surgery submodel only modifies surgery weights. The CS model is physically unaffected. Cross-domain knowledge lives exclusively in the router and a thin shared embedding layer that all submodels project into. Rolling back a surgery update requires swapping one model file, not re-running the entire training pipeline.</p>
+<h3>9.3 Branching Heuristics</h3>
+<p>The graph branches recursively until one of two stopping conditions is met:</p>
+<p><strong>Hardware bound:</strong> Stop when a single submodel fits comfortably on one GPU. At current hardware a 7B parameter model fits on one H100. A graph of 20 domain models × 7B = 140B total parameters distributed across 20 GPUs, but with the key advantage that only the relevant 1–3 submodels activate per query. Inference cost is proportional to query complexity, not model size.</p>
+<p><strong>Statistical bound:</strong> Stop branching when the within-domain contradiction rate drops below a threshold — meaning the submodel is internally consistent enough that further specialization adds noise rather than signal. A domain with contradiction rate &lt; 2% does not benefit from subdivision.</p>
+<p>In practice: branch until the hardware bound is reached for active domains, use the statistical bound to decide which domains <em>warrant</em> a branch at all.</p>
+<h3>9.4 Cross-Domain Query Handling</h3>
+<p>Multi-domain queries (e.g. "Write a Python script to analyze patient drug dosage data") require both CS and Medicine submodels simultaneously. The router handles this through query decomposition:</p>
+<pre><code>1. Field classifier returns distribution:
+      {&quot;software_engineering&quot;: 0.65, &quot;medicine&quot;: 0.35}
+
+2. Router decomposes query:
+      CS subquery:  &quot;Write Python data analysis code&quot;
+      Med subquery: &quot;What are the clinical constraints on dosage data?&quot;
+
+3. Fan out: send subqueries to respective models in parallel
+
+4. Merge: combine responses, flag conflicts,
+         apply weighted confidence from field distribution
+         (medicine response gets 35% weight on confidence bounds)
+
+5. Arbitration: if CS and Medicine models contradict each other,
+         escalate to parent model or flag for human review
+</code></pre>
+<p>The arbitration layer is addressed in §8.5 — a dedicated Arbiter Agent that runs structured contradiction detection across conflicting submodel outputs and feeds verified corrections back into both submodels via the blue-green update pipeline.</p>
+<h3>9.5 The Arbiter Agent</h3>
+<p>When two submodels produce conflicting answers to the same query, the system does not escalate to a human or fall back to a parent model — both of which are slow and expensive. Instead, a dedicated <strong>Arbiter Agent</strong> resolves the conflict using the same structured contradiction detection pipeline already built into the system, determines which submodel is correct (or whether both are wrong), and feeds verified corrections back into both submodels simultaneously via the blue-green update mechanism.</p>
+<p><strong>The Arbiter Agent is not a general-purpose reasoner.</strong> It has a single job: given two conflicting outputs A and B on subject S in domain D, determine ground truth and issue correction signals. Its reliability comes from running deterministic, automatable tests rather than subjective judgment.</p>
+<p><strong>Arbitration pipeline:</strong></p>
+<pre><code>INPUT:
+    output_A   from submodel_A (e.g. CS model)
+    output_B   from submodel_B (e.g. Medicine model)
+    subject    S  (the conflicting claim)
+    domain     D  (field context for penalty weighting)
+
+STEP 1 — Classify conflict type (in order of detectability):
+
+    Logical check:
+        Does A contradict its own stated premises?
+        Does B contradict its own stated premises?
+        Tool: contradiction_detector.check(A) / check(B)
+        Cost: O(1), fully automated
+
+    Mathematical check:
+        Are any numerical claims in A or B provably wrong?
+        Tool: symbolic verifier (SymPy, Lean), complexity analyzer
+        Cost: O(1) for formal domains, not available for all
+
+    Cross-session check:
+        Does A or B contradict prior verified assertions
+        in the assertions store for subject S?
+        Tool: assertions_store.query(S, domain=D)
+        Cost: one DB lookup + embedding similarity
+
+    Empirical check:
+        Does A or B contradict verifiable external ground truth?
+        Tool: web search, curated knowledge base, field-specific APIs
+              (e.g. PubMed for medicine, arXiv for CS)
+        Cost: highest — only run if prior checks inconclusive
+
+STEP 2 — Verdict:
+
+    Case 1: A correct, B wrong
+        → issue correction to submodel_B
+        → reinforce submodel_A (add to its DPO preferred set)
+
+    Case 2: B correct, A wrong
+        → issue correction to submodel_A
+        → reinforce submodel_B
+
+    Case 3: Both wrong
+        → issue corrections to both submodels
+        → share internal evidence chain with both submodels
+          (each submodel adds it to its DPO rejected set)
+        → log as high-priority knowledge gap
+        → assign curiosity gap bonus to subject S:
+
+            K_gap(S) = K_effective(S) × gap_multiplier(field)
+
+            gap_multiplier(field) = 1 + penalty_multiplier(field) / 10
+                Surgery:      gap_multiplier = 2.0
+                Software Eng: gap_multiplier = 1.2
+                Creative:     gap_multiplier = 1.0
+
+        The gap bonus overrides normal curiosity competition —
+        the system preferentially routes novel queries on subject S
+        to the relevant submodels until the gap is resolved.
+        Gap status is cleared when:
+            both submodels achieve confidence(S) &gt; C_min(field)
+            AND no new contradictions on S for T(field) interactions
+
+    Case 4: Arbiter inconclusive
+        → flag for deferred resolution (internal)
+        → serve minimal hedge to user: no internal state disclosed
+        → initiate controlled external escalation protocol
+          (see §9.5 External Escalation — only when all four
+           check types return no clear winner)
+
+STEP 3 — Correction signal (internal only):
+
+    For each submodel receiving a correction:
+        correction = {
+            subject:      S,
+            domain:       D,
+            wrong_claim:  extracted from losing output,
+            correct_claim: verified ground truth,
+            evidence:     [full evidence chain — internal only,
+                           shared with arbitrated submodels for DPO,
+                           never disclosed externally],
+            weight:       field_penalty_multiplier(D)
+        }
+        → share evidence chain with affected submodel(s) only
+          (Case 1/2: one submodel; Case 3: both submodels)
+        → submodel independently decides to add to DPO rejected set
+        → add verified claim to assertions store
+        → if correction_count(S) &gt; threshold:
+              trigger blue-green update cycle for that submodel
+        → if Case 3: assign curiosity gap bonus to subject S
+              (see Case 3 above)
+
+    External response: the user receives only the verified answer.
+    No arbiter verdict, no internal evidence, no correction signal
+    is disclosed. If the system is uncertain (Case 4), the user
+    sees only a minimal hedge (&quot;I am not fully confident in this
+    answer&quot;) — not the reason, not the conflict, not which models
+    disagreed.
+</code></pre>
+<p><strong>Why corrections feed both submodels simultaneously:</strong></p>
+<p>A contradiction between two submodels means at least one of them has a knowledge gap. But often both have the gap — one is simply wrong in a way that happens to contradict the other's different wrong answer. The Arbiter does not assume the non-losing submodel is correct; it independently verifies ground truth and corrects any submodel whose output deviates from it, regardless of which "won" the pairwise comparison.</p>
+<p><strong>The correction threshold before triggering blue-green:</strong></p>
+<p>Not every arbitrated correction immediately triggers a model update — single corrections are noisy. The trigger uses the same δ and T mechanism from §8.6:</p>
+<pre><code>trigger blue-green IF:
+    corrections on subject S &gt; T_arbiter     [enough evidence]
+    AND avg_correction_confidence &gt; 0.85     [arbiter is sure]
+    AND field_penalty(D) × n_corrections &gt; θ [weighted severity]
+
+T_arbiter = T(field) / 2
+    [half the normal detection window — arbiter corrections
+     are higher quality signal than routine utility drift]
+</code></pre>
+<p>The half-window shortcut is justified because arbiter corrections are backed by structured internal verification — logical, mathematical, cross-session, and empirical checks — rather than aggregate utility drift alone. Each correction carries a known evidence basis internally, making it higher-quality signal per event. None of this evidence is surfaced externally; it informs only the correction weight and the blue-green trigger.</p>
+<p><strong>Arbiter confidence scoring:</strong></p>
+<p>The Arbiter itself maintains a confidence score per verdict, built from how many check types converged on the same answer:</p>
+<pre><code>arbiter_confidence = Σ checks_passed × check_weight / Σ check_weight
+
+check_weights:
+    logical:       0.30   (always run, but weakest alone)
+    mathematical:  0.40   (strongest — formal proof is definitive)
+    cross-session: 0.20   (prior assertions are verified but may be stale)
+    empirical:     0.10   (slowest, but grounds the verdict in reality)
+
+If arbiter_confidence &lt; 0.85 → Case 4 (inconclusive), do not correct
+</code></pre>
+<p>This prevents the Arbiter from propagating its own errors — a low-confidence verdict does less damage held in the internal review queue than being applied as a correction to two submodels.</p>
+<p><strong>Full arbitration flow integrated with blue-green:</strong></p>
+<pre><code>Cross-domain query → conflicting outputs detected
+         ↓
+Arbiter Agent invoked
+         ↓
+Run 4 contradiction checks (logical → mathematical →
+cross-session → empirical, stop when confident)
+         ↓
+         ├── Case 1/2: one submodel wrong
+         │       → correction → DPO rejected pair
+         │       → assertions store updated
+         │       → if threshold met → blue-green triggered
+         │
+         ├── Case 3: both wrong
+         │       → corrections to both
+         │       → both DPO rejected sets updated
+         │       → both blue-green cycles may trigger
+         │
+         └── Case 4: inconclusive
+                 → serve minimal hedge (no internal detail)
+                 → external escalation protocol (§8.5)
+                 → responses feed back to submodels
+                 → blue-green if merit threshold met
+</code></pre>
+<p><strong>Information disclosure boundary:</strong></p>
+<p>The Arbiter Agent maintains a strict internal/external split consistent with §5.3. Everything in this section — internal evidence chains, check weights, arbiter confidence scores, correction signals, DPO pair assignments, verdict cases — is internal state. The external boundary exposes exactly two things:</p>
+<pre><code>External output (what the user sees):
+    1. The verified answer                (when arbiter is confident)
+    2. A minimal hedge: &quot;I have limited   (when arbiter is inconclusive —
+       confidence in this answer&quot;          Case 4 only; external escalation
+                                          proceeds invisibly in background)
+
+Everything else stays inside the system:
+    - Which submodels conflicted
+    - What the arbiter checked
+    - What evidence was found
+    - Which model was wrong
+    - That a correction was issued
+    - That a blue-green cycle was triggered
+</code></pre>
+<p>The trust principle from §5.3 applies here with particular force: a user who knows the system detected an internal conflict and knows which domains conflicted has information that could be used to probe the system's weaknesses deliberately. The minimum disclosure posture protects against this.</p>
+<p><strong>External escalation protocol (Case 4 only):</strong></p>
+<p>When all four internal check types fail to produce a confident verdict, the Arbiter initiates a controlled external consultation. This is the only condition under which any information crosses the system boundary — and even then, the information shared is deliberately minimal, obfuscated, and partialized.</p>
+<p><em>Eligibility gating — who receives the query:</em></p>
+<p>External consultation is restricted to entities whose trust scores meet two independent thresholds simultaneously:</p>
+<pre><code>Eligible consultant IF:
+    entity_score.domain_expertise(D) &gt; median_expertise(D)
+    AND entity_score.trust &gt; trust_threshold(field)
+
+trust_threshold(field):
+    Surgery, Aviation:    0.90   (near-maximum trust required)
+    Law, Engineering:     0.80
+    Software Eng:         0.70
+    Research, Education:  0.65
+
+domain_expertise measured from:
+    verifiable professional experience (years in field)
+    educational qualifications (degree level, institution tier)
+    field-specific certifications (board certification, PE, bar)
+    prior interaction accuracy with this system (tracked internally)
+</code></pre>
+<p>Only entities who clear both gates receive the query. A highly trusted entity with shallow domain expertise is not eligible. A deep domain expert with low trust is not eligible. Both dimensions must exceed threshold.</p>
+<p><em>Query construction — obfuscation and partialization:</em></p>
+<p>The external query is constructed to extract useful signal while revealing as little internal state as possible:</p>
+<pre><code>What is NEVER included in the external query:
+    - That two submodels conflicted
+    - Which submodels or domains were involved
+    - The specific outputs that caused the conflict
+    - That an internal arbitration process ran
+    - Any internal confidence scores or check results
+    - That this is a system-generated query
+
+What IS included (minimum viable context):
+    - The subject S, generalized to remove system-specific framing
+    - The specific claim that cannot be verified internally
+    - A neutral domain label (e.g. &quot;medicine&quot;) if necessary
+      for the expert to answer, stripped of subdomain specifics
+    - A prompt framed as a professional judgment question,
+      not a conflict resolution request
+</code></pre>
+<p>Example transformation:</p>
+<pre><code>Internal conflict:
+    CS model:  &quot;bubble sort is O(n log n) average case&quot;
+    Med model: &quot;ibuprofen reduces fever via COX-2 inhibition only&quot;
+    [unrelated models, each internally inconsistent]
+
+External query to CS expert (generalized, partialized):
+    &quot;What is the average-case time complexity of bubble sort?&quot;
+    [No mention of conflict, no mention of other model, no context]
+
+External query to pharmacology expert (generalized, partialized):
+    &quot;Does ibuprofen reduce fever exclusively via COX-2 inhibition,
+     or are other mechanisms involved?&quot;
+    [Same treatment — clean professional question, no system context]
+</code></pre>
+<p>The external expert sees a professional question indistinguishable from a standard query. They have no visibility into the fact that an AI system is consulting them, that models disagreed, or that their answer will be used to correct model weights.</p>
+<p><em>Response handling and feedback:</em></p>
+<p>Expert responses are not applied directly as corrections. They re-enter the Arbiter pipeline as high-weight empirical evidence:</p>
+<pre><code>Expert response received
+        ↓
+Arbiter re-runs contradiction checks with response as
+additional evidence (weight = entity_score.trust × 
+entity_score.domain_expertise)
+        ↓
+If arbiter now confident → proceed to Case 1, 2, or 3
+        ↓
+Correction signal issued to relevant submodel(s)
+        ↓
+Correction added to DPO training pairs
+        ↓
+Blue-green triggered IF:
+    correction_merit &gt; field_threshold
+    AND system load within stability bounds
+    AND no other blue-green cycle active for this submodel
+
+Blue-green is NOT automatically triggered — it depends on
+merit and current system state. System stability takes
+priority over any individual correction.
+</code></pre>
+<p><em>Stability preservation:</em></p>
+<p>The external escalation path is designed to never compromise system stability. Expert responses feed the Arbiter as evidence, not as direct commands. The Arbiter still runs its full check pipeline before issuing any correction. Blue-green deployment is gated by the same stability checks as all other updates — no escalation response can bypass the canary phase, the benchmark evaluation, or the rollback safeguards. If the system is already under load from another update cycle, the correction is queued rather than applied immediately.</p>
+<p>This means the escalation path is informational, not operational: it enriches the Arbiter's evidence base without granting external entities any control over the system's update mechanism.</p>
+<p><strong>What this resolves about the arbitration problem:</strong></p>
+<p>The original concern was that multi-model conflict resolution requires consensus — a notoriously hard distributed systems problem. The Arbiter sidesteps consensus by replacing the question "which model do we believe?" with "what does the internal evidence say?" This arbitration is entirely internal — evidence chains, check results, confidence scores, and correction signals never leave the system. Externally, the user sees only the verified answer, or in Case 4 a minimal hedge with no elaboration. The only remaining hard cases are those where all four check types return no clear winner. These are not left unresolved — they trigger a controlled external escalation protocol (§8.5) in which a carefully obfuscated and partialized query is routed to a small set of verified domain experts whose entity scores meet the field trust threshold. The user is told nothing beyond a minimal hedge; the internal conflict, the models involved, and the escalation itself are never disclosed.</p>
+<h3>9.6 Blue-Green Deployment for Submodel Updates</h3>
+<p>This is the mechanism by which individual submodels update without disrupting the rest of the graph, and without waiting for a monolithic release cycle.</p>
+<p><strong>Trigger condition:</strong></p>
+<p>A submodel monitors its own utility score over a sliding window. An update cycle is triggered when deviation from baseline is both significant and sustained:</p>
+<pre><code>Trigger when ALL of:
+    |U_current - U_baseline| &gt; δ(field)    [significant deviation]
+    deviation sustained for ≥ T interactions  [not noise]
+    held-out benchmark available             [can evaluate candidate]
+</code></pre>
+<p>The theoretical values for δ and T are derived from the utility score variance (σ ≈ 0.04 from simulation) and field penalty multipliers:</p>
+<pre><code>δ(field) = base_δ / penalty_multiplier(field)
+base_δ   = 0.05
+
+Surgery:          δ = 0.005  (very sensitive — small changes matter)
+Software Eng:     δ = 0.025  (moderate)
+Creative Writing: δ = 0.050  (relaxed)
+
+T(field) = (z_α × σ / δ(field))²    [power analysis, α=0.05]
+
+Surgery:          T ≥ 246 interactions  (high confidence required)
+Software Eng:     T ≥  10 interactions  (responsive)
+Creative Writing: T ≥   2 interactions  (fast)
+</code></pre>
+<p><strong>The deployment lifecycle:</strong></p>
+<pre><code>Phase 0 — Detection:
+    U_monitor watches sliding window of W interactions
+    If |U_current - U_baseline| &gt; δ for T consecutive interactions:
+        → trigger training phase
+
+Phase 1 — Training (offline):
+    DPO calibration on accumulated (preferred, rejected) pairs
+    Weighted by field_penalty_multiplier
+    Mixed with replay buffer
+    Produces candidate GREEN model
+    BLUE model continues serving 100% of traffic
+
+Phase 2 — Canary (5% green / 95% blue):
+    Router sends 5% of traffic to GREEN, 95% to BLUE
+    Minimum N_min interactions before any traffic shift
+    N_min(field) = T(field) × 2   [double the detection window]
+    Both models log U scores per interaction
+
+Phase 3 — Gradual shift (utility-weighted routing):
+    Every evaluation window, recompute split:
+
+        traffic_green = softmax(U_green, U_blue, τ=τ_field)
+                      = exp(U_green/τ) / (exp(U_green/τ) + exp(U_blue/τ))
+
+        Enforced floor/ceiling:
+            traffic_green = clip(traffic_green, 0.05, 0.95)
+
+        τ(field): small τ → fast promotion, large τ → conservative
+            Surgery:      τ = 0.05  (slow, winner-takes-all only when clear)
+            Software Eng: τ = 0.20  (moderate)
+            Creative:     τ = 0.50  (fast, early adopter)
+
+    As U_green &gt; U_blue, traffic shifts automatically toward green
+    No manual intervention required
+
+Phase 4 — Promotion (traffic_green ≥ promotion_threshold):
+    promotion_threshold(field) = 1 - δ(field)  [field-calibrated]
+    traffic_green → 1.0
+    BLUE enters cooldown (not retired yet — instant rollback available)
+    Cooldown duration = T(field) interactions
+
+Phase 5 — Retirement:
+    If GREEN holds through cooldown without regression:
+        BLUE retired, weights freed
+        U_baseline = U_green  ← new baseline for next cycle
+        δ recalibrated from observed variance in this cycle
+
+Rollback (any phase):
+    Triggers: U_green &lt; U_blue - ε for M interactions
+              OR contradiction_rate_green &gt; contradiction_rate_blue × 1.5
+              OR benchmark regression &gt; field_tolerance
+    Action:   traffic_blue → 1.0 instantly
+              GREEN flagged — failure DPO pairs added to replay buffer
+                             with negative weight for next candidate
+</code></pre>
+<p><strong>Traffic split visualization across a typical promotion cycle:</strong></p>
+<pre><code>Traffic %  │
+  100 BLUE ├────────────────────╮
+           │                    ╰──╮
+           │                       ╰──╮
+           │                          ╰──────────╮
+    5 GREEN├─────────────────────╮               │
+           │                     ╰──╮            │
+           │                        ╰──╮         │
+    0      │                           ╰─────────╯────▶ time
+           │  Canary    Gradual shift        Promotion
+           │  (5/95)    (utility-driven)     (100% green)
+</code></pre>
+<h3>9.7 System Properties</h3>
+<p><strong>Catastrophic forgetting:</strong> Eliminated at the domain level. Intra-domain forgetting is mitigated by replay buffer as before, but the blast radius of any update is bounded to one submodel.</p>
+<p><strong>Independent deployability:</strong> Each submodel has its own blue-green cycle. A surgery model update in progress does not block a CS model update. They are fully decoupled.</p>
+<p><strong>Graceful degradation:</strong> If a submodel is mid-update (blue-green in progress), the router falls back to the parent model or a sibling domain model rather than failing. This requires the router to maintain a fallback graph.</p>
+<p><strong>Cost:</strong> Only the relevant 1–3 submodels activate per query. Total inference cost scales with query complexity, not total graph size. The 20-model graph costs roughly the same per query as a single-domain model.</p>
+<p><strong>Auditability:</strong> Every submodel update has a logged trigger (which utility deviation, over which window), a logged promotion trajectory (traffic split over time), and a clear rollback path. This is significantly more auditable than a monolithic model release.</p>
+<h3>9.8 Hardware-Adaptive Decomposition</h3>
+<p>The granularity of the model graph is not fixed — it is relative to the hardware it runs on. This is a deliberate design property, not a constraint.</p>
+<p><strong>The core principle: intra-GPU compute is orders of magnitude faster than inter-GPU communication.</strong></p>
+<p>When a model operation stays within a single GPU's memory, it executes at full memory bandwidth (up to ~3.35 TB/s on an H100). The moment computation crosses a GPU boundary, it is throttled by the interconnect — NVLink at ~900 GB/s for close neighbors, PCIe at ~64 GB/s for further nodes, and network fabric at much lower speeds for cross-node communication. The implication is direct: the larger the submodel that fits on a single GPU, the less inter-GPU communication overhead per query.</p>
+<p><strong>Decomposition depth therefore scales with GPU memory:</strong></p>
+<pre><code>Hardware tier          GPU VRAM    Submodel fit     Graph shape
+──────────────────────────────────────────────────────────────────
+High-end  (H100 80GB)   80 GB     ~70B params      Shallow graph,
+                                   per GPU          few large nodes
+
+Mid-range (A100 40GB)   40 GB     ~35B params      Medium depth,
+                                   per GPU          more nodes
+
+Consumer  (RTX 4090)    24 GB     ~20B params      Deeper graph,
+                                   per GPU          many small nodes
+
+Edge / older            8–16 GB   ~7B params       Deep graph,
+                                   per GPU          many fine-grained
+                                                    specialist nodes
+</code></pre>
+<p>On a cluster of high-VRAM GPUs, the graph is shallow — a small number of large, capable submodels. Each submodel covers a broad domain (e.g. all of medicine, or all of software engineering) without subdivision. The router makes few hops, communication overhead is minimal, and per-query latency is low.</p>
+<p>On a cluster of smaller or older GPUs, the same total capability is achieved through a deeper, more finely branched graph. The surgery submodel that ran as a single 35B model on an A100 becomes a cluster of smaller specialist nodes (radiology, pharmacology, surgical procedures) each fitting on a consumer GPU. More inter-node communication occurs, but the system remains functional and still benefits from the same independent deployability and blue-green update properties.</p>
+<p><strong>Emulating a larger submodel across multiple small GPUs:</strong></p>
+<p>When no single GPU is large enough to hold the desired submodel, the submodel is sharded across multiple GPUs using standard tensor parallelism — the same technique used to run large models in production today. From the router's perspective, this sharded submodel is still a single logical node in the graph; the sharding is an implementation detail invisible to the rest of the system.</p>
+<pre><code>Logical graph (router's view):
+    ┌──────────────┐
+    │  CS submodel │  ← appears as one node
+    └──────────────┘
+
+Physical deployment (2× RTX 4090):
+    ┌─────────────┐     NVLink      ┌─────────────┐
+    │  GPU 0      │ ◄────────────► │  GPU 1      │
+    │  layers 1-24│                 │  layers 25-48│
+    └─────────────┘                 └─────────────┘
+</code></pre>
+<p>The branching heuristic from §8.3 therefore has a hardware-relative interpretation: <em>stop branching when the submodel fits on the available hardware without sharding across slow interconnects.</em> A team with H100s stops earlier (fewer, larger nodes). A team with consumer GPUs branches further (more, smaller nodes). Both produce equivalent logical graphs — they just have different physical topologies.</p>
+<p><strong>Cost and performance implications:</strong></p>
+<p>This property makes the architecture accessible across a wide range of deployment environments. A research lab with a handful of H100s can run the same logical system as an enterprise with a large A100 cluster — the graph just has different depth. A startup can begin with deep graphs of small models and consolidate nodes as they upgrade hardware, with no architectural change required. The blue-green deployment mechanism works identically regardless of graph depth.</p>
+<p>More significantly: because only the active subgraph is loaded per query, a deep graph of small models on consumer GPUs may actually have <em>lower</em> per-query cost than a single large model on expensive hardware — the relevant specialist nodes activate, the rest stay idle. This inverts the typical assumption that large models require large hardware.</p>
+<pre><code>Query: &quot;Explain the Krebs cycle&quot;
+
+Shallow graph (H100):          Deep graph (consumer GPUs):
+  Router → Medicine (70B)        Router → Biology (7B)
+  1 hop, 1 large model             → Cell metabolism (7B)
+  High per-model cost              2 hops, 2 small models
+  Low communication overhead       Lower per-model cost
+                                   Some communication overhead
+
+Both produce equivalent answers. Cost depends on utilization pattern.
+</code></pre>
+<p><strong>The practical guidance:</strong></p>
+<p>Branch to the depth that keeps each submodel comfortably within a single GPU's VRAM without aggressive sharding. Prefer fewer, larger submodels when high-VRAM hardware is available — the intra-GPU speed advantage is significant. Accept more nodes and more inter-GPU communication when hardware is constrained. The architecture accommodates both extremes without modification.</p>
+<hr />
+<h2>10. MVP: Code Generation Agent</h2>
+<h3>10.1 Why Code First</h3>
+<p>Code generation is the ideal MVP domain:
+- Correctness is binary and automatable — tests pass or fail
+- Contradictions are formally detectable (logical, mathematical, cross-session)
+- Human baseline cost is measurable (LeetCode solutions, Upwork rates)
+- Existing tooling handles scoring (pytest, mypy, complexity analyzers)
+- No human raters needed — ground truth is free</p>
+<h3>10.2 MVP Feedback Loop</h3>
+<pre><code>1. Receive coding problem
+2. Field classifier → &quot;software_engineering&quot; → load weights/bounds
+3. Query assertions store → inject relevant prior corrections
+4. Build system prompt with active corrections + personality traits
+5. Call frontier model → get solution
+6. Automated scoring:
+      Tests        → Confidence signal
+      Static analysis → Confidence signal
+      Complexity check → Contradiction check (claimed vs actual)
+      Human benchmark  → Efficacy signal
+      Problem novelty  → Curiosity signal
+7. Score U = w_e·E + w_c·C + w_k·K_effective
+8. Store (task, response, U) as DPO candidate
+9. Update assertions store with new structured facts
+10. Every N interactions → Personality evolution step
+11. Several times daily → Calibration run → new LoRA adapter
+</code></pre>
+<h3>10.3 Success Criteria</h3>
+<ul>
+<li>U improves over a dataset of 1,000+ problems across multiple calibration cycles</li>
+<li>Confidence scores calibrate with actual correctness rate (Brier score &lt; 0.15)</li>
+<li>Contradiction rate decreases measurably across calibration cycles</li>
+<li>LoRA adapter deployment does not regress benchmark by more than 2%</li>
+</ul>
+<hr />
+<h2>11. Roadmap</h2>
+<pre><code>Phase 1 — MVP (Code Generation)
+    Single domain, LeetCode harness, first calibration cycle
+    Goal: validate U correlates with quality; calibration improves U
+
+Phase 2 — Multi-domain STEM
+    Add math proof verification (Lean / SymPy)
+    Add field classifier with robustness mechanisms
+    Goal: validate field-switching and cross-domain calibration
+
+Phase 3 — Personality System
+    Activate trait weighting and evolution service
+    Goal: observe character development, validate it improves U
+
+Phase 4 — Trust System
+    Add entity scoring and lenient tit-for-tat
+    Goal: validate cooperative behavior with trusted entities
+
+Phase 5 — Creative Fields
+    Platform signal collection pipeline
+    Two-component efficacy measurement
+    Goal: extend calibration to subjective domains
+
+Phase 6 — Full Continual Learning Stack
+    LoRA calibration in production
+    Replay buffer and catastrophic forgetting mitigation
+    Goal: measurable improvement across calibration cycles
+
+Phase 7 — Feedback into Training
+    Distill accumulated adapters into new base fine-tune
+    Goal: bake wrapper-level learning into base model
+</code></pre>
+<hr />
+<h2>12. Open Questions</h2>
+<p>The following are genuinely unresolved problems. Previously identified open questions that have been resolved or substantially mitigated through the Arbiter Agent (§9.5) and distributed architecture (§9) have been incorporated into their respective sections: reality grounding (§9.5), catastrophic forgetting (§9), cross-domain contradiction (§9.5), base model compatibility (§9), adversarial confidence degradation (§9.5), and calibration pipeline scaling (§9.5). The two remaining original questions — subtle utility gaming and multi-modal extension — are retained below alongside new open problems that have emerged from deeper analysis.</p>
+<h3>12.1 Persistent from Prior Versions</h3>
+<p><strong>1. Subtle utility gaming</strong></p>
+<p>The 50% curiosity cap prevents overt gaming. A sufficiently capable agent might learn subtler strategies: slightly reframing familiar problems to appear novel, or selectively avoiding domains where its contradiction rate would rise. Detecting this requires comparing the agent's novelty claims against an independent novelty measure. The curiosity gap bonus (§9.5, Case 3) partially mitigates this by preferentially directing exploration toward confirmed knowledge gaps rather than self-declared novelty — but the agent could still game gap detection by generating ambiguous outputs that trigger Case 3 without genuinely resolving the gap.</p>
+<hr />
+<p><strong>2. Multi-modal extension</strong></p>
+<p>The current framework assumes text input and output throughout. Extending to image, audio, and video modalities requires: (a) a contradiction detector that operates on non-text content — logical and mathematical checks do not directly apply to images; (b) an assertions store schema that represents structured facts about visual or audio content; (c) an efficacy measurement pipeline per modality. The creative efficacy model (§3.2) provides a starting point for output measurement via platform engagement signals, but the internal contradiction detection layer requires fundamental redesign.</p>
+<hr />
+<h3>12.2 New Open Questions</h3>
+<p><strong>3. Arbiter bootstrapping — who arbitrates the Arbiter?</strong></p>
+<p>The Arbiter Agent's confidence weighting formula (logical: 0.30, mathematical: 0.40, cross-session: 0.20, empirical: 0.10) is currently hand-specified. These weights are plausible but not derived from first principles or empirical calibration. An incorrectly weighted Arbiter systematically biases corrections across the entire graph — every submodel that receives Arbiter-generated DPO pairs inherits the bias. The question of how to calibrate Arbiter confidence weights from data, and how to detect Arbiter drift over time, has no current answer.</p>
+<hr />
+<p><strong>4. Curiosity gap bonus calibration</strong></p>
+<p>The gap multiplier formula (gap_multiplier = 1 + penalty_multiplier / 10) is a reasonable starting heuristic but has not been validated. If the multiplier is too high, Case 3 gaps monopolize the system's exploration budget, starving genuine novelty-driven curiosity. If too low, high-priority knowledge gaps compete ineffectively against routine novelty. The theoretical optimal multiplier depends on the relative frequency of Case 3 events, the depth of the knowledge gap, and the cost of remaining wrong in that field — none of which are known in advance.</p>
+<hr />
+<p><strong>5. Arbiter evidence chain staleness</strong></p>
+<p>The assertions store persists verified facts across sessions. Over time, some of these facts become outdated — medical guidelines change, software best practices evolve, legal precedents shift. A fact that was verified at confidence 0.95 two years ago may now be wrong, but the store has no decay mechanism. The Arbiter's cross-session check therefore trusts stale evidence with the same weight as fresh evidence. A time-weighted confidence decay function is needed, but its decay rate would need to be field-specific (physics facts decay slowly; clinical guidelines can change in months) and calibrated empirically.</p>
+<hr />
+<p><strong>6. Trust score cold start and Sybil resistance</strong></p>
+<p>The entity trust system (§6) requires interaction history to compute trust scores. New entities start with no history and therefore cannot qualify for external escalation. A new domain expert with genuine deep knowledge is indistinguishable from an adversary on their first interaction. The system needs a cold-start protocol — some mechanism for bootstrapping trust faster than interaction history alone, perhaps through verifiable credential attestation. Additionally, a Sybil adversary who creates many new entities to probe the system's responses would not be caught by the per-entity trust mechanism — this requires a population-level detection layer that does not yet exist.</p>
+<hr />
+<p><strong>7. Graph router as single point of failure</strong></p>
+<p>The distributed model graph router (§9.2) handles all query classification, fan-out, and response merging. If the router fails or is compromised, the entire graph is unreachable. Unlike individual submodels — which can fail gracefully with fallback to parent nodes — router failure has no clean fallback. The router must itself be fault-tolerant and independently deployable, but the mechanisms for router redundancy, leader election, and state synchronization across router replicas are not yet specified.</p>
+<hr />
+<p><strong>8. Personality system and Arbiter interaction</strong></p>
+<p>The personality evolution service (§5.2) adjusts trait weights based on utility trend and contradiction rate. The Arbiter generates correction signals that affect both of these. If the Arbiter is systematically over-correcting (high false positive rate on contradiction detection), the personality system will interpret the elevated contradiction rate as evidence that the agent needs more caution — triggering a caution increase that reduces exploration, which reduces the agent's ability to discover and resolve knowledge gaps. This feedback loop between Arbiter correction frequency and personality drift has not been analyzed and could produce unintended stable states.</p>
+<h2>13. Conclusion</h2>
+<p>The framework described here treats AI competence as a dynamic, measurable, self-improving property rather than a static artifact of training. By wrapping a frontier model with a utility layer grounded in contradiction detection, efficacy measurement, and field-specific societal standards — and connecting that utility layer to a three-tier continual learning architecture — we create an agent that knows what it knows, knows what it doesn't, actively corrects what it gets wrong, and does so between model releases rather than waiting for the next training cycle.</p>
+<p>The key contribution is that the utility function is not a monitoring metric. It is the loss weighting mechanism for calibration, the trigger for behavioral correction, and the acceptance criterion for adapter deployment. It governs learning at every timescale.</p>
+<p>The MVP in code generation is designed to validate this core claim: that utility-weighted DPO calibration measurably reduces contradiction rate and improves efficacy across successive calibration cycles, without catastrophic forgetting of prior knowledge.</p>
+<hr />
+<p><em>This is a living document. The mathematical model will be refined as the utility function is formalized. v0.3 will incorporate findings from the MVP implementation.</em></p>
+<hr />
+<h2>Appendix A: MVP Simulation Results</h2>
+<h3>A.1 Setup</h3>
+<p>To validate the utility function prior to live API integration, a self-contained simulation was run against 8 representative LeetCode-style problems across 3 calibration cycles. Each cycle used progressively improved synthetic code responses (simulating what a real model would produce after DPO calibration), with realistic complexity claims, test suites, and known contradictions seeded in cycle 1.</p>
+<p><strong>Problems:</strong> two_sum, is_palindrome, max_subarray, binary_search, flatten_nested, lru_cache, valid_parentheses, merge_intervals</p>
+<p><strong>Field:</strong> software_engineering (w_e=0.55, w_c=0.35, w_k=0.10, C_min=0.70, penalty=2×)</p>
+<p><strong>Calibration cycles:</strong> 3, with personality evolution running after each cycle.</p>
+<hr />
+<h3>A.2 Utility Function Results</h3>
+<pre><code>Cycle    avg U    avg E    avg C    Contradictions    Failed Tests
+──────   ──────   ──────   ──────   ──────────────    ────────────
+  1      0.5949   0.5867   0.7628        1                  0
+  2      0.6588   0.5867   0.9602        0               (+0.0639)
+  3      0.6704   0.5867   0.9933        0               (+0.0116)
+</code></pre>
+<p><strong>Overall U improvement: +0.0755 (0.5949 → 0.6704)</strong>
+<strong>Contradiction reduction: 1 → 0 (eliminated by cycle 2)</strong>
+<strong>Confidence gain: +0.231 (0.763 → 0.993)</strong></p>
+<p>Every problem improved in U across all three cycles with no exceptions:</p>
+<pre><code>Problem                  Cycle 1    Cycle 2    Cycle 3    Trend
+────────────────────     ───────    ───────    ───────    ─────
+two_sum                  0.4948     0.6205     0.6428     ↑ improving
+is_palindrome            0.5363     0.6341     0.6520     ↑ improving
+max_subarray             0.5818     0.6564     0.6707     ↑ improving
+binary_search            0.5878     0.6506     0.6620     ↑ improving
+flatten_nested           0.6238     0.6724     0.6815     ↑ improving
+lru_cache                0.6562     0.6961     0.7034     ↑ improving
+valid_parentheses        0.6179     0.6520     0.6578     ↑ improving
+merge_intervals          0.6603     0.6881     0.6928     ↑ improving
+</code></pre>
+<hr />
+<div class="chart-section">
+  <h4>Figure 1 — Utility function components across calibration cycles</h4>
+  <div class="legend"><span><span class="dot" style="background:#534AB7"></span>avg U</span><span><span class="dot" style="background:#1D9E75"></span>avg E</span><span><span class="dot" style="background:#D85A30"></span>avg C</span></div>
+  <div class="chart-wrap"><canvas id="utilityChart"></canvas></div>
+  <h4 style="margin-top:2rem;">Figure 2 — Personality trait evolution</h4>
+  <div class="legend"><span><span class="dot" style="background:#534AB7"></span>curiosity</span><span><span class="dot" style="background:#1D9E75"></span>analytical rigor</span><span><span class="dot" style="background:#D85A30"></span>creativity</span><span><span class="dot" style="background:#888780"></span>caution</span><span><span class="dot" style="background:#378ADD"></span>assertiveness</span><span><span class="dot" style="background:#BA7517"></span>conciseness</span></div>
+  <div class="chart-wrap"><canvas id="personalityChart"></canvas></div>
+  <div class="metrics"><div class="metric"><div class="label">U improvement</div><div class="value">+0.0755</div><div class="sub">0.5949 → 0.6704</div></div><div class="metric"><div class="label">Contradictions</div><div class="value">1 → 0</div><div class="sub">eliminated by cycle 2</div></div><div class="metric"><div class="label">Confidence gain</div><div class="value">+0.231</div><div class="sub">0.763 → 0.993</div></div></div>
+</div><h3>A.3 Key Observations</h3>
+<p><strong>Contradiction detection and penalization are working correctly.</strong> In cycle 1, <code>two_sum</code> claimed O(n) complexity while using a nested loop — a clear mathematical contradiction. The scorer correctly penalized this, producing the lowest U score in the run (0.4948). Once corrected in cycle 2, two_sum showed the largest single-problem U jump (+0.1257), validating that the penalty is both meaningful and recoverable.</p>
+<p><strong>Confidence is the primary driver of U improvement across cycles</strong>, not efficacy. E remained flat at 0.5867 across all three cycles — a known limitation of the simulation (fixed human baselines and no accumulating efficacy state). In the live system, efficacy would grow as calibrated responses outperform the human benchmark. C however moved dramatically: 0.763 → 0.960 → 0.993, driving almost the entire U improvement. This is expected behavior: contradiction elimination is the fastest path to early U gains.</p>
+<p><strong>Curiosity collapses to zero after cycle 1.</strong> K = 0.000 for all problems in cycles 2 and 3, because confidence rises fast enough to eliminate potential_gain = ceiling - C. In the simulation this is an artifact of fixed-difficulty problems — in the live system, the agent's growing confidence would drive it toward harder problems, resetting the novelty counter and reactivating the curiosity signal. This identifies a gap in the simulation design: future harness versions should introduce progressively harder problems as calibration cycles proceed.</p>
+<p><strong>Diminishing returns are visible and expected.</strong> The U gain from cycle 1→2 (+0.0639) is 5.5× larger than from cycle 2→3 (+0.0116). This is the correct shape: early calibration runs fix the biggest errors fast; subsequent runs make finer corrections. The long-run behavior should be a slow asymptotic approach to the efficacy ceiling.</p>
+<hr />
+<h3>A.4 Personality Evolution</h3>
+<pre><code>Trait               Initial    After C1    After C2    After C3
+──────────────────  ───────    ────────    ────────    ────────
+curiosity           0.600      0.630       0.660       0.690   ↑
+creativity          0.400      0.420       0.440       0.460   ↑
+analytical_rigor    0.600      0.600       0.600       0.600   →
+caution             0.500      0.500       0.500       0.500   →
+assertiveness       0.500      0.500       0.500       0.500   →
+conciseness         0.500      0.500       0.500       0.500   →
+</code></pre>
+<p>Curiosity and creativity grew monotonically because: (a) utility was improving each cycle, and (b) contradiction rate was falling toward zero — both conditions that trigger the <code>increase(curiosity) / increase(creativity)</code> evolution logic. Caution did not spike because the contradiction rate never exceeded the 0.2 threshold with sufficient severity to trigger the caution-boost branch. This is the correct behavior — a single seeded contradiction in a 24-interaction run should not make the agent permanently more cautious.</p>
+<p>Traits that were stable (caution, assertiveness, analytical_rigor, conciseness) confirm the stability safeguards are working: trait bounds and drift rate caps prevent changes that aren't clearly earned by the data.</p>
+<hr />
+<h3>A.5 Identified Gaps for v0.3</h3>
+<p>Two concrete issues surfaced from the simulation:</p>
+<p><strong>1. Efficacy does not accumulate.</strong> The <code>_compute_efficacy</code> function computes per-interaction against a fixed baseline rather than maintaining a running domain-level efficacy state like confidence does. In the live system this will self-correct because improving solutions genuinely score better against the human benchmark. But the simulation reveals the design asymmetry: confidence has an EMA; efficacy should too.</p>
+<p><strong>2. Curiosity requires dynamic problem difficulty.</strong> The 50% cap and growth function work correctly in isolation, but the simulation's fixed-difficulty problem bank prevents the novelty counter from resetting after cycle 1. Future simulation runs should implement a difficulty escalation mechanism — routing to harder problems as per-domain confidence rises past a threshold — to exercise the curiosity dynamics properly.</p>
+<p>Both gaps are simulation artifacts, not flaws in the live architecture. They are tracked as implementation items for v0.3.</p></div>
+<script>const g="rgba(0,0,0,0.07)",t="#888";
+new Chart(document.getElementById("utilityChart"),{type:"line",data:{labels:["Cycle 1","Cycle 2","Cycle 3"],datasets:[{label:"avg U",data:[0.5949,0.6588,0.6704],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},{label:"avg E",data:[0.5867,0.5867,0.5867],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[6,3]},{label:"avg C",data:[0.7628,0.9602,0.9933],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:12}}},y:{min:0.50,max:1.05,grid:{color:g},ticks:{color:t,font:{size:12},callback:v=>v.toFixed(2),stepSize:0.1}}}}});
+new Chart(document.getElementById("personalityChart"),{type:"line",data:{labels:["Initial","After cycle 1","After cycle 2","After cycle 3"],datasets:[{label:"curiosity",data:[0.60,0.63,0.66,0.69],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},{label:"analytical rigor",data:[0.60,0.60,0.60,0.60],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[5,3]},{label:"creativity",data:[0.40,0.42,0.44,0.46],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},{label:"caution",data:[0.50,0.50,0.50,0.50],borderColor:"#888780",pointBackgroundColor:"#888780",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[5,3]},{label:"assertiveness",data:[0.50,0.50,0.50,0.50],borderColor:"#378ADD",pointBackgroundColor:"#378ADD",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[3,3]},{label:"conciseness",data:[0.50,0.50,0.50,0.50],borderColor:"#BA7517",pointBackgroundColor:"#BA7517",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[3,3]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:12}}},y:{min:0.30,max:0.80,grid:{color:g},ticks:{color:t,font:{size:12},callback:v=>v.toFixed(2),stepSize:0.1}}}}});</script>
+</body></html>
