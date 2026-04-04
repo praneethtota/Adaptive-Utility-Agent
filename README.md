@@ -1,3 +1,12 @@
+## License
+
+**Code:** GNU General Public License v3.0 — see `LICENSE`  
+**Whitepaper:** Creative Commons Attribution 4.0 — see `LICENSE-CC-BY-4.0`
+
+If you build on this work, please cite:
+> Tota, P. (2026). *Adaptive Utility Agents: A Framework for 
+> Self-Optimizing AI Systems*. GitHub. https://github.com/praneethtota/Adaptive-Utility-Agent
+
 # Adaptive Utility Agent — MVP
 
 A wrapper around frontier language models that governs behavior through a
