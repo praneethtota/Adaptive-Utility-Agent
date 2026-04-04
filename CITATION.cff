@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+authors:
+  - family-names: Tota
+    given-names: Praneeth
+title: "Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems"
+date-released: 2026-04-04
+license: CC-BY-4.0
+url: "https://github.com/praneethtota/Adaptive-Utility-Agent"
