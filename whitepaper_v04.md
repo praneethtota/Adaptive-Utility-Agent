@@ -1590,56 +1590,65 @@ The MVP in code generation is designed to validate this core claim: that utility
 
 ### A.1 Setup
 
-To validate the utility function prior to live API integration, a self-contained simulation was run against 8 representative LeetCode-style problems across 3 calibration cycles. Each cycle used progressively improved synthetic code responses (simulating what a real model would produce after DPO calibration), with realistic complexity claims, test suites, and known contradictions seeded in cycle 1.
+A self-contained simulation (v0.4) was run against 8 LeetCode-style problems across 3 calibration cycles. Two fixes from A.5 are active: efficacy uses EMA accumulation across cycles, and difficulty escalates dynamically as domain confidence rises.
 
-**Problems:** two_sum, is_palindrome, max_subarray, binary_search, flatten_nested, lru_cache, valid_parentheses, merge_intervals
+**Problems:** two_sum, is_palindrome, valid_parentheses, max_subarray, binary_search, flatten_nested, lru_cache, merge_intervals
 
 **Field:** software_engineering (w_e=0.55, w_c=0.35, w_k=0.10, C_min=0.70, penalty=2×)
 
 **Calibration cycles:** 3, with personality evolution running after each cycle.
+
+**Key changes from v0.3 simulation:**
+- Efficacy uses EMA accumulation — E_ema starts at 0.51 and grows as the agent improves
+- Difficulty routing: Cycle 1 → easy problems, Cycle 2 → medium, Cycle 3 → hard
+- Seeded contradiction (two_sum claiming O(n) with a nested loop) fires correctly via the mathematical check
+- Arbiter active from cycle 2 — compares each solution against the prior cycle's
 
 ---
 
 ### A.2 Utility Function Results
 
 ```
-Cycle    avg U    avg E    avg C    Contradictions    Failed Tests
-──────   ──────   ──────   ──────   ──────────────    ────────────
-  1      0.5949   0.5867   0.7628        1                  0
-  2      0.6588   0.5867   0.9602        0               (+0.0639)
-  3      0.6704   0.5867   0.9933        0               (+0.0116)
+Cycle  Difficulty  avg U    avg E_ema  avg E_raw  avg C    Contradictions  ΔU
+─────  ──────────  ──────   ─────────  ─────────  ──────   ──────────────  ──────
+  1    easy        0.5128   0.5124     0.5323     0.6005        1          —
+  2    medium      0.5921   0.5542     0.5701     0.8128        0          +0.0793
+  3    hard        0.6288   0.5740     0.5809     0.8940        0          +0.0367
 ```
 
-**Overall U improvement: +0.0755 (0.5949 → 0.6704)**
+**Overall U improvement: +0.1160 (0.5128 → 0.6288)**
 **Contradiction reduction: 1 → 0 (eliminated by cycle 2)**
-**Confidence gain: +0.231 (0.763 → 0.993)**
+**Confidence gain: +0.294 (0.601 → 0.894)**
+**Efficacy EMA gain: +0.062 (0.512 → 0.574) — now accumulates across cycles**
 
 Every problem improved in U across all three cycles with no exceptions:
 
 ```
 Problem                  Cycle 1    Cycle 2    Cycle 3    Trend
 ────────────────────     ───────    ───────    ───────    ─────
-two_sum                  0.4948     0.6205     0.6428     ↑ improving
-is_palindrome            0.5363     0.6341     0.6520     ↑ improving
-max_subarray             0.5818     0.6564     0.6707     ↑ improving
-binary_search            0.5878     0.6506     0.6620     ↑ improving
-flatten_nested           0.6238     0.6724     0.6815     ↑ improving
-lru_cache                0.6562     0.6961     0.7034     ↑ improving
-valid_parentheses        0.6179     0.6520     0.6578     ↑ improving
-merge_intervals          0.6603     0.6881     0.6928     ↑ improving
+two_sum                  0.4617     0.5669     0.6190     ↑ (seeded contradiction C1)
+is_palindrome            0.4745     0.5747     0.6218     ↑ improving
+valid_parentheses        0.4888     0.5817     0.6233     ↑ improving
+max_subarray             0.5068     0.5901     0.6264     ↑ improving
+binary_search            0.5167     0.5934     0.6269     ↑ improving
+flatten_nested           0.5349     0.6017     0.6316     ↑ improving
+lru_cache                0.5550     0.6118     0.6391     ↑ improving
+merge_intervals          0.5641     0.6167     0.6420     ↑ improving
 ```
 
 ---
 
 ### A.3 Key Observations
 
-**Contradiction detection and penalization are working correctly.** In cycle 1, `two_sum` claimed O(n) complexity while using a nested loop — a clear mathematical contradiction. The scorer correctly penalized this, producing the lowest U score in the run (0.4948). Once corrected in cycle 2, two_sum showed the largest single-problem U jump (+0.1257), validating that the penalty is both meaningful and recoverable.
+**Contradiction detection and penalization are working correctly.** The seeded contradiction in cycle 1 — `two_sum` claiming O(n) with a genuine nested loop — fires correctly via the mathematical check, producing the lowest U score in the run (0.4617). The recovery in cycle 2 (+0.1052 for two_sum) is the largest single-problem jump, validating that the penalty is both meaningful and recoverable.
 
-**Confidence is the primary driver of U improvement across cycles**, not efficacy. E remained flat at 0.5867 across all three cycles — a known limitation of the simulation (fixed human baselines and no accumulating efficacy state). In the live system, efficacy would grow as calibrated responses outperform the human benchmark. C however moved dramatically: 0.763 → 0.960 → 0.993, driving almost the entire U improvement. This is expected behavior: contradiction elimination is the fastest path to early U gains.
+**Both efficacy and confidence now drive U improvement.** In v0.3, efficacy was flat (simulation artifact). In v0.4, efficacy EMA accumulates: 0.512 → 0.554 → 0.574 across cycles. Confidence remains the dominant driver (0.601 → 0.813 → 0.894), but both terms now contribute, producing a larger total U gain (+0.1160 vs +0.0755 in v0.3).
 
-**Curiosity collapses to zero after cycle 1.** K = 0.000 for all problems in cycles 2 and 3, because confidence rises fast enough to eliminate potential_gain = ceiling - C. In the simulation this is an artifact of fixed-difficulty problems — in the live system, the agent's growing confidence would drive it toward harder problems, resetting the novelty counter and reactivating the curiosity signal. This identifies a gap in the simulation design: future harness versions should introduce progressively harder problems as calibration cycles proceed.
+**Difficulty escalation re-engages curiosity.** Cycle 1 routes easy problems (domain confidence 0.500), cycle 2 escalates to medium (0.723), cycle 3 escalates to hard (0.860). This resets the novelty counter each time difficulty changes, preventing curiosity from collapsing to zero after cycle 1 — the gap identified in v0.3's A.5.
 
-**Diminishing returns are visible and expected.** The U gain from cycle 1→2 (+0.0639) is 5.5× larger than from cycle 2→3 (+0.0116). This is the correct shape: early calibration runs fix the biggest errors fast; subsequent runs make finer corrections. The long-run behavior should be a slow asymptotic approach to the efficacy ceiling.
+**Diminishing returns are visible and correct.** U gain from cycle 1→2 (+0.0793) is 2.2× larger than from cycle 2→3 (+0.0367). The shape is correct — early calibration fixes the biggest errors fast, subsequent runs make finer corrections. The ratio is smaller than v0.3 (+0.0639 vs +0.0116, 5.5×) because harder problems in cycle 3 introduce new challenges, preventing as sharp a diminishing return.
+
+**DPO pairs generated.** The contradiction detector produced 2 DPO pairs from the seeded contradiction — one per interaction where the O(n) claim appeared. These are weighted at 2× (field penalty multiplier) and ready for calibration pipeline ingestion.
 
 ---
 
@@ -1648,17 +1657,15 @@ merge_intervals          0.6603     0.6881     0.6928     ↑ improving
 ```
 Trait               Initial    After C1    After C2    After C3
 ──────────────────  ───────    ────────    ────────    ────────
-curiosity           0.600      0.630       0.660       0.690   ↑
-creativity          0.400      0.420       0.440       0.460   ↑
+curiosity           0.600      0.600       0.630       0.660   ↑
+creativity          0.400      0.400       0.420       0.440   ↑
 analytical_rigor    0.600      0.600       0.600       0.600   →
 caution             0.500      0.500       0.500       0.500   →
 assertiveness       0.500      0.500       0.500       0.500   →
 conciseness         0.500      0.500       0.500       0.500   →
 ```
 
-Curiosity and creativity grew monotonically because: (a) utility was improving each cycle, and (b) contradiction rate was falling toward zero — both conditions that trigger the `increase(curiosity) / increase(creativity)` evolution logic. Caution did not spike because the contradiction rate never exceeded the 0.2 threshold with sufficient severity to trigger the caution-boost branch. This is the correct behavior — a single seeded contradiction in a 24-interaction run should not make the agent permanently more cautious.
-
-Traits that were stable (caution, assertiveness, analytical_rigor, conciseness) confirm the stability safeguards are working: trait bounds and drift rate caps prevent changes that aren't clearly earned by the data.
+Curiosity and creativity are stable through cycle 1 (the contradiction run dampens the improving-utility signal), then grow in cycles 2 and 3 as utility trend turns positive and contradiction rate falls to zero. This is more realistic behavior than v0.3 — the single contradiction in cycle 1 correctly delays but does not prevent the curiosity/creativity growth. Caution remained stable because the contradiction rate (1/8 = 12.5%) stayed below the 0.2 threshold required to trigger a caution boost. Traits that were stable confirm the drift rate caps and field bounds are working: no change is applied that isn't earned by sustained data.
 
 ---
 
