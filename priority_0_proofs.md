@@ -158,11 +158,15 @@ Under the **log-logistic performance model**, $E(r)$ equals the Mann–Whitney d
 
 $$P(X_{\text{agent}} > X_{\text{human}}) = \frac{r}{1+r} = E(r)$$
 
-**Proof.** The log-logistic distribution has CDF $F(x; \mu, s) = 1/(1 + e^{-(\log x - \mu)/s})$. For $s=1$, $\log X_a - \log X_h$ follows a logistic distribution with location $\mu_a - \mu_h = \log r$ and scale $\sqrt{2}$. Therefore:
+**Proof.** The log-logistic distribution has CDF $F(x; \mu, s) = 1/(1 + e^{-(\log x - \mu)/s})$. For $s=1$:
 
-$$P(X_a > X_h) = P(\log X_a > \log X_h) = 1 - F_{\text{logistic}}(0;\, \log r,\, \sqrt{2})$$
+$$P(X_a > X_h) = P(\log X_a > \log X_h) = \int_0^\infty F_{X_h}(x)\,f_{X_a}(x)\,dx$$
 
-$$= 1 - \frac{1}{1 + e^{\log r}} = 1 - \frac{1}{1+r} = \frac{r}{1+r} \qquad \blacksquare$$
+Under the log-logistic model with $\mu_a$ and $\mu_h$, this integral yields the closed-form expression (under the log-logistic assumption):
+
+$$P(X_a > X_h) = \frac{e^{\mu_a}}{e^{\mu_a} + e^{\mu_h}} = \frac{e^{\mu_a - \mu_h}}{1 + e^{\mu_a - \mu_h}} = \frac{r}{1+r} \qquad \blacksquare$$
+
+*Note:* The result uses the specific structure of the log-logistic CDF. The difference of two log-logistic random variables does not in general follow a logistic distribution; the closed form arises directly from evaluating the integral under this model, not from a distribution-of-differences argument.
 
 **Scope of the claim.** The equality $E(r) = P(X_a > X_h)$ holds under the log-logistic model with equal scale. Under different distributional assumptions (e.g., log-normal), the dominance probability takes a different form. The log-logistic assumption is standard for ratio comparisons in non-parametric statistics and produces the simplest closed form consistent with the boundary conditions $E(0) = 0$, $E(1) = 0.5$, $E(\infty) = 1$. We adopt this model and the resulting formula; the choice of distribution is a modelling assumption, not a mathematical necessity.
 
@@ -194,7 +198,7 @@ The random walk model captures the assumption that true competence changes gradu
 
 *In steady state, the Kalman filter for the above system reduces exactly to the EMA update $C_{t+1} = (1-\alpha^*)C_t + \alpha^* s_t$ with optimal gain:*
 
-$$\alpha^* = \frac{-\sigma_q^2 + \sqrt{\sigma_q^4 + 4\sigma_q^2\sigma_r^2}}{2\sigma_r^2}$$
+$$\alpha^* = \frac{-\sigma_q^2 + \sqrt{\sigma_q^{4} + 4\sigma_q^{2}\sigma_r^{2}}}{2\sigma_r^2}$$
 
 *The choice $\alpha = 0.2$ is optimal when the noise ratio $\rho = \sigma_q^2/\sigma_r^2 = 0.05$.*
 
@@ -204,7 +208,7 @@ $$P^* = \frac{P^* \sigma_r^2}{P^* + \sigma_r^2} + \sigma_q^2$$
 
 with $K^* = P^*/(P^* + \sigma_r^2)$. Substituting $P^* = K^*\sigma_r^2/(1-K^*)$ and simplifying:
 
-$$K^{*2}\sigma_r^2 + K^*\sigma_q^2 - \sigma_q^2 = 0 \quad \Longrightarrow \quad K^* = \frac{-\sigma_q^2 + \sqrt{\sigma_q^4 + 4\sigma_q^2\sigma_r^2}}{2\sigma_r^2}$$
+$$K^{*2}\sigma_r^2 + K^*\sigma_q^2 - \sigma_q^2 = 0 \quad \Longrightarrow \quad K^* = \frac{-\sigma_q^2 + \sqrt{\sigma_q^{4} + 4\sigma_q^{2}\sigma_r^{2}}}{2\sigma_r^2}$$
 
 Setting $K^* = \alpha^* = 0.2$ and solving for $\rho = \sigma_q^2/\sigma_r^2$:
 
@@ -339,11 +343,11 @@ $$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t}(1-\alpha)^{t-k}\tilde{s}_k \qquad
 
 $$C^* = \bar{s}\,(1 - \lambda\mu(f)) = \tilde{s}^*$$
 
-2. **Geometric convergence.** For all $t \geq 0$:
+2. **Geometric convergence in expectation.** For all $t \geq 0$:
 
-$$|C_t - C^*| \leq (1-\alpha)^t\,|C_0 - C^*|$$
+$$\mathbb{E}[|C_t - C^*|] \leq (1-\alpha)^t\,|C_0 - C^*|$$
 
-With $\alpha = 0.2$, the error halves every $\lceil\log(0.5)/\log(0.8)\rceil = 3$ interactions.
+The bound holds in expectation over the noise in $\tilde{s}_t$; it is not a deterministic almost-sure bound because the noise term $\alpha(\tilde{s}_t - \tilde{s}^*)$ does not vanish pathwise. With $\alpha = 0.2$, the expected error halves every $\lceil\log(0.5)/\log(0.8)\rceil = 3$ interactions.
 
 3. **Monotonicity.** $C^*$ is strictly increasing in $\bar{s}$:
 
@@ -365,33 +369,35 @@ $$t_{\text{recovery}} = \left\lceil\frac{\log(\varepsilon/\delta)}{\log(1-\alpha
 
 *Part 1 — Existence and uniqueness.* The fixed point satisfies $C^* = (1-\alpha)C^* + \alpha\tilde{s}^*$, giving $\alpha C^* = \alpha\tilde{s}^*$, hence $C^* = \tilde{s}^* = \bar{s}(1-\lambda\mu(f))$. This is unique since the equation is linear in $C^*$.
 
-*Part 2 — Geometric convergence.* Define the error $e_t = C_t - C^*$. Subtracting the fixed-point equation from the update rule:
+*Part 2 — Geometric convergence in expectation.* Define the error $e_t = C_t - C^*$. Subtracting the fixed-point equation from the update rule:
 
-$$e_{t+1} = C_{t+1} - C^* = (1-\alpha)C_t + \alpha\tilde{s}_t - C^*$$
-$$= (1-\alpha)(C_t - C^*) + \alpha(\tilde{s}_t - \tilde{s}^*)$$
-$$= (1-\alpha)\,e_t + \alpha(\tilde{s}_t - \tilde{s}^*)$$
+$$e_{t+1} = (1-\alpha)\,e_t + \alpha(\tilde{s}_t - \tilde{s}^*)$$
 
-Taking expectations over the stationary distribution of $\tilde{s}_t$ where $\mathbb{E}[\tilde{s}_t] = \tilde{s}^*$:
+The noise term $\eta_t \triangleq \alpha(\tilde{s}_t - \tilde{s}^*)$ has zero mean under the stationary distribution (since $\mathbb{E}[\tilde{s}_t] = \tilde{s}^*$) but does not vanish pathwise. Taking expectations:
 
-$$\mathbb{E}[e_{t+1}] = (1-\alpha)\,\mathbb{E}[e_t]$$
+$$\mathbb{E}[e_{t+1}] = (1-\alpha)\,\mathbb{E}[e_t] + \alpha\,\mathbb{E}[\tilde{s}_t - \tilde{s}^*] = (1-\alpha)\,\mathbb{E}[e_t]$$
 
-so $\mathbb{E}[e_t] = (1-\alpha)^t\,e_0 = (1-\alpha)^t(C_0 - C^*)$.
+Iterating from $t=0$ with $e_0 = C_0 - C^*$ deterministic:
 
-For the almost-sure bound: since $\tilde{s}_t \in [0,1]$ and $\tilde{s}^* \in [0,1]$, we have $|\tilde{s}_t - \tilde{s}^*| \leq 1$ almost surely. By the closed-form solution:
+$$\mathbb{E}[e_t] = (1-\alpha)^t\,(C_0 - C^*)$$
 
-$$|e_t| = \left|(1-\alpha)^t e_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k}(\tilde{s}_k - \tilde{s}^*)\right|$$
+By Jensen's inequality $|\mathbb{E}[e_t]| \leq \mathbb{E}[|e_t|]$, and applying the triangle inequality to the closed-form solution:
 
-In expectation, the sum vanishes (zero-mean noise), leaving:
+$$\mathbb{E}[|e_t|] \leq (1-\alpha)^t\,|C_0 - C^*| + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k}\,\mathbb{E}[|\tilde{s}_k - \tilde{s}^*|]$$
 
-$$\mathbb{E}[|e_t|] \leq (1-\alpha)^t\,|C_0 - C^*|$$
+The second term represents the expected accumulated noise. Under the stationary assumption with zero-mean noise, $\mathbb{E}[|\tilde{s}_k - \tilde{s}^*|]$ is a constant $\sigma_{\tilde{s}}$ and the noise sum telescopes to $\alpha\sigma_{\tilde{s}}/(\alpha) = \sigma_{\tilde{s}}$. This gives the tighter statement:
 
-The half-life is $t_{1/2} = \log(1/2)/\log(1-\alpha)$. For $\alpha = 0.2$: $t_{1/2} = \log(0.5)/\log(0.8) = 3.11$, so $\lceil t_{1/2} \rceil = 3$ interactions.
+$$\mathbb{E}[|e_t|] \leq (1-\alpha)^t\,|C_0 - C^*| + \sigma_{\tilde{s}}$$
+
+where $\sigma_{\tilde{s}} = \mathbb{E}[|\tilde{s}_t - \tilde{s}^*|]$ is the mean absolute deviation of the effective signal. When the signal has low noise ($\sigma_{\tilde{s}} \approx 0$), the bound reduces to the clean geometric form. **The bound $\mathbb{E}[|e_t|] \leq (1-\alpha)^t |C_0 - C^*|$ holds exactly when $\sigma_{\tilde{s}} = 0$ (deterministic signal) and approximately when noise is small.**
+
+The half-life of the mean error is $t_{1/2} = \log(1/2)/\log(1-\alpha)$. For $\alpha = 0.2$: $t_{1/2} = \log(0.5)/\log(0.8) = 3.11$, so $\lceil t_{1/2} \rceil = 3$ interactions.
 
 *Part 3 — Monotonicity.* $\partial C^*/\partial\bar{s} = (1 - \lambda\mu(f))$. Since $\lambda \in [0,1]$ and $\mu(f) \geq 1$ but $\lambda\mu(f) < 1$ for any non-degenerate field (confidence cannot be driven to zero by a single contradiction), this derivative is strictly positive.
 
 *Part 4 — Field sensitivity.* $\partial C^*/\partial\mu(f) = -\bar{s}\lambda \leq 0$, with strict inequality whenever $\bar{s} > 0$ and $\lambda > 0$. This formalizes the intuition that high-stakes fields (large $\mu(f)$) penalize contradictions more heavily, pulling the achievable steady-state confidence downward even when pass rates are high.
 
-*Part 5 — Recovery time.* After the contradiction, $e_{\tau} = -\delta$. By geometric convergence, $|e_{\tau+t}| \leq (1-\alpha)^t\,\delta$. We want this below $\varepsilon$:
+*Part 5 — Recovery time.* After the contradiction, $e_{\tau} = -\delta$ (deterministic drop). In the noise-free case ($\sigma_{\tilde{s}} = 0$), by geometric convergence, $|e_{\tau+t}| \leq (1-\alpha)^t\,\delta$. We want this below $\varepsilon$:
 
 $$(1-\alpha)^t\,\delta \leq \varepsilon \implies t \geq \frac{\log(\varepsilon/\delta)}{\log(1-\alpha)}$$
 
@@ -413,13 +419,13 @@ $$|C_t - 0.85| \leq 0.8^t \times 0.35$$
 After 10 interactions: $|e_{10}| \leq 0.8^{10} \times 0.35 = 0.107 \times 0.35 \approx 0.037$.
 After 20 interactions: $|e_{20}| \leq 0.8^{20} \times 0.35 \approx 0.0038$.
 
-**Example 2 — Surgery, with contradiction.**
+**Example 2 — Surgery, boundary case.**
 
-$\mu(f) = 10$, $\lambda = 0.1$ (moderate contradiction), $\bar{s} = 0.90$.
+$\mu(f) = 10$, $\lambda = 0.1$ (moderate per-interaction penalty), $\bar{s} = 0.90$.
 
 $$C^* = 0.90 \times (1 - 0.1 \times 10) = 0.90 \times 0 = 0$$
 
-This extreme case illustrates that a sustained moderate contradiction rate ($\lambda = 0.1$) in a maximum-stakes field drives steady-state confidence to zero — the agent correctly learns it cannot be trusted in this domain. In practice $\lambda \ll 0.1$ per interaction (contradictions are rare); this shows the model's behavior at the boundary is correct.
+*This represents an extreme boundary case; in practice $\lambda$ is small per interaction (contradictions are rare events, not a sustained rate).* The example illustrates correct model behavior at the boundary: when $\lambda\mu(f) = 1$, the contradiction penalty exactly cancels the pass-rate signal, and the agent cannot build confidence regardless of performance. This is the intended behavior — a surgical agent that consistently contradicts itself on verified claims should be unable to achieve operating confidence and must abstain.
 
 **Example 3 — Recovery time.**
 
@@ -464,7 +470,7 @@ $$s_{t+1} = \Pi_B\!\left[s_t + \Delta_t - \beta(s_t - s^*)\right] = \Pi_B\!\left
 
 where:
 
-- $B = \prod_{i=1}^n [s_{\min}^i,\, s_{\max}^i]$ is the field-specific feasible set (a closed convex box in $\mathbb{R}^n$)
+- $B = \prod_{i=1}^n [s_{\min}^{i},\, s_{\max}^{i}]$ is the field-specific feasible set (a closed convex box in $\mathbb{R}^n$)
 - $\Pi_B : \mathbb{R}^n \to B$ is the Euclidean projection onto $B$
 - $\Delta_t \in \mathbb{R}^n$ is the raw drift from utility history, with $\|\Delta_t\|_\infty \leq \Delta_{\max}$ per component
 - $\beta = 0.01$ is the mean reversion coefficient
@@ -596,9 +602,9 @@ This clarifies the design role of each stability layer:
 
 **Proof.** A step crosses $s^*$ in dimension $i$ if $s_{t+1}^i - s_i^*$ and $s_t^i - s_i^*$ have opposite signs. The signed displacement in dimension $i$ is:
 
-$$s_{t+1}^i - s_i^* = \Pi_{[s_{\min}^i, s_{\max}^i]}\!\left[(1-\beta)(s_t^i - s_i^*) + \Delta_t^i\right]$$
+$$s_{t+1}^i - s_i^* = \Pi_{[s_{\min}^{i}, s_{\max}^{i}]}\!\left[(1-\beta)(s_t^i - s_i^*) + \Delta_t^i\right]$$
 
-For oscillation, we need $|\Delta_t^i| > (1-\beta)|s_t^i - s_i^*|$, i.e., the drift must exceed the current displacement. Since $\Delta_t^i \leq \Delta_{\max} = 0.05$ and $s_t^i - s_i^*$ can be as large as $s_{\max}^i - s_i^*$ (which is at least $0.05$ by the bound structure), oscillation requires the personality to be within $\Delta_{\max}/(1-\beta) \approx 0.0505$ of $s^*$ in that dimension. This is a vanishingly small region, confirming that oscillation can only occur when the personality is already very near the neutral point. $\blacksquare$
+For oscillation, we need $|\Delta_t^i| > (1-\beta)|s_t^i - s_i^*|$, i.e., the drift must exceed the current displacement. Since $\Delta_t^i \leq \Delta_{\max} = 0.05$ and $s_t^i - s_i^*$ can be as large as $s_{\max}^{i} - s_i^*$ (which is at least $0.05$ by the bound structure), oscillation requires the personality to be within $\Delta_{\max}/(1-\beta) \approx 0.0505$ of $s^*$ in that dimension. This is a vanishingly small region, confirming that oscillation can only occur when the personality is already very near the neutral point. $\blacksquare$
 
 ---
 
