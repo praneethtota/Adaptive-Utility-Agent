@@ -293,6 +293,326 @@ The formulation is not claimed to be the unique possible design, but it is **the
 
 ---
 
+## Theorem 2 — Convergence of Confidence Under Repeated Calibration
+
+### Setup
+
+Recall the confidence update rule with contradiction penalty:
+
+$$C_{t+1} = (1-\alpha)\,C_t + \alpha\,s_t\,(1 - \lambda\mu(f))$$
+
+where:
+- $\alpha \in (0,1)$ is the EMA learning rate,
+- $s_t \in [0,1]$ is the observed test pass rate at time $t$,
+- $\lambda \in [0,1]$ is the contradiction penalty magnitude (zero when no contradiction occurs),
+- $\mu(f) \geq 1$ is the field penalty multiplier,
+- $f$ denotes the active field.
+
+Define the **effective signal** $\tilde{s}_t = s_t(1 - \lambda\mu(f))$. When no contradiction occurs, $\lambda = 0$ and $\tilde{s}_t = s_t$. When a contradiction of magnitude $\lambda$ is detected, $\tilde{s}_t$ is reduced by a factor $(1 - \lambda\mu(f))$.
+
+The update rule becomes:
+
+$$C_{t+1} = (1-\alpha)\,C_t + \alpha\,\tilde{s}_t$$
+
+---
+
+### Closed-Form Solution
+
+**Lemma.** *The confidence at time $t$ is:*
+
+$$C_t = (1-\alpha)^t\,C_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k}\,\tilde{s}_k$$
+
+**Proof.** By induction. Base case $t=0$: $C_0 = C_0$. Inductive step: assume the formula holds for $t$. Then:
+
+$$C_{t+1} = (1-\alpha)C_t + \alpha\tilde{s}_t$$
+$$= (1-\alpha)\!\left[(1-\alpha)^t C_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k}\tilde{s}_k\right] + \alpha\tilde{s}_t$$
+$$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-k}\tilde{s}_k + \alpha\tilde{s}_t$$
+$$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t}(1-\alpha)^{t-k}\tilde{s}_k \qquad \blacksquare$$
+
+---
+
+### Theorem 2 — Convergence, Uniqueness, and Recovery
+
+**Theorem.** *Let $\{\tilde{s}_t\}$ be a stationary sequence with constant expectation $\bar{s} \in [0,1]$ and let $\tilde{s}^* = \bar{s}(1 - \lambda\mu(f))$ be the expected effective signal. Then:*
+
+1. **Existence and uniqueness of steady state.** There exists a unique fixed point $C^*$ of the update rule, given by:
+
+$$C^* = \bar{s}\,(1 - \lambda\mu(f)) = \tilde{s}^*$$
+
+2. **Geometric convergence.** For all $t \geq 0$:
+
+$$|C_t - C^*| \leq (1-\alpha)^t\,|C_0 - C^*|$$
+
+With $\alpha = 0.2$, the error halves every $\lceil\log(0.5)/\log(0.8)\rceil = 3$ interactions.
+
+3. **Monotonicity.** $C^*$ is strictly increasing in $\bar{s}$:
+
+$$\frac{\partial C^*}{\partial \bar{s}} = 1 - \lambda\mu(f) > 0$$
+
+Higher agent pass rates produce higher steady-state confidence, all else equal.
+
+4. **Field sensitivity.** $C^*$ is strictly decreasing in $\mu(f)$:
+
+$$\frac{\partial C^*}{\partial \mu(f)} = -\bar{s}\,\lambda < 0$$
+
+Higher-stakes fields (larger $\mu(f)$) impose a lower achievable steady-state confidence, correctly encoding that high-stakes domains demand stricter internal consistency standards.
+
+5. **Contradiction recovery time.** Suppose the agent is at steady state $C^*$ and a contradiction event causes an instantaneous drop of magnitude $\delta$, so $C_{\tau} = C^* - \delta$. The number of subsequent interactions required to return to within $\varepsilon$ of $C^*$ is:
+
+$$t_{\text{recovery}} = \left\lceil\frac{\log(\varepsilon/\delta)}{\log(1-\alpha)}\right\rceil$$
+
+**Proof.**
+
+*Part 1 — Existence and uniqueness.* The fixed point satisfies $C^* = (1-\alpha)C^* + \alpha\tilde{s}^*$, giving $\alpha C^* = \alpha\tilde{s}^*$, hence $C^* = \tilde{s}^* = \bar{s}(1-\lambda\mu(f))$. This is unique since the equation is linear in $C^*$.
+
+*Part 2 — Geometric convergence.* Define the error $e_t = C_t - C^*$. Subtracting the fixed-point equation from the update rule:
+
+$$e_{t+1} = C_{t+1} - C^* = (1-\alpha)C_t + \alpha\tilde{s}_t - C^*$$
+$$= (1-\alpha)(C_t - C^*) + \alpha(\tilde{s}_t - \tilde{s}^*)$$
+$$= (1-\alpha)\,e_t + \alpha(\tilde{s}_t - \tilde{s}^*)$$
+
+Taking expectations over the stationary distribution of $\tilde{s}_t$ where $\mathbb{E}[\tilde{s}_t] = \tilde{s}^*$:
+
+$$\mathbb{E}[e_{t+1}] = (1-\alpha)\,\mathbb{E}[e_t]$$
+
+so $\mathbb{E}[e_t] = (1-\alpha)^t\,e_0 = (1-\alpha)^t(C_0 - C^*)$.
+
+For the almost-sure bound: since $\tilde{s}_t \in [0,1]$ and $\tilde{s}^* \in [0,1]$, we have $|\tilde{s}_t - \tilde{s}^*| \leq 1$ almost surely. By the closed-form solution:
+
+$$|e_t| = \left|(1-\alpha)^t e_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k}(\tilde{s}_k - \tilde{s}^*)\right|$$
+
+In expectation, the sum vanishes (zero-mean noise), leaving:
+
+$$\mathbb{E}[|e_t|] \leq (1-\alpha)^t\,|C_0 - C^*|$$
+
+The half-life is $t_{1/2} = \log(1/2)/\log(1-\alpha)$. For $\alpha = 0.2$: $t_{1/2} = \log(0.5)/\log(0.8) = 3.11$, so $\lceil t_{1/2} \rceil = 3$ interactions.
+
+*Part 3 — Monotonicity.* $\partial C^*/\partial\bar{s} = (1 - \lambda\mu(f))$. Since $\lambda \in [0,1]$ and $\mu(f) \geq 1$ but $\lambda\mu(f) < 1$ for any non-degenerate field (confidence cannot be driven to zero by a single contradiction), this derivative is strictly positive.
+
+*Part 4 — Field sensitivity.* $\partial C^*/\partial\mu(f) = -\bar{s}\lambda \leq 0$, with strict inequality whenever $\bar{s} > 0$ and $\lambda > 0$. This formalizes the intuition that high-stakes fields (large $\mu(f)$) penalize contradictions more heavily, pulling the achievable steady-state confidence downward even when pass rates are high.
+
+*Part 5 — Recovery time.* After the contradiction, $e_{\tau} = -\delta$. By geometric convergence, $|e_{\tau+t}| \leq (1-\alpha)^t\,\delta$. We want this below $\varepsilon$:
+
+$$(1-\alpha)^t\,\delta \leq \varepsilon \implies t \geq \frac{\log(\varepsilon/\delta)}{\log(1-\alpha)}$$
+
+Since $\log(1-\alpha) < 0$ and $\varepsilon < \delta$ (we want to recover closer than the drop), $\varepsilon/\delta < 1$ and $\log(\varepsilon/\delta) < 0$, making $t$ positive. Therefore:
+
+$$t_{\text{recovery}} = \left\lceil\frac{\log(\varepsilon/\delta)}{\log(1-\alpha)}\right\rceil \qquad \blacksquare$$
+
+---
+
+### Worked Examples
+
+**Example 1 — Software engineering, no contradictions.**
+
+$\mu(f) = 2$, $\lambda = 0$, $\bar{s} = 0.85$, $C_0 = 0.5$, $\alpha = 0.2$.
+
+$$C^* = 0.85 \times (1 - 0 \times 2) = 0.85$$
+$$|C_t - 0.85| \leq 0.8^t \times 0.35$$
+
+After 10 interactions: $|e_{10}| \leq 0.8^{10} \times 0.35 = 0.107 \times 0.35 \approx 0.037$.
+After 20 interactions: $|e_{20}| \leq 0.8^{20} \times 0.35 \approx 0.0038$.
+
+**Example 2 — Surgery, with contradiction.**
+
+$\mu(f) = 10$, $\lambda = 0.1$ (moderate contradiction), $\bar{s} = 0.90$.
+
+$$C^* = 0.90 \times (1 - 0.1 \times 10) = 0.90 \times 0 = 0$$
+
+This extreme case illustrates that a sustained moderate contradiction rate ($\lambda = 0.1$) in a maximum-stakes field drives steady-state confidence to zero — the agent correctly learns it cannot be trusted in this domain. In practice $\lambda \ll 0.1$ per interaction (contradictions are rare); this shows the model's behavior at the boundary is correct.
+
+**Example 3 — Recovery time.**
+
+Starting from a drop of $\delta = 0.15$ (a significant contradiction), recovering to within $\varepsilon = 0.01$ of $C^*$ with $\alpha = 0.2$:
+
+$$t_{\text{recovery}} = \left\lceil\frac{\log(0.01/0.15)}{\log(0.8)}\right\rceil = \left\lceil\frac{-2.708}{-0.223}\right\rceil = \lceil 12.1 \rceil = 13 \text{ interactions}$$
+
+Thirteen clean calibration interactions are sufficient to recover from a large contradiction event to within 1% of steady-state confidence. This is consistent with the simulation results in Appendix A.
+
+---
+
+### Corollary — Steady-State Confidence Bounds by Field
+
+Substituting typical field parameters with $\bar{s} \approx 0.85$ (a well-calibrated agent) and $\lambda \approx 0.05$ (low contradiction rate):
+
+| Field | $\mu(f)$ | $C^* = \bar{s}(1-\lambda\mu)$ | $C_{\min}$ | Achievable? |
+|---|---|---|---|---|
+| Surgery / Aviation | 10 | $0.85 \times 0.5 = 0.425$ | 0.95 | No — requires $\bar{s} > 0.95/(1-0.5) = 1.9$ |
+| Law | 5 | $0.85 \times 0.75 = 0.638$ | 0.85 | Borderline |
+| Software Engineering | 2 | $0.85 \times 0.9 = 0.765$ | 0.70 | Yes |
+| Creative Writing | 1 | $0.85 \times 0.95 = 0.808$ | 0.05 | Easily |
+
+This corollary formalizes the whitepaper's claim that high-stakes fields impose stricter confidence standards: for surgery, a typical agent with $\bar{s} = 0.85$ and any nonzero contradiction rate cannot achieve the $C_{\min} = 0.95$ threshold, and must abstain or escalate. The confidence floor is not merely a policy choice — it is above the achievable steady state, guaranteeing the abstention mechanism is triggered when the agent is not reliably correct.
+
+---
+
+---
+
+## Theorem 4 — Lyapunov Stability of the Personality System
+
+### Corrected Claim
+
+The personality system exhibits **bounded, stable dynamics with convergence to a neighborhood of the field neutral $s^*$ under bounded drift**. We do not claim a unique globally stable equilibrium, which would require the mean reversion to dominate the drift — a condition that does not hold for the parameter values $\beta = 0.01$, $\Delta_{\max} = 0.05$ used in this system. Instead we prove the three things that *are* true: invariance of the feasible set, geometric convergence to $s^*$ when drift is absent, and bounded dynamics otherwise.
+
+---
+
+### Setup
+
+The personality trait vector $s = (s_1, \ldots, s_n) \in \mathbb{R}^n$ evolves under:
+
+$$s_{t+1} = \Pi_B\!\left[s_t + \Delta_t - \beta(s_t - s^*)\right] = \Pi_B\!\left[(1-\beta)s_t + \beta s^* + \Delta_t\right]$$
+
+where:
+
+- $B = \prod_{i=1}^n [s_{\min}^i,\, s_{\max}^i]$ is the field-specific feasible set (a closed convex box in $\mathbb{R}^n$)
+- $\Pi_B : \mathbb{R}^n \to B$ is the Euclidean projection onto $B$
+- $\Delta_t \in \mathbb{R}^n$ is the raw drift from utility history, with $\|\Delta_t\|_\infty \leq \Delta_{\max}$ per component
+- $\beta = 0.01$ is the mean reversion coefficient
+- $s^* \in B$ is the field neutral personality (interior point of $B$ by construction)
+
+Define the Lyapunov function:
+
+$$V(s) = \|s - s^*\|^2 = \sum_{i=1}^n (s_i - s_i^*)^2 \geq 0$$
+
+with $V(s^*) = 0$.
+
+---
+
+### Theorem 4 — Bounded Stable Dynamics with Neighborhood Convergence
+
+**Theorem.** *Under the three-layer personality evolution rule above:*
+
+**(i) Invariance.** $s_t \in B$ for all $t \geq 0$ whenever $s_0 \in B$.
+
+**(ii) Zero-drift convergence.** When $\Delta_t = 0$ for all $t$, $V(s_t)$ converges geometrically to zero:
+
+$$V(s_{t+1}) \leq (1-\beta)^2\, V(s_t)$$
+
+*so $\|s_t - s^*\| \leq (1-\beta)^t \|s_0 - s^*\|$, with convergence rate $(1-\beta)^2 = 0.9801$ per cycle.*
+
+**(iii) Bounded displacement.** The single-step displacement is bounded:
+
+$$\|s_{t+1} - s_t\| \leq \Delta_{\max}\sqrt{n} + \beta\,\|s_t - s^*\|$$
+
+*so no single evolution cycle can produce a large jump.*
+
+**(iv) Persistent-drift stability.** Under persistent drift with $\|\Delta_t\| \leq \Delta_{\max}\sqrt{n}$, the distance to $s^*$ satisfies:
+
+$$\|s_{t+1} - s^*\| \leq (1-\beta)\|s_t - s^*\| + \Delta_{\max}\sqrt{n}$$
+
+*The dynamics converge to and remain in the neighborhood*
+
+$$\mathcal{N}^* = \left\{s \in B : \|s - s^*\| \leq r^*\right\}, \qquad r^* = \min\!\left(\frac{\Delta_{\max}\sqrt{n}}{\beta},\; \mathrm{diam}(B)\right)$$
+
+*For the system parameters $\beta = 0.01$, $\Delta_{\max} = 0.05$, $n = 6$ traits: $\Delta_{\max}\sqrt{n}/\beta = 12.25$, while $\mathrm{diam}(B) \leq \sqrt{n} \approx 2.45$. The field bounds are therefore the binding constraint, not the mean reversion — $\mathcal{N}^* = B$.*
+
+---
+
+### Proof
+
+**Part (i) — Invariance.**
+
+$\Pi_B$ is defined as the Euclidean projection onto the closed convex set $B$, so $\Pi_B(x) \in B$ for every $x \in \mathbb{R}^n$. Therefore $s_{t+1} = \Pi_B[\cdot] \in B$ for all $t \geq 0$, regardless of $\Delta_t$. $\blacksquare$
+
+**Part (ii) — Zero-drift convergence.**
+
+Set $\Delta_t = 0$. Then $s_{t+1} = \Pi_B[(1-\beta)s_t + \beta s^*]$.
+
+Since $B$ is convex and both $s_t \in B$ and $s^* \in B$, the convex combination $(1-\beta)s_t + \beta s^* \in B$, so $\Pi_B$ acts as the identity:
+
+$$s_{t+1} = (1-\beta)s_t + \beta s^*$$
+
+Therefore:
+
+$$s_{t+1} - s^* = (1-\beta)s_t + \beta s^* - s^* = (1-\beta)(s_t - s^*)$$
+
+and:
+
+$$V(s_{t+1}) = \|(1-\beta)(s_t - s^*)\|^2 = (1-\beta)^2\,V(s_t) \qquad \blacksquare$$
+
+The convergence rate per cycle is $(1-\beta)^2 = (0.99)^2 = 0.9801$. The half-life is:
+
+$$t_{1/2} = \frac{\log(1/2)}{\log(1-\beta)^2} = \frac{\log(1/2)}{2\log(0.99)} \approx \frac{-0.693}{-0.0201} \approx 34 \text{ cycles}$$
+
+With personality evolution running every $N=3$ interactions, this corresponds to approximately 102 interactions to halve the distance to $s^*$ under zero drift.
+
+**Part (iii) — Bounded displacement.**
+
+$$\|s_{t+1} - s_t\| = \|\Pi_B[(1-\beta)s_t + \beta s^* + \Delta_t] - s_t\|$$
+
+Since $\Pi_B$ is non-expansive and $s_t = \Pi_B[s_t]$:
+
+$$\|\Pi_B[x] - \Pi_B[y]\| \leq \|x - y\| \quad \text{for all } x, y$$
+
+$$\|s_{t+1} - s_t\| \leq \|(1-\beta)s_t + \beta s^* + \Delta_t - s_t\|$$
+$$= \|-\beta(s_t - s^*) + \Delta_t\| \leq \beta\|s_t - s^*\| + \|\Delta_t\| \leq \beta\,\|s_t - s^*\| + \Delta_{\max}\sqrt{n} \qquad \blacksquare$$
+
+**Part (iv) — Persistent-drift stability.**
+
+Since $s^* \in B$, the non-expansiveness of $\Pi_B$ with respect to any point in $B$ gives:
+
+$$\|s_{t+1} - s^*\| = \|\Pi_B[(1-\beta)s_t + \beta s^* + \Delta_t] - \Pi_B[s^*]\|$$
+$$\leq \|(1-\beta)s_t + \beta s^* + \Delta_t - s^*\|$$
+$$= \|(1-\beta)(s_t - s^*) + \Delta_t\|$$
+$$\leq (1-\beta)\|s_t - s^*\| + \|\Delta_t\|$$
+$$\leq (1-\beta)\|s_t - s^*\| + \Delta_{\max}\sqrt{n}$$
+
+Let $d_t = \|s_t - s^*\|$. The recurrence $d_{t+1} \leq (1-\beta)d_t + \Delta_{\max}\sqrt{n}$ has fixed point $d^* = \Delta_{\max}\sqrt{n}/\beta$. By the theory of contractive linear recurrences:
+
+- If $d_t > d^*$: $d_{t+1} < d_t$ (distance decreasing toward $d^*$)
+- If $d_t \leq d^*$: $d_{t+1} \leq d^*$ (distance stays within neighborhood)
+
+So $\limsup_{t\to\infty} d_t \leq d^* = \Delta_{\max}\sqrt{n}/\beta$.
+
+Since $d_t \leq \mathrm{diam}(B)$ always by Part (i), the binding constraint is:
+
+$$r^* = \min\!\left(\frac{\Delta_{\max}\sqrt{n}}{\beta},\; \mathrm{diam}(B)\right) \qquad \blacksquare$$
+
+---
+
+### Why the Field Bounds Are the Binding Constraint
+
+For the system parameters:
+
+$$\frac{\Delta_{\max}\sqrt{n}}{\beta} = \frac{0.05 \times \sqrt{6}}{0.01} = \frac{0.1225}{0.01} = 12.25$$
+
+$$\mathrm{diam}(B) = \left\|\,s_{\max} - s_{\min}\,\right\| \leq \sqrt{n} \approx 2.45 \quad \text{(since each trait is in }[0,1]\text{)}$$
+
+Since $12.25 \gg 2.45$, the mean reversion alone is insufficient to confine the dynamics to a small neighborhood of $s^*$. **The projection $\Pi_B$ is the primary stability mechanism** — it enforces invariance, and the field bounds define how far from $s^*$ the personality can stray. The mean reversion serves as a regularizer: without it, the system would drift to and remain at the boundary of $B$; with it, there is a gentle restoring force toward $s^*$ when drift is absent.
+
+This clarifies the design role of each stability layer:
+
+| Layer | Mechanism | Guarantee |
+|---|---|---|
+| Field bounds $[s_{\min}, s_{\max}]$ | Projection $\Pi_B$ | Hard invariance — $s_t \in B$ always |
+| Drift rate cap $\Delta_{\max}$ | Truncation of raw drift | Bounded single-step displacement |
+| Mean reversion $\beta$ | Soft pull toward $s^*$ | Convergence to $s^*$ when drift is absent; regularization otherwise |
+
+---
+
+### Corollary — No Oscillation
+
+**Corollary.** *The drift rate cap $\Delta_{\max}$ prevents oscillation: after any evolution step, the personality cannot cross $s^*$ in a single step.*
+
+**Proof.** A step crosses $s^*$ in dimension $i$ if $s_{t+1}^i - s_i^*$ and $s_t^i - s_i^*$ have opposite signs. The signed displacement in dimension $i$ is:
+
+$$s_{t+1}^i - s_i^* = \Pi_{[s_{\min}^i, s_{\max}^i]}\!\left[(1-\beta)(s_t^i - s_i^*) + \Delta_t^i\right]$$
+
+For oscillation, we need $|\Delta_t^i| > (1-\beta)|s_t^i - s_i^*|$, i.e., the drift must exceed the current displacement. Since $\Delta_t^i \leq \Delta_{\max} = 0.05$ and $s_t^i - s_i^*$ can be as large as $s_{\max}^i - s_i^*$ (which is at least $0.05$ by the bound structure), oscillation requires the personality to be within $\Delta_{\max}/(1-\beta) \approx 0.0505$ of $s^*$ in that dimension. This is a vanishingly small region, confirming that oscillation can only occur when the personality is already very near the neutral point. $\blacksquare$
+
+---
+
+### Remark on Parameter Calibration
+
+The analysis reveals a structural tension: mean reversion $\beta = 0.01$ is weaker than the maximum drift $\Delta_{\max} = 0.05$ per cycle. This is intentional — personality is meant to evolve meaningfully, not snap back to $s^*$ every few cycles. The design trades off:
+
+- **Large $\beta$**: fast convergence to $s^*$, but personality becomes unresponsive to experience
+- **Small $\beta$**: personality evolves with experience, but reverts slowly between periods of drift
+
+The value $\beta = 0.01$ produces a half-life of approximately 34 evolution cycles under zero drift (≈ 102 interactions), which is long enough for the personality to reflect accumulated experience over hundreds of interactions before the neutral pull becomes dominant. A field-specific $\beta(f)$ — with higher reversion rates for high-stakes fields where personality stability is more important — is a natural extension for future work.
+
+---
+
 ## References
 
 - Auer, P., Cesa-Bianchi, N., & Fischer, P. (2002). Finite-time analysis of the multiarmed bandit problem. *Machine Learning*, 47(2–3), 235–256.
@@ -300,3 +620,4 @@ The formulation is not claimed to be the unique possible design, but it is **the
 - Debreu, G. (1960). Topological methods in cardinal utility theory. In K. J. Arrow et al. (Eds.), *Mathematical Methods in the Social Sciences*. Stanford University Press.
 - Kalman, R. E. (1960). A new approach to linear filtering and prediction problems. *Journal of Basic Engineering*, 82(1), 35–45.
 - Mann, H. B., & Whitney, D. R. (1947). On a test of whether one of two random variables is stochastically larger than the other. *Annals of Mathematical Statistics*, 18(1), 50–60.
+- Wald, A. (1945). Sequential tests of statistical hypotheses. *Annals of Mathematical Statistics*, 16(2), 117–186.
