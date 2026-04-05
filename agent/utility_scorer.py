@@ -1,13 +1,11 @@
 """
 Utility scorer: computes Efficacy, Confidence, Curiosity, and final U.
-Maintains running scores per domain and logs history.
 
-Changes from v0.1:
-- Growing curiosity function: K scales with log(1 + interactions_without_novelty)
-- 50% curiosity cap: K_effective = min(K_raw, (w_e·E + w_c·C) / w_k)
-  This prevents utility gaming while keeping curiosity meaningful.
-  K can never be the dominant term — capped at 50% of total U.
-- Field-specific alpha for curiosity growth rate
+Changes from v0.1 (simulation):
+    - Efficacy now uses EMA accumulation (domain-level state, not per-interaction)
+    - Gap bonus dual cap: per-gap ≤ K_natural_max; collective ≤ 2/3 of K_budget
+    - Dynamic difficulty routing: harder problems routed as domain confidence rises
+    - DomainState tracks efficacy_ema separately from per-interaction raw efficacy
 """
 
 import math
@@ -17,21 +15,25 @@ from datetime import datetime
 
 from config import FieldConfig
 
-
-# Growth rate of curiosity pressure per field.
-# High for exploratory fields, near-zero for high-stakes fields.
 CURIOSITY_ALPHA: Dict[str, float] = {
-    "surgery":              0.00,
-    "aviation":             0.00,
-    "law":                  0.02,
+    "surgery":                0.00,
+    "aviation":               0.00,
+    "law":                    0.02,
     "structural_engineering": 0.03,
-    "software_engineering": 0.08,
-    "stem_research":        0.12,
-    "education":            0.08,
-    "art":                  0.15,
-    "creative_writing":     0.15,
-    "general":              0.07,
-    "blended":              0.07,
+    "software_engineering":   0.08,
+    "stem_research":          0.12,
+    "education":              0.08,
+    "art":                    0.15,
+    "creative_writing":       0.15,
+    "general":                0.07,
+    "blended":                0.07,
+}
+
+# Difficulty routing thresholds (Phase 1 — LeetCode domain)
+DIFFICULTY_THRESHOLDS = {
+    "hard":   0.85,   # route to Hard problems when C_domain > 0.85
+    "medium": 0.70,   # route to Medium problems when C_domain > 0.70
+    # below 0.70 → Easy problems
 }
 
 
@@ -40,13 +42,16 @@ class TaskScore:
     task_id: str
     field: str
     efficacy: float
+    efficacy_ema: float          # domain-level accumulated efficacy
     confidence: float
-    curiosity_raw: float        # before cap
-    curiosity_effective: float  # after cap
+    curiosity_raw: float
+    curiosity_effective: float
+    gap_bonus: float             # Case 3 gap bonus applied (0 if none)
     utility: float
     timestamp: str
     below_minimum: bool
-    curiosity_capped: bool = False   # was the cap active?
+    curiosity_capped: bool = False
+    recommended_difficulty: str = "easy"  # routing signal for harness
     notes: str = ""
 
 
@@ -55,61 +60,81 @@ class DomainState:
     """Running state for a domain — all values evolve over time."""
     domain: str
     confidence: float = 0.5
-    efficacy: float = 0.5
+    efficacy_ema: float = 0.5          # EMA-accumulated efficacy (fixed in v0.4)
+    efficacy_raw_last: float = 0.5     # last per-interaction raw value
     interaction_count: int = 0
     contradiction_count: int = 0
     success_count: int = 0
     potential_ceiling: float = 0.9
-    interactions_without_novelty: int = 0   # resets on novel problem
+    interactions_without_novelty: int = 0
 
 
 class UtilityScorer:
     """
-    Computes and tracks the utility function:
+    Computes and tracks:
 
-        U = w_e·E + w_c·C + w_k·K_effective
+        U = w_e·E_ema + w_c·C + w_k·K_effective
+        K_effective = min(K_raw + K_gap, caps)
 
-    Where:
-        K_raw       = potential_ceiling × (1 - C) × growth(t, field)
-        K_effective = min(K_raw, (w_e·E + w_c·C) / w_k)   [50% cap]
-        growth      = 1 + α(field) × log(1 + interactions_without_novelty)
+    Efficacy uses EMA (not per-interaction fixed baseline):
+        E_ema = (1-α)·E_ema_prior + α·E_raw
 
-    Subject to: C ≥ C_min(field), E ≥ E_min(field)
+    Curiosity gap bonus (Case 3 from Arbiter):
+        K_gap(S) = K_eff × γ(f),  capped by dual budget constraints.
     """
 
-    def __init__(self):
+    EFFICACY_ALPHA = 0.2    # EMA learning rate for efficacy
+    CONFIDENCE_ALPHA = 0.2  # EMA learning rate for confidence
+
+    def __init__(self, arbiter=None):
+        """
+        arbiter: optional ArbiterAgent instance for gap bonus queries.
+        """
         self.domain_states: Dict[str, DomainState] = {}
         self.history: List[TaskScore] = []
+        self.arbiter = arbiter   # injected — may be None in simulation mode
 
     def score(
         self,
         task_id: str,
         field_config: FieldConfig,
-        test_pass_rate: float,        # 0.0–1.0 from test runner
-        human_baseline_score: float,  # 0.0–1.0 normalized human performance
-        contradiction_penalty: float, # from ContradictionDetector
-        problem_novelty: float,       # 0.0–1.0: how new is this problem type
+        test_pass_rate: float,
+        human_baseline_score: float,
+        contradiction_penalty: float,
+        problem_novelty: float,
+        active_gap_subject: Optional[str] = None,   # subject with active gap bonus
     ) -> TaskScore:
 
         domain = field_config.name
         state = self._get_or_create_state(domain)
 
-        # ── Efficacy ──────────────────────────────────────────────────────────
-        efficacy = self._compute_efficacy(test_pass_rate, human_baseline_score)
+        # ── Efficacy (EMA-accumulated) ────────────────────────────────────────
+        efficacy_raw = self._compute_efficacy_raw(test_pass_rate, human_baseline_score)
+        efficacy_ema = self._update_efficacy_ema(state, efficacy_raw)
 
         # ── Confidence ────────────────────────────────────────────────────────
         confidence = self._update_confidence(
             state, test_pass_rate, contradiction_penalty, field_config
         )
 
-        # ── Curiosity (with growth and cap) ───────────────────────────────────
-        curiosity_raw, curiosity_effective, capped = self._compute_curiosity(
-            state, field_config, problem_novelty, efficacy, confidence
+        # ── Curiosity (base, no gap bonus yet) ───────────────────────────────
+        curiosity_raw, curiosity_base, capped = self._compute_curiosity(
+            state, field_config, problem_novelty, efficacy_ema, confidence
         )
 
+        # ── Gap bonus (Case 3 from Arbiter) ───────────────────────────────────
+        gap_bonus = 0.0
+        if self.arbiter and active_gap_subject:
+            k_budget_total = curiosity_base  # natural curiosity = budget reference
+            gap_bonus = self.arbiter.get_gap_bonus(
+                subject=active_gap_subject,
+                k_effective=curiosity_base,
+                k_budget_total=k_budget_total,
+            )
+
+        curiosity_effective = curiosity_base + gap_bonus
+
         # ── Update novelty counter ────────────────────────────────────────────
-        # Novel problem → reset counter (exploration rewarded)
-        # Familiar problem → increment counter (curiosity pressure grows)
         if problem_novelty >= 0.6:
             state.interactions_without_novelty = 0
         else:
@@ -117,47 +142,51 @@ class UtilityScorer:
 
         # ── Utility ───────────────────────────────────────────────────────────
         utility = (
-            field_config.w_efficacy * efficacy +
+            field_config.w_efficacy * efficacy_ema +
             field_config.w_confidence * confidence +
             field_config.w_curiosity * curiosity_effective
         )
 
         # ── Minimum bounds check ──────────────────────────────────────────────
-        below_min = confidence < field_config.c_min or efficacy < field_config.e_min
-        notes = ""
+        below_min = confidence < field_config.c_min or efficacy_ema < field_config.e_min
+        notes = []
         if below_min:
-            notes = (
-                f"BELOW MINIMUM: confidence={confidence:.2f} (min={field_config.c_min}), "
-                f"efficacy={efficacy:.2f} (min={field_config.e_min}). "
+            notes.append(
+                f"BELOW MINIMUM: C={confidence:.2f}(min={field_config.c_min}), "
+                f"E_ema={efficacy_ema:.2f}(min={field_config.e_min}). "
                 f"Agent should abstain or escalate."
             )
         if capped:
-            cap_note = (
-                f"Curiosity capped: raw={curiosity_raw:.3f} → "
-                f"effective={curiosity_effective:.3f} (50% rule)"
+            notes.append(
+                f"Curiosity capped: raw={curiosity_raw:.3f} → base={curiosity_base:.3f}"
             )
-            notes = f"{notes}  |  {cap_note}".strip(" |")
+        if gap_bonus > 0:
+            notes.append(f"Gap bonus applied: +{gap_bonus:.3f} on '{active_gap_subject}'")
+
+        # ── Dynamic difficulty routing ────────────────────────────────────────
+        recommended_difficulty = self._recommended_difficulty(confidence)
 
         # ── Update domain state ───────────────────────────────────────────────
         state.interaction_count += 1
         if test_pass_rate >= 0.8:
             state.success_count += 1
-        state.efficacy = efficacy
 
         task_score = TaskScore(
             task_id=task_id,
             field=domain,
-            efficacy=round(efficacy, 4),
+            efficacy=round(efficacy_raw, 4),
+            efficacy_ema=round(efficacy_ema, 4),
             confidence=round(confidence, 4),
             curiosity_raw=round(curiosity_raw, 4),
             curiosity_effective=round(curiosity_effective, 4),
+            gap_bonus=round(gap_bonus, 4),
             utility=round(utility, 4),
             timestamp=datetime.utcnow().isoformat(),
             below_minimum=below_min,
             curiosity_capped=capped,
-            notes=notes
+            recommended_difficulty=recommended_difficulty,
+            notes=" | ".join(notes),
         )
-
         self.history.append(task_score)
         return task_score
 
@@ -168,11 +197,12 @@ class UtilityScorer:
         return {
             "domain": domain,
             "confidence": round(state.confidence, 4),
-            "efficacy": round(state.efficacy, 4),
+            "efficacy_ema": round(state.efficacy_ema, 4),
             "interactions": state.interaction_count,
             "interactions_without_novelty": state.interactions_without_novelty,
             "success_rate": round(state.success_count / max(state.interaction_count, 1), 4),
             "contradiction_rate": round(state.contradiction_count / max(state.interaction_count, 1), 4),
+            "recommended_difficulty": self._recommended_difficulty(state.confidence),
         }
 
     def get_utility_trend(self, domain: Optional[str] = None, last_n: int = 20) -> List[float]:
@@ -186,17 +216,29 @@ class UtilityScorer:
             self.domain_states[domain] = DomainState(domain=domain)
         return self.domain_states[domain]
 
-    def _compute_efficacy(self, agent_score: float, human_baseline: float) -> float:
+    def _compute_efficacy_raw(self, agent_score: float, human_baseline: float) -> float:
         """
-        Sigmoid-normalized efficacy.
-        agent == human  →  0.5
-        agent > human   →  > 0.5
-        agent < human   →  < 0.5
+        Sigmoid-normalized per-interaction efficacy.
+        agent == human → 0.5
         """
         if human_baseline == 0:
             return agent_score
         ratio = agent_score / human_baseline
         return 1.0 - 1.0 / (1.0 + ratio)
+
+    def _update_efficacy_ema(self, state: DomainState, efficacy_raw: float) -> float:
+        """
+        EMA-accumulated domain-level efficacy.
+        This is the fix from A.5: efficacy now accumulates like confidence does,
+        instead of being computed fresh per-interaction against a fixed baseline.
+        """
+        state.efficacy_raw_last = efficacy_raw
+        state.efficacy_ema = (
+            (1 - self.EFFICACY_ALPHA) * state.efficacy_ema +
+            self.EFFICACY_ALPHA * efficacy_raw
+        )
+        state.efficacy_ema = max(0.0, min(1.0, state.efficacy_ema))
+        return state.efficacy_ema
 
     def _update_confidence(
         self,
@@ -205,17 +247,16 @@ class UtilityScorer:
         contradiction_penalty: float,
         config: FieldConfig,
     ) -> float:
-        """
-        EMA confidence update. Contradiction penalty is amplified by field multiplier.
-        """
         effective_penalty = contradiction_penalty * config.penalty_multiplier
         penalized_signal = test_pass_rate * (1.0 - effective_penalty)
 
         if contradiction_penalty > 0:
             state.contradiction_count += 1
 
-        alpha = 0.2  # EMA learning rate
-        state.confidence = (1 - alpha) * state.confidence + alpha * penalized_signal
+        state.confidence = (
+            (1 - self.CONFIDENCE_ALPHA) * state.confidence +
+            self.CONFIDENCE_ALPHA * penalized_signal
+        )
         state.confidence = max(0.0, min(1.0, state.confidence))
         return state.confidence
 
@@ -228,37 +269,36 @@ class UtilityScorer:
         confidence: float,
     ):
         """
-        K_raw = potential_gain × novelty × growth(t, field)
+        K_raw  = potential_gain × novelty × growth(t, field)
+        K_base = min(K_raw, (w_e·E + w_c·C) / w_k)  [50% cap]
 
-        growth = 1 + α(field) × log(1 + interactions_without_novelty)
-            → starts at 1.0, grows logarithmically the longer the agent
-              stays in familiar territory, bounded by the 50% cap below.
-
-        K_effective = min(K_raw, (w_e·E + w_c·C) / w_k)
-            → curiosity can never exceed 50% of total utility.
-            → self-scaling: when E and C are high the cap is loose;
-              when the agent is weak the cap tightens automatically.
-
-        Returns (K_raw, K_effective, was_capped).
+        Returns (K_raw, K_base, was_capped).
+        Gap bonus is added separately in score() above.
         """
-        # Growth multiplier — logarithmic, field-specific alpha
         alpha = CURIOSITY_ALPHA.get(config.name, 0.07)
         growth = 1.0 + alpha * math.log1p(state.interactions_without_novelty)
 
-        # Base curiosity signal
         potential_gain = max(0.0, state.potential_ceiling - confidence)
         k_raw = potential_gain * novelty * growth
 
-        # 50% cap: K_effective ≤ (w_e·E + w_c·C) / w_k
-        # Derived from: w_k·K ≤ 0.5 × (w_e·E + w_c·C + w_k·K)
-        # Rearranges to: K ≤ (w_e·E + w_c·C) / w_k
         if config.w_curiosity > 0:
             weighted_ec = config.w_efficacy * efficacy + config.w_confidence * confidence
             cap = weighted_ec / config.w_curiosity
         else:
             cap = 0.0
 
-        k_effective = min(k_raw, cap)
-        capped = k_effective < k_raw
+        k_base = min(k_raw, cap)
+        capped = k_base < k_raw
+        return k_raw, k_base, capped
 
-        return k_raw, k_effective, capped
+    def _recommended_difficulty(self, confidence: float) -> str:
+        """
+        Dynamic difficulty routing (A.5 fix #2).
+        As domain confidence rises, harder problems are routed in to
+        reset the novelty counter and re-engage curiosity dynamics.
+        """
+        if confidence >= DIFFICULTY_THRESHOLDS["hard"]:
+            return "hard"
+        if confidence >= DIFFICULTY_THRESHOLDS["medium"]:
+            return "medium"
+        return "easy"

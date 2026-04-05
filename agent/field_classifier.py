@@ -15,7 +15,10 @@ Usage:
 import json
 import math
 import re
-import httpx
+try:
+    import httpx
+except ImportError:
+    httpx = None
 from typing import Dict, List, Optional
 from config import FIELD_CONFIGS, FieldConfig, get_effective_config
 
@@ -61,7 +64,28 @@ class FieldClassifier:
     def __init__(self):
         self.turn_history: List[Dict[str, float]] = []
 
-    async def classify(
+
+    def classify(
+        self,
+        task: str,
+        update_history: bool = True,
+    ) -> Dict[str, float]:
+        """
+        Synchronous classify — uses keyword-based fallback directly.
+        Used in simulation mode where no API is available.
+        """
+        raw = self._keyword_fallback(task)
+        floored = self._enforce_high_stakes_floor(raw)
+        if self.turn_history:
+            blended = self._apply_history_ema(floored)
+        else:
+            blended = floored
+        hardened = self._apply_entropy_fallback(blended)
+        if update_history:
+            self.turn_history.append(hardened)
+        return hardened
+
+    async def classify_async(
         self,
         task: str,
         update_history: bool = True,
@@ -260,40 +284,3 @@ async def classify_field(task: str) -> Dict[str, float]:
     For conversation-aware classification, instantiate FieldClassifier directly.
     """
     return await _default_classifier.classify(task, update_history=False)
-
-    Args:
-        task: the task or question to classify
-
-    Returns:
-        dict of {field_name: probability}
-    """
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={"Content-Type": "application/json"},
-                json={
-                    "model": "claude-haiku-4-5-20251001",  # fast + cheap for classification
-                    "max_tokens": 200,
-                    "system": FIELD_CLASSIFIER_PROMPT,
-                    "messages": [{"role": "user", "content": task}]
-                },
-                timeout=10.0
-            )
-            data = response.json()
-            raw = data["content"][0]["text"].strip()
-
-            # Strip markdown fences if present
-            raw = re.sub(r"```json|```", "", raw).strip()
-            distribution = json.loads(raw)
-
-            # Validate and normalize
-            total = sum(distribution.values())
-            if total == 0:
-                return {"general": 1.0}
-
-            return {k: v / total for k, v in distribution.items()}
-
-    except Exception as e:
-        print(f"[FieldClassifier] Error: {e}, defaulting to general")
-        return {"general": 1.0}
