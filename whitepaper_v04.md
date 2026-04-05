@@ -462,6 +462,31 @@ Strategy: **lenient tit-for-tat** — begin cooperatively, mirror behavior, forg
 
 Subset scores are maintained for different dimensions (domain expertise, trustworthiness, intent alignment) so a high domain-knowledge but low-trust entity is handled differently from a low domain-knowledge but high-trust one. Domain expertise is measured based on verifiable credentials — professional experience, educational qualifications, and field-specific certifications — rather than self-reported claims.
 
+### 6.1 Cold Start Resolution
+
+The cold start problem — new entities having no interaction history — is resolved differently for the two trust dimensions:
+
+**Domain expertise** is available from day one. A board-certified surgeon, a PhD in structural engineering, or a licensed attorney can provide verifiable credentials before the first interaction. The system bootstraps domain expertise from these credentials immediately, without requiring interaction history. The credential verification pipeline maps qualifications to domain expertise scores using the same framework as §4.1 — field-specific certification standards define what "above median expertise" means.
+
+**Behavioral trust** starts at a cooperative neutral (not zero, not maximum) consistent with the lenient tit-for-tat strategy. A new entity is trusted enough to interact normally but not trusted enough to qualify for external escalation. Escalation eligibility requires both domain expertise above median (available from day one via credentials) AND behavioral trust above threshold — so a new expert with excellent credentials can qualify for escalation once behavioral trust accumulates through consistent interaction history.
+
+This two-dimensional gating means cold start affects only the behavioral trust dimension, and that dimension resolves naturally through interaction. Domain expertise — the harder dimension to fake — is grounded from the first contact.
+
+### 6.2 Sybil Resistance via Reputational Accountability
+
+Rather than a population-level detection layer, Sybil resistance is achieved through reputational accountability. When the system consults an external domain expert under the escalation protocol (§9.5), the expert is explicitly informed that their input may be cited when the system offers information to other users. The exact framing:
+
+```
+"Your response may be used to inform answers provided to others in this domain.
+Your name and credentials may be associated with this input in our records."
+```
+
+This creates reputational skin in the game. A legitimate professor, clinician, or engineer would not provide factually incorrect information under conditions where their name is associated with it — the professional and reputational consequences are too significant. The same accountability that governs expert testimony in legal proceedings, peer review in academia, and professional opinion in engineering applies here.
+
+A Sybil adversary operating through fake identities cannot manufacture verifiable professional credentials, and cannot absorb reputational harm across fake accounts. The accountability mechanism therefore filters Sybil attacks at the domain expertise gate — a fake account with no real credentials does not reach the escalation threshold in the first place, and a real expert with real credentials has no incentive to provide false information under attribution.
+
+This does not eliminate all adversarial risk, but it substantially raises the cost of adversarial behavior by tying it to real-world professional identity.
+
 ---
 
 ## 7. Continual Learning Architecture
@@ -815,6 +840,26 @@ STEP 2 — Verdict:
             both submodels achieve confidence(S) > C_min(field)
             AND no new contradictions on S for T(field) interactions
 
+        Two budget constraints apply simultaneously to prevent
+        Case 3 gaps from monopolizing exploration:
+
+        Constraint 1 — Per-gap cap:
+            K_gap(S) ≤ K_natural_max(field)
+            No single gap can be more attractive than the maximum
+            natural curiosity score achievable in that field.
+
+        Constraint 2 — Collective budget cap:
+            Σ K_gap(all active gaps) ≤ (2/3) × K_budget_total
+            Case 3 gaps collectively cannot exceed 2/3 of the total
+            curiosity exploration budget. At least 1/3 is always
+            reserved for natural novelty-driven exploration.
+
+        When multiple Case 3 gaps compete within the 2/3 ceiling,
+        budget is allocated proportionally to
+        gap_multiplier × field_penalty — higher-stakes gaps
+        get priority. The 2/3 ceiling ensures the system never
+        becomes a pure gap-resolution machine.
+
     Case 4: Arbiter inconclusive
         → flag for deferred resolution (internal)
         → serve minimal hedge to user: no internal state disclosed
@@ -851,6 +896,45 @@ STEP 3 — Correction signal (internal only):
     answer") — not the reason, not the conflict, not which models
     disagreed.
 ```
+
+**Assertions store decay — field-specific evidence staleness:**
+
+Not all verified facts age equally. A mathematical theorem proven beyond doubt — Pythagoras, the fundamental theorem of calculus, the law of conservation of energy — does not become less true over time. A clinical treatment guideline, a software security best practice, or a legal precedent can be obsolete in months. The assertions store therefore applies a field-specific confidence decay function to stored evidence:
+
+```
+C_effective(assertion, t) = C_verified × decay(field, Δt)
+
+decay(field, Δt):
+
+    Class A — No decay (mathematically or physically proven facts):
+        Pure mathematics (proofs, theorems, derivations)
+        Fundamental physics (gravity, thermodynamic laws, calculus)
+        decay = 1.0 for all Δt
+
+    Class B — Slow decay (decades-stable fields):
+        Mechanical engineering principles
+        Classical chemistry, structural physics
+        decay = exp(-Δt / τ),  τ = 10 years
+
+    Class C — Moderate decay (years-stable fields):
+        General medicine (anatomy, pharmacology mechanisms)
+        Software architecture patterns
+        Legal common law principles
+        decay = exp(-Δt / τ),  τ = 3 years
+
+    Class D — Fast decay (months-to-years volatile fields):
+        Clinical treatment guidelines (medical consensus)
+        Software security best practices
+        Regulatory and compliance standards
+        ML/AI research findings
+        decay = exp(-Δt / τ),  τ = 6 months
+```
+
+When the Arbiter retrieves a cross-session assertion for its check, the effective confidence used is `C_verified × decay(field, Δt)` — not the original verification confidence. An assertion with C=0.95 verified three years ago in a fast-decay field (τ=6 months) has effective confidence ≈ 0.95 × exp(-6) ≈ 0.001 — functionally untrustworthy, and correctly treated as inconclusive. The same assertion in a no-decay field retains full confidence indefinitely.
+
+Field class assignment is determined by the field classifier at assertion write time and stored with the assertion. The class boundaries above are the initial calibration — they will be updated empirically as the system accumulates evidence about how quickly different domains evolve.
+
+**Why some facts truly have no decay.** A mathematical or logical proof is not an empirical claim that could be overturned by new evidence — it is a deductive conclusion from axioms. If Pythagoras's theorem was valid when stored, it is valid now. The no-decay class is not an approximation; it is epistemologically correct. Treating proven mathematical results as time-sensitive would introduce spurious uncertainty where none exists.
 
 **Why corrections feed both submodels simultaneously:**
 
@@ -917,6 +1001,57 @@ cross-session → empirical, stop when confident)
                  → responses feed back to submodels
                  → blue-green if merit threshold met
 ```
+
+**Arbiter calibration via external expert sampling:**
+
+The Arbiter's confidence weight vector **w** = (logical: 0.30, mathematical: 0.40, cross-session: 0.20, empirical: 0.10) is initially hand-specified. To calibrate these weights empirically and detect drift over time, a random sample of Arbiter verdicts — targeting 2–5% of all Case 1, 2, and 3 resolutions — is independently routed to domain experts under the standard external escalation protocol.
+
+```
+Calibration pipeline:
+
+1. Arbiter issues verdict (Case 1, 2, or 3) with conf_arbiter score
+2. With probability p_sample (field-calibrated, ~0.02–0.05):
+      → route same subject S to eligible domain experts (§9.5 escalation)
+      → blind: experts do not know an Arbiter verdict already exists
+3. Compare expert consensus to Arbiter verdict:
+      Match:    reinforces current weight vector (no change)
+      Mismatch: flags potential Arbiter drift
+4. If mismatch rate > drift_threshold(field) over sliding window W:
+      → consult additional experts until consensus reached
+      → update weight vector in direction of expert consensus
+      → log weight change for audit
+5. If Arbiter and experts persistently disagree on a subject class:
+      → flag as systematic Arbiter blind spot
+      → increase sampling rate for that subject class
+      → escalate weight recalibration
+```
+
+Drift is detected when the mismatch rate between Arbiter verdicts and independent expert consensus exceeds a field-specific threshold over a rolling window. The expert consensus is treated as the ground truth because it is the most reliable signal available — multiple verified domain experts independently agreeing constitutes strong empirical evidence.
+
+This mechanism means the Arbiter is not self-referential: it is calibrated against an independent external signal on a continuous basis, not just at initialization. The calibration sample is small enough that it does not significantly increase the escalation load, but large enough to detect systematic drift within a reasonable observation window.
+
+**Adaptive sampling for over-correction detection:**
+
+The base sampling rate of 2–5% provides general drift detection. However, the Personality-Arbiter feedback loop introduces a specific failure mode: if the Arbiter is systematically over-correcting (high false positive rate on contradiction detection), the elevated contradiction signal causes the personality system to increase caution, reduce exploration, and reduce gap resolution capacity — a loop that tightens without any external signal triggering correction.
+
+This is detected through correction volume monitoring. The system tracks each Arbiter instance's correction rate per unit time relative to baseline:
+
+```
+correction_rate(arbiter, window) = corrections_issued / interactions_processed
+
+if correction_rate > baseline_rate × over_correction_threshold(field):
+    → escalate sampling rate for this Arbiter instance
+
+adaptive_sampling_rate:
+    baseline:          2–5%    (normal drift detection)
+    elevated:          8–10%   (correction rate moderately high)
+    intensive:         10–15%  (correction rate significantly above baseline)
+    intensive ceiling: 15%     (hard cap — never exceeded regardless of rate)
+```
+
+At elevated and intensive sampling rates, the increased expert verification provides faster feedback on whether the Arbiter's corrections are accurate. If expert consensus confirms the corrections are correct, the high correction rate is real signal — the field has accumulated genuine errors. If expert consensus contradicts a significant fraction of corrections, over-correction is confirmed and the Arbiter's weight vector is recalibrated.
+
+The hard cap at 15% ensures the escalation infrastructure is never overwhelmed by a single misbehaving Arbiter instance. At 15% sampling on a high-volume domain, the expert load is still manageable and the verification turnaround is fast enough to detect and correct the feedback loop before the personality system has drifted significantly. The personality system's drift rate cap (§5.2, Layer 2: max Δ = 0.02–0.05 per cycle) provides an additional buffer — the personality cannot change faster than the Arbiter sampling can detect and correct a problem.
 
 **Information disclosure boundary:**
 
@@ -1245,6 +1380,64 @@ Branch to the depth that keeps each submodel comfortably within a single GPU's V
 ---
 
 
+### 9.9 Router High Availability via Raft Consensus
+
+The router is the single path through which all queries enter the model graph — field classification, fan-out to submodels, and response merging all pass through it. A failed or partitioned router makes the entire graph unreachable, regardless of individual submodel health. This is resolved through a Raft-based consensus protocol across a small cluster of router replicas.
+
+**Why Raft.** Raft (Ongaro & Ousterhout, 2014) is a consensus algorithm designed for understandability and operational simplicity. It provides strong consistency through a single elected leader, with automatic leader re-election on failure. Unlike Paxos, Raft has a clean separation between leader election, log replication, and safety, making it suitable for a system where the router cluster must remain operationally manageable.
+
+**Router cluster structure:**
+
+```
+Router cluster (3 or 5 nodes — odd for majority quorum):
+
+    Leader router        ← serves all query traffic
+    Follower router 1    ← replicates state, ready to promote
+    Follower router 2    ← replicates state, ready to promote
+
+Replicated state:
+    - Field classifier model weights (read-only, updated on new versions)
+    - Active blue-green traffic split table (per submodel)
+    - Submodel health status (liveness from periodic pings)
+    - Routing fallback graph (which nodes to use if a submodel is down)
+
+Not replicated (computed per-request, stateless):
+    - Query classification results
+    - Fan-out routing decisions
+    - Response merging
+```
+
+**Leader election and failover:**
+
+```
+Normal operation:
+    Leader handles all query routing
+    Followers replicate state changes from leader
+    Followers send heartbeats to confirm leader liveness
+
+Leader failure detected (heartbeat timeout):
+    Followers initiate election after randomized timeout
+    Candidate with most up-to-date log wins majority vote
+    New leader elected within ~150–300ms (Raft default)
+    Traffic resumes with no manual intervention
+
+Split brain prevention:
+    Majority quorum required for all state changes
+    A partitioned minority cannot elect its own leader
+    Queries to minority partition are rejected (not silently wrong)
+```
+
+**Operational properties:**
+
+Reads (query routing decisions) are served by the leader only, ensuring the traffic split table is always current. State changes — submodel health updates, traffic split adjustments from blue-green cycles — require quorum commit before taking effect. A 3-node cluster tolerates 1 node failure; a 5-node cluster tolerates 2.
+
+The router cluster adds approximately 150–300ms latency only during a leader election event. Under normal operation, the follower overhead is negligible — followers receive state replication asynchronously and do not participate in query serving. From the submodels' perspective, the router is a single logical entity; the Raft cluster is an implementation detail invisible to the rest of the graph.
+
+**Graceful degradation during election:**
+
+During the leader election window (~150–300ms), incoming queries are queued at the load balancer rather than dropped. The queue depth is bounded by the election timeout — after a new leader is elected, the queue drains immediately. For fields with tight latency requirements (surgery, aviation), the escalation fallback can be pre-configured to route to a cached last-known-good response during this window rather than queuing.
+
+
 ## 10. MVP: Code Generation Agent
 
 ### 10.1 Why Code First
@@ -1325,57 +1518,59 @@ Phase 7 — Feedback into Training
 
 ## 12. Open Questions
 
-The following are genuinely unresolved problems. Previously identified open questions that have been resolved or substantially mitigated through the Arbiter Agent (§9.5) and distributed architecture (§9) have been incorporated into their respective sections: reality grounding (§9.5), catastrophic forgetting (§9), cross-domain contradiction (§9.5), base model compatibility (§9), adversarial confidence degradation (§9.5), and calibration pipeline scaling (§9.5). The two remaining original questions — subtle utility gaming and multi-modal extension — are retained below alongside new open problems that have emerged from deeper analysis.
+The following tracks the resolution status of all identified open problems. Questions resolved in this version are noted with their resolution location.
 
-### 12.1 Persistent from Prior Versions
+**Resolved in v0.4:**
+- Reality grounding → §9.5 (Arbiter empirical checks)
+- Catastrophic forgetting → §9 (distributed architecture)
+- Cross-domain contradiction → §9.5 (Arbiter Agent)
+- Base model compatibility → §9 (independent submodel migration)
+- Adversarial confidence degradation → §9.5 (Arbiter gates all weight-affecting inputs)
+- Calibration pipeline scaling → §9.5 (Arbiter as first-stage sampler)
+- Evidence chain staleness → §9.5 (field-specific decay function, Class A–D)
+- Trust cold start → §6.1 (domain expertise from credentials on day one)
+- Sybil resistance → §6.2 (reputational accountability under attribution)
+- Router single point of failure → §9.9 (Raft-based HA cluster)
+- Arbiter bootstrapping → §9.5 (expert sampling calibration pipeline)
+- Personality-Arbiter feedback loop → §9.5 (adaptive sampling up to 15% detects over-correction before personality drift accumulates)
+- Curiosity gap bonus calibration → §9.5 (dual cap: per-gap ≤ K_natural_max; Case 3 collective ≤ 2/3 of exploration budget)
+
+**Partially resolved in v0.4:**
+- Multi-modal extension → §12.1 (STEM: parse-then-check; creative: augmented with music theory, aesthetic literature, cultural context, Overton window — parser and cultural classifier engineering remain open)
+
+### 12.1 Persistent
 
 **1. Subtle utility gaming**
 
-The 50% curiosity cap prevents overt gaming. A sufficiently capable agent might learn subtler strategies: slightly reframing familiar problems to appear novel, or selectively avoiding domains where its contradiction rate would rise. Detecting this requires comparing the agent's novelty claims against an independent novelty measure. The curiosity gap bonus (§9.5, Case 3) partially mitigates this by preferentially directing exploration toward confirmed knowledge gaps rather than self-declared novelty — but the agent could still game gap detection by generating ambiguous outputs that trigger Case 3 without genuinely resolving the gap.
+The 50% curiosity cap prevents overt gaming. A sufficiently capable agent might learn subtler strategies: slightly reframing familiar problems to appear novel, or selectively avoiding domains where its contradiction rate would rise. The curiosity gap bonus (§9.5, Case 3) partially mitigates this by directing exploration toward confirmed knowledge gaps — but the agent could still game gap detection by generating ambiguous outputs that trigger Case 3 without genuinely resolving the gap. Detecting subtle gaming requires an independent novelty measure, which reintroduces the circularity problem.
 
 ---
 
-**2. Multi-modal extension**
+**2. Multi-modal extension** *(partially resolved)*
 
-The current framework assumes text input and output throughout. Extending to image, audio, and video modalities requires: (a) a contradiction detector that operates on non-text content — logical and mathematical checks do not directly apply to images; (b) an assertions store schema that represents structured facts about visual or audio content; (c) an efficacy measurement pipeline per modality. The creative efficacy model (§3.2) provides a starting point for output measurement via platform engagement signals, but the internal contradiction detection layer requires fundamental redesign.
+The framework assumes text throughout. Multi-modal extension decomposes differently for STEM vs. creative content.
 
----
+**STEM modalities — parse first, then run normal checks.** Audio and video in STEM domains (a medical lecture recording, a documentary on how volcanoes erupt, a scientific journal audiobook) contains extractable factual claims. The strategy: transcribe and parse media into a structured claim set, then run the standard four-check Arbiter pipeline on those claims exactly as for text. Logical contradictions, mathematical errors, cross-session inconsistencies, and empirical verifiability all apply to factual statements regardless of medium. The hard problem is the parser, not the checker — once claims are extracted, existing infrastructure handles them.
 
-### 12.2 New Open Questions
+**Creative modalities — augmented by domain-specific aesthetic frameworks.** For creative content, logical and mathematical checks do not apply, but the following mechanisms are available:
 
-**3. Arbiter bootstrapping — who arbitrates the Arbiter?**
+*Music:* Music theory provides a formal body of literature covering harmony, rhythm, counterpoint, voice leading, and genre conventions. A creative audio output can be checked against this literature — not as a correctness test but as a calibration signal for whether the work engages meaningfully with established structures. Platform engagement (Spotify, SoundCloud) provides the empirical check.
 
-The Arbiter Agent's confidence weighting formula (logical: 0.30, mathematical: 0.40, cross-session: 0.20, empirical: 0.10) is currently hand-specified. These weights are plausible but not derived from first principles or empirical calibration. An incorrectly weighted Arbiter systematically biases corrections across the entire graph — every submodel that receives Arbiter-generated DPO pairs inherits the bias. The question of how to calibrate Arbiter confidence weights from data, and how to detect Arbiter drift over time, has no current answer.
+*Visual art and photography:* Aesthetic literature spanning thousands of years documents color science (complementary colors, perceptual color models), compositional frameworks (golden ratio, rule of thirds, visual balance), and cross-cultural aesthetic studies. These are data-grounded — extensive observation, cross-cultural replication, measurable perceptual response. Platform engagement (Behance, iStockPhoto purchase rates) provides empirical signal.
 
----
+*Cultural context:* Aesthetic norms are not universal. A work conforming to Western conventions may violate Eastern ones. The field classifier identifies the intended cultural context, and aesthetic checks apply against the norms of that specific context — not a universal standard.
 
-**4. Curiosity gap bonus calibration**
+*Overton window:* The Arbiter assesses whether a creative work falls within the current Overton window for its field and cultural context — the range of expressions currently considered socially acceptable for public distribution. This is a social calibration signal, not a quality judgment. Content outside the window is not wrong, but its placement affects discoverability efficacy and platform viability.
 
-The gap multiplier formula (gap_multiplier = 1 + penalty_multiplier / 10) is a reasonable starting heuristic but has not been validated. If the multiplier is too high, Case 3 gaps monopolize the system's exploration budget, starving genuine novelty-driven curiosity. If too low, high-priority knowledge gaps compete ineffectively against routine novelty. The theoretical optimal multiplier depends on the relative frequency of Case 3 events, the depth of the knowledge gap, and the cost of remaining wrong in that field — none of which are known in advance.
-
----
-
-**5. Arbiter evidence chain staleness**
-
-The assertions store persists verified facts across sessions. Over time, some of these facts become outdated — medical guidelines change, software best practices evolve, legal precedents shift. A fact that was verified at confidence 0.95 two years ago may now be wrong, but the store has no decay mechanism. The Arbiter's cross-session check therefore trusts stale evidence with the same weight as fresh evidence. A time-weighted confidence decay function is needed, but its decay rate would need to be field-specific (physics facts decay slowly; clinical guidelines can change in months) and calibrated empirically.
+**What remains unresolved:** The parser for extracting structured claims from non-text STEM media requires significant engineering. The assertions store schema for visual and audio content has no current design. The cultural context classifier is a hard classification problem with no clean training signal. The Overton window is dynamic and geographically variable — operationalizing it as a continuous check requires a regularly updated model of social acceptability per field per region.
 
 ---
 
-**6. Trust score cold start and Sybil resistance**
+### 12.2 Remaining New Questions
 
-The entity trust system (§6) requires interaction history to compute trust scores. New entities start with no history and therefore cannot qualify for external escalation. A new domain expert with genuine deep knowledge is indistinguishable from an adversary on their first interaction. The system needs a cold-start protocol — some mechanism for bootstrapping trust faster than interaction history alone, perhaps through verifiable credential attestation. Additionally, a Sybil adversary who creates many new entities to probe the system's responses would not be caught by the per-entity trust mechanism — this requires a population-level detection layer that does not yet exist.
+**3. Assertions store decay class assignment**
 
----
-
-**7. Graph router as single point of failure**
-
-The distributed model graph router (§9.2) handles all query classification, fan-out, and response merging. If the router fails or is compromised, the entire graph is unreachable. Unlike individual submodels — which can fail gracefully with fallback to parent nodes — router failure has no clean fallback. The router must itself be fault-tolerant and independently deployable, but the mechanisms for router redundancy, leader election, and state synchronization across router replicas are not yet specified.
-
----
-
-**8. Personality system and Arbiter interaction**
-
-The personality evolution service (§5.2) adjusts trait weights based on utility trend and contradiction rate. The Arbiter generates correction signals that affect both of these. If the Arbiter is systematically over-correcting (high false positive rate on contradiction detection), the personality system will interpret the elevated contradiction rate as evidence that the agent needs more caution — triggering a caution increase that reduces exploration, which reduces the agent's ability to discover and resolve knowledge gaps. This feedback loop between Arbiter correction frequency and personality drift has not been analyzed and could produce unintended stable states.
+The decay class system (Class A–D in §9.5) requires each assertion to be assigned a decay class at write time. The assignment logic — determining whether a given fact falls into "no decay" (mathematical proof) vs. "fast decay" (clinical guideline) — is itself a classification problem. Edge cases exist: is a well-replicated empirical finding in physics Class A or Class B? Is a long-standing medical consensus that has never been challenged Class B or Class C? The initial calibration is a heuristic; a systematic method for decay class assignment is needed.
 
 ## 13. Conclusion
 
@@ -1467,13 +1662,42 @@ Traits that were stable (caution, assertiveness, analytical_rigor, conciseness) 
 
 ---
 
-### A.5 Identified Gaps for v0.3
+### A.5 Simulation Gaps and Resolutions (v0.4)
 
-Two concrete issues surfaced from the simulation:
+Two concrete issues surfaced from the simulation and are now resolved for the Phase 1 live implementation:
 
-**1. Efficacy does not accumulate.** The `_compute_efficacy` function computes per-interaction against a fixed baseline rather than maintaining a running domain-level efficacy state like confidence does. In the live system this will self-correct because improving solutions genuinely score better against the human benchmark. But the simulation reveals the design asymmetry: confidence has an EMA; efficacy should too.
+**1. Efficacy accumulation via EMA.**
 
-**2. Curiosity requires dynamic problem difficulty.** The 50% cap and growth function work correctly in isolation, but the simulation's fixed-difficulty problem bank prevents the novelty counter from resetting after cycle 1. Future simulation runs should implement a difficulty escalation mechanism — routing to harder problems as per-domain confidence rises past a threshold — to exercise the curiosity dynamics properly.
+The simulation computed efficacy per-interaction against a fixed baseline, creating an asymmetry: confidence uses EMA and accumulates across cycles, but efficacy reset each interaction. The fix for the live system is straightforward — maintain a running domain-level efficacy state using the same EMA pattern as confidence:
 
-Both gaps are simulation artifacts, not flaws in the live architecture. They are tracked as implementation items for v0.3.
+```python
+# Per-interaction efficacy (simulation — fixed baseline, no accumulation)
+E_raw = agent_score / human_baseline
+
+# Domain-level EMA (live system — accumulates across interactions)
+E_domain = (1 - α) × E_domain_prior + α × E_raw
+           where α = 0.2  # same as confidence EMA
+```
+
+In the live system this self-corrects naturally: calibrated responses genuinely score better against the human benchmark, so E_domain rises as the agent improves. The simulation used synthetic responses with artificially fixed scores, hiding this. Implementation item for Phase 1: replace per-interaction efficacy with an EMA-accumulated domain state persisted in the assertions store alongside confidence.
+
+**2. Dynamic problem difficulty escalation.**
+
+The simulation's fixed-difficulty problem bank meant the novelty counter never reset after cycle 1, collapsing curiosity to zero for cycles 2 and 3. This is a harness design gap, not an architecture flaw. The live harness (Phase 1) implements difficulty escalation using LeetCode's difficulty tiers:
+
+```
+Difficulty routing rule:
+    if C_domain > 0.85:  route to Hard problems
+    if C_domain > 0.70:  route to Medium problems
+    else:                route to Easy problems
+
+Novelty counter resets when:
+    problem difficulty tier changes (escalation or de-escalation)
+    OR problem topic cluster changes
+    OR problem has not appeared in prior K sessions
+```
+
+This ensures that as per-domain confidence rises, harder problems are introduced, the novelty counter resets, and the curiosity growth function re-engages. The 50% cap and gap bonus mechanisms can then be properly exercised across calibration cycles.
+
+**Status:** Both gaps are implementation items resolved in the Phase 1 harness design. Neither represents a flaw in the utility function or the three-layer learning architecture — they were artifacts of the simulation's static test bank. The live system will exercise the full curiosity and efficacy dynamics that the simulation could not.
 
