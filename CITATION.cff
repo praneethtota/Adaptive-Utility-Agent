@@ -4,6 +4,14 @@ authors:
   - family-names: Tota
     given-names: Praneeth
 title: "Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems"
+version: 0.4
 date-released: 2026-04-04
-license: CC-BY-4.0
+license: GPL-3.0
+license-url: "https://www.gnu.org/licenses/gpl-3.0.html"
 url: "https://github.com/praneethtota/Adaptive-Utility-Agent"
+abstract: >
+  A framework for wrapping frontier language models with an adaptive utility
+  layer governed by a mathematically grounded utility function U = w_e·E +
+  w_c·C + w_k·K. Includes a three-layer continual learning pipeline, personality
+  system, entity trust system, distributed model graph architecture, Arbiter Agent
+  for contradiction resolution, and utility-deviation-triggered blue-green deployment.
