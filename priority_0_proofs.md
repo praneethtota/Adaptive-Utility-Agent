@@ -345,7 +345,7 @@ $$C^* = \bar{s}\,(1 - \lambda\mu(f)) = \tilde{s}^*$$
 
 2. **Geometric convergence in expectation.** For all $t \geq 0$:
 
-$$\mathbb{E}[|C_t - C^*|] \leq (1-\alpha)^t\,|C_0 - C^*|$$
+$$\mathbb{E}[|C_t - C^\*|] \leq (1-\alpha)^t\,|C_0 - C^*|$$
 
 The bound holds in expectation over the noise in $\tilde{s}_t$; it is not a deterministic almost-sure bound because the noise term $\alpha(\tilde{s}_t - \tilde{s}^*)$ does not vanish pathwise. With $\alpha = 0.2$, the expected error halves every $\lceil\log(0.5)/\log(0.8)\rceil = 3$ interactions.
 
