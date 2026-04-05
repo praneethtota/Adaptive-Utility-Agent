@@ -1,0 +1,354 @@
+{
+  "field": "software_engineering",
+  "cycles": [
+    {
+      "cycle": 1,
+      "avg_U": 0.5128,
+      "avg_E_raw": 0.5323,
+      "avg_E_ema": 0.5124,
+      "avg_C": 0.6005,
+      "contradictions": 1
+    },
+    {
+      "cycle": 2,
+      "avg_U": 0.5921,
+      "avg_E_raw": 0.5701,
+      "avg_E_ema": 0.5542,
+      "avg_C": 0.8128,
+      "contradictions": 0
+    },
+    {
+      "cycle": 3,
+      "avg_U": 0.6288,
+      "avg_E_raw": 0.5809,
+      "avg_E_ema": 0.574,
+      "avg_C": 0.894,
+      "contradictions": 0
+    }
+  ],
+  "per_problem": {
+    "two_sum": [
+      {
+        "cycle": 1,
+        "utility": 0.4617,
+        "efficacy_raw": 0.4545,
+        "efficacy_ema": 0.4909,
+        "confidence": 0.4432,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "easy"
+      },
+      {
+        "cycle": 2,
+        "utility": 0.5669,
+        "efficacy_raw": 0.5472,
+        "efficacy_ema": 0.5413,
+        "confidence": 0.7524,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "medium"
+      },
+      {
+        "cycle": 3,
+        "utility": 0.619,
+        "efficacy_raw": 0.561,
+        "efficacy_ema": 0.5694,
+        "confidence": 0.8719,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "hard"
+      }
+    ],
+    "is_palindrome": [
+      {
+        "cycle": 1,
+        "utility": 0.4745,
+        "efficacy_raw": 0.5185,
+        "efficacy_ema": 0.4964,
+        "confidence": 0.4946,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "easy"
+      },
+      {
+        "cycle": 2,
+        "utility": 0.5747,
+        "efficacy_raw": 0.5667,
+        "efficacy_ema": 0.5463,
+        "confidence": 0.7719,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "medium"
+      },
+      {
+        "cycle": 3,
+        "utility": 0.6218,
+        "efficacy_raw": 0.5806,
+        "efficacy_ema": 0.5717,
+        "confidence": 0.8775,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "hard"
+      }
+    ],
+    "valid_parentheses": [
+      {
+        "cycle": 1,
+        "utility": 0.4888,
+        "efficacy_raw": 0.5333,
+        "efficacy_ema": 0.5038,
+        "confidence": 0.5556,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "easy"
+      },
+      {
+        "cycle": 2,
+        "utility": 0.5817,
+        "efficacy_raw": 0.557,
+        "efficacy_ema": 0.5485,
+        "confidence": 0.7935,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "medium"
+      },
+      {
+        "cycle": 3,
+        "utility": 0.6233,
+        "efficacy_raw": 0.5652,
+        "efficacy_ema": 0.5704,
+        "confidence": 0.884,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "hard"
+      }
+    ],
+    "max_subarray": [
+      {
+        "cycle": 1,
+        "utility": 0.5068,
+        "efficacy_raw": 0.5245,
+        "efficacy_ema": 0.5079,
+        "confidence": 0.5945,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "easy"
+      },
+      {
+        "cycle": 2,
+        "utility": 0.5901,
+        "efficacy_raw": 0.5641,
+        "efficacy_ema": 0.5516,
+        "confidence": 0.8108,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "medium"
+      },
+      {
+        "cycle": 3,
+        "utility": 0.6264,
+        "efficacy_raw": 0.575,
+        "efficacy_ema": 0.5713,
+        "confidence": 0.8912,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "hard"
+      }
+    ],
+    "binary_search": [
+      {
+        "cycle": 1,
+        "utility": 0.5167,
+        "efficacy_raw": 0.5098,
+        "efficacy_ema": 0.5083,
+        "confidence": 0.6316,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "easy"
+      },
+      {
+        "cycle": 2,
+        "utility": 0.5934,
+        "efficacy_raw": 0.5427,
+        "efficacy_ema": 0.5498,
+        "confidence": 0.8267,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "medium"
+      },
+      {
+        "cycle": 3,
+        "utility": 0.6269,
+        "efficacy_raw": 0.5536,
+        "efficacy_ema": 0.5678,
+        "confidence": 0.899,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "hard"
+      }
+    ],
+    "flatten_nested": [
+      {
+        "cycle": 1,
+        "utility": 0.5349,
+        "efficacy_raw": 0.5634,
+        "efficacy_ema": 0.5193,
+        "confidence": 0.6653,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "easy"
+      },
+      {
+        "cycle": 2,
+        "utility": 0.6017,
+        "efficacy_raw": 0.5867,
+        "efficacy_ema": 0.5572,
+        "confidence": 0.8373,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "medium"
+      },
+      {
+        "cycle": 3,
+        "utility": 0.6316,
+        "efficacy_raw": 0.5974,
+        "efficacy_ema": 0.5737,
+        "confidence": 0.9032,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "hard"
+      }
+    ],
+    "lru_cache": [
+      {
+        "cycle": 1,
+        "utility": 0.555,
+        "efficacy_raw": 0.5857,
+        "efficacy_ema": 0.5326,
+        "confidence": 0.6962,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "easy"
+      },
+      {
+        "cycle": 2,
+        "utility": 0.6118,
+        "efficacy_raw": 0.6081,
+        "efficacy_ema": 0.5674,
+        "confidence": 0.8499,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "medium"
+      },
+      {
+        "cycle": 3,
+        "utility": 0.6391,
+        "efficacy_raw": 0.6184,
+        "efficacy_ema": 0.5826,
+        "confidence": 0.9105,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "hard"
+      }
+    ],
+    "merge_intervals": [
+      {
+        "cycle": 1,
+        "utility": 0.5641,
+        "efficacy_raw": 0.5685,
+        "efficacy_ema": 0.5398,
+        "confidence": 0.723,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "medium"
+      },
+      {
+        "cycle": 2,
+        "utility": 0.6167,
+        "efficacy_raw": 0.5882,
+        "efficacy_ema": 0.5715,
+        "confidence": 0.8599,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "hard"
+      },
+      {
+        "cycle": 3,
+        "utility": 0.642,
+        "efficacy_raw": 0.5962,
+        "efficacy_ema": 0.5853,
+        "confidence": 0.9144,
+        "gap_bonus": 0.0,
+        "recommended_difficulty": "hard"
+      }
+    ]
+  },
+  "personality_evolution": [
+    {
+      "cycle": 0,
+      "state": {
+        "curiosity": 0.6,
+        "caution": 0.5,
+        "assertiveness": 0.5,
+        "analytical_rigor": 0.6,
+        "creativity": 0.4,
+        "conciseness": 0.5
+      }
+    },
+    {
+      "cycle": 1,
+      "state": {
+        "curiosity": 0.6,
+        "caution": 0.5,
+        "assertiveness": 0.5,
+        "analytical_rigor": 0.6,
+        "creativity": 0.4,
+        "conciseness": 0.5
+      }
+    },
+    {
+      "cycle": 2,
+      "state": {
+        "curiosity": 0.63,
+        "caution": 0.5,
+        "assertiveness": 0.5,
+        "analytical_rigor": 0.6,
+        "creativity": 0.42,
+        "conciseness": 0.5
+      }
+    },
+    {
+      "cycle": 3,
+      "state": {
+        "curiosity": 0.66,
+        "caution": 0.5,
+        "assertiveness": 0.5,
+        "analytical_rigor": 0.6,
+        "creativity": 0.44,
+        "conciseness": 0.5
+      }
+    }
+  ],
+  "arbiter_stats": [
+    {
+      "cycle": 1,
+      "total_verdicts": 0,
+      "total_corrections": 0,
+      "correction_rate": 0.0,
+      "adaptive_sample_rate": 0.03,
+      "calibration_samples_collected": 0,
+      "active_gaps": 0
+    },
+    {
+      "cycle": 2,
+      "total_verdicts": 8,
+      "total_corrections": 0,
+      "correction_rate": 0.0,
+      "adaptive_sample_rate": 0.03,
+      "calibration_samples_collected": 1,
+      "active_gaps": 0
+    },
+    {
+      "cycle": 3,
+      "total_verdicts": 16,
+      "total_corrections": 0,
+      "correction_rate": 0.0,
+      "adaptive_sample_rate": 0.03,
+      "calibration_samples_collected": 3,
+      "active_gaps": 0
+    }
+  ],
+  "dpo_pairs": [
+    {
+      "task_id": "two_sum",
+      "field": "software_engineering",
+      "rejected": "```python\ndef two_sum(nums, target):\n    # Time co",
+      "reason": "Code fails its own stated test case: assert two_sum([2, 7, 11, 15], 9) == [(0, 1)]",
+      "weight": 2.0
+    },
+    {
+      "task_id": "two_sum",
+      "field": "software_engineering",
+      "rejected": "```python\ndef two_sum(nums, target):\n    # Time co",
+      "reason": "Claimed O(n) but code has 2 nested loop levels suggesting higher complexity",
+      "weight": 2.0
+    }
+  ]
+}
