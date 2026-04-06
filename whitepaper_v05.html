@@ -134,6 +134,19 @@ Subject to:
 - <strong>f</strong> — field/domain, which determines weights and minimum bounds
 - <strong>w_e, w_c, w_k</strong> — field-specific weights summing to 1</p>
 <p><em>The additive weighted structure of U is not a convenience — it is the unique functional form satisfying separability, monotonicity, continuity, field invariance, and linear scaling invariance. Formal derivation via Debreu's theorem and the Cauchy functional equation: </em><em>Appendix B, Theorem B.1</em><em>.</em></p>
+
+<p><strong>Constrained maximization and the optimization geometry.</strong></p>
+
+<p>$U$ is the objective being maximized — through DPO calibration, behavioral correction, and deployment gating — subject to the three constraints above. The full decision rule is:</p>
+
+$$\text{act} = \begin{cases} \arg\max\; U & \text{if } C \geq C_{\min}(f) \;\text{and}\; E \geq E_{\min}(f) \\ \text{abstain / escalate} & \text{otherwise} \end{cases}$$
+
+<p>The constraints are not soft penalties — they are hard gates. An agent below $C_{\min}(f)$ does not produce a lower-utility answer; it produces no answer and escalates. In surgery or aviation, a confidently wrong answer is more dangerous than an acknowledged abstention.</p>
+
+<p>The curiosity cap creates a useful joint incentive structure. Because $K$ is bounded by $(w_e E + w_c C)/w_k$, improving $E$ and $C$ simultaneously <em>loosens</em> the cap — a more competent, consistent agent is permitted more exploration. The optimization landscape therefore rewards joint improvement across all three components rather than trading one off against another. An agent that games curiosity by keeping $C$ low to inflate $K$ finds that the cap tightens as $C$ falls, automatically reducing the curiosity term it was trying to exploit. The cap is self-enforcing: no external monitor is needed to prevent gaming.</p>
+
+<p>This means the utility surface has no saddle points where a locally optimal strategy involves deliberately degrading one component. At every point in the feasible region, the gradient of $U$ is strictly positive in all three directions — any genuine improvement in efficacy, confidence, or curiosity increases $U$.</p>
+
 <h3>3.2 Efficacy</h3>
 <p>Efficacy measures output quality relative to the current human baseline for that task:</p>
 <pre><code>E(task) = quality(agent_output) / cost(human_equivalent)</code></pre>
@@ -843,6 +856,11 @@ adaptive_sampling_rate:
     intensive ceiling: 15%     (hard cap — never exceeded regardless of rate)</code></pre>
 <p>At elevated and intensive sampling rates, the increased expert verification provides faster feedback on whether the Arbiter's corrections are accurate. If expert consensus confirms the corrections are correct, the high correction rate is real signal — the field has accumulated genuine errors. If expert consensus contradicts a significant fraction of corrections, over-correction is confirmed and the Arbiter's weight vector is recalibrated.</p>
 <p>The hard cap at 15% ensures the escalation infrastructure is never overwhelmed by a single misbehaving Arbiter instance. At 15% sampling on a high-volume domain, the expert load is still manageable and the verification turnaround is fast enough to detect and correct the feedback loop before the personality system has drifted significantly. The personality system's drift rate cap (§5.2, Layer 2: max Δ = 0.02–0.05 per cycle) provides an additional buffer — the personality cannot change faster than the Arbiter sampling can detect and correct a problem.</p>
+
+<p><strong>Note on alternative arbitration mechanisms.</strong></p>
+
+<p>The hand-specified weight vector (logical: 0.30, mathematical: 0.40, cross-session: 0.20, empirical: 0.10) and the adaptive 2–15% expert sampling rate are engineering approximations to what a theoretically grounded mechanism would derive endogenously. In a companion paper (<em>Supplement S1: Game-Theoretic Arbitration via VCG Mechanism</em>), we develop an alternative arbitration mechanism in which the domain submodels are treated as players in a cooperative game with the Arbiter as the external social planner. Under the Vickrey-Clarke-Groves (VCG) mechanism, submodels report value functions over the claim space, the Arbiter selects the social optimum directly, and Clarke pivot transfers applied as DPO weight adjustments enforce truthful reporting as the dominant strategy. This mechanism achieves POA = 1 (no efficiency loss at equilibrium), makes the hand-specified check weights unnecessary — they are replaced by the submodels' reported utilities — and makes the adaptive calibration sampling unnecessary — the Clarke transfer is a continuous self-correcting signal rather than a discrete audit. The current hand-specified mechanism is retained in the main paper as the deployable approximation; the VCG construction is the theoretical ideal toward which Phase 6 architecture should converge.</p>
+
 <p><strong>Information disclosure boundary:</strong></p>
 <p>The Arbiter Agent maintains a strict internal/external split consistent with §5.3. Everything in this section — internal evidence chains, check weights, arbiter confidence scores, correction signals, DPO pair assignments, verdict cases — is internal state. The external boundary exposes exactly two things:</p>
 <pre><code>External output (what the user sees):
