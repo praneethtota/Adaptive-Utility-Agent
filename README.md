@@ -20,6 +20,8 @@ Deployed AI systems are static artifacts. A model that hallucinates today will h
 
 This project addresses that structural absence. The goal is **online learning and error non-repetition**: an agent that detects its own errors, adjusts behavior in response, and does not repeat those errors — continuously, between releases, without a new training cycle.
 
+This work is grounded in multi-attribute utility theory from economics, but extends it by treating utility as a control signal in a feedback system rather than a static objective. It also draws on mechanism design (e.g., VCG) for arbitration and incentive alignment across components.
+
 ---
 
 ## The Core Mechanism: Utility as a Control Law
