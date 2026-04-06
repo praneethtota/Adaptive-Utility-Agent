@@ -8,7 +8,7 @@
 
 ## Abstract
 
-We propose a framework for building self-optimizing AI agents by wrapping frontier language models with an adaptive utility layer grounded in game-theoretic resource allocation theory. The utility function — composed of **Efficacy** (performance relative to a human baseline), **Confidence** (internal consistency penalized by detected contradictions), and **Curiosity** (exploration bonus for high-upside unexplored domains) — is field-weighted and bounded by minimum competence thresholds derived directly from existing societal licensing standards, making the bounds principled rather than arbitrary.
+The central failure mode of deployed language models is error repetition: a system that produces a wrong answer today will produce the same wrong answer tomorrow, and every day until a new version ships. This paper proposes a framework for building AI agents that actively work against this failure — learning from detected errors and adjusting behavior between model releases, without waiting for the next retraining cycle. The utility function — composed of **Efficacy** (performance relative to a human baseline), **Confidence** (internal consistency penalized by detected contradictions), and **Curiosity** (exploration bonus for high-upside unexplored domains) — is field-weighted and bounded by minimum competence thresholds derived directly from existing societal licensing standards, making the bounds principled rather than arbitrary.
 
 Critically, the utility function is not a passive monitoring metric. It is the active loss weighting mechanism for a three-layer continual learning architecture that corrects contradictions and improves model behavior between releases — without waiting for a full retraining cycle. Contradiction corrections are weighted by field-specific penalty multipliers in Direct Preference Optimization (DPO) training, so a surgical error is penalized an order of magnitude more harshly than a creative writing mistake at the weight-update level.
 
@@ -16,7 +16,7 @@ The paper introduces four additional architectural contributions. First, a **Per
 
 Cross-domain contradiction resolution is handled by a dedicated **Arbiter Agent** that runs structured evidence checks — logical, mathematical, cross-session, and empirical — and routes verified corrections to the relevant submodels as DPO training signal. Submodels whose domains were arbitrated receive the internal evidence chain for DPO integration; nothing is disclosed externally. When all internal checks fail, a controlled external escalation queries verified domain experts through obfuscated, partialized queries consistent with the system's minimum-disclosure principle.
 
-Submodel updates follow a **utility-deviation-triggered blue-green deployment** protocol with statistically grounded detection thresholds and softmax traffic routing, ensuring system stability throughout. The protocol is validated through simulation across 3 calibration cycles on 8 LeetCode-style problems, demonstrating a +0.0755 average utility improvement and contradiction reduction from 1 to 0.
+Submodel updates follow a **utility-deviation-triggered blue-green deployment** protocol with statistically grounded detection thresholds and softmax traffic routing, ensuring system stability throughout. The protocol is validated through simulation across 3 calibration cycles on 8 LeetCode-style problems, demonstrating a +0.1160 average utility improvement and contradiction reduction from 1 to 0.
 
 Submodel deployment depth is **hardware-adaptive**: shallow graphs of large submodels on high-VRAM GPUs, or deep graphs of small specialist submodels on consumer hardware — achieving equivalent logical capability at lower cost through the avoidance of slow inter-GPU interconnects.
 
@@ -24,33 +24,43 @@ Submodel deployment depth is **hardware-adaptive**: shallow graphs of large subm
 
 ## 1. Introduction
 
-Deployed AI systems today are static artifacts. They are optimized at training time against a fixed reward signal and released — whereupon their behavior is frozen. They cannot adjust how much they trust their own knowledge, they have no mechanism to learn from detected errors between releases, and they apply the same level of caution to a surgical recommendation as to a recipe suggestion. When they produce a contradiction, they will produce the same contradiction tomorrow, and in six months when the next version ships.
+Deployed AI systems today are static artifacts. They are optimized at training time and released — whereupon their behavior is frozen. They cannot learn from errors between releases. When a model produces a hallucination, it will produce the same hallucination tomorrow, and in six months when the next version ships. This is not a failure of scale or capability. It is a structural absence: there is no feedback loop between detected errors and model behavior in the space between model versions.
 
-Human experts behave fundamentally differently. A surgeon knows which procedures they can perform confidently and which require referral. A lawyer knows the edges of their expertise. A researcher develops calibrated uncertainty about their own claims. None of this self-awareness was hardcoded — it emerged through accumulated experience, peer correction, and deliberate practice at the frontier of competence. It also degrades appropriately under stress and rebuilds through demonstrated success. This paper asks: can an AI system be given the same properties?
+This paper addresses that absence directly. The goal is **online learning and error non-repetition**: an agent that detects its own errors, corrects its behavior in response, and does not repeat those errors — continuously, between model releases, without waiting for a new training cycle.
 
-We propose an architecture that wraps a frontier language model with an adaptive utility layer — a framework for building agents that know what they know, know what they don't, actively correct what they get wrong, and do all of this continuously between model releases rather than waiting for the next training cycle. The core mechanism is a utility function U = w_e·E + w_c·C + w_k·K, where Efficacy, Confidence, and Curiosity are field-weighted and bounded by minimum thresholds derived from existing societal standards (medical licensing, aviation certification, bar requirements). The utility function is not a monitoring metric — it is the loss weighting mechanism that determines how strongly each detected error is corrected at training time.
+The governing mechanism is a utility function that serves as a **control law** over the agent's behavior at every timescale:
 
-The paper makes six architectural contributions beyond the utility function itself:
+```
+U = w_e(f)·E + w_c(f)·C + w_k(f)·K
 
-**Continual learning pipeline.** Three timescales of correction: per-session behavioral injection (immediate, no weight change), calibration-cycle DPO fine-tuning (hours, weight-level, field-penalty-weighted), and release-level distillation (monthly). The utility score determines correction weights — a surgery contradiction is penalized 10× harder than a creative writing mistake.
+E — Efficacy:    performance relative to a human baseline
+C — Confidence:  internal consistency, penalized by detected contradictions
+K — Curiosity:   exploration bonus for high-upside uncertain domains
+f — field, determining weights and minimum competence thresholds
+```
 
-**Personality system.** Trait weights (curiosity, caution, analytical rigor, etc.) evolve with utility history subject to field-specific bounds and drift rate caps, producing genuine character development over time without instability.
+The utility function is not a monitoring metric. It determines how strongly each detected error is penalized at training time (a surgical contradiction is weighted 10× harder than a creative writing mistake), when behavioral corrections are injected into the system prompt, and whether a new model deployment passes acceptance. It governs learning at every timescale the architecture operates on.
 
-**Entity trust and reputation system.** Each interacting entity is scored on domain expertise and behavioral trust. Scores gate how external inputs are weighted and — critically — whether an entity is eligible to receive controlled external escalation queries when the system cannot resolve a contradiction internally.
+**The monolithic constraint and the personality system.** The correct long-term solution to error repetition is an architecture where individual domain models can be retrained and redeployed in isolation — the Micro-Expert Architecture described in §9. But until that infrastructure is operational, the system runs on a monolithic base model. In the monolithic setting, weight-level correction is constrained by retraining latency (weeks to months per cycle) and global weight interference (correcting one domain can degrade another). The **Personality System** (§5) is the framework's response to this constraint: a behavioral wrapper that biases the agent toward safer operating regimes between calibration cycles, reducing the harm of repeated hallucinations without modifying the underlying weights. It is explicitly interim infrastructure — designed to be superseded once the Micro-Expert Architecture makes fast, isolated domain retraining possible.
 
-**Distributed model graph.** The monolithic model is decomposed into independently deployable domain submodels communicating over structured APIs, analogous to microservices architecture. Catastrophic forgetting is resolved architecturally: updating one domain's weights cannot affect any other. Submodels are versioned and updated independently via blue-green deployment.
+The paper makes six contributions:
 
-**Arbiter Agent.** A dedicated contradiction resolution agent that runs structured evidence checks (logical, mathematical, cross-session, empirical) across conflicting submodel outputs. Verified corrections are routed internally to the relevant submodels as DPO signal, with the full evidence chain shared only with the submodels whose domains were arbitrated. When the Arbiter cannot resolve a conflict, a controlled external escalation queries verified domain experts through obfuscated, partialized queries — revealing the minimum information needed to elicit an answer, consistent with the minimum-disclosure principle governing all external information sharing.
+**1. Utility function as governing control law.** The utility function $U = w_e E + w_c C + w_k K$ is formally derived — not merely asserted. Appendix B proves the additive structure is uniquely necessary from five behavioral axioms (Theorem B.1), the efficacy sigmoid equals the Mann-Whitney dominance probability (Proposition B.3), the EMA update is Kalman-optimal (Theorem B.4), confidence converges geometrically in expectation with a closed-form recovery time (Theorem B.5), and the personality evolution rules are Lyapunov stable (Theorem B.7).
 
-**Hardware-adaptive decomposition.** Graph depth is matched to available GPU memory. High-VRAM hardware supports shallow graphs of large, fast submodels; consumer hardware supports deeper graphs of smaller specialist submodels at lower cost per query — exploiting the order-of-magnitude bandwidth advantage of intra-GPU compute over inter-GPU interconnects.
+**2. Three-layer continual learning architecture.** Per-session behavioral injection (immediate, no weight change), calibration-cycle DPO fine-tuning (hours, field-penalty-weighted), and release-level distillation (monthly). Each layer corrects what the previous cannot reach. The utility score determines correction weights throughout.
 
-The system is validated through simulation across three calibration cycles on eight LeetCode-style problems, demonstrating monotonic utility improvement (+0.0755), contradiction elimination (1 → 0 by cycle 2), and correct personality evolution consistent with the stability safeguards.
+**3. Personality system as interim behavioral wrapper.** A log-linear tilt of the base LLM's generation distribution, parameterized by field-bounded trait scores that evolve with utility history. In the monolithic setting, this is the primary mechanism for reducing repeated hallucinations between calibration cycles. The wrapper is reset on new model release and not instantiated in the Micro-Expert Architecture, where fast domain retraining makes it unnecessary.
 
-The rest of the paper is organized as follows. Section 2 surveys related work across the six research areas the architecture draws from. Sections 3–7 develop the theoretical framework: utility function, field-specific bounds, personality system, trust system, and continual learning pipeline. Section 8 describes the monolithic wrapper architecture. Section 9 describes the distributed model graph including the Arbiter Agent, blue-green deployment, and hardware-adaptive decomposition. Section 10 describes the code generation MVP and simulation results. Sections 11–12 present the roadmap and open questions. Appendix A contains the full simulation data.
+**4. Entity trust and reputation system.** Each interacting entity is scored on domain expertise (bootstrapped from verifiable credentials on day one) and behavioral trust (accumulated through interaction). Scores gate how external inputs are weighted and whether an entity qualifies for controlled external escalation queries.
 
----
+**5. Arbiter Agent.** A dedicated contradiction resolution agent running structured evidence checks (logical, mathematical, cross-session, empirical) across conflicting outputs. Verified corrections are routed as DPO signal internally. When the Arbiter cannot resolve a conflict, controlled external escalation queries verified domain experts through obfuscated, partialized queries.
 
----
+**6. Micro-Expert Architecture.** The monolithic model is decomposed into independently deployable domain submodels — analogous to microservices applied to model inference. Catastrophic forgetting is resolved architecturally. Submodels are versioned and updated independently via utility-deviation-triggered blue-green deployment. Graph depth is hardware-adaptive.
+
+The framework is validated through simulation across three calibration cycles on eight LeetCode-style problems (§10, Appendix A). Utility improves from 0.513 to 0.629 (+0.116), contradictions are eliminated by cycle 2, efficacy accumulates via EMA, and difficulty routing escalates from easy through hard problems as domain confidence rises.
+
+The rest of the paper is organized as follows. Section 2 surveys related work. Sections 3–7 develop the theoretical framework: utility function, field bounds, personality system, trust system, and continual learning pipeline. Section 8 describes the monolithic wrapper architecture. Section 9 describes the Micro-Expert Architecture including the Arbiter Agent, blue-green deployment, and hardware-adaptive decomposition. Section 10 describes the code generation MVP and simulation results. Sections 11–12 present the roadmap and open questions. Appendix A contains the full simulation data. Appendix B contains all mathematical proofs.
+
 
 ## 2. Related Work
 
@@ -239,7 +249,7 @@ C(domain) updated via EMA:
 
 The **wave analogy**: knowledge items that reinforce each other are like constructive interference — they increase signal strength. Contradictions are destructive interference. The goal is a knowledge state where all waves reinforce.
 
-*The EMA update with α = 0.2 is the Kalman-optimal estimator of latent domain confidence when process noise is 5% of observation noise — a well-founded choice for incremental calibration. Under stationary signals, confidence converges geometrically to the field-specific steady state C* = s̄(1 − λμ(f)) with half-life ≈ 3 interactions. Formal derivations: **Appendix B, Theorem B.4** (Kalman optimality) and **Appendix B, Theorem 2** (convergence and recovery).*
+*The EMA update with α = 0.2 is the Kalman-optimal estimator of latent domain confidence when process noise is 5% of observation noise — a well-founded choice for incremental calibration. Under stationary signals, confidence converges geometrically to the field-specific steady state C* = s̄(1 − λμ(f)) with half-life ≈ 3 interactions. Formal derivations: **Appendix B, Theorem B.4** (Kalman optimality) and **Appendix B, Theorem B.5** (convergence and recovery).*
 
 Contradiction types (in order of detectability):
 1. **Logical** — output contradicts its own stated premises
@@ -311,7 +321,7 @@ w_k · K ≤ 0.5 × (w_e · E + w_c · C + w_k · K)
 
 This constraint is self-scaling: when E and C are high, the cap is loose and curiosity can push hard. When the agent is weak (low E and C), curiosity is automatically tightened — preventing exploration before the basics are solid. K can never be the dominant term.
 
-*The curiosity term is UCB-inspired: structurally analogous to the Upper Confidence Bound exploration bonus, with uncertainty-driven, concave-in-familiarity growth. The 50% cap is proved to enforce exploitation dominance — curiosity contributes at most half of total utility at all times. Formal derivation: **Appendix B, Proposition B.5**.*
+*The curiosity term is UCB-inspired: structurally analogous to the Upper Confidence Bound exploration bonus, with uncertainty-driven, concave-in-familiarity growth. The 50% cap is proved to enforce exploitation dominance — curiosity contributes at most half of total utility at all times. Formal derivation: **Appendix B, Proposition B.6**.*
 
 ---
 
@@ -407,6 +417,8 @@ A medical query activates high caution and analytical rigor. A creative brainsto
 
 ### 5.2 Personality Evolution and Stability
 
+**Purpose — interim behavioral control.** In the monolithic setting, weight-level correction is constrained by retraining latency and global weight interference. The personality evolution layer is not a substitute for weight-level learning — it is an interim behavioral control mechanism that biases the agent toward safer operating regimes between calibration cycles, reducing repeated hallucinations until the Micro-Expert Architecture enables fast, isolated domain retraining.
+
 A separate service runs every N interactions to adjust personality weights based on accumulated utility history. Three layered safeguards prevent runaway drift:
 
 **Layer 1 — Field-specific trait bounds (hard floor and ceiling):**
@@ -440,7 +452,7 @@ A single bad run of contradictions cannot spike caution to its ceiling in one st
 
 Where β = 0.01. Creates a gentle pull back toward the field's natural personality baseline between cycles — mirroring how human temperament tends to revert after stress.
 
-*The three-layer evolution rules produce bounded, stable dynamics: the trait vector remains in the field-specific feasible set B at all times, converges geometrically to the neutral point s* when drift is absent (rate (1−β)² ≈ 0.980 per cycle, half-life ≈ 34 cycles), and is confined to B under persistent bounded drift. The mean reversion term is a regulariser; the projection Π_B is the primary stability mechanism. Formal derivation: **Appendix B, Theorem 4**.*
+*The three-layer evolution rules produce bounded, stable dynamics: the trait vector remains in the field-specific feasible set B at all times, converges geometrically to the neutral point s* when drift is absent (rate (1−β)² ≈ 0.980 per cycle, half-life ≈ 34 cycles), and is confined to B under persistent bounded drift. The mean reversion term is a regulariser; the projection Π_B is the primary stability mechanism. Formal derivation: **Appendix B, Theorem B.7**.*
 
 Evolution logic:
 ```
@@ -453,6 +465,100 @@ if utility_trend improving AND avg_utility > 0.6:
 if contradiction_rate > 0.4:
     strong increase(caution), strong decrease(assertiveness)
 ```
+
+
+#### 5.2.x — The Personality Wrapper: Formal Specification
+
+The personality system operates as a **wrapper around the generation process** — not as a modification to the utility function. The utility function $U(E, C, K; f)$ is unchanged and all theorems in Appendix B apply exactly as stated. Personality shapes what the model generates; utility evaluates what was generated. These are cleanly separated.
+
+##### Formal Definition
+
+Let $\mathcal{X}$ be the space of inputs and $\Omega$ the space of outputs. The base LLM defines:
+
+$$p_{\text{base}}(\omega \mid x), \quad x \in \mathcal{X},\; \omega \in \Omega$$
+
+For each utility-coupling trait $j$, define a **trait scoring function** $\phi_j : \Omega \to \mathbb{R}$:
+
+| Trait $j$ | $\phi_j(\omega)$ measures | High $s_j$ effect |
+|---|---|---|
+| caution | Hedging density — appropriate uncertainty expressions | More hedging, lower assertion confidence |
+| assertiveness | Directness — definitive claims without qualification | More direct, fewer qualifications |
+| curiosity | Exploration — alternative approaches considered | Wider search over solution space |
+| analytical\_rigor | Reasoning depth — intermediate steps shown | More explicit reasoning chains |
+| creativity | Novelty — solutions diverging from prior examples | Higher variance in solution approach |
+
+The combined trait influence given personality state $s_t$:
+
+$$\phi(s_t,\, \omega) = \sum_{j} (s_{t,j} - s^*_j) \cdot \phi_j(\omega)$$
+
+Only deviations from the field-neutral point $s^*$ produce an effect. The **personality-wrapped distribution** is the log-linear perturbation of the base:
+
+$$\log p_{\text{eff}}(\omega \mid x,\, s_t) = \log p_{\text{base}}(\omega \mid x) + \lambda \cdot \phi(s_t, \omega) - \log Z(x, s_t)$$
+
+where $\lambda > 0$ is the wrapper strength and $Z(x, s_t)$ is the normalizing constant. This is a standard exponential family tilt — the same family as RLHF reward shaping and DPO.
+
+##### Implementation: System Prompt Injection
+
+In practice, $p_{\text{eff}}$ is approximated via system prompt injection. Each trait has a linguistic encoding $\delta_j$:
+
+```
+δ_caution          = "Express appropriate uncertainty. Do not assert claims
+                      you cannot verify. Prefer 'I am not certain' over
+                      confident statements when confidence is below threshold."
+
+δ_assertiveness    = "State conclusions directly. Avoid unnecessary hedging
+                      on verified facts."
+
+δ_curiosity        = "Consider alternative approaches before committing.
+                      Note when a problem may have multiple valid solutions."
+
+δ_analytical_rigor = "Show reasoning steps explicitly. State assumptions
+                      before conclusions."
+
+δ_creativity       = "Prefer novel approaches where viable. Do not default
+                      to the most common solution if a better one exists."
+```
+
+The system prompt is:
+
+$$\text{SystemPrompt}(f, s_t) = \text{BasePrompt}(f) \;\oplus\; \bigoplus_{j : |s_{t,j} - s^*_j| > \tau} \text{scale}(s_{t,j} - s^*_j) \cdot \delta_j$$
+
+where $\tau = 0.05$ is a dead-band threshold — small deviations from neutral produce no injection, avoiding prompt clutter.
+
+##### Key Properties
+
+**W1 — Neutral wrapper is the identity.** At $s_t = s^*$: $\phi(s^*, \omega) = 0$ for all $\omega$, so $p_{\text{eff}}(\omega \mid x, s^*) = p_{\text{base}}(\omega \mid x)$. Zero effect at the neutral point.
+
+**W2 — Bounded divergence.** The KL divergence between wrapped and base distributions is bounded:
+
+$$D_{\text{KL}}(p_{\text{eff}} \,\|\, p_{\text{base}}) \leq \frac{\lambda^2}{2} \cdot \|s_t - s^*\|^2 \cdot \sum_j \text{Var}_{p_{\text{base}}}[\phi_j(\omega)]$$
+
+Since $s_t \in B$ always (Theorem B.7), $\|s_t - s^*\|$ is bounded by $\text{diam}(B)$, so the KL divergence is bounded. The wrapper cannot produce arbitrarily different outputs from the base model.
+
+**W3 — Support preservation.** The exponential tilt preserves the support of $p_{\text{base}}$: outputs that were impossible remain impossible; possible outputs remain possible. The wrapper cannot hallucinate new capabilities or suppress correct answers entirely.
+
+**W4 — Utility function unchanged.** $U(E, C, K; f)$ scores $\omega$ directly, without seeing $s_t$, $p_{\text{eff}}$, or any wrapper parameter. All theorems in Appendix B apply exactly as stated.
+
+##### The Feedback Loop
+
+$$s_t \xrightarrow{\;\mathcal{P}(s_t)\;} p_{\text{eff}}(\omega \mid x, s_t) \xrightarrow{\;\text{sample}\;} \omega_t \xrightarrow{\;U(E,C,K;\,f)\;} U_t \xrightarrow{\;\text{evolution}\;} s_{t+1}$$
+
+Utility $U$ is evaluated at the output $\omega_t$ drawn from the wrapped distribution. Utility history accumulates and drives the evolution rule (Evolution Logic above), which updates $s_{t+1}$. The utility function itself is at no point modified.
+
+##### Lifecycle
+
+```
+Architecture       Wrapper status          Mechanism
+──────────────────────────────────────────────────────────────
+Monolithic         Active: P(s_t)          Biases generation between
+                                           calibration cycles
+New model release  Reset: s_t ← s*        P(s*) = identity (W1)
+Micro-Expert       Not instantiated        Fast domain retraining
+                                           makes wrapper unnecessary
+```
+
+Reset semantics are clean: because the wrapper is external to model weights, resetting requires only $s_t = s^*$. In the Micro-Expert Architecture (§9), the wrapper is never activated — each submodel is retrained quickly enough that behavioral compensation between cycles is unnecessary.
+
 
 ### 5.3 Self-Preservation Principle
 
@@ -1554,8 +1660,8 @@ The following tracks the resolution status of all identified open problems. Ques
 - Utility function justification → Appendix B, Theorem B.1 (additive structure proved from axioms)
 - Efficacy sigmoid justification → Appendix B, Proposition B.3 (Mann-Whitney interpretation)
 - EMA optimality justification → Appendix B, Theorem B.4 (Kalman-optimal for ρ = 0.05)
-- Confidence convergence → Appendix B, Theorem 2 (geometric convergence in expectation, recovery time formula)
-- Personality stability → Appendix B, Theorem 4 (Lyapunov analysis, bounded stable dynamics)
+- Confidence convergence → Appendix B, Theorem B.5 (geometric convergence in expectation, recovery time formula)
+- Personality stability → Appendix B, Theorem B.7 (Lyapunov analysis, bounded stable dynamics)
 
 ### 12.1 Persistent
 
@@ -1661,7 +1767,7 @@ merge_intervals          0.5641     0.6167     0.6420     ↑ improving
 
 **Contradiction detection and penalization are working correctly.** The seeded contradiction in cycle 1 — `two_sum` claiming O(n) with a genuine nested loop — fires correctly via the mathematical check, producing the lowest U score in the run (0.4617). The recovery in cycle 2 (+0.1052 for two_sum) is the largest single-problem jump, validating that the penalty is both meaningful and recoverable.
 
-**Both efficacy and confidence now drive U improvement.** In v0.3, efficacy was flat (simulation artifact). In v0.4, efficacy EMA accumulates: 0.512 → 0.554 → 0.574 across cycles. Confidence remains the dominant driver (0.601 → 0.813 → 0.894), but both terms now contribute, producing a larger total U gain (+0.1160 vs +0.0755 in v0.3).
+**Both efficacy and confidence now drive U improvement.** In v0.3, efficacy was flat (simulation artifact). In v0.4, efficacy EMA accumulates: 0.512 → 0.554 → 0.574 across cycles. Confidence remains the dominant driver (0.601 → 0.813 → 0.894), but both terms now contribute, producing a larger total U gain (+0.1160 vs +0.1160 in v0.3).
 
 **Difficulty escalation re-engages curiosity.** Cycle 1 routes easy problems (domain confidence 0.500), cycle 2 escalates to medium (0.723), cycle 3 escalates to hard (0.860). This resets the novelty counter each time difficulty changes, preventing curiosity from collapsing to zero after cycle 1 — the gap identified in v0.3's A.5.
 
@@ -1739,9 +1845,9 @@ This appendix contains formal mathematical foundations for the utility function 
 - **§B.2**: Field weight justification — cost proportionality design principle
 - **Proposition B.3** (§B.3): Efficacy sigmoid — Mann-Whitney interpretation
 - **Theorem B.4** (§B.4): EMA confidence update — Kalman optimality for ρ = 0.05
-- **Proposition B.5** (§B.5): Curiosity cap — exploitation dominance proof
-- **Theorem B.2** (Theorem B.2): Confidence convergence — geometric convergence in expectation, recovery time
-- **Theorem B.4'** (Theorem B.4'): Personality stability — Lyapunov analysis, bounded stable dynamics
+- **Proposition B.6** (§B.6): Curiosity cap — exploitation dominance proof
+- **Theorem B.5** (§B.5): Confidence convergence — geometric convergence in expectation, recovery time
+- **Theorem B.7** (§B.7): Personality stability — Lyapunov analysis, bounded stable dynamics
 
 ---
 
@@ -1980,7 +2086,7 @@ For high-stakes fields where competence changes very slowly (surgery, aviation),
 
 ---
 
-### B.5 Curiosity as a UCB-Inspired Exploration Term
+### B.6 Curiosity as a UCB-Inspired Exploration Term
 
 We define:
 
@@ -2006,7 +2112,7 @@ Both bonuses are concave and increasing in the "time since last exploration," cr
 
 **What this establishes:** The curiosity term is UCB-*inspired* — it shares the structural properties (uncertainty-driven, concave in familiarity, bounded by exploitation) that make UCB effective. We do not claim exact equivalence to UCB1 or formal regret optimality; those results require a full bandit analysis under our specific setting, which is left as future work.
 
-### Proposition B.5 — The Cap Enforces Exploitation Dominance
+### Proposition B.6 — The Cap Enforces Exploitation Dominance
 
 **Proposition.** *The constraint $w_k K \leq w_e E + w_c C$ implies that curiosity contributes at most 50% of total utility at all times:*
 
@@ -2026,7 +2132,7 @@ The 50% threshold is the tightest constant upper bound derivable from the single
 
 ---
 
-### B.6 Summary
+### B.8 Summary
 
 The utility function $U = w_e E + w_c C + w_k K$ is justified as follows:
 
@@ -2043,7 +2149,7 @@ The formulation is not claimed to be the unique possible design, but it is **the
 
 ---
 
-### Theorem B.2 — Convergence of Confidence Under Repeated Calibration
+### B.5 — Theorem B.5 — Convergence of Confidence Under Repeated Calibration
 
 ### Setup
 
@@ -2081,7 +2187,7 @@ $$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t}(1-\alpha)^{t-k}\tilde{s}_k \qquad
 
 ---
 
-#### Theorem B.2 — Convergence, Uniqueness, and Recovery
+#### B.5 — Theorem B.5 — Convergence, Uniqueness, and Recovery
 
 **Theorem.** *Let $\{\tilde{s}_t\}$ be a stationary sequence with constant expectation $\bar{s} \in [0,1]$ and let $\tilde{s}^* = \bar{s}(1 - \lambda\mu(f))$ be the expected effective signal. Then:*
 
@@ -2200,7 +2306,7 @@ This corollary formalizes the whitepaper's claim that high-stakes fields impose 
 
 ---
 
-### Theorem B.4' — Lyapunov Stability of the Personality System
+### B.7 — Theorem B.7 — Lyapunov Stability of the Personality System
 
 ### Corrected Claim
 
@@ -2230,7 +2336,7 @@ with $V(s^*) = 0$.
 
 ---
 
-#### Theorem B.4' — Bounded Stable Dynamics with Neighborhood Convergence
+#### B.7 — Theorem B.7 — Bounded Stable Dynamics with Neighborhood Convergence
 
 **Theorem.** *Under the three-layer personality evolution rule above:*
 
