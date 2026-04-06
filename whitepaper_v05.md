@@ -820,7 +820,7 @@ The utility function governs all three layers: it determines what gets corrected
 
 The three-layer continual learning architecture in Section 6 mitigates catastrophic forgetting within a monolithic model through replay buffers and careful DPO weighting. But across many calibration cycles over months, this approach has a fundamental ceiling: every update to any domain affects the entire weight space. Fixing a contradiction in surgery knowledge can subtly degrade physics knowledge through weight interference. The replay buffer slows this but cannot eliminate it — the weights are shared.
 
-The solution is to eliminate shared weights for domain-specific knowledge entirely.
+The solution is to eliminate shared weights for domain-specific knowledge entirely. We call the resulting architecture the **Micro-Expert model**: a graph of independently deployable domain submodels, each a specialist in its field, coordinated by a shared router and utility layer but isolated at the weight level.
 
 ### 9.2 Physical Model Decomposition
 
@@ -898,8 +898,55 @@ Multi-domain queries (e.g. "Write a Python script to analyze patient drug dosage
 
 The arbitration layer is addressed in §8.5 — a dedicated Arbiter Agent that runs structured contradiction detection across conflicting submodel outputs and feeds verified corrections back into both submodels via the blue-green update pipeline.
 
+### 9.4.1 Router Misclassification: Open Problem and Mitigations
 
-### 9.5 The Arbiter Agent
+The Micro-Expert model's correctness depends critically on the router sending each query to the right submodel. Two recent empirical findings establish that this is a genuine vulnerability rather than an engineering detail.
+
+Xu et al. (2024) demonstrate that LLMs force-select from available label options even when no correct label exists — they cannot output "none of these apply" without explicit training to do so. Applied to the field classifier: if a query falls outside or between the classifier's known fields, it will still commit to a field rather than expressing genuine uncertainty. The entropy fallback mechanism in §4.2 partially addresses this by detecting high-entropy distributions, but does not handle the case where the classifier is confidently wrong rather than uncertain.
+
+Raval et al. (2026) show that for structured classification tasks — exactly the type of classification our router performs — traditional ML models (LightGBM, fine-tuned BERT-scale models) consistently outperform LLMs, particularly on medical data. An LLM-based field classifier is therefore the weakest possible architectural choice for routing.
+
+**The two failure regimes:**
+
+```
+Regime 1 — Wrong submodel, low confidence (recoverable)
+    Query about medication dosage → routed to CS submodel
+    CS submodel has low C on this query (out-of-domain)
+    C < C_min(f) → abstention triggered → escalation
+    Outcome: slow but safe — utility function catches it
+
+Regime 2 — Wrong submodel, high confidence (dangerous)
+    Query about medication dosage → routed to CS submodel
+    CS submodel saw medical text in training, answers confidently
+    C stays above C_min → wrong answer delivered without warning
+    Outcome: silent failure — utility function does not catch it
+```
+
+Regime 1 is safe: the utility function's abstention mechanism serves as a natural containment layer — a well-calibrated submodel that recognizes it is out of domain will produce low confidence, triggering C < C_min and escalation to the correct expert. The dangerous case is Regime 2, where the wrong submodel produces an overconfident out-of-domain answer.
+
+**Mitigations:**
+
+**M1 — Replace LLM classifier with a trained lightweight classifier as primary.**
+Per Raval et al. (2026), a fine-tuned DeBERTa-scale model or LightGBM trained on labeled routing examples outperforms an LLM classifier for structured field classification. The LLM classifier is retained as a fallback for ambiguous or out-of-distribution queries. Routing does not require generation capability — a discriminative model is both more accurate and cheaper.
+
+**M2 — Ensemble routing with disagreement detection.**
+Run the lightweight trained classifier and the LLM classifier in parallel. When they disagree on the top-1 field, treat the query as high-entropy and broadcast to both candidate fields. Agreement between two independent classifiers provides much stronger routing confidence than either alone.
+
+**M3 — Explicit "none of the above" output class.**
+Address the Xu et al. (2024) finding directly: add an explicit *ambiguous* class to the classifier's label space, trained on queries that span fields or belong to no current submodel. When this class is selected, the system broadcasts to the top-3 submodels by embedding similarity and lets the Arbiter reconcile. This is structurally different from the entropy fallback — it catches confident misclassification rather than uncertain classification.
+
+**M4 — Post-routing domain membership verification.**
+After routing but before returning a response, ask the receiving submodel to perform a lightweight binary classification: does this query fall within its domain? A submodel trained with explicit out-of-domain negatives can reliably say "this is not a CS question" when given a medical query. If the self-assessment is negative, re-route to the second-ranked field. This catches Regime 2 at the submodel level rather than relying on confidence calibration.
+
+**M5 — Submodel domain boundary calibration (training-time fix for Regime 2).**
+Each submodel is trained with out-of-domain examples as negatives, learning to produce low C on queries outside its specialization. This makes the utility function's abstention mechanism effective for out-of-domain cases — converting Regime 2 failures into Regime 1 (recoverable) failures. This is the architectural fix; M1–M4 are operational fixes.
+
+**M6 — Utility-feedback rerouting.**
+If a routed response scores U below a field-calibrated threshold — particularly if it fails logical or cross-session checks at rates above baseline for that query class — flag the routing decision as potentially incorrect and re-route to the second-ranked field. The utility function's output becomes a routing quality signal, closing the feedback loop between field classification and response quality.
+
+**Status.** M1 and M5 are the highest-priority items for Phase 6 implementation. M1 improves routing accuracy at classification time; M5 makes residual misclassifications recoverable through the existing utility abstention mechanism. M2–M4 and M6 are defense-in-depth layers that reduce both the frequency and severity of routing errors without requiring changes to the core architecture.
+
+
 
 When two submodels produce conflicting answers to the same query, the system does not escalate to a human or fall back to a parent model — both of which are slow and expensive. Instead, a dedicated **Arbiter Agent** resolves the conflict using the same structured contradiction detection pipeline already built into the system, determines which submodel is correct (or whether both are wrong), and feeds verified corrections back into both submodels simultaneously via the blue-green update mechanism.
 
