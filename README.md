@@ -1,77 +1,156 @@
-# Adaptive Utility Agent
+# Adaptive Utility Agents
 
-> **A self-optimizing AI agent framework that knows what it knows, knows what it doesn't, and actively corrects what it gets wrong — between model releases, not just at training time.**
+> **The central failure mode of deployed language models is error repetition. This project builds AI agents that actively work against it — detecting errors, correcting behavior, and not repeating mistakes between model releases.**
 
 ---
 
 ## License
 
-**Code:** GNU General Public License v3.0 — see `LICENSE`
+**Code:** GNU General Public License v3.0 — see `LICENSE`  
 **Whitepaper:** Creative Commons Attribution 4.0 — see `LICENSE-CC-BY-4.0`
 
 If you build on this work, please cite:
-> Tota, P. (2026). *Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems* (v0.4). GitHub. https://github.com/praneethtota/Adaptive-Utility-Agent
+> Tota, P. (2026). *Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems* (v0.5). GitHub. https://github.com/praneethtota/Adaptive-Utility-Agent
 
 ---
 
-## What This Is
+## The Problem
 
-Most deployed AI systems are static artifacts — optimized at training time and frozen on release. They apply the same confidence to a surgical recommendation as to a recipe suggestion. When they produce a contradiction today, they produce it again tomorrow.
+Deployed AI systems are static artifacts. A model that hallucinates today will hallucinate the same thing tomorrow, and every day until the next version ships — which may be months away. There is no feedback loop between detected errors and model behavior in the space between versions.
 
-This project proposes a different architecture: a **wrapper around a frontier language model** (Claude, GPT-4, etc.) with an adaptive utility layer that governs behavior through a mathematically grounded utility function. The agent does not just answer questions — it tracks how well it answers them, where its knowledge is contradictory or thin, and where the highest leverage for improvement lies.
-
-Critically, the utility function is **not a monitoring metric**. It is the direct loss-weighting mechanism for a three-layer continual learning architecture that corrects contradictions and improves behavior between model releases, without waiting for a full retraining cycle.
-
-Read the [whitepaper](whitepaper_v04.md) for the full theory, or the [arXiv preprint](adaptive_utility_agents_arxiv.pdf) for the academic version.
+This project addresses that structural absence. The goal is **online learning and error non-repetition**: an agent that detects its own errors, adjusts behavior in response, and does not repeat those errors — continuously, between releases, without a new training cycle.
 
 ---
 
-## Core Utility Function
+## The Core Mechanism: Utility as a Control Law
 
 ```
-U = w_e(field) · E + w_c(field) · C + w_k(field) · K
+U = w_e(f) · E + w_c(f) · C + w_k(f) · K
 
-subject to:
-    C ≥ C_min(field)          [field-specific confidence floor]
-    E ≥ E_min(field)          [field-specific efficacy floor]
-    w_k · K ≤ 0.5 · U_total  [curiosity cap — prevents gaming]
+E — Efficacy:    performance relative to human baseline       [0, 1]
+C — Confidence:  internal consistency, penalized by contradictions
+K — Curiosity:   exploration bonus for high-upside uncertain domains
+f — field (surgery, law, software, creative, ...)
 ```
 
-| Term | Name | What It Measures |
-|------|------|-----------------|
-| **E** | Efficacy | Performance relative to human baseline |
-| **C** | Confidence | Internal consistency, penalized by detected contradictions |
-| **K** | Curiosity | Pull toward high-upside unexplored domains |
+The utility function is **not a monitoring metric**. It is the governing control law over the agent's behavior at every timescale:
 
-Field weights and minimum bounds are derived from existing societal standards — medical licensing, aviation certification, bar passage, engineering requirements — making the thresholds principled rather than arbitrary.
+- **At training time**: field penalty multipliers are DPO loss weights — a surgical contradiction penalized 10× harder than a creative writing mistake
+- **During deployment**: utility deviation triggers behavioral corrections and controls when a new model version is accepted
+- **Across calibration cycles**: utility score determines which interactions generate DPO training pairs and how strongly each is weighted
 
-A surgery contradiction is weighted **10× more harshly** than a creative writing mistake at training time. That is not a policy parameter — it falls directly out of the utility function.
+The additive weighted structure is not a convenience — it is the unique functional form satisfying five behavioral axioms (monotonicity, continuity, separability, field invariance, linear scaling invariance). Proved in Appendix B, Theorem B.1.
+
+| Term | Name | Formal grounding |
+|---|---|---|
+| **E** | Efficacy | Mann-Whitney dominance probability under log-logistic model (Proposition B.3) |
+| **C** | Confidence | Kalman-optimal EMA estimator; converges geometrically in expectation (Theorems B.4, B.5) |
+| **K** | Curiosity | UCB-inspired exploration bonus; 50% cap enforces exploitation dominance (Proposition B.6) |
+
+Field weights and minimum bounds are derived from existing societal licensing standards — medical malpractice thresholds, aviation certification, engineering safety — making them principled rather than arbitrary.
 
 ---
 
 ## Architecture
 
-The system has six main components beyond the utility function:
+### Monolithic Setting (Current)
 
-**1. Three-layer continual learning pipeline**
-- *Per-session*: detected contradictions injected as corrective assertions into the system prompt (real-time, no weight change)
-- *Calibration-cycle*: DPO fine-tuning with field-penalty-weighted loss, several times daily
-- *Release-level*: LoRA adapter distillation into a new base fine-tune, monthly
+Until the Micro-Expert Architecture is operational, the system wraps a monolithic base model. Three layers compensate for the constraints of a monolithic system:
 
-**2. Personality system**
-Trait weights (curiosity, caution, analytical rigor, assertiveness, creativity, conciseness) evolve with utility history under three-layer stability safeguards: field-specific hard bounds, drift rate caps, and mean reversion.
+```
+Layer 1 — Per-session behavioral injection     (real-time, no weight change)
+  Detected contradictions → corrective assertions → system prompt
 
-**3. Entity trust and reputation system**
-Each interacting entity is scored on domain expertise (from verifiable credentials) and behavioral trust. Scores gate how external inputs are weighted and when external escalation is permitted.
+Layer 2 — Calibration-cycle DPO fine-tuning   (several times daily)
+  Utility-scored pairs → field-penalty-weighted DPO loss → LoRA update
 
-**4. Distributed model graph**
-The monolithic model is decomposed into independently deployable domain submodels communicating over structured APIs — analogous to microservices. This physically resolves catastrophic forgetting: updating one domain's weights cannot affect another. Deployment depth is hardware-adaptive (H100 → shallow graph of large models; consumer GPUs → deeper graph of small specialist models).
+Layer 3 — Release-level distillation          (monthly)
+  Accumulated adapters → distilled into new base fine-tune
+```
 
-**5. Arbiter Agent**
-Dedicated contradiction resolution across conflicting submodel outputs. Runs four structured checks: logical, mathematical, cross-session, empirical. Verified corrections feed back to the relevant submodels as DPO signal (internal only — never disclosed externally). When both models are wrong (Case 3), a curiosity gap bonus preferentially directs exploration toward the unresolved knowledge gap. When all checks fail (Case 4), a controlled external escalation queries verified domain experts through obfuscated, partialized queries.
+**Personality System (interim wrapper):** Between calibration cycles, a behavioral wrapper biases generation toward safer operating regimes. Formally: a log-linear tilt of the base model's output distribution parameterized by field-bounded trait scores (curiosity, caution, assertiveness, analytical_rigor, creativity). At the field-neutral point the wrapper is the identity — no effect. It resets on new model release and is not instantiated in the Micro-Expert Architecture.
 
-**6. Blue-green deployment**
-Submodel updates are triggered by utility deviation thresholds derived from power analysis (not arbitrary SLA targets), managed through self-regulating softmax traffic routing. No manual intervention required for traffic shifts.
+### Micro-Expert Architecture (Target)
+
+The monolithic model is decomposed into independently deployable domain submodels — microservices architecture applied to model inference:
+
+```
+Router (Raft HA cluster, 150–300ms failover)
+    ↓  field classification + fan-out
+Domain Submodels (surgery | law | software | creative | ...)
+    ↓  independent weights, training, deployment
+Arbiter Agent
+    ↓  cross-domain contradiction resolution
+Blue-Green Deployment
+    ↓  utility-deviation-triggered, softmax traffic routing
+```
+
+Updating surgery weights cannot affect software engineering weights. There are no shared parameters to interfere. Catastrophic forgetting is resolved architecturally. Graph depth is hardware-adaptive: high-VRAM GPUs run shallow graphs of large models; consumer GPUs run deeper graphs of smaller specialists at lower cost per query.
+
+### Arbiter Agent
+
+When two submodels produce conflicting outputs:
+
+| Check | Weight | What it tests |
+|---|---|---|
+| Logical | 0.30 | Does the output contradict its own premises? |
+| Mathematical | 0.40 | Are complexity or numerical claims provably wrong? |
+| Cross-session | 0.20 | Does it contradict prior verified assertions? |
+| Empirical | 0.10 | Does it contradict verifiable external ground truth? |
+
+Four verdict cases: A correct → correct B; B correct → correct A; both wrong → correct both + curiosity gap bonus on the knowledge gap; inconclusive → external escalation. Corrections route internally as DPO signal. Nothing is disclosed externally.
+
+Arbiter calibration: 2–5% of verdicts independently verified against domain experts. Escalates to 15% hard ceiling if correction volume is elevated.
+
+### Assertions Store (Evidence with Decay)
+
+Verified facts persist across sessions with field-specific confidence decay:
+
+| Class | Decay | Examples |
+|---|---|---|
+| A — No decay | Never | Mathematical proofs, physical laws |
+| B — Slow (τ = 10yr) | Exponential | Mechanical engineering principles |
+| C — Moderate (τ = 3yr) | Exponential | Medical anatomy, legal common law |
+| D — Fast (τ = 6mo) | Exponential | Clinical guidelines, security practices, ML benchmarks |
+
+Effective confidence at retrieval = `C_verified × exp(-Δt/τ)`. Stale evidence automatically loses weight.
+
+---
+
+## Mathematical Foundations (Appendix B, v0.5)
+
+| Result | Content |
+|---|---|
+| **Theorem B.1** | Additive linear structure of U uniquely necessary from five axioms |
+| **§B.2** | Field weights grounded in error-cost proportionality |
+| **Proposition B.3** | Efficacy sigmoid = Mann-Whitney dominance probability |
+| **Theorem B.4** | EMA with α = 0.2 is Kalman-optimal for ρ = 0.05 noise ratio |
+| **Theorem B.5** | Confidence convergence in expectation; closed-form recovery time |
+| **Proposition B.6** | 50% curiosity cap enforces exploitation dominance |
+| **Theorem B.7** | Personality evolution: Lyapunov stable, half-life ≈ 34 cycles |
+
+---
+
+## Simulation Results (v0.4)
+
+```
+Cycle  Difficulty  avg U    avg E_ema  avg C    Contradictions
+─────  ──────────  ──────   ─────────  ──────   ──────────────
+  1    easy        0.5128   0.5124     0.6005        1
+  2    medium      0.5921   0.5542     0.8128        0   (+0.0793)
+  3    hard        0.6288   0.5740     0.8940        0   (+0.0367)
+
+Overall U:      +0.116   (0.513 → 0.629)
+Efficacy EMA:   +0.062   (accumulates across cycles)
+Confidence:     +0.294   (0.601 → 0.894)
+Contradictions: 1 → 0   (eliminated by cycle 2)
+Routing:        easy → medium → hard (as confidence rises)
+DPO pairs:      2        (from seeded O(n) claim on nested loop)
+```
+
+```bash
+cd agent && python3 simulate.py
+```
 
 ---
 
@@ -79,100 +158,53 @@ Submodel updates are triggered by utility deviation thresholds derived from powe
 
 ```
 agent/
-├── config.py                 # Field weights, bounds, penalty multipliers
-├── field_classifier.py       # Field distribution with robustness mechanisms
-│                             #   (high-stakes floor, EMA drift tracking,
-│                             #    entropy-based conservative fallback)
-├── contradiction_detector.py # Logical, mathematical, cross-session detection
-├── utility_scorer.py         # E, C, K with growing curiosity + 50% cap
-├── personality_manager.py    # Trait weights, evolution, three-layer stability
-├── creative_efficacy.py      # Two-component creative efficacy model
-├── agent.py                  # Main UtilityAgent class
-├── harness.py                # LeetCode-style MVP test harness
-└── simulate.py               # Self-contained simulation (no API needed)
+├── config.py                  # Field weights, bounds, penalty multipliers
+├── field_classifier.py        # Field distribution: high-stakes floor, EMA drift, entropy fallback
+├── contradiction_detector.py  # Logical, mathematical, cross-session detection
+├── assertions_store.py        # Cross-session store with decay classes A–D
+├── trust_manager.py           # Credential bootstrapping, tit-for-tat scoring
+├── arbiter.py                 # 4-check pipeline, gap bonus, adaptive sampling
+├── utility_scorer.py          # E (EMA), C, K (50% cap), difficulty routing
+├── personality_manager.py     # Wrapper evolution, Lyapunov-stable dynamics
+├── creative_efficacy.py       # Two-component creative efficacy model
+├── agent.py                   # Main UtilityAgent — wires all components
+├── harness.py                 # Live API harness (requires ANTHROPIC_API_KEY)
+├── requirements.txt
+└── simulate.py                # Self-contained simulation (no API needed)
 
-whitepaper_v04.md             # Full theoretical writeup (v0.4)
-whitepaper_v04.html           # HTML version with embedded simulation charts
-adaptive_utility_agents_arxiv.pdf  # arXiv preprint
-arxiv_submission.zip          # LaTeX source for arXiv submission
-simulation_results.json       # Raw simulation output data
+whitepaper_v05.md              # Full theoretical writeup
+whitepaper_v05.html            # HTML with rendered math (KaTeX) + charts
+adaptive_utility_agents_arxiv.pdf
+arxiv_submission.zip
+simulation_results_v04.json
 ```
 
 ---
 
-## Simulation Results
-
-The core utility mechanism was validated via a self-contained simulation across 3 calibration cycles on 8 LeetCode-style problems. No live API required — runs locally.
-
-```
-Cycle    avg U    avg E    avg C    Contradictions
-──────   ──────   ──────   ──────   ──────────────
-  1      0.5949   0.5867   0.7628        1
-  2      0.6588   0.5867   0.9602        0    (+0.0639)
-  3      0.6704   0.5867   0.9933        0    (+0.0116)
-
-Overall U improvement: +0.0755
-Contradiction reduction: 1 → 0 (eliminated by cycle 2)
-Confidence gain: +0.231 (0.763 → 0.993)
-Every problem improved across all 3 cycles — no exceptions.
-```
-
-Run it yourself:
+## Quick Start
 
 ```bash
-cd agent
-python3 simulate.py
-```
+# Simulation — no API key needed
+cd agent && python3 simulate.py
 
----
-
-## Quick Start (Live API)
-
-```bash
+# Live harness
 pip install httpx
-cd agent
-python harness.py
+export ANTHROPIC_API_KEY=sk-ant-...
+cd agent && python3 harness.py
 ```
 
-The harness runs LeetCode-style problems through the full pipeline:
-1. Classifies the field → loads weights and bounds
-2. Queries assertions store for relevant prior corrections
-3. Builds system prompt with active corrections + personality traits
-4. Calls Claude → gets solution
-5. Runs contradiction detection (logical, mathematical, cross-session)
-6. Scores U = w_e·E + w_c·C + w_k·K\_effective
-7. Logs all components and triggers personality evolution every N interactions
-
 ---
 
-## Key Design Decisions
+## What's New in v0.5
 
-- **Wrapper, not replacement** — builds on Claude or any frontier model; does not reinvent language modeling
-- **Utility function as loss weighting** — field penalty multipliers are DPO training weights, not just labels
-- **Societal standards as bounds** — C\_min and E\_min derived from real licensing requirements, not arbitrary thresholds
-- **Conservative under ambiguity** — blended field bounds tighten toward the most conservative field present; high entropy increases caution
-- **Abstain rather than fail** — agent refuses to act when confidence is below domain minimum; escalates rather than guesses
-- **Physically isolated domain weights** — distributed graph means updating surgery cannot break CS; catastrophic forgetting resolved architecturally
-- **Minimum disclosure** — internal state (evidence chains, arbiter verdicts, correction signals) never disclosed externally
-
----
-
-## Roadmap
-
-| Phase | Goal |
-|-------|------|
-| 1 — MVP | Live API, 1,000+ problems, first real calibration cycle |
-| 2 — Multi-domain STEM | Lean/SymPy verification, field classifier in production |
-| 3 — Personality | Trait evolution at scale, stability safeguards validated |
-| 4 — Trust system | Entity scoring, lenient tit-for-tat, external escalation |
-| 5 — Creative fields | Platform signal collection, two-component efficacy |
-| 6 — Distributed graph | Physically separate submodels, Arbiter in production |
-| 7 — Base model feedback | Distill adapters into base fine-tune |
+- **Appendix B**: Complete formal proofs for all core components (B.1–B.7)
+- **Personality as behavioral wrapper**: Exponential family tilt with W1–W4 properties; cleanly separates from utility function so all theorems hold unchanged
+- **Revised framing**: Goal (error non-repetition), mechanism (utility as control law), monolithic vs. Micro-Expert distinction stated from the first paragraph
+- **Theorem renumbering**: Sequential B.1–B.7, no more B.4′
+- **Updated simulation**: EMA efficacy accumulation, difficulty routing, DPO pair generation
 
 ---
 
 ## Status
 
-This is a living research project. The mathematical formalization of the utility function and empirical validation beyond simulation are ongoing. The whitepaper is versioned — v0.4 is the current release.
-
-Contributions, feedback, and collaboration welcome.
+Active research project at v0.5. Empirical validation beyond simulation — live API experiments, ablation studies, baseline comparisons — is the next priority. Contributions and collaboration welcome.
