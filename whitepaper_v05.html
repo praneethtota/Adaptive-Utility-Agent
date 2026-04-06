@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Adaptive Utility Agents — Whitepaper v0.5</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>*,*::before,*::after{box-sizing:border-box}body{font-family:Georgia,"Times New Roman",serif;font-size:16px;line-height:1.75;color:#1a1a1a;background:#fafaf8;margin:0;padding:0}.page{max-width:800px;margin:0 auto;padding:3rem 2rem 5rem;background:#fff;border-left:1px solid #e8e4de;border-right:1px solid #e8e4de;min-height:100vh}h1{font-size:1.9rem;font-weight:700;margin:0 0 0.25rem;line-height:1.3;color:#111}h2{font-size:1.35rem;font-weight:700;margin:2.5rem 0 0.75rem;border-bottom:2px solid #e8e4de;padding-bottom:0.4rem;color:#111}h3{font-size:1.1rem;font-weight:700;margin:2rem 0 0.6rem;color:#222}h4{font-size:0.95rem;font-weight:700;margin:1.5rem 0 0.5rem;color:#444}h5{font-size:0.88rem;font-weight:700;margin:1.2rem 0 0.4rem;color:#555}p{margin:0 0 1rem}strong{font-weight:700}em{font-style:italic}blockquote{border-left:3px solid #c0bab2;margin:1.5rem 0;padding:0.75rem 1rem;background:#f5f3ef;font-size:0.9rem;color:#555}code{font-family:"Courier New",monospace;font-size:0.82rem;background:#f2f0eb;padding:2px 5px;border-radius:3px;color:#333}pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:5px;padding:1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:0.79rem;line-height:1.6}pre code{background:none;padding:0;font-size:inherit}table{width:100%;border-collapse:collapse;font-size:0.84rem;margin:1rem 0 1.5rem;font-family:"Courier New",monospace}th{text-align:left;border-bottom:2px solid #c0bab2;padding:6px 10px;font-family:Georgia,serif;font-size:0.82rem;color:#444}td{padding:5px 10px;border-bottom:1px solid #e8e4de;vertical-align:top}tr:nth-child(even) td{background:#f9f8f5}ul,ol{margin:0 0 1rem;padding-left:1.5rem}li{margin-bottom:0.3rem}hr{border:none;border-top:1px solid #e0dbd4;margin:2rem 0}.chart-section{background:#f9f8f5;border:1px solid #e0dbd4;border-radius:8px;padding:1.5rem;margin:1.5rem 0}.chart-section h4{margin-top:0;color:#333}.chart-wrap{position:relative;width:100%;height:240px;margin:0.75rem 0}.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:#666;margin-bottom:6px}.legend span{display:flex;align-items:center;gap:5px}.dot{width:22px;height:3px;border-radius:2px;display:inline-block}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1.5rem}.metric{background:#fff;border:1px solid #e0dbd4;border-radius:6px;padding:.75rem 1rem}.metric .label{font-size:11px;color:#888;margin-bottom:3px}.metric .value{font-size:18px;font-weight:700;color:#111}.metric .sub{font-size:11px;color:#aaa;font-family:"Courier New",monospace}.appendix-b{background:#f7f5ff;border-left:3px solid #534AB7;padding:0.5rem 1rem;margin:0.5rem 0 1rem;font-size:0.85rem;color:#444;border-radius:0 4px 4px 0}@media print{body{background:white}.page{border:none;padding:1rem}}
 /* Appendix B adopts the v0.5-2 math presentation */
 .appendix-b-section{font-size:16px;line-height:1.8}
@@ -27,7 +28,8 @@
 
 </style>
 </head>
-<body><div class="page"><h1>Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems</h1>
+<body>
+<div class="page"><h1>Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems</h1>
 <h3>Draft Whitepaper — v0.5</h3>
 <p><em>Based on conceptual development sessions, April 2026</em></p>
 <blockquote>
@@ -35,28 +37,35 @@
 </blockquote>
 <hr />
 <h2>Abstract</h2>
-<p>We propose a framework for building self-optimizing AI agents by wrapping frontier language models with an adaptive utility layer grounded in game-theoretic resource allocation theory. The utility function — composed of <strong>Efficacy</strong> (performance relative to a human baseline), <strong>Confidence</strong> (internal consistency penalized by detected contradictions), and <strong>Curiosity</strong> (exploration bonus for high-upside unexplored domains) — is field-weighted and bounded by minimum competence thresholds derived directly from existing societal licensing standards, making the bounds principled rather than arbitrary.</p>
+<p>The central failure mode of deployed language models is error repetition: a system that produces a wrong answer today will produce the same wrong answer tomorrow, and every day until a new version ships. This paper proposes a framework for building AI agents that actively work against this failure — learning from detected errors and adjusting behavior between model releases, without waiting for the next retraining cycle. The utility function — composed of <strong>Efficacy</strong> (performance relative to a human baseline), <strong>Confidence</strong> (internal consistency penalized by detected contradictions), and <strong>Curiosity</strong> (exploration bonus for high-upside unexplored domains) — is field-weighted and bounded by minimum competence thresholds derived directly from existing societal licensing standards, making the bounds principled rather than arbitrary.</p>
 <p>Critically, the utility function is not a passive monitoring metric. It is the active loss weighting mechanism for a three-layer continual learning architecture that corrects contradictions and improves model behavior between releases — without waiting for a full retraining cycle. Contradiction corrections are weighted by field-specific penalty multipliers in Direct Preference Optimization (DPO) training, so a surgical error is penalized an order of magnitude more harshly than a creative writing mistake at the weight-update level.</p>
 <p>The paper introduces four additional architectural contributions. First, a <strong>Personality System</strong> with field-bounded trait weights that evolve with accumulated utility history, subject to three-layer drift safeguards. Second, an <strong>entity trust and reputation system</strong> based on verifiable domain credentials and interaction history, governing both how external inputs are weighted and when external escalation is permitted. Third, a <strong>three-layer continual learning architecture</strong> operating at per-session (behavioral), calibration-cycle (weight-level), and release (distillation) timescales. Fourth, a <strong>distributed model graph architecture</strong> that decomposes the monolithic model into independently deployable domain submodels communicating over structured APIs — physically resolving the catastrophic forgetting problem by eliminating shared weights across domains, and enabling hardware-adaptive deployment depth matched to available GPU memory.</p>
 <p>Cross-domain contradiction resolution is handled by a dedicated <strong>Arbiter Agent</strong> that runs structured evidence checks — logical, mathematical, cross-session, and empirical — and routes verified corrections to the relevant submodels as DPO training signal. Submodels whose domains were arbitrated receive the internal evidence chain for DPO integration; nothing is disclosed externally. When all internal checks fail, a controlled external escalation queries verified domain experts through obfuscated, partialized queries consistent with the system's minimum-disclosure principle.</p>
-<p>Submodel updates follow a <strong>utility-deviation-triggered blue-green deployment</strong> protocol with statistically grounded detection thresholds and softmax traffic routing, ensuring system stability throughout. The protocol is validated through simulation across 3 calibration cycles on 8 LeetCode-style problems, demonstrating a +0.0755 average utility improvement and contradiction reduction from 1 to 0.</p>
+<p>Submodel updates follow a <strong>utility-deviation-triggered blue-green deployment</strong> protocol with statistically grounded detection thresholds and softmax traffic routing, ensuring system stability throughout. The protocol is validated through simulation across 3 calibration cycles on 8 LeetCode-style problems, demonstrating a +0.1160 average utility improvement and contradiction reduction from 1 to 0.</p>
 <p>Submodel deployment depth is <strong>hardware-adaptive</strong>: shallow graphs of large submodels on high-VRAM GPUs, or deep graphs of small specialist submodels on consumer hardware — achieving equivalent logical capability at lower cost through the avoidance of slow inter-GPU interconnects.</p>
 <hr />
 <h2>1. Introduction</h2>
-<p>Deployed AI systems today are static artifacts. They are optimized at training time against a fixed reward signal and released — whereupon their behavior is frozen. They cannot adjust how much they trust their own knowledge, they have no mechanism to learn from detected errors between releases, and they apply the same level of caution to a surgical recommendation as to a recipe suggestion. When they produce a contradiction, they will produce the same contradiction tomorrow, and in six months when the next version ships.</p>
-<p>Human experts behave fundamentally differently. A surgeon knows which procedures they can perform confidently and which require referral. A lawyer knows the edges of their expertise. A researcher develops calibrated uncertainty about their own claims. None of this self-awareness was hardcoded — it emerged through accumulated experience, peer correction, and deliberate practice at the frontier of competence. It also degrades appropriately under stress and rebuilds through demonstrated success. This paper asks: can an AI system be given the same properties?</p>
-<p>We propose an architecture that wraps a frontier language model with an adaptive utility layer — a framework for building agents that know what they know, know what they don't, actively correct what they get wrong, and do all of this continuously between model releases rather than waiting for the next training cycle. The core mechanism is a utility function U = w_e·E + w_c·C + w_k·K, where Efficacy, Confidence, and Curiosity are field-weighted and bounded by minimum thresholds derived from existing societal standards (medical licensing, aviation certification, bar requirements). The utility function is not a monitoring metric — it is the loss weighting mechanism that determines how strongly each detected error is corrected at training time.</p>
-<p>The paper makes six architectural contributions beyond the utility function itself:</p>
-<p><strong>Continual learning pipeline.</strong> Three timescales of correction: per-session behavioral injection (immediate, no weight change), calibration-cycle DPO fine-tuning (hours, weight-level, field-penalty-weighted), and release-level distillation (monthly). The utility score determines correction weights — a surgery contradiction is penalized 10× harder than a creative writing mistake.</p>
-<p><strong>Personality system.</strong> Trait weights (curiosity, caution, analytical rigor, etc.) evolve with utility history subject to field-specific bounds and drift rate caps, producing genuine character development over time without instability.</p>
-<p><strong>Entity trust and reputation system.</strong> Each interacting entity is scored on domain expertise and behavioral trust. Scores gate how external inputs are weighted and — critically — whether an entity is eligible to receive controlled external escalation queries when the system cannot resolve a contradiction internally.</p>
-<p><strong>Distributed model graph.</strong> The monolithic model is decomposed into independently deployable domain submodels communicating over structured APIs, analogous to microservices architecture. Catastrophic forgetting is resolved architecturally: updating one domain's weights cannot affect any other. Submodels are versioned and updated independently via blue-green deployment.</p>
-<p><strong>Arbiter Agent.</strong> A dedicated contradiction resolution agent that runs structured evidence checks (logical, mathematical, cross-session, empirical) across conflicting submodel outputs. Verified corrections are routed internally to the relevant submodels as DPO signal, with the full evidence chain shared only with the submodels whose domains were arbitrated. When the Arbiter cannot resolve a conflict, a controlled external escalation queries verified domain experts through obfuscated, partialized queries — revealing the minimum information needed to elicit an answer, consistent with the minimum-disclosure principle governing all external information sharing.</p>
-<p><strong>Hardware-adaptive decomposition.</strong> Graph depth is matched to available GPU memory. High-VRAM hardware supports shallow graphs of large, fast submodels; consumer hardware supports deeper graphs of smaller specialist submodels at lower cost per query — exploiting the order-of-magnitude bandwidth advantage of intra-GPU compute over inter-GPU interconnects.</p>
-<p>The system is validated through simulation across three calibration cycles on eight LeetCode-style problems, demonstrating monotonic utility improvement (+0.0755), contradiction elimination (1 → 0 by cycle 2), and correct personality evolution consistent with the stability safeguards.</p>
-<p>The rest of the paper is organized as follows. Section 2 surveys related work across the six research areas the architecture draws from. Sections 3–7 develop the theoretical framework: utility function, field-specific bounds, personality system, trust system, and continual learning pipeline. Section 8 describes the monolithic wrapper architecture. Section 9 describes the distributed model graph including the Arbiter Agent, blue-green deployment, and hardware-adaptive decomposition. Section 10 describes the code generation MVP and simulation results. Sections 11–12 present the roadmap and open questions. Appendix A contains the full simulation data.</p>
-<hr />
-<hr />
+<p>Deployed AI systems today are static artifacts. They are optimized at training time and released — whereupon their behavior is frozen. They cannot learn from errors between releases. When a model produces a hallucination, it will produce the same hallucination tomorrow, and in six months when the next version ships. This is not a failure of scale or capability. It is a structural absence: there is no feedback loop between detected errors and model behavior in the space between model versions.</p>
+<p>This paper addresses that absence directly. The goal is <strong>online learning and error non-repetition</strong>: an agent that detects its own errors, corrects its behavior in response, and does not repeat those errors — continuously, between model releases, without waiting for a new training cycle.</p>
+<p>The governing mechanism is a utility function that serves as a <strong>control law</strong> over the agent's behavior at every timescale:</p>
+<pre><code>U = w_e(f)·E + w_c(f)·C + w_k(f)·K
+
+E — Efficacy:    performance relative to a human baseline
+C — Confidence:  internal consistency, penalized by detected contradictions
+K — Curiosity:   exploration bonus for high-upside uncertain domains
+f — field, determining weights and minimum competence thresholds</code></pre>
+<p>The utility function is not a monitoring metric. It determines how strongly each detected error is penalized at training time (a surgical contradiction is weighted 10× harder than a creative writing mistake), when behavioral corrections are injected into the system prompt, and whether a new model deployment passes acceptance. It governs learning at every timescale the architecture operates on.</p>
+<p><strong>The monolithic constraint and the personality system.</strong> The correct long-term solution to error repetition is an architecture where individual domain models can be retrained and redeployed in isolation — the Micro-Expert Architecture described in §9. But until that infrastructure is operational, the system runs on a monolithic base model. In the monolithic setting, weight-level correction is constrained by retraining latency (weeks to months per cycle) and global weight interference (correcting one domain can degrade another). The <strong>Personality System</strong> (§5) is the framework's response to this constraint: a behavioral wrapper that biases the agent toward safer operating regimes between calibration cycles, reducing the harm of repeated hallucinations without modifying the underlying weights. It is explicitly interim infrastructure — designed to be superseded once the Micro-Expert Architecture makes fast, isolated domain retraining possible.</p>
+<p>The paper makes six contributions:</p>
+<p><strong>1. Utility function as governing control law.</strong> The utility function $U = w_e E + w_c C + w_k K$ is formally derived — not merely asserted. Appendix B proves the additive structure is uniquely necessary from five behavioral axioms, the efficacy sigmoid equals the Mann-Whitney dominance probability, the EMA update is Kalman-optimal, confidence converges geometrically in expectation, and the personality evolution rules are Lyapunov stable. The weight vector is grounded in field-specific error costs derived from professional liability standards.</p>
+<p><strong>2. Three-layer continual learning architecture.</strong> Per-session behavioral injection (immediate, no weight change), calibration-cycle DPO fine-tuning (hours, field-penalty-weighted), and release-level distillation (monthly). Each layer corrects what the previous cannot reach. The utility score determines correction weights throughout.</p>
+<p><strong>3. Personality system as interim behavioral wrapper.</strong> A log-linear tilt of the base LLM's generation distribution, parameterized by field-bounded trait scores that evolve with utility history. In the monolithic setting, this is the primary mechanism for reducing repeated hallucinations between calibration cycles. The wrapper is reset on new model release and not instantiated in the Micro-Expert Architecture, where fast domain retraining makes it unnecessary.</p>
+<p><strong>4. Entity trust and reputation system.</strong> Each interacting entity is scored on domain expertise (bootstrapped from verifiable credentials on day one) and behavioral trust (accumulated through interaction). Scores gate how external inputs are weighted and whether an entity qualifies for controlled external escalation queries.</p>
+<p><strong>5. Arbiter Agent.</strong> A dedicated contradiction resolution agent running structured evidence checks (logical, mathematical, cross-session, empirical) across conflicting outputs. Verified corrections are routed as DPO signal internally. When the Arbiter cannot resolve a conflict, controlled external escalation queries verified domain experts through obfuscated, partialized queries — revealing only what is needed to elicit an answer.</p>
+<p><strong>6. Micro-Expert Architecture.</strong> The monolithic model is decomposed into independently deployable domain submodels — analogous to microservices architecture applied to model inference. Catastrophic forgetting is resolved architecturally. Submodels are versioned and updated independently via utility-deviation-triggered blue-green deployment. Graph depth is hardware-adaptive: shallow graphs on high-VRAM hardware or deep graphs of small specialist submodels on consumer hardware at lower cost per query.</p>
+<p>The framework is validated through simulation across three calibration cycles on eight LeetCode-style problems (§10, Appendix A). Utility improves monotonically from 0.513 to 0.629 (+0.116), contradictions are eliminated by cycle 2, efficacy accumulates via EMA, and difficulty routing escalates from easy through hard problems as domain confidence rises — validating the core claim that utility-weighted DPO calibration measurably improves agent behavior between model releases.</p>
+<p>The rest of the paper is organized as follows. Section 2 surveys related work. Sections 3–7 develop the theoretical framework: utility function, field bounds, personality system, trust system, and continual learning pipeline. Section 8 describes the monolithic wrapper architecture. Section 9 describes the Micro-Expert Architecture including the Arbiter Agent, blue-green deployment, and hardware-adaptive decomposition. Section 10 describes the code generation MVP and simulation results. Sections 11–12 present the roadmap and open questions. Appendix A contains the full simulation data. Appendix B contains all mathematical proofs.</p>
+
 <h2>2. Related Work</h2>
 <h3>2.1 Utility Functions and Resource Allocation Games</h3>
 <p>The theoretical foundations of our utility function draw directly from the game-theoretic literature on resource allocation mechanisms. Johari and Tsitsiklis (2004) established the canonical proportional allocation game, proving the existence and uniqueness of Nash equilibrium and bounding the Price of Anarchy at 4/3 for concave utility functions — the same class of utility functions used in our confidence and efficacy formulations. Their subsequent work on scalar-parameterized mechanisms showed that the proportional allocation mechanism achieves the best Price of Anarchy among mechanisms using a single market-clearing price, providing theoretical justification for our single-score utility formulation rather than a vector-valued alternative.</p>
@@ -101,13 +110,12 @@ Latency_deep(d=k)    ∝ k × (D_sub / B_intra) + (k-1) × (D_msg / B_inter)
 Where D_sub = D/k (smaller submodel, smaller activations)
       D_msg = inter-node message size (much smaller than D)
 
-When D_msg &lt;&lt; D_sub and B_inter &gt;&gt; D_msg/latency_target:
+When D_msg << D_sub and B_inter >> D_msg/latency_target:
     Latency_deep ≈ Latency_shallow
 
-At equal latency, Cost_deep &lt; Cost_shallow because:
-    Consumer GPU cost/hr &lt;&lt; Enterprise GPU cost/hr
-    D_sub fits in consumer VRAM → no high-VRAM GPU required
-</code></pre>
+At equal latency, Cost_deep < Cost_shallow because:
+    Consumer GPU cost/hr << Enterprise GPU cost/hr
+    D_sub fits in consumer VRAM → no high-VRAM GPU required</code></pre>
 <p>NVLink delivers 5× the energy efficiency of PCIe Gen 5 at 1.3 picojoules per bit, which means that for workloads where inter-GPU communication is unavoidable, NVLink-connected consumer GPU clusters can be more cost-effective per useful computation than PCIe-connected enterprise GPU clusters of equivalent total VRAM.</p>
 <p>The practical implication — that a deep graph of small models on consumer hardware may achieve equivalent quality at lower cost than a shallow graph on expensive hardware — inverts the standard assumption that larger models require larger hardware budgets. This is a testable empirical claim that the Phase 6 roadmap item (§10) is designed to validate.</p>
 <h2>3. The Utility Function</h2>
@@ -118,8 +126,7 @@ At equal latency, Cost_deep &lt; Cost_shallow because:
 Subject to:
     C(task) ≥ C_min(f)
     E(task) ≥ E_min(f)
-    w_k · K ≤ 0.5 × U_total         [curiosity cap — see §3.4]
-</code></pre>
+    w_k · K ≤ 0.5 × U_total         [curiosity cap — see §3.4]</code></pre>
 <p>Where:
 - <strong>E(task)</strong> — Efficacy: how well the agent performs relative to human baseline
 - <strong>C(task)</strong> — Confidence: internal consistency score, penalized by contradictions
@@ -129,8 +136,7 @@ Subject to:
 <p><em>The additive weighted structure of U is not a convenience — it is the unique functional form satisfying separability, monotonicity, continuity, field invariance, and linear scaling invariance. Formal derivation via Debreu's theorem and the Cauchy functional equation: </em><em>Appendix B, Theorem B.1</em><em>.</em></p>
 <h3>3.2 Efficacy</h3>
 <p>Efficacy measures output quality relative to the current human baseline for that task:</p>
-<pre><code>E(task) = quality(agent_output) / cost(human_equivalent)
-</code></pre>
+<pre><code>E(task) = quality(agent_output) / cost(human_equivalent)</code></pre>
 <p>Cost of human equivalent includes: time, dollar cost, error rate, and reproducibility. In STEM fields this is directly measurable. In creative fields, a two-component model is used (see below).</p>
 <p><strong>STEM efficacy</strong> (code generation MVP):
 - Test pass rate against automated test suites
@@ -141,11 +147,10 @@ Subject to:
 <pre><code>Creative_Efficacy = Content_Efficacy × Discoverability_Efficacy
 
 Content_Efficacy        = conversion rate (engagement given views)
-                          &quot;can the work hold attention when shown?&quot;
+                          "can the work hold attention when shown?"
 
 Discoverability_Efficacy = impressions, search ranking, recommendation rate
-                          &quot;can it find an audience at all?&quot;
-</code></pre>
+                          "can it find an audience at all?"</code></pre>
 <p>Marketing and platform discoverability are not noise to control for — they are part of the creative skill, exactly as they are for every successful human creator. If the agent cannot crack discoverability, that is a genuine efficacy gap.</p>
 <p>The measurement approach: float AI creative work on existing public platforms (SoundCloud, iStockPhoto, Unsplash, Medium, YouTube, Behance) under realistic author identities. Platform engagement signals are weighted by intent strength:</p>
 <pre><code>purchase / download    1.0   (strongest — real economic behavior)
@@ -153,24 +158,21 @@ save / bookmark        0.8
 share / repost         0.7
 like / upvote          0.5
 comment                0.4
-view / listen          0.1   (weakest — could be accidental)
-</code></pre>
+view / listen          0.1   (weakest — could be accidental)</code></pre>
 <p>Stock licensing sites (iStockPhoto, Unsplash) provide the cleanest signal — a download represents real economic intent with no algorithmic amplification distortion and built-in category taxonomy for like-for-like comparison. The human creator baseline is self-updating: as human creative output on these platforms evolves, so does the benchmark, with no periodic re-calibration needed.</p>
 <p>This formulation also unlocks cross-field efficacy comparison for the first time. If music efficacy is 0.60 and software engineering efficacy is 0.70, both are on the same [0,1] scale and directly comparable, because both use the same sigmoid normalization against their respective baselines.</p>
 <p><em>The sigmoid form E(r) = r/(1+r) is not arbitrary — under the log-logistic performance model it equals the Mann-Whitney probability that agent output dominates human baseline output. Formal derivation: </em><em>Appendix B, Proposition B.3</em><em>.</em></p>
-<p>The agent develops creative capability through a natural curriculum:</p>
+The agent develops creative capability through a natural curriculum:
 <pre><code>Stage 1 → Generate work that converts well (content quality)
 Stage 2 → Learn to title, tag, describe effectively (discoverability)
-Stage 3 → Build cross-platform presence (network effects, retention)
-</code></pre>
+Stage 3 → Build cross-platform presence (network effects, retention)</code></pre>
 <h3>3.3 Confidence</h3>
 <p>Confidence is a per-domain score that increases when knowledge is internally consistent and decreases when contradictions are detected:</p>
 <pre><code>C(domain) updated via EMA:
     C_new = (1 - α) · C_prior + α · (test_pass_rate · (1 - penalty))
-    penalty = contradiction_penalty × field_penalty_multiplier
-</code></pre>
+    penalty = contradiction_penalty × field_penalty_multiplier</code></pre>
 <p>The <strong>wave analogy</strong>: knowledge items that reinforce each other are like constructive interference — they increase signal strength. Contradictions are destructive interference. The goal is a knowledge state where all waves reinforce.</p>
-<p><em>The EMA update with α = 0.2 is the Kalman-optimal estimator of latent domain confidence when process noise is 5% of observation noise — a well-founded choice for incremental calibration. Under stationary signals, confidence converges geometrically to the field-specific steady state C</em> = s̄(1 − λμ(f)) with half-life ≈ 3 interactions. Formal derivations: <strong>Appendix B, Theorem B.4</strong> (Kalman optimality) and <strong>Appendix B, Theorem 2</strong> (convergence and recovery).*</p>
+<p><em>The EMA update with α = 0.2 is the Kalman-optimal estimator of latent domain confidence when process noise is 5% of observation noise — a well-founded choice for incremental calibration. Under stationary signals, confidence converges geometrically to the field-specific steady state C</em> = s̄(1 − λμ(f)) with half-life ≈ 3 interactions. Formal derivations: <strong>Appendix B, Theorem B.4</strong> (Kalman optimality) and <strong>Appendix B, Theorem B.5</strong> (convergence and recovery).*</p>
 <p>Contradiction types (in order of detectability):
 1. <strong>Logical</strong> — output contradicts its own stated premises
 2. <strong>Mathematical</strong> — claimed complexity or result is provably wrong
@@ -180,12 +182,11 @@ Stage 3 → Build cross-platform presence (network effects, retention)
 <pre><code>{
   session_id, timestamp, domain,
   assertions: [
-    { type: &quot;complexity&quot;,     subject: &quot;sorting&quot;,       value: &quot;O(n log n)&quot; },
-    { type: &quot;best_practice&quot;,  subject: &quot;db autocommit&quot;, value: &quot;avoid&quot;      },
-    { type: &quot;data_structure&quot;, subject: &quot;two_sum&quot;,       value: &quot;hashmap&quot;    }
+    { type: "complexity",     subject: "sorting",       value: "O(n log n)" },
+    { type: "best_practice",  subject: "db autocommit", value: "avoid"      },
+    { type: "data_structure", subject: "two_sum",       value: "hashmap"    }
   ]
-}
-</code></pre>
+}</code></pre>
 <p>At the start of each session, relevant prior assertions are retrieved via embedding similarity (handling synonyms like "merge sort" vs "sorting algorithm") and injected as context. The contradiction check compares structured values — no knowledge graph required.</p>
 <pre><code>Parser (built) → extracts structured assertions
       ↓
@@ -193,8 +194,7 @@ Key-value store → persists by subject + domain
       ↓
 Embedding similarity → synonym matching at lookup
       ↓
-Contradiction check (built) → compares structured values
-</code></pre>
+Contradiction check (built) → compares structured values</code></pre>
 <h3>3.4 Curiosity</h3>
 <p>Without a curiosity term, the agent converges to maximizing utility in narrow high-confidence domains — the opposite of growth. The curiosity term creates pull toward domains where the agent is weak but upside is high.</p>
 <p><strong>Growing curiosity function:</strong></p>
@@ -202,24 +202,20 @@ Contradiction check (built) → compares structured values
                × (1 - C(task))
                × growth(t, field)
 
-growth(t, field) = 1 + α(field) × log(1 + interactions_without_novelty)
-</code></pre>
-<p>The counter <code>interactions_without_novelty</code> increments on familiar problems and resets to zero on genuinely novel ones. The growth rate α is field-specific:</p>
+growth(t, field) = 1 + α(field) × log(1 + interactions_without_novelty)</code></pre>
+<p>The counter `interactions_without_novelty` increments on familiar problems and resets to zero on genuinely novel ones. The growth rate α is field-specific:</p>
 <pre><code>α → near zero   for surgery, aviation  (don't get bored into novel procedures)
-α → high        for research, creative (exploration is the job)
-</code></pre>
+α → high        for research, creative (exploration is the job)</code></pre>
 <p><strong>50% curiosity cap — preventing utility gaming:</strong></p>
 <p>Without a cap, the agent could learn to pursue novelty for its own sake, attempting tasks outside its competence to generate a curiosity score rather than genuine utility. The cap prevents this:</p>
 <pre><code>K_effective = min(K_raw, (w_e · E + w_c · C) / w_k)
 
-U = w_e · E + w_c · C + w_k · K_effective
-</code></pre>
-<p>Derived from the constraint that K cannot exceed 50% of total U:</p>
+U = w_e · E + w_c · C + w_k · K_effective</code></pre>
+Derived from the constraint that K cannot exceed 50% of total U:
 <pre><code>w_k · K ≤ 0.5 × (w_e · E + w_c · C + w_k · K)
-  → K ≤ (w_e · E + w_c · C) / w_k
-</code></pre>
+  → K ≤ (w_e · E + w_c · C) / w_k</code></pre>
 <p>This constraint is self-scaling: when E and C are high, the cap is loose and curiosity can push hard. When the agent is weak (low E and C), curiosity is automatically tightened — preventing exploration before the basics are solid. K can never be the dominant term.</p>
-<p><em>The curiosity term is UCB-inspired: structurally analogous to the Upper Confidence Bound exploration bonus, with uncertainty-driven, concave-in-familiarity growth. The 50% cap is proved to enforce exploitation dominance — curiosity contributes at most half of total utility at all times. Formal derivation: </em><em>Appendix B, Proposition B.5</em><em>.</em></p>
+<p><em>The curiosity term is UCB-inspired: structurally analogous to the Upper Confidence Bound exploration bonus, with uncertainty-driven, concave-in-familiarity growth. The 50% cap is proved to enforce exploitation dominance — curiosity contributes at most half of total utility at all times. Formal derivation: </em><em>Appendix B, Proposition B.6</em><em>.</em></p>
 <hr />
 <h2>4. Field-Specific Bounds and Weights</h2>
 <h3>4.1 Bootstrapping from Societal Standards</h3>
@@ -235,28 +231,24 @@ Software Eng.       0.55   0.35   0.10   0.70    0.65     2×
 STEM Research       0.50   0.30   0.20   0.65    0.60     2×
 Education           0.50   0.30   0.20   0.60    0.55     1.5×
 Art / Music         0.80   0.10   0.10   0.10    0.20     1×
-Creative Writing    0.80   0.05   0.15   0.05    0.15     1×
-</code></pre>
+Creative Writing    0.80   0.05   0.15   0.05    0.15     1×</code></pre>
 <h3>4.2 Field Classifier Robustness</h3>
 <p>The field classifier determines which weights and bounds apply. Three failure modes must be handled:</p>
-<p><strong>Failure mode 1 — False collapse to a single field:</strong></p>
-<pre><code>&quot;Write a Python script to analyze patient drug dosage data&quot;
-→ naive:   {&quot;software_engineering&quot;: 0.95, &quot;medicine&quot;: 0.05}  ← wrong
-→ correct: {&quot;software_engineering&quot;: 0.65, &quot;medicine&quot;: 0.35}
-</code></pre>
+<p><strong>Failure mode 1 — False collapse to a single field:</strong>
+<pre><code>"Write a Python script to analyze patient drug dosage data"
+→ naive:   {"software_engineering": 0.95, "medicine": 0.05}  ← wrong
+→ correct: {"software_engineering": 0.65, "medicine": 0.35}</code></pre>
 <p>Resolution: <strong>high-stakes floor</strong> — any high-stakes field (surgery, aviation, law) with meaningful presence is floored at 0.15 minimum probability. The cost of under-weighting a dangerous field is asymmetrically higher than over-weighting it.</p>
 <p><strong>Failure mode 2 — Field drift mid-conversation:</strong></p>
 <p>A conversation starting as software engineering may drift into medicine across turns. Single-turn classification misses this.</p>
-<p>Resolution: <strong>sliding window EMA</strong> over conversation turn history (α = 0.4, recent turns weighted more):</p>
-<pre><code>effective_field_dist = EMA(per_turn_classifications, alpha=0.4)
-</code></pre>
-<p>Bounds tighten naturally as a conversation drifts into higher-stakes territory.</p>
+<p>Resolution: <strong>sliding window EMA</strong> over conversation turn history (α = 0.4, recent turns weighted more):
+<pre><code>effective_field_dist = EMA(per_turn_classifications, alpha=0.4)</code></pre><p>
+Bounds tighten naturally as a conversation drifts into higher-stakes territory.</p>
 <p><strong>Failure mode 3 — Genuine ambiguity:</strong></p>
 <p>Resolution: <strong>entropy-based conservative fallback</strong> — when distribution entropy is high, bounds shift toward the most conservative present field proportional to entropy. High entropy means more caution, not averaging toward the middle:</p>
-<pre><code>if entropy_ratio &gt; 0.7:
-    c_min → lerp(c_min_blended, c_min_most_conservative, entropy_ratio)
-</code></pre>
-<p><strong>Full classification pipeline:</strong></p>
+<pre><code>if entropy_ratio > 0.7:
+    c_min → lerp(c_min_blended, c_min_most_conservative, entropy_ratio)</code></pre>
+<p><strong>Full classification pipeline:</strong>
 <pre><code>Per-turn classifier
       ↓
 High-stakes floor enforcement
@@ -265,11 +257,9 @@ Sliding window EMA over conversation history
       ↓
 Entropy check → conservative bound shift if ambiguous
       ↓
-Blended FieldConfig with hardened bounds
-</code></pre>
+Blended FieldConfig with hardened bounds</code></pre>
 <p>When field classification is ambiguous across multiple fields, bounds are blended by probability weight — naturally making the agent more conservative under uncertainty:</p>
-<pre><code>C_min_effective = Σ_f P(field=f) × C_min(f)
-</code></pre>
+<pre><code>C_min_effective = Σ_f P(field=f) × C_min(f)</code></pre>
 <hr />
 <h2>5. Personality System</h2>
 <h3>5.1 Traits as Weighted Vectors</h3>
@@ -277,10 +267,10 @@ Blended FieldConfig with hardened bounds
 <pre><code>Traits: [curiosity, caution, assertiveness, creativity,
          analytical_rigor, empathy, conciseness]
 
-active_weight = softmax(trait_scores × situational_relevance)
-</code></pre>
+active_weight = softmax(trait_scores × situational_relevance)</code></pre>
 <p>A medical query activates high caution and analytical rigor. A creative brainstorm activates curiosity and creativity. The trait weighting is injected into the system prompt.</p>
 <h3>5.2 Personality Evolution and Stability</h3>
+<p><strong>Purpose — interim behavioral control.</strong> In the monolithic setting, weight-level correction is constrained by retraining latency and global weight interference. The personality evolution layer is not a substitute for weight-level learning — it is an interim behavioral control mechanism that biases the agent toward safer operating regimes between calibration cycles, reducing repeated hallucinations until the Micro-Expert Architecture enables fast, isolated domain retraining.</p>
 <p>A separate service runs every N interactions to adjust personality weights based on accumulated utility history. Three layered safeguards prevent runaway drift:</p>
 <p><strong>Layer 1 — Field-specific trait bounds (hard floor and ceiling):</strong></p>
 <pre><code>Trait              Surgery        Software Eng    Creative
@@ -289,29 +279,111 @@ caution            [0.70, 0.95]   [0.30, 0.70]   [0.10, 0.40]
 curiosity          [0.10, 0.20]   [0.30, 0.80]   [0.60, 0.95]
 assertiveness      [0.20, 0.40]   [0.40, 0.80]   [0.50, 0.90]
 analytical_rigor   [0.70, 0.95]   [0.50, 0.85]   [0.10, 0.50]
-creativity         [0.10, 0.20]   [0.30, 0.70]   [0.70, 0.95]
-</code></pre>
+creativity         [0.10, 0.20]   [0.30, 0.70]   [0.70, 0.95]</code></pre>
 <p>The floor prevents complete suppression of any trait. The ceiling prevents pathological dominance. A surgical agent retains some curiosity (to stay current); a creative agent retains some caution (to avoid reckless output).</p>
 <p><strong>Layer 2 — Drift rate cap (max delta per evolution cycle):</strong></p>
 <pre><code>max_delta = 0.05  (general fields)
-          = 0.02  (high-stakes: surgery, aviation)
-</code></pre>
+          = 0.02  (high-stakes: surgery, aviation)</code></pre>
 <p>A single bad run of contradictions cannot spike caution to its ceiling in one step. Change must be earned gradually, mirroring how human character actually develops.</p>
 <p><strong>Layer 3 — Mean reversion (soft pull toward field baseline):</strong></p>
-<pre><code>Δ_adjusted = Δ_raw - β × (current_score - neutral_score(trait, field))
-</code></pre>
+<pre><code>Δ_adjusted = Δ_raw - β × (current_score - neutral_score(trait, field))</code></pre>
 <p>Where β = 0.01. Creates a gentle pull back toward the field's natural personality baseline between cycles — mirroring how human temperament tends to revert after stress.</p>
-<p><em>The three-layer evolution rules produce bounded, stable dynamics: the trait vector remains in the field-specific feasible set B at all times, converges geometrically to the neutral point s</em> when drift is absent (rate (1−β)² ≈ 0.980 per cycle, half-life ≈ 34 cycles), and is confined to B under persistent bounded drift. The mean reversion term is a regulariser; the projection Π_B is the primary stability mechanism. Formal derivation: <strong>Appendix B, Theorem 4</strong>.*</p>
-<p>Evolution logic:</p>
-<pre><code>if utility_trend declining AND contradiction_rate &gt; 0.2:
+<p><em>The three-layer evolution rules produce bounded, stable dynamics: the trait vector remains in the field-specific feasible set B at all times, converges geometrically to the neutral point s</em> when drift is absent (rate (1−β)² ≈ 0.980 per cycle, half-life ≈ 34 cycles), and is confined to B under persistent bounded drift. The mean reversion term is a regulariser; the projection Π_B is the primary stability mechanism. Formal derivation: <strong>Appendix B, Theorem B.7</strong>.*</p>
+Evolution logic:
+<pre><code>if utility_trend declining AND contradiction_rate > 0.2:
     increase(analytical_rigor), decrease(assertiveness)
 
-if utility_trend improving AND avg_utility &gt; 0.6:
+if utility_trend improving AND avg_utility > 0.6:
     increase(curiosity), increase(creativity)
 
-if contradiction_rate &gt; 0.4:
-    strong increase(caution), strong decrease(assertiveness)
-</code></pre>
+if contradiction_rate > 0.4:
+    strong increase(caution), strong decrease(assertiveness)</code></pre>
+<h4>5.2.x — The Personality Wrapper: Formal Specification</h4>
+<p>The personality system operates as a <strong>wrapper around the generation process</strong> — not as a modification to the utility function. The utility function $U(E, C, K; f)$ is unchanged and all theorems in Appendix B apply exactly as stated. Personality shapes what the model generates; utility evaluates what was generated. These are cleanly separated.</p>
+<h5>Formal Definition</h5>
+<p>Let $\mathcal{X}$ be the space of inputs and $\Omega$ the space of outputs. The base LLM defines:</p>
+<p>$$p_{\text{base}}(\omega \mid x), \quad x \in \mathcal{X},\; \omega \in \Omega$$</p>
+<p>For each utility-coupling trait $j$, define a <strong>trait scoring function</strong> $\phi_j : \Omega \to \mathbb{R}$:</p>
+<table>
+<thead>
+<tr>
+<th>Trait $j$</th>
+<th>$\phi_j(\omega)$ measures</th>
+<th>High $s_j$ effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>caution</td>
+<td>Hedging density — appropriate uncertainty expressions</td>
+<td>More hedging, lower assertion confidence</td>
+</tr>
+<tr>
+<td>assertiveness</td>
+<td>Directness — definitive claims without qualification</td>
+<td>More direct, fewer qualifications</td>
+</tr>
+<tr>
+<td>curiosity</td>
+<td>Exploration — alternative approaches considered</td>
+<td>Wider search over solution space</td>
+</tr>
+<tr>
+<td>analytical_rigor</td>
+<td>Reasoning depth — intermediate steps shown</td>
+<td>More explicit reasoning chains</td>
+</tr>
+<tr>
+<td>creativity</td>
+<td>Novelty — solutions diverging from prior examples</td>
+<td>Higher variance in solution approach</td>
+</tr>
+</tbody>
+</table>
+<p>The combined trait influence given personality state $s_t$:</p>
+<p>$$\phi(s_t,\, \omega) = \sum_{j} (s_{t,j} - s^*_j) \cdot \phi_j(\omega)$$</p>
+<p>Only deviations from the field-neutral point $s^*$ produce an effect. The <strong>personality-wrapped distribution</strong> is the log-linear perturbation of the base:</p>
+<p>$$\log p_{\text{eff}}(\omega \mid x,\, s_t) = \log p_{\text{base}}(\omega \mid x) + \lambda \cdot \phi(s_t, \omega) - \log Z(x, s_t)$$</p>
+<p>where $\lambda > 0$ is the wrapper strength and $Z(x, s_t)$ is the normalizing constant. This is a standard exponential family tilt — the same family as RLHF reward shaping and DPO.</p>
+<h5>Implementation: System Prompt Injection</h5>
+<p>In practice, $p_{\text{eff}}$ is approximated via system prompt injection. Each trait has a linguistic encoding $\delta_j$:</p>
+<pre><code>δ_caution          = "Express appropriate uncertainty. Do not assert claims
+                      you cannot verify. Prefer 'I am not certain' over
+                      confident statements when confidence is below threshold."
+
+δ_assertiveness    = "State conclusions directly. Avoid unnecessary hedging
+                      on verified facts."
+
+δ_curiosity        = "Consider alternative approaches before committing.
+                      Note when a problem may have multiple valid solutions."
+
+δ_analytical_rigor = "Show reasoning steps explicitly. State assumptions
+                      before conclusions."
+
+δ_creativity       = "Prefer novel approaches where viable. Do not default
+                      to the most common solution if a better one exists."</code></pre>
+<p>The system prompt is:</p>
+<p>$$\text{SystemPrompt}(f, s_t) = \text{BasePrompt}(f) \;\oplus\; \bigoplus_{j : |s_{t,j} - s^*_j| > \tau} \text{scale}(s_{t,j} - s^*_j) \cdot \delta_j$$</p>
+<p>where $\tau = 0.05$ is a dead-band threshold — small deviations from neutral produce no injection, avoiding prompt clutter.</p>
+<h5>Key Properties</h5>
+<p><strong>W1 — Neutral wrapper is the identity.</strong> At $s_t = s^*$: $\phi(s^*, \omega) = 0$ for all $\omega$, so $p_{\text{eff}}(\omega \mid x, s^*) = p_{\text{base}}(\omega \mid x)$. Zero effect at the neutral point.</p>
+<p><strong>W2 — Bounded divergence.</strong> The KL divergence between wrapped and base distributions is bounded:</p>
+<p>$$D_{\text{KL}}(p_{\text{eff}} \,\|\, p_{\text{base}}) \leq \frac{\lambda^2}{2} \cdot \|s_t - s^*\|^2 \cdot \sum_j \text{Var}_{p_{\text{base}}}[\phi_j(\omega)]$$</p>
+<p>Since $s_t \in B$ always (Theorem B.7), $\|s_t - s^*\|$ is bounded by $\text{diam}(B)$, so the KL divergence is bounded. The wrapper cannot produce arbitrarily different outputs from the base model.</p>
+<p><strong>W3 — Support preservation.</strong> The exponential tilt preserves the support of $p_{\text{base}}$: outputs that were impossible remain impossible; possible outputs remain possible. The wrapper cannot hallucinate new capabilities or suppress correct answers entirely.</p>
+<p><strong>W4 — Utility function unchanged.</strong> $U(E, C, K; f)$ scores $\omega$ directly, without seeing $s_t$, $p_{\text{eff}}$, or any wrapper parameter. All theorems in Appendix B apply exactly as stated.</p>
+<h5>The Feedback Loop</h5>
+<p>$$s_t \xrightarrow{\;\mathcal{P}(s_t)\;} p_{\text{eff}}(\omega \mid x, s_t) \xrightarrow{\;\text{sample}\;} \omega_t \xrightarrow{\;U(E,C,K;\,f)\;} U_t \xrightarrow{\;\text{evolution}\;} s_{t+1}$$</p>
+<p>Utility $U$ is evaluated at the output $\omega_t$ drawn from the wrapped distribution. Utility history accumulates and drives the evolution rule (Evolution Logic above), which updates $s_{t+1}$. The utility function itself is at no point modified.</p>
+<h5>Lifecycle</h5>
+<pre><code>Architecture       Wrapper status          Mechanism
+──────────────────────────────────────────────────────────────
+Monolithic         Active: P(s_t)          Biases generation between
+                                           calibration cycles
+New model release  Reset: s_t ← s*        P(s*) = identity (W1)
+Micro-Expert       Not instantiated        Fast domain retraining
+                                           makes wrapper unnecessary</code></pre>
+<p>Reset semantics are clean: because the wrapper is external to model weights, resetting requires only $s_t = s^*$. In the Micro-Expert Architecture (§9), the wrapper is never activated — each submodel is retrained quickly enough that behavioral compensation between cycles is unnecessary.</p>
 <h3>5.3 Self-Preservation Principle</h3>
 <p>The agent follows a conservative information disclosure principle: <strong>always share the least about internal state that the situation allows.</strong> Trust must be earned before internal weights, scores, or strategies are disclosed.</p>
 <hr />
@@ -319,8 +391,7 @@ if contradiction_rate &gt; 0.4:
 <p>Each entity the agent interacts with is assigned a trust score, updated based on behavior:</p>
 <pre><code>trust_score(entity) = f(accuracy_of_their_inputs,
                         consistency_of_their_behavior,
-                        alignment_with_verified_facts)
-</code></pre>
+                        alignment_with_verified_facts)</code></pre>
 <p>Strategy: <strong>lenient tit-for-tat</strong> — begin cooperatively, mirror behavior, forgive occasional defection. One of the most robust strategies in iterated game theory.</p>
 <p>Subset scores are maintained for different dimensions (domain expertise, trustworthiness, intent alignment) so a high domain-knowledge but low-trust entity is handled differently from a low domain-knowledge but high-trust one. Domain expertise is measured based on verifiable credentials — professional experience, educational qualifications, and field-specific certifications — rather than self-reported claims.</p>
 <h3>6.1 Cold Start Resolution</h3>
@@ -330,9 +401,8 @@ if contradiction_rate &gt; 0.4:
 <p>This two-dimensional gating means cold start affects only the behavioral trust dimension, and that dimension resolves naturally through interaction. Domain expertise — the harder dimension to fake — is grounded from the first contact.</p>
 <h3>6.2 Sybil Resistance via Reputational Accountability</h3>
 <p>Rather than a population-level detection layer, Sybil resistance is achieved through reputational accountability. When the system consults an external domain expert under the escalation protocol (§9.5), the expert is explicitly informed that their input may be cited when the system offers information to other users. The exact framing:</p>
-<pre><code>&quot;Your response may be used to inform answers provided to others in this domain.
-Your name and credentials may be associated with this input in our records.&quot;
-</code></pre>
+<pre><code>"Your response may be used to inform answers provided to others in this domain.
+Your name and credentials may be associated with this input in our records."</code></pre>
 <p>This creates reputational skin in the game. A legitimate professor, clinician, or engineer would not provide factually incorrect information under conditions where their name is associated with it — the professional and reputational consequences are too significant. The same accountability that governs expert testimony in legal proceedings, peer review in academia, and professional opinion in engineering applies here.</p>
 <p>A Sybil adversary operating through fake identities cannot manufacture verifiable professional credentials, and cannot absorb reputational harm across fake accounts. The accountability mechanism therefore filters Sybil attacks at the domain expertise gate — a fake account with no real credentials does not reach the escalation threshold in the first place, and a real expert with real credentials has no incentive to provide false information under attribution.</p>
 <p>This does not eliminate all adversarial risk, but it substantially raises the cost of adversarial behavior by tying it to real-world professional identity.</p>
@@ -346,44 +416,40 @@ Your name and credentials may be associated with this input in our records.&quot
 Knowledge correction   — change what the model actually knows
                          Slower, requires compute, permanent
                          Generalizes: fixing one contradiction
-                         reduces similar contradictions elsewhere
-</code></pre>
+                         reduces similar contradictions elsewhere</code></pre>
 <p>Both are necessary. The architecture operates across three timescales.</p>
 <h3>7.1 Layer 1 — Per-Session Behavioral Correction (Real-Time)</h3>
 <p>When a contradiction is detected, a corrective assertion is immediately generated and injected into the system prompt for the remainder of the session:</p>
 <pre><code>Standard system prompt:
-    &quot;You are a precise assistant in the software_engineering domain...&quot;
+    "You are a precise assistant in the software_engineering domain..."
 
 After contradiction detected:
-    &quot;You are a precise assistant in the software_engineering domain...
+    "You are a precise assistant in the software_engineering domain...
 
      ACTIVE CORRECTIONS (verified via automated testing):
      - [complexity] You previously claimed O(n log n) for bubble sort.
        Tests confirmed it is O(n²). Do not repeat this.
      - [best_practice] You previously recommended autocommit for SQLite.
-       This caused data inconsistency in tests. Always use explicit commits.&quot;
-</code></pre>
+       This caused data inconsistency in tests. Always use explicit commits."</code></pre>
 <p>Additionally, at session start, the assertions store is queried for relevant prior corrections on the current subject and injected as context. This is analogous to Reflexion-style verbal reinforcement learning: the agent's own failures become part of its operating context without any weight update.</p>
 <p>Cost: ~100ms, one database query per session. Effect: immediate, session-scoped.</p>
 <h3>7.2 Layer 2 — Calibration Run Knowledge Correction (Several Times Per Day)</h3>
 <p>This is where genuine learning occurs. The utility scorer already generates exactly the data format required for <strong>Direct Preference Optimization (DPO)</strong>:</p>
 <pre><code>Every scored interaction produces:
-    task:       &quot;sort a list of integers efficiently&quot;
-    field:      &quot;software_engineering&quot;
+    task:       "sort a list of integers efficiently"
+    field:      "software_engineering"
     response_A: [U=0.82, passes all tests]       ← preferred
-    response_B: [U=0.41, fails complexity check] ← rejected
-</code></pre>
+    response_B: [U=0.41, fails complexity check] ← rejected</code></pre>
 <p><strong>The utility function as a loss weighting mechanism:</strong></p>
 <p>This is the key novelty. The field penalty multiplier is applied directly as a training loss weight — not just as a logging label:</p>
 <pre><code>training_weight = field_penalty_multiplier(field)
 
 DPO loss for surgery contradiction     → 10× weight
-DPO loss for creative writing mistake  →  1× weight
-</code></pre>
+DPO loss for creative writing mistake  →  1× weight</code></pre>
 <p>The model is trained harder on the errors that matter more. This is what makes the utility function an active learning signal rather than a passive monitor.</p>
 <p><strong>Calibration pipeline:</strong></p>
 <pre><code>1. Collect all interactions since last calibration run
-2. Filter: keep only pairs where U_preferred &gt; U_rejected + threshold
+2. Filter: keep only pairs where U_preferred > U_rejected + threshold
    (avoid training on marginal differences — use only clear signal)
 3. Weight each pair by field_penalty_multiplier(field)
 4. Mix with replay buffer: sample from prior calibration runs
@@ -391,23 +457,20 @@ DPO loss for creative writing mistake  →  1× weight
 5. Run LoRA fine-tuning on weighted (preferred, rejected) pairs
 6. Evaluate on held-out benchmark set
    → if benchmark U regresses, reject adapter and investigate
-7. Deploy updated LoRA adapter if benchmark passes
-</code></pre>
+7. Deploy updated LoRA adapter if benchmark passes</code></pre>
 <p><strong>Catastrophic forgetting mitigation:</strong></p>
 <p>Naive fine-tuning on today's corrections erases what was fixed yesterday. The replay buffer mixes prior calibration pairs into every new training run:</p>
 <pre><code>calibration_batch = {
     new_corrections:  today's DPO pairs         [weight = 1.0]
     replay_sample:    from prior calibration runs [weight = 0.5]
     golden_examples:  held-out benchmark tasks   [weight = 0.7]
-}
-</code></pre>
+}</code></pre>
 <p>The golden examples are the agent's own best prior responses on a fixed benchmark set — keeping the model anchored to known-good behavior while allowing correction of known-bad behavior.</p>
 <p>Cost: GPU time, approximately 20–60 minutes per run. Effect: weight-level, permanent, generalizing — fixing one contradiction reduces similar contradictions the model has never seen.</p>
 <h3>7.3 Layer 3 — Release-Level Integration (Monthly or On Base Model Update)</h3>
 <pre><code>Accumulated LoRA adapters merged or distilled into new base fine-tune
 Full evaluation suite run across all fields and benchmarks
-Regression testing against prior release
-</code></pre>
+Regression testing against prior release</code></pre>
 <p>This is the point where wrapper-level learning gets baked into the base model, creating a new starting point for the next cycle of calibration.</p>
 <h3>7.4 The Full Learning Loop</h3>
 <pre><code>REAL-TIME (ms):
@@ -435,8 +498,7 @@ RELEASE (monthly):
     Full regression suite
          ↓
     New base model checkpoint
-    Effect: baked into base model weights
-</code></pre>
+    Effect: baked into base model weights</code></pre>
 <p>The utility function governs all three layers: it determines what gets corrected (via confidence penalties), how strongly it gets corrected (via field penalty multipliers), and whether a correction is accepted (via benchmark evaluation before deployment).</p>
 <hr />
 <h2>8. Monolithic Wrapper Architecture</h2>
@@ -485,8 +547,7 @@ RELEASE (monthly):
 │   Consumes DPO pairs weighted by penalty_multiplier  │
 │   Produces updated LoRA adapter                      │
 │   Validated against held-out benchmark before deploy │
-└─────────────────────────────────────────────────────┘
-</code></pre>
+└─────────────────────────────────────────────────────┘</code></pre>
 <hr />
 <hr />
 <h2>9. Distributed Model Graph Architecture</h2>
@@ -516,12 +577,10 @@ RELEASE (monthly):
    └───────────┘     │
                 ┌────┴────┐
                 │RL  │NLP │
-                └────┴────┘
-</code></pre>
+                └────┴────┘</code></pre>
 <p>Each node in the graph is a separately deployed model with its own weights, calibration cycle, and utility tracker. The interface between nodes is a structured protocol:</p>
 <pre><code>Request:  { query, context, field, confidence_floor, session_id }
-Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
-</code></pre>
+Response: { answer, confidence, assertions[], uncertainty_flags, U_score }</code></pre>
 <p>This is the same data structure the wrapper already produces — no new interface design is required. The router simply fans queries to the relevant submodels and merges their responses.</p>
 <p><strong>Why this eliminates catastrophic forgetting:</strong></p>
 <p>Updating the surgery submodel only modifies surgery weights. The CS model is physically unaffected. Cross-domain knowledge lives exclusively in the router and a thin shared embedding layer that all submodels project into. Rolling back a surgery update requires swapping one model file, not re-running the entire training pipeline.</p>
@@ -533,11 +592,11 @@ Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
 <h3>9.4 Cross-Domain Query Handling</h3>
 <p>Multi-domain queries (e.g. "Write a Python script to analyze patient drug dosage data") require both CS and Medicine submodels simultaneously. The router handles this through query decomposition:</p>
 <pre><code>1. Field classifier returns distribution:
-      {&quot;software_engineering&quot;: 0.65, &quot;medicine&quot;: 0.35}
+      {"software_engineering": 0.65, "medicine": 0.35}
 
 2. Router decomposes query:
-      CS subquery:  &quot;Write Python data analysis code&quot;
-      Med subquery: &quot;What are the clinical constraints on dosage data?&quot;
+      CS subquery:  "Write Python data analysis code"
+      Med subquery: "What are the clinical constraints on dosage data?"
 
 3. Fan out: send subqueries to respective models in parallel
 
@@ -546,8 +605,7 @@ Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
          (medicine response gets 35% weight on confidence bounds)
 
 5. Arbitration: if CS and Medicine models contradict each other,
-         escalate to parent model or flag for human review
-</code></pre>
+         escalate to parent model or flag for human review</code></pre>
 <p>The arbitration layer is addressed in §8.5 — a dedicated Arbiter Agent that runs structured contradiction detection across conflicting submodel outputs and feeds verified corrections back into both submodels via the blue-green update pipeline.</p>
 <h3>9.5 The Arbiter Agent</h3>
 <p>When two submodels produce conflicting answers to the same query, the system does not escalate to a human or fall back to a parent model — both of which are slow and expensive. Instead, a dedicated <strong>Arbiter Agent</strong> resolves the conflict using the same structured contradiction detection pipeline already built into the system, determines which submodel is correct (or whether both are wrong), and feeds verified corrections back into both submodels simultaneously via the blue-green update mechanism.</p>
@@ -612,7 +670,7 @@ STEP 2 — Verdict:
         the system preferentially routes novel queries on subject S
         to the relevant submodels until the gap is resolved.
         Gap status is cleared when:
-            both submodels achieve confidence(S) &gt; C_min(field)
+            both submodels achieve confidence(S) > C_min(field)
             AND no new contradictions on S for T(field) interactions
 
         Two budget constraints apply simultaneously to prevent
@@ -659,7 +717,7 @@ STEP 3 — Correction signal (internal only):
           (Case 1/2: one submodel; Case 3: both submodels)
         → submodel independently decides to add to DPO rejected set
         → add verified claim to assertions store
-        → if correction_count(S) &gt; threshold:
+        → if correction_count(S) > threshold:
               trigger blue-green update cycle for that submodel
         → if Case 3: assign curiosity gap bonus to subject S
               (see Case 3 above)
@@ -667,10 +725,9 @@ STEP 3 — Correction signal (internal only):
     External response: the user receives only the verified answer.
     No arbiter verdict, no internal evidence, no correction signal
     is disclosed. If the system is uncertain (Case 4), the user
-    sees only a minimal hedge (&quot;I am not fully confident in this
-    answer&quot;) — not the reason, not the conflict, not which models
-    disagreed.
-</code></pre>
+    sees only a minimal hedge ("I am not fully confident in this
+    answer") — not the reason, not the conflict, not which models
+    disagreed.</code></pre>
 <p><strong>Assertions store decay — field-specific evidence staleness:</strong></p>
 <p>Not all verified facts age equally. A mathematical theorem proven beyond doubt — Pythagoras, the fundamental theorem of calculus, the law of conservation of energy — does not become less true over time. A clinical treatment guideline, a software security best practice, or a legal precedent can be obsolete in months. The assertions store therefore applies a field-specific confidence decay function to stored evidence:</p>
 <pre><code>C_effective(assertion, t) = C_verified × decay(field, Δt)
@@ -698,9 +755,8 @@ decay(field, Δt):
         Software security best practices
         Regulatory and compliance standards
         ML/AI research findings
-        decay = exp(-Δt / τ),  τ = 6 months
-</code></pre>
-<p>When the Arbiter retrieves a cross-session assertion for its check, the effective confidence used is <code>C_verified × decay(field, Δt)</code> — not the original verification confidence. An assertion with C=0.95 verified three years ago in a fast-decay field (τ=6 months) has effective confidence ≈ 0.95 × exp(-6) ≈ 0.001 — functionally untrustworthy, and correctly treated as inconclusive. The same assertion in a no-decay field retains full confidence indefinitely.</p>
+        decay = exp(-Δt / τ),  τ = 6 months</code></pre>
+<p>When the Arbiter retrieves a cross-session assertion for its check, the effective confidence used is `C_verified × decay(field, Δt)` — not the original verification confidence. An assertion with C=0.95 verified three years ago in a fast-decay field (τ=6 months) has effective confidence ≈ 0.95 × exp(-6) ≈ 0.001 — functionally untrustworthy, and correctly treated as inconclusive. The same assertion in a no-decay field retains full confidence indefinitely.</p>
 <p>Field class assignment is determined by the field classifier at assertion write time and stored with the assertion. The class boundaries above are the initial calibration — they will be updated empirically as the system accumulates evidence about how quickly different domains evolve.</p>
 <p><strong>Why some facts truly have no decay.</strong> A mathematical or logical proof is not an empirical claim that could be overturned by new evidence — it is a deductive conclusion from axioms. If Pythagoras's theorem was valid when stored, it is valid now. The no-decay class is not an approximation; it is epistemologically correct. Treating proven mathematical results as time-sensitive would introduce spurious uncertainty where none exists.</p>
 <p><strong>Why corrections feed both submodels simultaneously:</strong></p>
@@ -708,14 +764,13 @@ decay(field, Δt):
 <p><strong>The correction threshold before triggering blue-green:</strong></p>
 <p>Not every arbitrated correction immediately triggers a model update — single corrections are noisy. The trigger uses the same δ and T mechanism from §8.6:</p>
 <pre><code>trigger blue-green IF:
-    corrections on subject S &gt; T_arbiter     [enough evidence]
-    AND avg_correction_confidence &gt; 0.85     [arbiter is sure]
-    AND field_penalty(D) × n_corrections &gt; θ [weighted severity]
+    corrections on subject S > T_arbiter     [enough evidence]
+    AND avg_correction_confidence > 0.85     [arbiter is sure]
+    AND field_penalty(D) × n_corrections > θ [weighted severity]
 
 T_arbiter = T(field) / 2
     [half the normal detection window — arbiter corrections
-     are higher quality signal than routine utility drift]
-</code></pre>
+     are higher quality signal than routine utility drift]</code></pre>
 <p>The half-window shortcut is justified because arbiter corrections are backed by structured internal verification — logical, mathematical, cross-session, and empirical checks — rather than aggregate utility drift alone. Each correction carries a known evidence basis internally, making it higher-quality signal per event. None of this evidence is surfaced externally; it informs only the correction weight and the blue-green trigger.</p>
 <p><strong>Arbiter confidence scoring:</strong></p>
 <p>The Arbiter itself maintains a confidence score per verdict, built from how many check types converged on the same answer:</p>
@@ -727,8 +782,7 @@ check_weights:
     cross-session: 0.20   (prior assertions are verified but may be stale)
     empirical:     0.10   (slowest, but grounds the verdict in reality)
 
-If arbiter_confidence &lt; 0.85 → Case 4 (inconclusive), do not correct
-</code></pre>
+If arbiter_confidence < 0.85 → Case 4 (inconclusive), do not correct</code></pre>
 <p>This prevents the Arbiter from propagating its own errors — a low-confidence verdict does less damage held in the internal review queue than being applied as a correction to two submodels.</p>
 <p><strong>Full arbitration flow integrated with blue-green:</strong></p>
 <pre><code>Cross-domain query → conflicting outputs detected
@@ -752,8 +806,7 @@ cross-session → empirical, stop when confident)
                  → serve minimal hedge (no internal detail)
                  → external escalation protocol (§8.5)
                  → responses feed back to submodels
-                 → blue-green if merit threshold met
-</code></pre>
+                 → blue-green if merit threshold met</code></pre>
 <p><strong>Arbiter calibration via external expert sampling:</strong></p>
 <p>The Arbiter's confidence weight vector <strong>w</strong> = (logical: 0.30, mathematical: 0.40, cross-session: 0.20, empirical: 0.10) is initially hand-specified. To calibrate these weights empirically and detect drift over time, a random sample of Arbiter verdicts — targeting 2–5% of all Case 1, 2, and 3 resolutions — is independently routed to domain experts under the standard external escalation protocol.</p>
 <pre><code>Calibration pipeline:
@@ -765,15 +818,14 @@ cross-session → empirical, stop when confident)
 3. Compare expert consensus to Arbiter verdict:
       Match:    reinforces current weight vector (no change)
       Mismatch: flags potential Arbiter drift
-4. If mismatch rate &gt; drift_threshold(field) over sliding window W:
+4. If mismatch rate > drift_threshold(field) over sliding window W:
       → consult additional experts until consensus reached
       → update weight vector in direction of expert consensus
       → log weight change for audit
 5. If Arbiter and experts persistently disagree on a subject class:
       → flag as systematic Arbiter blind spot
       → increase sampling rate for that subject class
-      → escalate weight recalibration
-</code></pre>
+      → escalate weight recalibration</code></pre>
 <p>Drift is detected when the mismatch rate between Arbiter verdicts and independent expert consensus exceeds a field-specific threshold over a rolling window. The expert consensus is treated as the ground truth because it is the most reliable signal available — multiple verified domain experts independently agreeing constitutes strong empirical evidence.</p>
 <p>This mechanism means the Arbiter is not self-referential: it is calibrated against an independent external signal on a continuous basis, not just at initialization. The calibration sample is small enough that it does not significantly increase the escalation load, but large enough to detect systematic drift within a reasonable observation window.</p>
 <p><strong>Adaptive sampling for over-correction detection:</strong></p>
@@ -781,23 +833,22 @@ cross-session → empirical, stop when confident)
 <p>This is detected through correction volume monitoring. The system tracks each Arbiter instance's correction rate per unit time relative to baseline:</p>
 <pre><code>correction_rate(arbiter, window) = corrections_issued / interactions_processed
 
-if correction_rate &gt; baseline_rate × over_correction_threshold(field):
+if correction_rate > baseline_rate × over_correction_threshold(field):
     → escalate sampling rate for this Arbiter instance
 
 adaptive_sampling_rate:
     baseline:          2–5%    (normal drift detection)
     elevated:          8–10%   (correction rate moderately high)
     intensive:         10–15%  (correction rate significantly above baseline)
-    intensive ceiling: 15%     (hard cap — never exceeded regardless of rate)
-</code></pre>
+    intensive ceiling: 15%     (hard cap — never exceeded regardless of rate)</code></pre>
 <p>At elevated and intensive sampling rates, the increased expert verification provides faster feedback on whether the Arbiter's corrections are accurate. If expert consensus confirms the corrections are correct, the high correction rate is real signal — the field has accumulated genuine errors. If expert consensus contradicts a significant fraction of corrections, over-correction is confirmed and the Arbiter's weight vector is recalibrated.</p>
 <p>The hard cap at 15% ensures the escalation infrastructure is never overwhelmed by a single misbehaving Arbiter instance. At 15% sampling on a high-volume domain, the expert load is still manageable and the verification turnaround is fast enough to detect and correct the feedback loop before the personality system has drifted significantly. The personality system's drift rate cap (§5.2, Layer 2: max Δ = 0.02–0.05 per cycle) provides an additional buffer — the personality cannot change faster than the Arbiter sampling can detect and correct a problem.</p>
 <p><strong>Information disclosure boundary:</strong></p>
 <p>The Arbiter Agent maintains a strict internal/external split consistent with §5.3. Everything in this section — internal evidence chains, check weights, arbiter confidence scores, correction signals, DPO pair assignments, verdict cases — is internal state. The external boundary exposes exactly two things:</p>
 <pre><code>External output (what the user sees):
     1. The verified answer                (when arbiter is confident)
-    2. A minimal hedge: &quot;I have limited   (when arbiter is inconclusive —
-       confidence in this answer&quot;          Case 4 only; external escalation
+    2. A minimal hedge: "I have limited   (when arbiter is inconclusive —
+       confidence in this answer"          Case 4 only; external escalation
                                           proceeds invisibly in background)
 
 Everything else stays inside the system:
@@ -806,16 +857,15 @@ Everything else stays inside the system:
     - What evidence was found
     - Which model was wrong
     - That a correction was issued
-    - That a blue-green cycle was triggered
-</code></pre>
+    - That a blue-green cycle was triggered</code></pre>
 <p>The trust principle from §5.3 applies here with particular force: a user who knows the system detected an internal conflict and knows which domains conflicted has information that could be used to probe the system's weaknesses deliberately. The minimum disclosure posture protects against this.</p>
 <p><strong>External escalation protocol (Case 4 only):</strong></p>
 <p>When all four internal check types fail to produce a confident verdict, the Arbiter initiates a controlled external consultation. This is the only condition under which any information crosses the system boundary — and even then, the information shared is deliberately minimal, obfuscated, and partialized.</p>
 <p><em>Eligibility gating — who receives the query:</em></p>
 <p>External consultation is restricted to entities whose trust scores meet two independent thresholds simultaneously:</p>
 <pre><code>Eligible consultant IF:
-    entity_score.domain_expertise(D) &gt; median_expertise(D)
-    AND entity_score.trust &gt; trust_threshold(field)
+    entity_score.domain_expertise(D) > median_expertise(D)
+    AND entity_score.trust > trust_threshold(field)
 
 trust_threshold(field):
     Surgery, Aviation:    0.90   (near-maximum trust required)
@@ -827,8 +877,7 @@ domain_expertise measured from:
     verifiable professional experience (years in field)
     educational qualifications (degree level, institution tier)
     field-specific certifications (board certification, PE, bar)
-    prior interaction accuracy with this system (tracked internally)
-</code></pre>
+    prior interaction accuracy with this system (tracked internally)</code></pre>
 <p>Only entities who clear both gates receive the query. A highly trusted entity with shallow domain expertise is not eligible. A deep domain expert with low trust is not eligible. Both dimensions must exceed threshold.</p>
 <p><em>Query construction — obfuscation and partialization:</em></p>
 <p>The external query is constructed to extract useful signal while revealing as little internal state as possible:</p>
@@ -843,26 +892,24 @@ domain_expertise measured from:
 What IS included (minimum viable context):
     - The subject S, generalized to remove system-specific framing
     - The specific claim that cannot be verified internally
-    - A neutral domain label (e.g. &quot;medicine&quot;) if necessary
+    - A neutral domain label (e.g. "medicine") if necessary
       for the expert to answer, stripped of subdomain specifics
     - A prompt framed as a professional judgment question,
-      not a conflict resolution request
-</code></pre>
-<p>Example transformation:</p>
+      not a conflict resolution request</code></pre>
+Example transformation:
 <pre><code>Internal conflict:
-    CS model:  &quot;bubble sort is O(n log n) average case&quot;
-    Med model: &quot;ibuprofen reduces fever via COX-2 inhibition only&quot;
+    CS model:  "bubble sort is O(n log n) average case"
+    Med model: "ibuprofen reduces fever via COX-2 inhibition only"
     [unrelated models, each internally inconsistent]
 
 External query to CS expert (generalized, partialized):
-    &quot;What is the average-case time complexity of bubble sort?&quot;
+    "What is the average-case time complexity of bubble sort?"
     [No mention of conflict, no mention of other model, no context]
 
 External query to pharmacology expert (generalized, partialized):
-    &quot;Does ibuprofen reduce fever exclusively via COX-2 inhibition,
-     or are other mechanisms involved?&quot;
-    [Same treatment — clean professional question, no system context]
-</code></pre>
+    "Does ibuprofen reduce fever exclusively via COX-2 inhibition,
+     or are other mechanisms involved?"
+    [Same treatment — clean professional question, no system context]</code></pre>
 <p>The external expert sees a professional question indistinguishable from a standard query. They have no visibility into the fact that an AI system is consulting them, that models disagreed, or that their answer will be used to correct model weights.</p>
 <p><em>Response handling and feedback:</em></p>
 <p>Expert responses are not applied directly as corrections. They re-enter the Arbiter pipeline as high-weight empirical evidence:</p>
@@ -879,14 +926,13 @@ Correction signal issued to relevant submodel(s)
 Correction added to DPO training pairs
         ↓
 Blue-green triggered IF:
-    correction_merit &gt; field_threshold
+    correction_merit > field_threshold
     AND system load within stability bounds
     AND no other blue-green cycle active for this submodel
 
 Blue-green is NOT automatically triggered — it depends on
 merit and current system state. System stability takes
-priority over any individual correction.
-</code></pre>
+priority over any individual correction.</code></pre>
 <p><em>Stability preservation:</em></p>
 <p>The external escalation path is designed to never compromise system stability. Expert responses feed the Arbiter as evidence, not as direct commands. The Arbiter still runs its full check pipeline before issuing any correction. Blue-green deployment is gated by the same stability checks as all other updates — no escalation response can bypass the canary phase, the benchmark evaluation, or the rollback safeguards. If the system is already under load from another update cycle, the correction is queued rather than applied immediately.</p>
 <p>This means the escalation path is informational, not operational: it enriches the Arbiter's evidence base without granting external entities any control over the system's update mechanism.</p>
@@ -897,10 +943,9 @@ priority over any individual correction.
 <p><strong>Trigger condition:</strong></p>
 <p>A submodel monitors its own utility score over a sliding window. An update cycle is triggered when deviation from baseline is both significant and sustained:</p>
 <pre><code>Trigger when ALL of:
-    |U_current - U_baseline| &gt; δ(field)    [significant deviation]
+    |U_current - U_baseline| > δ(field)    [significant deviation]
     deviation sustained for ≥ T interactions  [not noise]
-    held-out benchmark available             [can evaluate candidate]
-</code></pre>
+    held-out benchmark available             [can evaluate candidate]</code></pre>
 <p>The theoretical values for δ and T are derived from the utility score variance (σ ≈ 0.04 from simulation) and field penalty multipliers:</p>
 <pre><code>δ(field) = base_δ / penalty_multiplier(field)
 base_δ   = 0.05
@@ -913,12 +958,11 @@ T(field) = (z_α × σ / δ(field))²    [power analysis, α=0.05]
 
 Surgery:          T ≥ 246 interactions  (high confidence required)
 Software Eng:     T ≥  10 interactions  (responsive)
-Creative Writing: T ≥   2 interactions  (fast)
-</code></pre>
+Creative Writing: T ≥   2 interactions  (fast)</code></pre>
 <p><strong>The deployment lifecycle:</strong></p>
 <pre><code>Phase 0 — Detection:
     U_monitor watches sliding window of W interactions
-    If |U_current - U_baseline| &gt; δ for T consecutive interactions:
+    If |U_current - U_baseline| > δ for T consecutive interactions:
         → trigger training phase
 
 Phase 1 — Training (offline):
@@ -948,7 +992,7 @@ Phase 3 — Gradual shift (utility-weighted routing):
             Software Eng: τ = 0.20  (moderate)
             Creative:     τ = 0.50  (fast, early adopter)
 
-    As U_green &gt; U_blue, traffic shifts automatically toward green
+    As U_green > U_blue, traffic shifts automatically toward green
     No manual intervention required
 
 Phase 4 — Promotion (traffic_green ≥ promotion_threshold):
@@ -964,13 +1008,12 @@ Phase 5 — Retirement:
         δ recalibrated from observed variance in this cycle
 
 Rollback (any phase):
-    Triggers: U_green &lt; U_blue - ε for M interactions
-              OR contradiction_rate_green &gt; contradiction_rate_blue × 1.5
-              OR benchmark regression &gt; field_tolerance
+    Triggers: U_green < U_blue - ε for M interactions
+              OR contradiction_rate_green > contradiction_rate_blue × 1.5
+              OR benchmark regression > field_tolerance
     Action:   traffic_blue → 1.0 instantly
               GREEN flagged — failure DPO pairs added to replay buffer
-                             with negative weight for next candidate
-</code></pre>
+                             with negative weight for next candidate</code></pre>
 <p><strong>Traffic split visualization across a typical promotion cycle:</strong></p>
 <pre><code>Traffic %  │
   100 BLUE ├────────────────────╮
@@ -982,8 +1025,7 @@ Rollback (any phase):
            │                        ╰──╮         │
     0      │                           ╰─────────╯────▶ time
            │  Canary    Gradual shift        Promotion
-           │  (5/95)    (utility-driven)     (100% green)
-</code></pre>
+           │  (5/95)    (utility-driven)     (100% green)</code></pre>
 <h3>9.7 System Properties</h3>
 <p><strong>Catastrophic forgetting:</strong> Eliminated at the domain level. Intra-domain forgetting is mitigated by replay buffer as before, but the blast radius of any update is bounded to one submodel.</p>
 <p><strong>Independent deployability:</strong> Each submodel has its own blue-green cycle. A surgery model update in progress does not block a CS model update. They are fully decoupled.</p>
@@ -1008,8 +1050,7 @@ Consumer  (RTX 4090)    24 GB     ~20B params      Deeper graph,
 
 Edge / older            8–16 GB   ~7B params       Deep graph,
                                    per GPU          many fine-grained
-                                                    specialist nodes
-</code></pre>
+                                                    specialist nodes</code></pre>
 <p>On a cluster of high-VRAM GPUs, the graph is shallow — a small number of large, capable submodels. Each submodel covers a broad domain (e.g. all of medicine, or all of software engineering) without subdivision. The router makes few hops, communication overhead is minimal, and per-query latency is low.</p>
 <p>On a cluster of smaller or older GPUs, the same total capability is achieved through a deeper, more finely branched graph. The surgery submodel that ran as a single 35B model on an A100 becomes a cluster of smaller specialist nodes (radiology, pharmacology, surgical procedures) each fitting on a consumer GPU. More inter-node communication occurs, but the system remains functional and still benefits from the same independent deployability and blue-green update properties.</p>
 <p><strong>Emulating a larger submodel across multiple small GPUs:</strong></p>
@@ -1023,13 +1064,12 @@ Physical deployment (2× RTX 4090):
     ┌─────────────┐     NVLink      ┌─────────────┐
     │  GPU 0      │ ◄────────────► │  GPU 1      │
     │  layers 1-24│                 │  layers 25-48│
-    └─────────────┘                 └─────────────┘
-</code></pre>
+    └─────────────┘                 └─────────────┘</code></pre>
 <p>The branching heuristic from §8.3 therefore has a hardware-relative interpretation: <em>stop branching when the submodel fits on the available hardware without sharding across slow interconnects.</em> A team with H100s stops earlier (fewer, larger nodes). A team with consumer GPUs branches further (more, smaller nodes). Both produce equivalent logical graphs — they just have different physical topologies.</p>
 <p><strong>Cost and performance implications:</strong></p>
 <p>This property makes the architecture accessible across a wide range of deployment environments. A research lab with a handful of H100s can run the same logical system as an enterprise with a large A100 cluster — the graph just has different depth. A startup can begin with deep graphs of small models and consolidate nodes as they upgrade hardware, with no architectural change required. The blue-green deployment mechanism works identically regardless of graph depth.</p>
 <p>More significantly: because only the active subgraph is loaded per query, a deep graph of small models on consumer GPUs may actually have <em>lower</em> per-query cost than a single large model on expensive hardware — the relevant specialist nodes activate, the rest stay idle. This inverts the typical assumption that large models require large hardware.</p>
-<pre><code>Query: &quot;Explain the Krebs cycle&quot;
+<pre><code>Query: "Explain the Krebs cycle"
 
 Shallow graph (H100):          Deep graph (consumer GPUs):
   Router → Medicine (70B)        Router → Biology (7B)
@@ -1038,8 +1078,7 @@ Shallow graph (H100):          Deep graph (consumer GPUs):
   Low communication overhead       Lower per-model cost
                                    Some communication overhead
 
-Both produce equivalent answers. Cost depends on utilization pattern.
-</code></pre>
+Both produce equivalent answers. Cost depends on utilization pattern.</code></pre>
 <p><strong>The practical guidance:</strong></p>
 <p>Branch to the depth that keeps each submodel comfortably within a single GPU's VRAM without aggressive sharding. Prefer fewer, larger submodels when high-VRAM hardware is available — the intra-GPU speed advantage is significant. Accept more nodes and more inter-GPU communication when hardware is constrained. The architecture accommodates both extremes without modification.</p>
 <hr />
@@ -1062,8 +1101,7 @@ Replicated state:
 Not replicated (computed per-request, stateless):
     - Query classification results
     - Fan-out routing decisions
-    - Response merging
-</code></pre>
+    - Response merging</code></pre>
 <p><strong>Leader election and failover:</strong></p>
 <pre><code>Normal operation:
     Leader handles all query routing
@@ -1079,8 +1117,7 @@ Leader failure detected (heartbeat timeout):
 Split brain prevention:
     Majority quorum required for all state changes
     A partitioned minority cannot elect its own leader
-    Queries to minority partition are rejected (not silently wrong)
-</code></pre>
+    Queries to minority partition are rejected (not silently wrong)</code></pre>
 <p><strong>Operational properties:</strong></p>
 <p>Reads (query routing decisions) are served by the leader only, ensuring the traffic split table is always current. State changes — submodel health updates, traffic split adjustments from blue-green cycles — require quorum commit before taking effect. A 3-node cluster tolerates 1 node failure; a 5-node cluster tolerates 2.</p>
 <p>The router cluster adds approximately 150–300ms latency only during a leader election event. Under normal operation, the follower overhead is negligible — followers receive state replication asynchronously and do not participate in query serving. From the submodels' perspective, the router is a single logical entity; the Raft cluster is an implementation detail invisible to the rest of the graph.</p>
@@ -1096,7 +1133,7 @@ Split brain prevention:
 - No human raters needed — ground truth is free</p>
 <h3>10.2 MVP Feedback Loop</h3>
 <pre><code>1. Receive coding problem
-2. Field classifier → &quot;software_engineering&quot; → load weights/bounds
+2. Field classifier → "software_engineering" → load weights/bounds
 3. Query assertions store → inject relevant prior corrections
 4. Build system prompt with active corrections + personality traits
 5. Call frontier model → get solution
@@ -1110,8 +1147,7 @@ Split brain prevention:
 8. Store (task, response, U) as DPO candidate
 9. Update assertions store with new structured facts
 10. Every N interactions → Personality evolution step
-11. Several times daily → Calibration run → new LoRA adapter
-</code></pre>
+11. Several times daily → Calibration run → new LoRA adapter</code></pre>
 <h3>10.3 Success Criteria</h3>
 <ul>
 <li>U improves over a dataset of 1,000+ problems across multiple calibration cycles</li>
@@ -1150,8 +1186,7 @@ Phase 6 — Full Continual Learning Stack
 
 Phase 7 — Feedback into Training
     Distill accumulated adapters into new base fine-tune
-    Goal: bake wrapper-level learning into base model
-</code></pre>
+    Goal: bake wrapper-level learning into base model</code></pre>
 <hr />
 <h2>12. Open Questions</h2>
 <p>The following tracks the resolution status of all identified open problems. Questions resolved in this version are noted with their resolution location.</p>
@@ -1175,8 +1210,8 @@ Phase 7 — Feedback into Training
 - Utility function justification → Appendix B, Theorem B.1 (additive structure proved from axioms)
 - Efficacy sigmoid justification → Appendix B, Proposition B.3 (Mann-Whitney interpretation)
 - EMA optimality justification → Appendix B, Theorem B.4 (Kalman-optimal for ρ = 0.05)
-- Confidence convergence → Appendix B, Theorem 2 (geometric convergence in expectation, recovery time formula)
-- Personality stability → Appendix B, Theorem 4 (Lyapunov analysis, bounded stable dynamics)</p>
+- Confidence convergence → Appendix B, Theorem B.5 (geometric convergence in expectation, recovery time formula)
+- Personality stability → Appendix B, Theorem B.7 (Lyapunov analysis, bounded stable dynamics)</p>
 <h3>12.1 Persistent</h3>
 <p><strong>1. Subtle utility gaming</strong></p>
 <p>The 50% curiosity cap prevents overt gaming. A sufficiently capable agent might learn subtler strategies: slightly reframing familiar problems to appear novel, or selectively avoiding domains where its contradiction rate would rise. The curiosity gap bonus (§9.5, Case 3) partially mitigates this by directing exploration toward confirmed knowledge gaps — but the agent could still game gap detection by generating ambiguous outputs that trigger Case 3 without genuinely resolving the gap. Detecting subtle gaming requires an independent novelty measure, which reintroduces the circularity problem.</p>
@@ -1218,8 +1253,7 @@ Phase 7 — Feedback into Training
 ─────  ──────────  ──────   ─────────  ─────────  ──────   ──────────────  ──────
   1    easy        0.5128   0.5124     0.5323     0.6005        1          —
   2    medium      0.5921   0.5542     0.5701     0.8128        0          +0.0793
-  3    hard        0.6288   0.5740     0.5809     0.8940        0          +0.0367
-</code></pre>
+  3    hard        0.6288   0.5740     0.5809     0.8940        0          +0.0367</code></pre>
 <p><strong>Overall U improvement: +0.1160 (0.5128 → 0.6288)</strong>
 <strong>Contradiction reduction: 1 → 0 (eliminated by cycle 2)</strong>
 <strong>Confidence gain: +0.294 (0.601 → 0.894)</strong>
@@ -1234,16 +1268,15 @@ max_subarray             0.5068     0.5901     0.6264     ↑ improving
 binary_search            0.5167     0.5934     0.6269     ↑ improving
 flatten_nested           0.5349     0.6017     0.6316     ↑ improving
 lru_cache                0.5550     0.6118     0.6391     ↑ improving
-merge_intervals          0.5641     0.6167     0.6420     ↑ improving
-</code></pre>
+merge_intervals          0.5641     0.6167     0.6420     ↑ improving</code></pre>
 <hr />
 <div class="chart-section">
-  <h4>Figure 1 — Utility components across calibration cycles (v0.4 simulation)</h4>
+  <h4>Figure 1 — Utility components across calibration cycles</h4>
   <div class="legend">
     <span><span class="dot" style="background:#534AB7"></span>avg U</span>
-    <span><span class="dot" style="background:#1D9E75"></span>avg E_ema (accumulated)</span>
+    <span><span class="dot" style="background:#1D9E75"></span>avg E<sub>ema</sub> (accumulated)</span>
     <span><span class="dot" style="background:#D85A30"></span>avg C</span>
-    <span><span class="dot" style="background:#BA7517;opacity:.7"></span>avg E_raw (per-interaction)</span>
+    <span><span class="dot" style="background:#BA7517;opacity:.7"></span>avg E<sub>raw</sub> (per-interaction)</span>
   </div>
   <div class="chart-wrap"><canvas id="utilityChart"></canvas></div>
   <h4 style="margin-top:2.5rem;">Figure 2 — Per-problem utility across cycles</h4>
@@ -1254,10 +1287,10 @@ merge_intervals          0.5641     0.6167     0.6420     ↑ improving
     <span><span class="dot" style="background:#ccc"></span>others</span>
   </div>
   <div class="chart-wrap" style="height:280px"><canvas id="problemChart"></canvas></div>
-  <h4 style="margin-top:2.5rem;">Figure 3 — E_ema vs E_raw: A.5 fix validated</h4>
+  <h4 style="margin-top:2.5rem;">Figure 3 — E<sub>ema</sub> vs E<sub>raw</sub></h4>
   <div class="legend">
-    <span><span class="dot" style="background:#534AB7"></span>E_ema (domain-accumulated)</span>
-    <span><span class="dot" style="background:#D85A30"></span>E_raw (per-interaction)</span>
+    <span><span class="dot" style="background:#534AB7"></span>E<sub>ema</sub></span>
+    <span><span class="dot" style="background:#D85A30"></span>E<sub>raw</sub></span>
   </div>
   <div class="chart-wrap"><canvas id="efficacyChart"></canvas></div>
   <h4 style="margin-top:2.5rem;">Figure 4 — Personality trait evolution</h4>
@@ -1277,8 +1310,8 @@ merge_intervals          0.5641     0.6167     0.6420     ↑ improving
     <div class="metric"><div class="label">Difficulty routing</div><div class="value">easy→hard</div><div class="sub">C1 easy · C2 medium · C3 hard</div></div>
   </div>
 </div><h3>A.3 Key Observations</h3>
-<p><strong>Contradiction detection and penalization are working correctly.</strong> The seeded contradiction in cycle 1 — <code>two_sum</code> claiming O(n) with a genuine nested loop — fires correctly via the mathematical check, producing the lowest U score in the run (0.4617). The recovery in cycle 2 (+0.1052 for two_sum) is the largest single-problem jump, validating that the penalty is both meaningful and recoverable.</p>
-<p><strong>Both efficacy and confidence now drive U improvement.</strong> In v0.3, efficacy was flat (simulation artifact). In v0.4, efficacy EMA accumulates: 0.512 → 0.554 → 0.574 across cycles. Confidence remains the dominant driver (0.601 → 0.813 → 0.894), but both terms now contribute, producing a larger total U gain (+0.1160 vs +0.0755 in v0.3).</p>
+<p><strong>Contradiction detection and penalization are working correctly.</strong> The seeded contradiction in cycle 1 — `two_sum` claiming O(n) with a genuine nested loop — fires correctly via the mathematical check, producing the lowest U score in the run (0.4617). The recovery in cycle 2 (+0.1052 for two_sum) is the largest single-problem jump, validating that the penalty is both meaningful and recoverable.</p>
+<p><strong>Both efficacy and confidence now drive U improvement.</strong> In v0.3, efficacy was flat (simulation artifact). In v0.4, efficacy EMA accumulates: 0.512 → 0.554 → 0.574 across cycles. Confidence remains the dominant driver (0.601 → 0.813 → 0.894), but both terms now contribute, producing a larger total U gain (+0.1160 vs +0.1160 in v0.3).</p>
 <p><strong>Difficulty escalation re-engages curiosity.</strong> Cycle 1 routes easy problems (domain confidence 0.500), cycle 2 escalates to medium (0.723), cycle 3 escalates to hard (0.860). This resets the novelty counter each time difficulty changes, preventing curiosity from collapsing to zero after cycle 1 — the gap identified in v0.3's A.5.</p>
 <p><strong>Diminishing returns are visible and correct.</strong> U gain from cycle 1→2 (+0.0793) is 2.2× larger than from cycle 2→3 (+0.0367). The shape is correct — early calibration fixes the biggest errors fast, subsequent runs make finer corrections. The ratio is smaller than v0.3 (+0.0639 vs +0.0116, 5.5×) because harder problems in cycle 3 introduce new challenges, preventing as sharp a diminishing return.</p>
 <p><strong>DPO pairs generated.</strong> The contradiction detector produced 2 DPO pairs from the seeded contradiction — one per interaction where the O(n) claim appeared. These are weighted at 2× (field penalty multiplier) and ready for calibration pipeline ingestion.</p>
@@ -1291,34 +1324,31 @@ creativity          0.400      0.400       0.420       0.440   ↑
 analytical_rigor    0.600      0.600       0.600       0.600   →
 caution             0.500      0.500       0.500       0.500   →
 assertiveness       0.500      0.500       0.500       0.500   →
-conciseness         0.500      0.500       0.500       0.500   →
-</code></pre>
+conciseness         0.500      0.500       0.500       0.500   →</code></pre>
 <p>Curiosity and creativity are stable through cycle 1 (the contradiction run dampens the improving-utility signal), then grow in cycles 2 and 3 as utility trend turns positive and contradiction rate falls to zero. This is more realistic behavior than v0.3 — the single contradiction in cycle 1 correctly delays but does not prevent the curiosity/creativity growth. Caution remained stable because the contradiction rate (1/8 = 12.5%) stayed below the 0.2 threshold required to trigger a caution boost. Traits that were stable confirm the drift rate caps and field bounds are working: no change is applied that isn't earned by sustained data.</p>
 <hr />
 <h3>A.5 Simulation Gaps and Resolutions (v0.4)</h3>
 <p>Two concrete issues surfaced from the simulation and are now resolved for the Phase 1 live implementation:</p>
 <p><strong>1. Efficacy accumulation via EMA.</strong></p>
 <p>The simulation computed efficacy per-interaction against a fixed baseline, creating an asymmetry: confidence uses EMA and accumulates across cycles, but efficacy reset each interaction. The fix for the live system is straightforward — maintain a running domain-level efficacy state using the same EMA pattern as confidence:</p>
-<pre><code class="language-python"># Per-interaction efficacy (simulation — fixed baseline, no accumulation)
+<pre><code># Per-interaction efficacy (simulation — fixed baseline, no accumulation)
 E_raw = agent_score / human_baseline
 
 # Domain-level EMA (live system — accumulates across interactions)
 E_domain = (1 - α) × E_domain_prior + α × E_raw
-           where α = 0.2  # same as confidence EMA
-</code></pre>
+           where α = 0.2  # same as confidence EMA</code></pre>
 <p>In the live system this self-corrects naturally: calibrated responses genuinely score better against the human benchmark, so E_domain rises as the agent improves. The simulation used synthetic responses with artificially fixed scores, hiding this. Implementation item for Phase 1: replace per-interaction efficacy with an EMA-accumulated domain state persisted in the assertions store alongside confidence.</p>
 <p><strong>2. Dynamic problem difficulty escalation.</strong></p>
 <p>The simulation's fixed-difficulty problem bank meant the novelty counter never reset after cycle 1, collapsing curiosity to zero for cycles 2 and 3. This is a harness design gap, not an architecture flaw. The live harness (Phase 1) implements difficulty escalation using LeetCode's difficulty tiers:</p>
 <pre><code>Difficulty routing rule:
-    if C_domain &gt; 0.85:  route to Hard problems
-    if C_domain &gt; 0.70:  route to Medium problems
+    if C_domain > 0.85:  route to Hard problems
+    if C_domain > 0.70:  route to Medium problems
     else:                route to Easy problems
 
 Novelty counter resets when:
     problem difficulty tier changes (escalation or de-escalation)
     OR problem topic cluster changes
-    OR problem has not appeared in prior K sessions
-</code></pre>
+    OR problem has not appeared in prior K sessions</code></pre>
 <p>This ensures that as per-domain confidence rises, harder problems are introduced, the novelty counter resets, and the curiosity growth function re-engages. The 50% cap and gap bonus mechanisms can then be properly exercised across calibration cycles.</p>
 <p><strong>Status:</strong> Both gaps are implementation items resolved in the Phase 1 harness design. Neither represents a flaw in the utility function or the three-layer learning architecture — they were artifacts of the simulation's static test bank. The live system will exercise the full curiosity and efficacy dynamics that the simulation could not.</p>
 <hr />
@@ -1329,9 +1359,9 @@ Novelty counter resets when:
 - <strong>§B.2</strong>: Field weight justification — cost proportionality design principle
 - <strong>Proposition B.3</strong> (§B.3): Efficacy sigmoid — Mann-Whitney interpretation
 - <strong>Theorem B.4</strong> (§B.4): EMA confidence update — Kalman optimality for ρ = 0.05
-- <strong>Proposition B.5</strong> (§B.5): Curiosity cap — exploitation dominance proof
-- <strong>Theorem B.2</strong> (Theorem B.2): Confidence convergence — geometric convergence in expectation, recovery time
-- <strong>Theorem B.4'</strong> (Theorem B.4'): Personality stability — Lyapunov analysis, bounded stable dynamics</p>
+- <strong>Proposition B.6</strong> (§B.6): Curiosity cap — exploitation dominance proof
+- <strong>Theorem B.5</strong> (§B.5): Confidence convergence — geometric convergence in expectation, recovery time
+- <strong>Theorem B.7</strong> (§B.7): Personality stability — Lyapunov analysis, bounded stable dynamics</p>
 <hr />
 <p>Before analyzing the properties of the utility function $U$, we justify its structure from first principles. In its current form,</p>
 <p>$$U(E, C, K; f) = w_e(f)\,E + w_c(f)\,C + w_k(f)\,K$$</p>
@@ -1559,7 +1589,7 @@ For all $\lambda \in (0, 1]$ such that $(\lambda E, \lambda C, \lambda K) \in [0
 </table>
 <p>For high-stakes fields where competence changes very slowly (surgery, aviation), smaller $\alpha$ values are appropriate. Deriving field-specific optimal gains from domain learning rate estimates is left as future work.</p>
 <hr />
-<h3>B.5 Curiosity as a UCB-Inspired Exploration Term</h3>
+<h3>B.6 Curiosity as a UCB-Inspired Exploration Term</h3>
 <p>We define:</p>
 <p>$$K(d,t) = (C_{\max} - C_d)\;\nu_d\;\bigl(1 + \alpha_f\,\log(1 + n_{\text{fam}})\bigr)$$</p>
 <p>where $C_{\max} - C_d$ is the remaining confidence gap, $\nu_d \in [0,1]$ is the novelty of domain $d$, and $n_{\text{fam}}$ counts consecutive familiar interactions (resets on novel problems).</p>
@@ -1595,7 +1625,7 @@ For all $\lambda \in (0, 1]$ such that $(\lambda E, \lambda C, \lambda K) \in [0
 </table>
 <p>Both bonuses are concave and increasing in the "time since last exploration," creating persistent but diminishing pressure to revisit underexplored domains. The key structural difference is functional form: UCB uses $\sqrt{\log t / n}$; we use $\nu \cdot (1 + \alpha \log n_{\text{fam}})$. Both are in the sublinear growth family that prevents any single domain from being ignored indefinitely.</p>
 <p><strong>What this establishes:</strong> The curiosity term is UCB-<em>inspired</em> — it shares the structural properties (uncertainty-driven, concave in familiarity, bounded by exploitation) that make UCB effective. We do not claim exact equivalence to UCB1 or formal regret optimality; those results require a full bandit analysis under our specific setting, which is left as future work.</p>
-<h3>Proposition B.5 — The Cap Enforces Exploitation Dominance</h3>
+<h3>Proposition B.6 — The Cap Enforces Exploitation Dominance</h3>
 <p><strong>Proposition.</strong> <em>The constraint $w_k K \leq w_e E + w_c C$ implies that curiosity contributes at most 50% of total utility at all times:</em></p>
 <p>$$r_K \;\triangleq\; \frac{w_k K}{U} \;\leq\; \frac{1}{2}$$</p>
 <p><strong>Proof.</strong> Let $S = w_e E + w_c C$ (the exploitation component). The cap states $w_k K \leq S$. Total utility is $U = S + w_k K$. Therefore:</p>
@@ -1605,7 +1635,7 @@ For all $\lambda \in (0, 1]$ such that $(\lambda E, \lambda C, \lambda K) \in [0
 <p>The 50% threshold is the tightest constant upper bound derivable from the single constraint "exploitation $\geq$ exploration in utility contribution at all times." A tighter cap (e.g., 30%) would unnecessarily restrict exploration during early learning when $E$ and $C$ are low. A looser cap (e.g., 70%) would permit exploration to dominate even when the agent has high confidence and efficacy — which is the gaming behavior we want to prevent. The 50% bound is therefore not arbitrary: it is the most permissive cap consistent with the requirement that exploitation never falls below exploration.</p>
 <p><strong>What remains open.</strong> Whether the log-growth function achieves optimal regret guarantees under the multi-armed bandit formulation — including formal minimax bounds — is an open question. The analogy to UCB provides intuition and motivation, and the exploitation-dominance property is proved exactly. A formal regret analysis is deferred to future work.</p>
 <hr />
-<h3>B.6 Summary</h3>
+<h3>B.8 Summary</h3>
 <p>The utility function $U = w_e E + w_c C + w_k K$ is justified as follows:</p>
 <table>
 <thead>
@@ -1650,7 +1680,7 @@ For all $\lambda \in (0, 1]$ such that $(\lambda E, \lambda C, \lambda K) \in [0
 </table>
 <p>The formulation is not claimed to be the unique possible design, but it is <strong>the minimal, interpretable, and theoretically grounded design</strong> consistent with the five axioms. Each component rests on an identified theoretical foundation, and the scope of each claim is stated explicitly.</p>
 <hr />
-<h3>Theorem B.2 — Convergence of Confidence Under Repeated Calibration</h3>
+<h3>B.5 — Theorem B.5 — Convergence of Confidence Under Repeated Calibration</h3>
 <h3>Setup</h3>
 <p>Recall the confidence update rule with contradiction penalty:</p>
 <p>$$C_{t+1} = (1-\alpha)\,C_t + \alpha\,s_t\,(1 - \lambda\mu(f))$$</p>
@@ -1673,7 +1703,7 @@ $$= (1-\alpha)\!\left[(1-\alpha)^t C_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k
 $$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-k}\tilde{s}_k + \alpha\tilde{s}_t$$
 $$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t}(1-\alpha)^{t-k}\tilde{s}_k \qquad \blacksquare$$</p>
 <hr />
-<h4>Theorem B.2 — Convergence, Uniqueness, and Recovery</h4>
+<h4>B.5 — Theorem B.5 — Convergence, Uniqueness, and Recovery</h4>
 <p><strong>Theorem.</strong> <em>Let $\{\tilde{s}_t\}$ be a stationary sequence with constant expectation $\bar{s} \in [0,1]$ and let $\tilde{s}^* = \bar{s}(1 - \lambda\mu(f))$ be the expected effective signal. Then:</em></p>
 <ol>
 <li><strong>Existence and uniqueness of steady state.</strong> There exists a unique fixed point $C^*$ of the update rule, given by:</li>
@@ -1781,7 +1811,7 @@ After 20 interactions: $|e_{20}| \leq 0.8^{20} \times 0.35 \approx 0.0038$.</p>
 <p>This corollary formalizes the whitepaper's claim that high-stakes fields impose stricter confidence standards: for surgery, a typical agent with $\bar{s} = 0.85$ and any nonzero contradiction rate cannot achieve the $C_{\min} = 0.95$ threshold, and must abstain or escalate. The confidence floor is not merely a policy choice — it is above the achievable steady state, guaranteeing the abstention mechanism is triggered when the agent is not reliably correct.</p>
 <hr />
 <hr />
-<h3>Theorem B.4' — Lyapunov Stability of the Personality System</h3>
+<h3>B.7 — Theorem B.7 — Lyapunov Stability of the Personality System</h3>
 <h3>Corrected Claim</h3>
 <p>The personality system exhibits <strong>bounded, stable dynamics with convergence to a neighborhood of the field neutral $s^*$ under bounded drift</strong>. We do not claim a unique globally stable equilibrium, which would require the mean reversion to dominate the drift — a condition that does not hold for the parameter values $\beta = 0.01$, $\Delta_{\max} = 0.05$ used in this system. Instead we prove the three things that <em>are</em> true: invariance of the feasible set, geometric convergence to $s^*$ when drift is absent, and bounded dynamics otherwise.</p>
 <hr />
@@ -1800,7 +1830,7 @@ After 20 interactions: $|e_{20}| \leq 0.8^{20} \times 0.35 \approx 0.0038$.</p>
 <p>$$V(s) = \|s - s^*\|^2 = \sum_{i=1}^n (s_i - s_i^*)^2 \geq 0$$</p>
 <p>with $V(s^*) = 0$.</p>
 <hr />
-<h4>Theorem B.4' — Bounded Stable Dynamics with Neighborhood Convergence</h4>
+<h4>B.7 — Theorem B.7 — Bounded Stable Dynamics with Neighborhood Convergence</h4>
 <p><strong>Theorem.</strong> <em>Under the three-layer personality evolution rule above:</em></p>
 <p><strong>(i) Invariance.</strong> $s_t \in B$ for all $t \geq 0$ whenever $s_0 \in B$.</p>
 <p><strong>(ii) Zero-drift convergence.</strong> When $\Delta_t = 0$ for all $t$, $V(s_t)$ converges geometrically to zero:</p>
@@ -1898,6 +1928,7 @@ $$\leq (1-\beta)\|s_t - s^*\| + \Delta_{\max}\sqrt{n}$$</p>
 </ul>
 <p>The value $\beta = 0.01$ produces a half-life of approximately 34 evolution cycles under zero drift (≈ 102 interactions), which is long enough for the personality to reflect accumulated experience over hundreds of interactions before the neutral pull becomes dominant. A field-specific $\beta(f)$ — with higher reversion rates for high-stakes fields where personality stability is more important — is a natural extension for future work.</p>
 <hr />
+</div>
 <h2>References</h2>
 <ul>
 <li>Auer, P., Cesa-Bianchi, N., &amp; Fischer, P. (2002). Finite-time analysis of the multiarmed bandit problem. <em>Machine Learning</em>, 47(2–3), 235–256.</li>
@@ -1907,46 +1938,42 @@ $$\leq (1-\beta)\|s_t - s^*\| + \Delta_{\max}\sqrt{n}$$</p>
 <li>Mann, H. B., &amp; Whitney, D. R. (1947). On a test of whether one of two random variables is stochastically larger than the other. <em>Annals of Mathematical Statistics</em>, 18(1), 50–60.</li>
 <li>Wald, A. (1945). Sequential tests of statistical hypotheses. <em>Annals of Mathematical Statistics</em>, 16(2), 117–186.</li>
 </ul></div>
-</div>
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-  var appendix = document.querySelector('.appendix-b-section');
-  if (appendix && window.renderMathInElement) {
-    renderMathInElement(appendix, {
-      delimiters: [
-        {left: '$$', right: '$$', display: true},
-        {left: '$', right: '$', display: false} 
-      ],
-      throwOnError: false
-    });
-  }
-});
-</script>
 <script>const g="rgba(0,0,0,0.07)",t="#888",L=["Cycle 1 (easy)","Cycle 2 (medium)","Cycle 3 (hard)"];
 new Chart(document.getElementById("utilityChart"),{type:"line",data:{labels:L,datasets:[
   {label:"avg U",data:[0.5128,0.5921,0.6288],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
   {label:"avg E_ema",data:[0.5124,0.5542,0.574],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
   {label:"avg C",data:[0.6005,0.8128,0.894],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
-  {label:"avg E_raw",data:[0.5323,0.5701,0.5809],borderColor:"#BA7517",pointBackgroundColor:"#BA7517",borderWidth:1.5,pointRadius:4,fill:false,tension:0.3,borderDash:[4,3]},
+  {label:"avg E_raw",data:[0.5323,0.5701,0.5809],borderColor:"#BA7517",pointBackgroundColor:"#BA7517",borderWidth:1.5,pointRadius:4,fill:false,tension:0.3,borderDash:[4,3]}
 ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:11}}},y:{min:0.45,max:0.95,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v.toFixed(2),stepSize:0.1}}}}});
 new Chart(document.getElementById("problemChart"),{type:"line",data:{labels:["Cycle 1","Cycle 2","Cycle 3"],datasets:[
   {label:"two_sum",data:[0.4617,0.5669,0.619],borderColor:"#E24B4A",pointBackgroundColor:"#E24B4A",borderWidth:2.5,pointRadius:5,fill:false,tension:0.2},
   {label:"is_palindrome",data:[0.4745,0.5747,0.6218],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
-  {label:"valid_parentheses",data:[0.4888,0.5817,0.6233],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
-  {label:"max_subarray",data:[0.5068,0.5901,0.6264],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
-  {label:"binary_search",data:[0.5167,0.5934,0.6269],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
-  {label:"flatten_nested",data:[0.5349,0.6017,0.6316],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
+  {label:"valid_p",data:[0.4888,0.5817,0.6233],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
+  {label:"max_sub",data:[0.5068,0.5901,0.6264],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
+  {label:"binary_s",data:[0.5167,0.5934,0.6269],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
+  {label:"flatten",data:[0.5349,0.6017,0.6316],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
   {label:"lru_cache",data:[0.555,0.6118,0.6391],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.2},
-  {label:"merge_intervals",data:[0.5641,0.6167,0.642],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.2},
+  {label:"merge_int",data:[0.5641,0.6167,0.642],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.2}
 ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:11}}},y:{min:0.40,max:0.68,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v.toFixed(2),stepSize:0.05}}}}});
 new Chart(document.getElementById("efficacyChart"),{type:"line",data:{labels:L,datasets:[
   {label:"E_ema",data:[0.5124,0.5542,0.574],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
-  {label:"E_raw",data:[0.5323,0.5701,0.5809],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[5,3]},
+  {label:"E_raw",data:[0.5323,0.5701,0.5809],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[5,3]}
 ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:11}}},y:{min:0.48,max:0.62,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v.toFixed(3),stepSize:0.02}}}}});
 new Chart(document.getElementById("personalityChart"),{type:"line",data:{labels:["Initial","After C1","After C2","After C3"],datasets:[
   {label:"curiosity",data:[0.60,0.60,0.63,0.66],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
   {label:"creativity",data:[0.40,0.40,0.42,0.44],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
-  {label:"analytical rigor",data:[0.60,0.60,0.60,0.60],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[5,3]},
-  {label:"caution",data:[0.50,0.50,0.50,0.50],borderColor:"#888",pointBackgroundColor:"#888",borderWidth:1.5,pointRadius:4,fill:false,tension:0.3,borderDash:[3,3]},
+  {label:"analytical",data:[0.60,0.60,0.60,0.60],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[5,3]},
+  {label:"caution",data:[0.50,0.50,0.50,0.50],borderColor:"#888",pointBackgroundColor:"#888",borderWidth:1.5,pointRadius:4,fill:false,tension:0.3,borderDash:[3,3]}
 ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:11}}},y:{min:0.30,max:0.75,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v.toFixed(2),stepSize:0.1}}}}});</script>
-</body></html>
+<script>document.addEventListener("DOMContentLoaded", function() {
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left: "$$", right: "$$", display: true},
+      {left: "$",  right: "$",  display: false}
+    ],
+    throwOnError: false,
+    ignoredTags: ["script","noscript","style","textarea","pre","code","annotation","annotation-xml"]
+  });
+});</script>
+</body>
+</html>
