@@ -182,6 +182,18 @@ Where:
 
 *The additive weighted structure of U is not a convenience — it is the unique functional form satisfying separability, monotonicity, continuity, field invariance, and linear scaling invariance. Formal derivation via Debreu's theorem and the Cauchy functional equation: **Appendix B, Theorem B.1**.*
 
+**Constrained maximization and the optimization geometry.**
+
+$U$ is the objective being maximized — through DPO calibration, behavioral correction, and deployment gating — subject to the three constraints above. The full decision rule is:
+
+$$\text{act} = \begin{cases} \arg\max\; U & \text{if } C \geq C_{\min}(f) \;\text{and}\; E \geq E_{\min}(f) \\ \text{abstain / escalate} & \text{otherwise} \end{cases}$$
+
+The constraints are not soft penalties — they are hard gates. An agent below $C_{\min}(f)$ does not produce a lower-utility answer; it produces no answer and escalates. This is by design: in surgery or aviation, a confidently wrong answer is more dangerous than an acknowledged abstention.
+
+The curiosity cap creates a useful joint incentive structure. Because $K$ is bounded by $(w_e E + w_c C)/w_k$, improving $E$ and $C$ simultaneously *loosens* the cap — a more competent, consistent agent is permitted more exploration. The optimization landscape therefore rewards joint improvement across all three components rather than trading one off against another. An agent that games curiosity by keeping $C$ low to inflate $K$ finds that the cap tightens as $C$ falls, automatically reducing the curiosity term it was trying to exploit. The cap is self-enforcing: no external monitor is needed to prevent gaming.
+
+This also means the utility surface has no saddle points where a locally optimal strategy involves deliberately degrading one component. At every point in the feasible region, the gradient of $U$ is strictly positive in all three directions — any genuine improvement in efficacy, confidence, or curiosity increases $U$.
+
 ### 3.2 Efficacy
 
 Efficacy measures output quality relative to the current human baseline for that task:
@@ -1170,6 +1182,10 @@ adaptive_sampling_rate:
 At elevated and intensive sampling rates, the increased expert verification provides faster feedback on whether the Arbiter's corrections are accurate. If expert consensus confirms the corrections are correct, the high correction rate is real signal — the field has accumulated genuine errors. If expert consensus contradicts a significant fraction of corrections, over-correction is confirmed and the Arbiter's weight vector is recalibrated.
 
 The hard cap at 15% ensures the escalation infrastructure is never overwhelmed by a single misbehaving Arbiter instance. At 15% sampling on a high-volume domain, the expert load is still manageable and the verification turnaround is fast enough to detect and correct the feedback loop before the personality system has drifted significantly. The personality system's drift rate cap (§5.2, Layer 2: max Δ = 0.02–0.05 per cycle) provides an additional buffer — the personality cannot change faster than the Arbiter sampling can detect and correct a problem.
+
+**Note on alternative arbitration mechanisms.**
+
+The hand-specified weight vector (logical: 0.30, mathematical: 0.40, cross-session: 0.20, empirical: 0.10) and the adaptive 2–15% expert sampling rate are engineering approximations to what a theoretically grounded mechanism would derive endogenously. In a companion paper (*Supplement S1: Game-Theoretic Arbitration via VCG Mechanism*), we develop an alternative arbitration mechanism in which the domain submodels are treated as players in a cooperative game with the Arbiter as the external social planner. Under the Vickrey-Clarke-Groves (VCG) mechanism, submodels report value functions over the claim space, the Arbiter selects the social optimum directly, and Clarke pivot transfers applied as DPO weight adjustments enforce truthful reporting as the dominant strategy. This mechanism achieves POA = 1 (no efficiency loss at equilibrium), makes the hand-specified check weights unnecessary (they are replaced by the submodels' reported utilities), and makes the adaptive calibration sampling unnecessary (the Clarke transfer is a continuous self-correcting signal rather than a discrete audit). The current hand-specified mechanism is retained in the main paper as the deployable approximation; the VCG construction is the theoretical ideal toward which Phase 6 architecture should converge.
 
 **Information disclosure boundary:**
 
