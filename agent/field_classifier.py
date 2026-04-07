@@ -178,6 +178,55 @@ class FieldClassifier:
             print(f"[FieldClassifier] Error: {e}, defaulting to general")
             return {"general": 1.0}
 
+    def _keyword_fallback(self, task: str) -> Dict[str, float]:
+        """
+        Keyword-based field classifier used in simulation mode (no API).
+        Returns a probability distribution over fields.
+        """
+        task_lower = task.lower()
+        scores = {f: 0.0 for f in [
+            "software_engineering", "medicine", "law", "mathematics",
+            "physics", "chemistry", "finance", "creative_writing",
+            "general_knowledge", "surgery", "aviation"
+        ]}
+
+        keywords = {
+            "software_engineering": ["code", "function", "algorithm", "python", "java",
+                                      "debug", "sort", "array", "class", "api", "bug",
+                                      "complexity", "leetcode", "loop", "data structure"],
+            "medicine":             ["patient", "diagnosis", "treatment", "drug", "dose",
+                                      "symptom", "medical", "clinical", "disease", "therapy"],
+            "surgery":              ["surgical", "operation", "incision", "procedure",
+                                      "anesthesia", "sterile", "postoperative"],
+            "law":                  ["legal", "contract", "statute", "court", "liability",
+                                      "regulation", "attorney", "plaintiff", "defendant"],
+            "mathematics":          ["proof", "theorem", "equation", "integral", "derivative",
+                                      "matrix", "vector", "probability", "calculus"],
+            "finance":              ["stock", "portfolio", "investment", "return", "risk",
+                                      "dividend", "valuation", "market", "asset"],
+            "creative_writing":     ["story", "poem", "creative", "narrative", "character",
+                                      "plot", "fiction", "write a poem", "short story"],
+            "general_knowledge":    ["history", "geography", "capital", "who", "what year"],
+        }
+
+        for field, kws in keywords.items():
+            for kw in kws:
+                if kw in task_lower:
+                    scores[field] += 1.0
+
+        # Default to software_engineering if no signal (MVP domain)
+        if sum(scores.values()) == 0:
+            scores["software_engineering"] = 1.0
+
+        total = sum(scores.values())
+        dist = {k: v / total for k, v in scores.items() if v > 0}
+
+        # Ensure at least one key
+        if not dist:
+            dist = {"software_engineering": 1.0}
+
+        return dist
+
     def _enforce_high_stakes_floor(self, dist: Dict[str, float]) -> Dict[str, float]:
         """
         Floor high-stakes fields at MIN_HIGH_STAKES_PROB if they have any presence.
