@@ -169,8 +169,19 @@ class UtilityAgent:
                     f"[{primary_field}] Detected {c.type} contradiction: {c.description}"
                 )
 
-        # ── 6. Abstain check ──────────────────────────────────────────────────
+        # ── 6. Abstain gate (constrained maximization, whitepaper §3.1) ──────────
+        # Decision rule:
+        #   act    if C ≥ C_min(f) AND E ≥ E_min(f)
+        #   abstain otherwise — hedge response, do not return the answer
         should_abstain = task_score.below_minimum
+        if should_abstain:
+            abstain_answer = (
+                f"I have insufficient confidence to answer in the {primary_field} domain "
+                f"(confidence {task_score.confidence:.2f} < required {field_config.c_min:.2f}). "
+                f"Please consult a qualified professional."
+            )
+        else:
+            abstain_answer = None
 
         # ── 7. Personality evolution ──────────────────────────────────────────
         if self.interaction_count % self.personality_evolution_interval == 0:
@@ -178,9 +189,9 @@ class UtilityAgent:
             domain_summary = self.utility_scorer.get_domain_summary(primary_field)
             contradiction_rate = domain_summary.get("contradiction_rate", 0.0)
             self.personality_manager.evolve(
-                utility_trend=utility_trend,
+                utility_history=utility_trend,
                 contradiction_rate=contradiction_rate,
-                field=primary_field,
+                domain=primary_field,
             )
 
         # ── 8. Build response ─────────────────────────────────────────────────
@@ -188,7 +199,7 @@ class UtilityAgent:
             task_id=task_id,
             field=primary_field,
             field_distribution=field_dist,
-            answer=solution,
+            answer=abstain_answer if should_abstain else solution,
             utility_score=task_score,
             arbiter_verdict=arbiter_verdict,
             personality_state=self.personality_manager.get_state(),
@@ -201,31 +212,35 @@ class UtilityAgent:
 
     def get_system_prompt(self, field: str) -> str:
         """
-        Build the system prompt for the LLM with:
-            - Field context and confidence bounds
+        Build the system prompt with:
+            - Field context and confidence bounds (abstention threshold)
             - Active corrections from this session
-            - Current personality trait weights
+            - Personality wrapper injection (dead-band filtered, deviation-scaled)
+
+        The personality wrapper only injects traits where |score - neutral| > τ.
+        At s_t = s* (neutral / after reset), the wrapper contributes nothing.
         """
         config = FIELD_CONFIGS.get(field, FIELD_CONFIGS["general"])
-        personality = self.personality_manager.get_active_weights(field)
+        self.personality_manager._current_field = field
+        wrapper_text = self.personality_manager.build_wrapper_prompt(field)
         corrections_block = ""
         if self.active_corrections:
             corrections_str = "\n".join(f"  - {c}" for c in self.active_corrections[-10:])
-            corrections_block = f"\nACTIVE CORRECTIONS (verified):\n{corrections_str}\n"
+            corrections_block = f"\nACTIVE CORRECTIONS (verified — do not repeat these errors):\n{corrections_str}\n"
 
-        return f"""You are an AI assistant operating in the {field} domain.
+        personality_block = ""
+        if wrapper_text:
+            personality_block = f"\nBehavioural calibration:\n{wrapper_text}\n"
 
-Minimum confidence standard for this field: {config.c_min:.0%}
-If your confidence is below this threshold, you must abstain and recommend
-consultation with a qualified professional.
-{corrections_block}
-Personality calibration:
-  Curiosity: {personality.get('curiosity', 0.5):.2f}
-  Caution: {personality.get('caution', 0.5):.2f}
-  Analytical rigor: {personality.get('analytical_rigor', 0.5):.2f}
-  Assertiveness: {personality.get('assertiveness', 0.5):.2f}
-
-Always: state your reasoning, acknowledge uncertainty, and never fabricate facts."""
+        return (
+            f"You are an AI assistant operating in the {field} domain.\n\n"
+            f"Minimum confidence standard for this field: {config.c_min:.0%}\n"
+            f"If your confidence is below this threshold, you must abstain and recommend "
+            f"consultation with a qualified professional. Do not guess.\n"
+            f"{corrections_block}"
+            f"{personality_block}"
+            f"Always: state your reasoning, acknowledge uncertainty, never fabricate facts."
+        )
 
     def status(self) -> dict:
         """Full system status for monitoring."""
