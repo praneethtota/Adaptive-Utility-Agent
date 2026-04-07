@@ -89,11 +89,14 @@ def get_effective_config(field_distribution: Dict[str, float]) -> FieldConfig:
     assert abs(sum(field_distribution.values()) - 1.0) < 1e-6, \
         "Field distribution must sum to 1.0"
 
-    blended = FieldConfig(
-        name="blended",
-        w_efficacy=0.0, w_confidence=0.0, w_curiosity=0.0,
-        c_min=0.0, e_min=0.0, penalty_multiplier=0.0
-    )
+    blended = FieldConfig.__new__(FieldConfig)
+    blended.name = "blended"
+    blended.w_efficacy = 0.0
+    blended.w_confidence = 0.0
+    blended.w_curiosity = 0.0
+    blended.c_min = 0.0
+    blended.e_min = 0.0
+    blended.penalty_multiplier = 0.0
 
     for field, prob in field_distribution.items():
         cfg = FIELD_CONFIGS.get(field, FIELD_CONFIGS["general"])
