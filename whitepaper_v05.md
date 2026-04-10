@@ -2,17 +2,22 @@
 title: "Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems"
 version: "v0.5 (Supplement S1 Integrated, Math Corrected)"
 date: "April 2026"
+author: "Praneeth Tota"
+degree: "Ph.D. in Computer Science (Algorithmic Game Theory), Illinois Institute of Technology"
+email: "praneeth200@gmail.com"
+author_url: "https://www.linkedin.com/in/praneethtota/"
 math: true
-figures: "Figures omitted from this Markdown edition. See the HTML version or plots/ directory for all embedded figures. Figure captions are retained inline as [Figure: ...] markers."
-data: "extended_results.json, routing_results.json — full simulation data available in the repository."
 ---
 
 # Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems
 
 ### Whitepaper — v0.5 (Supplement S1 Integrated)
 
-*Based on conceptual development sessions, April 2026*
+**Praneeth Tota**  
+Ph.D. in Computer Science (Algorithmic Game Theory) · Illinois Institute of Technology  
+[praneeth200@gmail.com](mailto:praneeth200@gmail.com) · [linkedin.com/in/praneethtota](https://www.linkedin.com/in/praneethtota/) · April 2026
 
+*Praneeth Tota is a computer scientist whose doctoral work at Illinois Institute of Technology focused on algorithmic game theory — the design and analysis of mechanisms that align individual incentives with system-level efficiency. This paper applies that foundation to a concrete open problem in AI deployment: building agents that correct their own errors between model releases through utility-governed feedback loops and game-theoretically grounded arbitration.*
 >
 > **Changelog from v0.4 (combined edition, math corrected):** Mathematical foundations appendix (Appendix B) added, providing formal proofs for the utility function structure, efficacy normalization, confidence dynamics, and personality stability. Cross-references to Appendix B inserted at each relevant first introduction in §§3–5. Supplement S1 (*Game-Theoretic Arbitration via the VCG Mechanism*) fully integrated as §9.6, formalising the incentive structure of the Arbiter Agent: Theorems S1–S3 prove dominant-strategy truthfulness, social optimality (POA = 1), and individual rationality of the VCG arbitration mechanism. §2.7 added to Related Work covering the mechanism design literature. Contribution 7 added to §1. References merged.
 >
