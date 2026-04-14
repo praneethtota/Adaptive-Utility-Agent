@@ -4,6 +4,27 @@
 
 ---
 
+## 📖 Documentation
+
+**🌐 https://praneethtota.github.io/Adaptive-Utility-Agent**
+
+The full site includes the whitepaper with rendered math, an architecture-first builder's tutorial with code walkthroughs, and seven domain deep-dives written for specific practitioner audiences. If you're reading this on GitHub, the site is the better starting point.
+
+| Page | Audience | Link |
+|---|---|---|
+| **Landing page** | Everyone | [whitepaper_v05.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_v05.html) |
+| **Full whitepaper** | Researchers, theorists | [whitepaper_full_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_full_v0_5.html) |
+| **Builder's Tutorial** | ML engineers, agent builders | [tutorial_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/tutorial_v0_5.html) |
+| AI Data Centers | Inference infra, GPU cloud | [domain_ai_datacenters_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_ai_datacenters_v0_5.html) |
+| Self-Driving Vehicles | Waymo, Cruise, Aurora | [domain_self_driving_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_self_driving_v0_5.html) |
+| Autonomous Systems | Robotics, safety-case engineering | [domain_autonomous_systems_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_autonomous_systems_v0_5.html) |
+| Software Engineering | Coding agents, dev-tools | [domain_software_engineering_v0_5.html](https://praneethtona.github.io/Adaptive-Utility-Agent/domain_software_engineering_v0_5.html) |
+| Dynamic Pricing | Pricing platforms, marketplaces | [domain_dynamic_pricing_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_dynamic_pricing_v0_5.html) |
+| Energy Systems | Grid software, DER, smart home | [domain_energy_systems_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_energy_systems_v0_5.html) |
+| Creative Systems | Generative media, content platforms | [domain_creative_systems_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_creative_systems_v0_5.html) |
+
+---
+
 ## License
 
 **Code:** GNU General Public License v3.0 — see `LICENSE`  
@@ -53,6 +74,28 @@ Field weights and minimum competence bounds are derived from existing societal l
 
 ---
 
+## Applications and Motivation (§2)
+
+The framework applies to any system that makes real-time decisions under competing objectives, with the need to improve from experience without waiting for a full retrain. Seven worked domains from §2 of the whitepaper — each with a dedicated deep-dive on the [documentation site](https://praneethtota.github.io/Adaptive-Utility-Agent):
+
+**Autonomous Vehicles** — A self-driving vehicle balances safety, efficiency, and comfort simultaneously. Weights shift automatically by context: safety dominates in school zones (w_s=0.90), efficiency rises in emergency transport (w_e=0.40). When sensor fusion uncertainty drives confidence below C_min=0.85, the vehicle abstains from the manoeuvre rather than proceeding at reduced reliability. Three Jetson-class specialists (perception, motion planning, traffic rules) consume ~110W total versus 700W for a single datacenter GPU — and a monolithic frontier model cannot fit a vehicle's power envelope at all. → [Self-Driving deep-dive](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_self_driving_v0_5.html) · [Autonomous Systems deep-dive](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_autonomous_systems_v0_5.html)
+
+**Drone Delivery** — A delivery drone weighs speed against energy and airspace safety in real time. An approaching storm shifts the safety weight from w_s=0.50 to w_s=0.80, selecting a longer but safer route automatically — no pre-written storm rule required. When environmental uncertainty exceeds the confidence threshold, the drone aborts and returns to base. → [Autonomous Systems deep-dive](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_autonomous_systems_v0_5.html)
+
+**Smart Home Energy Management** — During a peak pricing event, the cost weight rises from w_k=0.40 to w_k=0.65, shifting appliance scheduling to off-peak automatically. When an occupant signals a preference, the system defers by activating a comfort-override profile (w_c=0.75) — not by adding a rule. Cross-session learning accumulates usage patterns without retraining. → [Energy Systems deep-dive](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_energy_systems_v0_5.html)
+
+**Energy Grid Load Balancing** — Under normal load, demand response with battery storage is preferred over gas peaker plants. Under a sudden demand surge, the stability weight rises to w_σ=0.80 and the decision flips to the peaker. The C_min=0.95 gate under surge conditions ensures the agent escalates to a human operator when demand forecasts are unreliable rather than committing a large generation decision under uncertainty. → [Energy Systems deep-dive](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_energy_systems_v0_5.html)
+
+**Dynamic Pricing** — Standard conditions favour moderate pricing with loyalty incentives. Under genuine supply constraints (w_r=0.65), surge pricing becomes optimal. Under a competitive threat, market share weight rises to w_m=0.40 and pricing shifts to defend position. Every price decision is logged with its full utility decomposition — the audit trail that regulators now require. → [Dynamic Pricing deep-dive](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_dynamic_pricing_v0_5.html)
+
+**AI Data Centers** — For GPU cloud operators, a routed graph of smaller specialist models shifts the optimisation target from raw frontier capability to revenue per watt, fleet utilisation, and cost per useful domain query. Lower-tier inventory (A40s, A100s, consumer-adjacent GPUs) that would otherwise be stranded gets a high-value specialist serving role. LoRA multi-tenancy improves utilisation further without expanding hardware. → [AI Data Centers deep-dive](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_ai_datacenters_v0_5.html)
+
+**Self-Driving Companies** — For AV companies the strongest argument is independent updateability, auditable behaviour, and principled abstention. Updating the traffic rules specialist for a new city does not force revalidation of perception or planning. The utility log produces a reproducible explanation of why a given manoeuvre was accepted, rejected, or escalated — the artifact that incident review and regulatory acceptance both require. → [Self-Driving deep-dive](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_self_driving_v0_5.html)
+
+Full worked numerical examples with explicit utility calculations for all seven domains are in [Appendix C of the whitepaper](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_full_v0_5.html#appendix-c).
+
+---
+
 ## Architecture
 
 ### Monolithic Setting (Current)
@@ -81,15 +124,15 @@ Router (Raft HA cluster, 150–300ms failover)
     ↓  probabilistic field classification + fan-out
 Domain Submodels (surgery | law | software | creative | ...)
     ↓  independent weights, training, deployment
-Arbiter Agent (§9.5) + VCG Mechanism (§9.6)
+Arbiter Agent (§10.5) + VCG Mechanism (§10.6)
     ↓  cross-domain contradiction resolution
-Blue-Green Deployment (§9.7)
+Blue-Green Deployment (§10.7)
     ↓  utility-deviation-triggered, softmax traffic routing
 ```
 
 Updating surgery weights cannot affect software engineering weights. There are no shared parameters to interfere. Catastrophic forgetting is resolved architecturally. Graph depth is hardware-adaptive: high-VRAM GPUs run shallow graphs of large models; consumer GPUs run deeper graphs of smaller specialists at lower cost per query.
 
-### Arbiter Agent (§9.5)
+### Arbiter Agent (§10.5)
 
 When two submodels produce conflicting outputs, a dedicated Arbiter Agent runs structured evidence checks:
 
@@ -104,11 +147,11 @@ Four verdict cases: A correct → correct B; B correct → correct A; both wrong
 
 Arbiter calibration: 2–5% of verdicts independently verified against domain experts. Escalates adaptively to a 15% hard ceiling if correction volume rises above baseline.
 
-### VCG Arbitration Mechanism (§9.6)
+### VCG Arbitration Mechanism (§10.6)
 
 The hand-specified Arbiter check weights are an engineering approximation. The theoretically grounded alternative treats domain submodels as players in a cooperative game:
 
-**Three theorems proved (§9.6):**
+**Three theorems proved (§10.6):**
 
 | Theorem | Statement |
 |---|---|
@@ -131,7 +174,7 @@ Verified facts persist across sessions with field-specific confidence decay:
 
 ---
 
-## The Consumer Hardware Argument (§9.9)
+## The Consumer Hardware Argument (§10.9)
 
 This is one of the more consequential implications of the Micro-Expert Architecture, and one the paper is careful to state with appropriate scope.
 
@@ -141,7 +184,7 @@ The dominant assumption in AI deployment is that frontier capability requires fr
 
 **The claim is not** that consumer GPUs match H100s on general workloads. They do not — H100s have 3× the memory bandwidth and NVLink interconnects that PCIe cannot approach.
 
-**The claim is** that for inference on specialised domain queries — the highest-value AI use cases for most professional organisations — a graph of domain-specialist models on consumer hardware can match the output quality of a monolithic frontier model on enterprise hardware, at substantially lower cost per query. The routing and arbitration layer that makes this possible is what §9.9 formalises and partially validates.
+**The claim is** that for inference on specialised domain queries — the highest-value AI use cases for most professional organisations — a graph of domain-specialist models on consumer hardware can match the output quality of a monolithic frontier model on enterprise hardware, at substantially lower cost per query. The routing and arbitration layer that makes this possible is what §10.9 formalises and partially validates.
 
 ### The cost arithmetic (from public hardware specs)
 
@@ -153,7 +196,7 @@ Single-specialist query:     6× cheaper on consumer hardware
 3-specialist fan-out:        2× cheaper even at maximum typical fan-out
 ```
 
-### The routing experiment (§9.9.4)
+### The routing experiment (§10.9.4)
 
 A four-arm controlled study using the production agent codebase measured the contribution of the routing and arbitration layer to correctness, independently of model size or hardware. Quality parameters were derived from six published domain benchmarks (all cited in `routing_results.json`).
 
@@ -168,7 +211,7 @@ Three findings:
 
 1. **Correct routing contributes +12.5% correctness** (p = 0.009) through prompt specialisation alone — before any weight-level fine-tuning. This is the routing layer's direct contribution, measurable independently of hardware.
 
-2. **Mismatched routing is actively harmful** (−17.5%, p < 0.001) and dramatically worsens confidence calibration (Brier 0.292 vs 0.160). The model is not just wrong — it is confidently wrong. This quantifies the Regime 2 failure mode from §9.4.1 and makes the case for probabilistic routing and VCG arbitration concrete rather than theoretical.
+2. **Mismatched routing is actively harmful** (−17.5%, p < 0.001) and dramatically worsens confidence calibration (Brier 0.292 vs 0.160). The model is not just wrong — it is confidently wrong. This quantifies the Regime 2 failure mode from §10.4.1 and makes the case for probabilistic routing and VCG arbitration concrete rather than theoretical.
 
 3. **VCG arbitration captures 84% of the oracle matched-routing gain** (+10.5% vs +12.5%), statistically significant (p = 0.029), with near-matched Brier score. The 2.0pp gap to the oracle is not statistically significant (p = 0.66) — at 82% routing accuracy, VCG arbitration essentially closes on the oracle best case.
 
@@ -206,11 +249,11 @@ The Micro-Expert Architecture makes this practically deployable: a router that a
 
 Countries and organisations operating without access to H100 clusters are not locked out of frontier AI capability in the domains that matter most for economic and scientific development. They face a different engineering challenge: building a routed graph of domain specialists rather than scaling a monolithic model. This paper is one piece of the technical foundation for that approach.
 
-The critical caveat, stated explicitly throughout §9.9: general-purpose AI capability — the open-ended reasoning and knowledge breadth that frontier models provide on arbitrary queries — does retain a meaningful hardware advantage. The consumer hardware argument applies to the specialised slice, not the general case. That slice is, however, the commercially and professionally most important one.
+The critical caveat, stated explicitly throughout §10.9: general-purpose AI capability — the open-ended reasoning and knowledge breadth that frontier models provide on arbitrary queries — does retain a meaningful hardware advantage. The consumer hardware argument applies to the specialised slice, not the general case. That slice is, however, the commercially and professionally most important one.
 
 ### The routing failure modes matter as much as the architecture
 
-The export control implication is only as strong as the routing is reliable. The Regime 2 result (−17.5% correctness, Brier 0.292) shows that wrong-domain routing is not merely suboptimal — it actively makes the system worse than no routing at all, and does so confidently. This is why the routing problem (§9.4.1) and its mitigations (probabilistic fan-out, VCG calibration, M1–M5) are central to the paper and not peripheral engineering details. A Micro-Expert system with poor routing is worse than a monolithic model. A Micro-Expert system with good routing and proper arbitration is competitive with a much larger model on domain tasks, on consumer hardware.
+The export control implication is only as strong as the routing is reliable. The Regime 2 result (−17.5% correctness, Brier 0.292) shows that wrong-domain routing is not merely suboptimal — it actively makes the system worse than no routing at all, and does so confidently. This is why the routing problem (§10.4.1) and its mitigations (probabilistic fan-out, VCG calibration, M1–M5) are central to the paper and not peripheral engineering details. A Micro-Expert system with poor routing is worse than a monolithic model. A Micro-Expert system with good routing and proper arbitration is competitive with a much larger model on domain tasks, on consumer hardware.
 
 ---
 
@@ -224,7 +267,7 @@ All proofs use only continuity where differentiability is not assumed; all scope
 | **§B.2** | Field weights from error-cost proportionality, calibrated to liability standards | Design principle, not an optimality theorem |
 | **Proposition B.3** | Efficacy sigmoid = Mann-Whitney dominance probability | Holds under log-logistic model with equal scale; distributional assumption stated |
 | **Theorem B.4** | EMA with α = 0.2 is Kalman-optimal for ρ = 0.05 noise ratio | Reasoning direction clarified: α = 0.2 was chosen first, Kalman characterises the noise regime |
-| **Theorem B.5** | Confidence convergence with noise-aware bound | $\mathbb{E}[|C_t - C^*|] \leq (1-\alpha)^t|C_0 - C^*| + \sigma_{\tilde{s}}\sqrt{\alpha/(2-\alpha)}$; requires $\lambda\mu(f) < 1$ |
+| **Theorem B.5** | Confidence convergence with noise-aware bound | $\mathbb{E}[\|C_t - C^*\|] \leq (1-\alpha)^t\|C_0 - C^*\| + \sigma_{\tilde{s}}\sqrt{\alpha/(2-\alpha)}$; requires $\lambda\mu(f) < 1$ |
 | **Proposition B.6** | 50% curiosity cap enforces exploitation dominance | Proved exactly; regret analysis open |
 | **Theorem B.7** | Personality Lyapunov stability | Part (iv) clarified: mean reversion β = 0.01 subsumed by field bounds at current parameters |
 
@@ -250,7 +293,7 @@ Cycle  Agent U   Base U   Ag Brier  Bl Brier  Ag Rep↑  Bl Rep↑
 
 10-cycle stability: contradiction rate 22% → 6% (73% reduction); Brier reaches 0.049 by cycle 7.
 
-### Routing experiment (§9.9) — four-arm study
+### Routing experiment (§10.9) — four-arm study
 
 | Arm | Correctness | Δ vs baseline | Brier | p-value |
 |---|---|---|---|---|
@@ -281,6 +324,19 @@ Cycle  Agent U   Base U   Ag Brier  Bl Brier  Ag Rep↑  Bl Rep↑
 ## Project Structure
 
 ```
+# Root-level HTML — served at https://praneethtota.github.io/Adaptive-Utility-Agent
+whitepaper_v05.html                      # Landing page — site entry point
+whitepaper_full_v0_5.html                # Full whitepaper with KaTeX math + figures
+tutorial_v0_5.html                       # Builder's tutorial (architecture + code walkthroughs)
+domain_ai_datacenters_v0_5.html          # AI Data Centers deep-dive
+domain_self_driving_v0_5.html            # Self-Driving Vehicles deep-dive
+domain_autonomous_systems_v0_5.html      # Autonomous Systems deep-dive
+domain_software_engineering_v0_5.html    # Software Engineering deep-dive
+domain_dynamic_pricing_v0_5.html         # Dynamic Pricing deep-dive
+domain_energy_systems_v0_5.html          # Energy Systems deep-dive
+domain_creative_systems_v0_5.html        # Creative Systems deep-dive
+whitepaper_v05.md                        # Markdown edition of the whitepaper
+
 agent/
 ├── config.py                  # Field weights, bounds, penalty multipliers
 ├── field_classifier.py        # Field distribution: high-stakes floor, EMA drift, entropy fallback
@@ -295,7 +351,7 @@ agent/
 ├── harness.py                 # Live API harness (requires ANTHROPIC_API_KEY)
 ├── simulate.py                # Original 3-cycle / 8-problem simulation
 ├── simulate_extended.py       # Extended simulation: 500-task two-arm + 10-cycle stability
-├── routing_experiment.py      # Four-arm routing quality study (§9.9)
+├── routing_experiment.py      # Four-arm routing quality study (§10.9)
 ├── requirements.txt
 ├── extended_output/
 │   ├── extended_results.json  # Full raw data (task records, cycle stats, DPO pairs)
@@ -310,13 +366,8 @@ agent/
         ├── figR3_domain_heatmap.png
         └── figR4_summary.png
 
-whitepaper/
-├── adaptive_utility_agents_v05_combined.html  # Full paper: HTML with KaTeX math + embedded figures
-├── adaptive_utility_agents_v05_combined.md    # Markdown edition (figures omitted)
-└── supplement_s1_vcg_arbitration.html         # Original VCG supplement (now integrated as §9.6)
-
 docs/
-└── to_do_in_version_v06_revised.md           # v0.6 backend design: privacy-first MVP spec
+└── to_do_in_version_v06_revised.md      # v0.6 backend design: privacy-first MVP spec
 ```
 
 ---
@@ -330,7 +381,7 @@ cd agent && python3 simulate.py
 # Extended simulation — generates all results and plots
 cd agent && python3 simulate_extended.py
 
-# Routing quality experiment (§9.9)
+# Routing quality experiment (§10.9)
 cd agent && python3 routing_experiment.py
 # For live Ollama inference: replace _generate_response() with live_generate_response()
 # Instructions in routing_experiment.py module docstring
@@ -343,29 +394,33 @@ cd agent && python3 harness.py
 
 Dependencies: `numpy`, `scipy`, `matplotlib` (standard scientific Python stack). No GPU required for any simulation.
 
+📖 **For the full architecture walkthrough and code-grounded tutorial, visit the documentation site:**  
+**https://praneethtota.github.io/Adaptive-Utility-Agent**
+
 ---
 
 ## What's New in v0.5
 
 ### Theoretical additions
 
-- **VCG arbitration mechanism (§9.6)**: Theorems S1–S3 prove dominant-strategy truthfulness, social optimality (POA = 1), and individual rationality. Clarke pivot transfers replace hand-specified check weights and the expert-sampling audit with a continuous self-correcting signal.
+- **VCG arbitration mechanism (§10.6)**: Theorems S1–S3 prove dominant-strategy truthfulness, social optimality (POA = 1), and individual rationality. Clarke pivot transfers replace hand-specified check weights and the expert-sampling audit with a continuous self-correcting signal.
 
 - **Appendix B — complete formal proofs (B.1–B.7)**: Key corrections: B.1 uses Cauchy functional equation (continuity only, no differentiability); B.5 noise-aware bound matches proof; B.7 Part (iv) clarified (β = 0.01 subsumed by field bounds); B.4 sensitivity table corrected.
 
-- **§9.9 — Consumer hardware argument**: Analytical cost model (2–6× cheaper per token), routing quality experiment (+10.5% correctness from VCG arbitration, p = 0.029), and explicit scope statement distinguishing measured from analytical claims.
+- **§10.9 — Consumer hardware argument**: Analytical cost model (2–6× cheaper per token), routing quality experiment (+10.5% correctness from VCG arbitration, p = 0.029), and explicit scope statement distinguishing measured from analytical claims.
 
 ### Empirical additions
 
 - **Extended simulation (Appendix A)**: 500-task two-arm comparison + 10-cycle stability run. 69.6% repeated-error reduction. Full data in `extended_results.json`.
 
-- **Routing quality experiment (§9.9)**: Four-arm study quantifying the routing layer's contribution (+12.5% oracle, +10.5% VCG, −17.5% Regime 2). Quality model from published benchmarks; code structured for live Ollama drop-in. Data in `routing_results.json`.
+- **Routing quality experiment (§10.9)**: Four-arm study quantifying the routing layer's contribution (+12.5% oracle, +10.5% VCG, −17.5% Regime 2). Quality model from published benchmarks; code structured for live Ollama drop-in. Data in `routing_results.json`.
 
 ### Structural additions
 
-- Supplement S1 integrated as §9.6; sections renumbered to §§9.7–9.10
+- Supplement S1 integrated as §10.6; sections renumbered to §§10.7–10.10
 - References merged: Clarke, Groves, Harsanyi/Selten, Hurwicz, Nash, Vickrey added
 - Validated claims table expanded from 6 to 10 claims
+- Full documentation site launched: seven domain deep-dives, builder's tutorial, rendered whitepaper
 
 ---
 
@@ -380,10 +435,13 @@ Dependencies: `numpy`, `scipy`, `matplotlib` (standard scientific Python stack).
 | 5 | Creative fields — platform signal collection, two-component efficacy | Designed |
 | 6 | Full continual learning — LoRA calibration in production, replay buffer | Planned |
 | 7 | Feedback into training — distill adapters into base fine-tune | Planned |
-| 7b | **Consumer hardware validation** — LoRA-adapted 7B specialists on 4× RTX 4090 vs Llama 3.1 70B on H100; latency and quality benchmarking under PCIe vs NVLink | **Next empirical priority** |
+| 8 | **Physical Hardware Validation and Data Center Economics** — LoRA-adapted 7B specialists on 4× RTX 4090 vs Llama 3.1 70B on H100; latency and quality benchmarking under PCIe vs NVLink | **Next empirical priority** |
+| 9 | **Safety-Critical Deployment Validation** — shadow-mode evaluation, auditable logs, and abstention testing in autonomy-style settings; validate modular updateability under regulatory constraints | Planned |
 | **v0.6** | **Privacy-first backend MVP** — localhost correction memory, canonical query normalizer, domain-gated retry loop, context grammar, opt-in cross-user sharing | **In design** |
 
-**Phase 7b** is the experiment that turns the consumer hardware argument from analytical to empirical. It requires only consumer hardware (4× RTX 4090, ~$1,600 on the used market or ~$1.60/hr on RunPod), domain-specific fine-tuning datasets (open source), and the existing routing codebase. The experimental design is fully specified in §9.9 of the whitepaper.
+**Phase 8** is the experiment that turns the consumer hardware argument from analytical to empirical. It requires only consumer hardware (4× RTX 4090, ~$1,600 on the used market or ~$1.60/hr on RunPod), domain-specific fine-tuning datasets (open source), and the existing routing codebase. The experimental design is fully specified in §10.9 of the whitepaper.
+
+**Phase 9** validates the framework's safety-case and certification arguments in autonomy-style settings — see the [Self-Driving](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_self_driving_v0_5.html) and [Autonomous Systems](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_autonomous_systems_v0_5.html) domain docs for the full scope.
 
 **v0.6 design** is in `docs/to_do_in_version_v06_revised.md`.
 
@@ -398,3 +456,8 @@ Active research project at v0.5. Three categories of claims are now validated at
 - **Pending empirical validation**: physical hardware comparison of 7B specialist graph vs 70B monolithic model
 
 The gap between the second and third categories — turning the analytical consumer hardware claim into a measured one — is the clearest and most impactful next step, and one that requires only consumer hardware to close. Contributions and collaboration welcome.
+
+---
+
+📖 **Full documentation, domain deep-dives, and builder's tutorial:**  
+**https://praneethtota.github.io/Adaptive-Utility-Agent**
