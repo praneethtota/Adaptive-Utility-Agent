@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Tutorial v0.5</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f6f2;
+  --paper: #ffffff;
+  --ink: #18181b;
+  --muted: #6b7280;
+  --line: #e4e1da;
+  --accent: #4338ca;
+  --accent2: #0f766e;
+  --accent3: #c2410c;
+  --soft: #f0ede6;
+  --soft2: #ecfdf5;
+  --soft3: #fff7ed;
+  --code-bg: #f2f0eb;
+  --tag-bg: #eef2ff;
+  --tag-text: #4338ca;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--ink);
+  background: var(--bg);
+  margin: 0; padding: 0;
+}
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 0 5rem;
+  background: var(--paper);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  min-height: 100vh;
+}
+
+/* NAV */
+nav {
+  display: flex; flex-wrap: wrap; gap: .6rem .9rem;
+  padding: 1rem 2rem; border-bottom: 1px solid var(--line);
+  background: #fafaf8; font-size: .88rem;
+  position: sticky; top: 0; z-index: 10;
+}
+nav a { color: var(--accent); text-decoration: none; font-weight: 500; }
+nav a:hover { text-decoration: underline; }
+nav a.active { color: var(--ink); font-weight: 600; }
+
+/* HERO */
+.hero {
+  padding: 3rem 2.5rem 2.5rem;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(160deg, #f0ede6 0%, #fff 60%);
+}
+.hero-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  background: var(--tag-bg); color: var(--tag-text);
+  padding: .25rem .7rem; border-radius: 999px; margin-bottom: 1.2rem;
+}
+.hero h1 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 2.4rem; line-height: 1.2;
+  margin: 0 0 .75rem; color: var(--ink);
+}
+.hero .subtitle {
+  font-size: 1.05rem; color: #444;
+  max-width: 700px; margin-bottom: 1.25rem; line-height: 1.65;
+}
+.hero-pills { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+.pill {
+  font-size: .82rem; font-weight: 500;
+  padding: .3rem .85rem; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--muted); background: #fff;
+}
+
+/* BODY */
+.body { padding: 2rem 2.5rem 0; }
+
+/* TYPOGRAPHY */
+h2 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.5rem; line-height: 1.3;
+  margin: 3rem 0 .75rem; padding-bottom: .5rem;
+  border-bottom: 2px solid var(--line); color: var(--ink);
+  scroll-margin-top: 60px;
+}
+h3 { font-size: 1.05rem; font-weight: 600; margin: 1.8rem 0 .5rem; color: #222; }
+h4 { font-size: .95rem; font-weight: 600; margin: 1.3rem 0 .4rem; color: #333; }
+p { margin: 0 0 1rem; }
+a { color: var(--accent); }
+ul, ol { margin: .3rem 0 1rem; padding-left: 1.3rem; }
+li { margin: .3rem 0; }
+
+/* CODE */
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .82rem; background: var(--code-bg);
+  padding: 2px 6px; border-radius: 4px; color: #333;
+}
+pre {
+  background: var(--code-bg); border: 1px solid #e0dbd4;
+  border-radius: 8px; padding: 1.1rem 1.25rem;
+  overflow-x: auto; margin: .75rem 0 1.5rem;
+  font-size: .79rem; line-height: 1.7;
+  font-family: 'JetBrains Mono', monospace; color: #222;
+}
+.code-block { margin: .75rem 0 1.5rem; }
+.code-header {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #e8e5de; border: 1px solid #d8d4cc;
+  border-bottom: none; border-radius: 8px 8px 0 0;
+  padding: .4rem .9rem; font-size: .78rem;
+  font-family: 'JetBrains Mono', monospace; color: #555;
+}
+.code-header a { color: var(--accent); text-decoration: none; font-size: .75rem; }
+.code-header a:hover { text-decoration: underline; }
+.code-block pre { border-radius: 0 0 8px 8px; margin: 0; }
+
+/* CALLOUTS */
+.callout {
+  background: var(--soft); border-left: 4px solid var(--accent);
+  padding: 1rem 1.25rem; margin: 1.25rem 0 1.5rem;
+  border-radius: 0 8px 8px 0;
+}
+.callout.green  { background: var(--soft2); border-left-color: var(--accent2); }
+.callout.orange { background: var(--soft3); border-left-color: var(--accent3); }
+.callout p { margin: 0; }
+.callout p + p { margin-top: .5rem; }
+
+/* STATUS BADGE */
+.badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .7rem; font-weight: 500;
+  padding: .15rem .5rem; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: .05em;
+  vertical-align: middle; margin-left: .4rem;
+}
+.badge.done    { background: #dcfce7; color: #166534; }
+.badge.partial { background: #fef9c3; color: #854d0e; }
+.badge.future  { background: #f1f5f9; color: #64748b; }
+
+/* PHASE CARDS */
+.cardgrid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem; margin: 1.25rem 0 1.75rem;
+}
+.card {
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 1.1rem 1.1rem .9rem; background: #fff;
+}
+.card-phase {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--accent); margin-bottom: .4rem;
+}
+.card h4 { margin: 0 0 .5rem; font-size: .95rem; }
+.card p { font-size: .88rem; color: #444; margin: 0; }
+
+/* TABLE */
+table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: 1rem 0 1.5rem; }
+th {
+  text-align: left; border-bottom: 2px solid #c0bab2;
+  padding: 8px 12px; font-size: .82rem; font-weight: 600;
+  color: #555; text-transform: uppercase; letter-spacing: .05em;
+}
+td { padding: 8px 12px; border-bottom: 1px solid #e8e4de; vertical-align: top; }
+tr:nth-child(even) td { background: #fafaf8; }
+.caption { font-size: .82rem; color: var(--muted); font-style: italic; margin-top: -.5rem; margin-bottom: 1rem; }
+
+/* STEPS */
+.steps { margin: 1.25rem 0 1.75rem; }
+.step { display: flex; gap: 1.1rem; margin-bottom: 1rem; }
+.step-num {
+  flex-shrink: 0; width: 28px; height: 28px;
+  background: var(--accent); color: #fff; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .78rem; font-weight: 700; margin-top: 3px;
+}
+.step-body p { margin: 0; }
+.step-body strong { display: block; margin-bottom: .15rem; }
+
+/* TOC */
+.toc {
+  background: var(--soft); border-radius: 10px;
+  padding: 1.1rem 1.4rem; margin: 1.5rem 0 2rem;
+}
+.toc p { font-weight: 600; margin-bottom: .5rem; }
+.toc ol { margin: 0; column-count: 2; column-gap: 2rem; }
+.toc li { font-size: .9rem; margin: .2rem 0; break-inside: avoid; }
+.toc a { color: var(--accent); text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+/* WARN */
+.warn {
+  background: #fff7ed; border-left: 4px solid var(--accent3);
+  padding: 1rem 1.25rem; margin: 1.25rem 0 1.5rem;
+  border-radius: 0 8px 8px 0;
+}
+
+hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
+
+/* READ NEXT */
+.read-next { background: var(--soft); border-radius: 10px; padding: 1.25rem 1.5rem; margin-top: 2.5rem; }
+.read-next h3 { margin-top: 0; }
+.read-next ul { margin: 0; }
+.read-next li { font-size: .92rem; margin: .3rem 0; }
+
+@media (max-width: 640px) {
+  .hero h1 { font-size: 1.8rem; }
+  .body { padding: 1.5rem 1.25rem 0; }
+  nav { padding: .75rem 1rem; }
+  .toc ol { column-count: 1; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- NAV -->
+<nav>
+  <a href="whitepaper_v05.html">Home</a>
+  <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+  <a href="tutorial_v0_5.html" class="active">Tutorial</a>
+  <a href="domain_ai_datacenters_v0_5.html">AI Data Centers</a>
+  <a href="domain_self_driving_v0_5.html">Self-Driving</a>
+  <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a>
+  <a href="domain_software_engineering_v0_5.html">Software Eng</a>
+  <a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems_v0_5.html">Energy Systems</a>
+  <a href="domain_creative_systems_v0_5.html">Creative Systems</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Tutorial · v0.5</div>
+  <h1>Builder's Tutorial</h1>
+  <p class="subtitle">
+    A ground-up walkthrough of the Adaptive Utility Agent framework — what each component is, why it exists, how the pieces wire together, and where the real code lives. No prior knowledge of the whitepaper required.
+  </p>
+  <div class="hero-pills">
+    <span class="pill">ML engineers</span>
+    <span class="pill">Infra architects</span>
+    <span class="pill">Agent builders</span>
+    <span class="pill">No whitepaper prereq</span>
+  </div>
+</div>
+
+<div class="body">
+
+<!-- TOC -->
+<div class="toc">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#problem">The problem this solves</a></li>
+    <li><a href="#quickstart">Quick start: run the simulation</a></li>
+    <li><a href="#phases">The three phases</a></li>
+    <li><a href="#utility">The utility function</a></li>
+    <li><a href="#assertions">The assertions store</a></li>
+    <li><a href="#contradiction">The contradiction detector</a></li>
+    <li><a href="#confidence">The confidence updater</a></li>
+    <li><a href="#agent-run">Putting it together: agent.run()</a></li>
+    <li><a href="#calibration">The calibration pipeline</a></li>
+    <li><a href="#routing">Routing and the field classifier</a></li>
+    <li><a href="#arbiter">The Arbiter Agent</a></li>
+    <li><a href="#bluegreen">Blue-green deployment</a></li>
+    <li><a href="#build-plan">Phased build plan</a></li>
+    <li><a href="#dont-build">What not to build first</a></li>
+  </ol>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="problem">1. The problem this solves</h2>
+
+<p>Deployed language models are static. Once released, their behavior is frozen. If a model produces a wrong answer today — a hallucination, a complexity claim that contradicts the code, a medical fact that has since been updated — it will produce the same wrong answer tomorrow, and every day until the next version ships. There is no feedback loop between detected errors and model behavior between releases.</p>
+
+<p>This framework builds that feedback loop. It wraps any LLM with a layer that:</p>
+
+<ul>
+  <li><strong>Detects</strong> errors and contradictions in outputs automatically</li>
+  <li><strong>Stores</strong> verified corrections persistently across sessions</li>
+  <li><strong>Injects</strong> those corrections into future responses immediately (no retraining required)</li>
+  <li><strong>Accumulates</strong> DPO training pairs so that calibration cycles actually fix the model weights</li>
+  <li><strong>Gates</strong> responses with a hard abstention rule when confidence falls below a domain-specific floor</li>
+</ul>
+
+<p>The governing mechanism is a utility function that serves as a control law — not a monitoring metric — over all of these behaviors simultaneously. Here is the full system in one diagram:</p>
+
+<pre>
+User query
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────┐
+│  WRAPPER LAYER                                                │
+│                                                               │
+│  [Field Classifier] → field distribution + blended config    │
+│  [Assertions Store] → inject prior corrections into prompt   │
+│  [Personality Mgr]  → behavioral tilt (interim, monolithic)  │
+│       │                                                       │
+│       ▼                                                       │
+│  [System Prompt Constructor]                                  │
+│   domain context + active corrections + abstention threshold  │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                                ▼
+                    ┌───────────────────┐
+                    │  Base LLM         │
+                    │  + LoRA adapter   │
+                    └────────┬──────────┘
+                             │
+                             ▼
+┌───────────────────────────────────────────────────────────────┐
+│  SCORING LAYER                                                │
+│                                                               │
+│  [Contradiction Detector]  → logical, math, cross-session    │
+│  [Utility Scorer]          → E_ema, C, K_effective → U       │
+│  [Abstain Gate]            → C < C_min → refuse + escalate   │
+│  [DPO Pair Collector]      → accumulate for calibration      │
+│  [Assertions Store write]  → persist verified corrections    │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                   ┌────────────┴────────────┐
+                   ▼                         ▼
+         Response to user          [Calibration Service]
+                                   several times daily
+                                   LoRA DPO fine-tuning
+                                   benchmark gate → deploy
+</pre>
+
+<p>Everything in the diagram is governed by the same utility function <code>U = w_e·E + w_c·C + w_k·K</code>. Adding routing, specialists, and arbitration (Phases 2–3) does not change this — it only changes which model produces the output being scored.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="quickstart">2. Quick start: run the simulation today</h2>
+
+<p>The simulation is self-contained — no API key, no GPU, no special setup. It runs the full Phase 1 pipeline on 8 LeetCode-style problems across 3 calibration cycles using synthetic responses that improve each cycle.</p>
+
+<pre>
+# Clone and install (standard scientific Python stack only)
+git clone https://github.com/praneethtota/Adaptive-Utility-Agent.git
+cd Adaptive-Utility-Agent/agent
+pip install numpy scipy matplotlib
+
+# Run the 3-cycle simulation (no API key needed)
+python3 simulate.py
+
+# Run the extended 500-task two-arm study + 10-cycle stability run
+python3 simulate_extended.py
+
+# Run the four-arm routing quality experiment
+python3 routing_experiment.py
+
+# Live harness (requires API key — uses Claude)
+export ANTHROPIC_API_KEY=sk-ant-...
+python3 harness.py
+</pre>
+
+<h3>What the simulation does</h3>
+
+<p>The simulation runs every component from the diagram above except the LoRA training step (which requires a GPU). It seeds a deliberate contradiction on <code>two_sum</code> in cycle 1 — a nested-loop solution that claims O(n) complexity — and shows the detector catch it, the confidence score penalize it, and the DPO pair get collected. By cycle 2, the contradiction is resolved.</p>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/simulate.py — the seeded contradiction</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/simulate.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+CYCLE_RESPONSES = {
+    "two_sum": [
+        # Cycle 1: nested loop claiming O(n) — mathematical contradiction
+        {"pass_rate": 0.60, "complexity": "O(n)", "novelty": 0.8, "has_contradiction": True},
+        # Cycle 2: hash-map solution — O(n) correct, contradiction resolved
+        {"pass_rate": 0.87, "complexity": "O(n)", "novelty": 0.4, "has_contradiction": False},
+        # Cycle 3: further improved
+        {"pass_rate": 0.92, "complexity": "O(n)", "novelty": 0.2, "has_contradiction": False},
+    ],
+    ...
+}
+
+# The actual contradiction: nested loop claiming O(n)
+def make_synthetic_solution(problem_id, cycle, has_contradiction):
+    if problem_id == "two_sum" and has_contradiction:
+        return """```python
+def two_sum(nums, target):
+    # Time complexity: O(n)  &lt;-- WRONG: this is actually O(n^2)
+    result = []
+    for i in range(len(nums)):
+        for j in range(len(nums)):  # nested loop
+            if nums[i] + nums[j] == target and i != j:
+                result.append((i, j))
+    return result
+```
+Time complexity: O(n)
+assert two_sum([2, 7, 11, 15], 9) == [(0, 1)]"""
+</pre>
+</div>
+
+<p>Expected output from a successful run:</p>
+
+<pre>
+── Cycle 1 ─────────────────────────────────────────────────────
+   Domain confidence: 0.500 → routing to 'easy' problems
+   two_sum              U=0.4617 E_ema=0.5012 C=0.5000 ⚠ CONTRADICTION
+   ...
+   Cycle 1 summary:
+     avg U     = 0.5128
+     contradictions = 1
+
+── Cycle 2 ─────────────────────────────────────────────────────
+   Domain confidence: 0.612 → routing to 'easy' problems
+   two_sum              U=0.5669 E_ema=0.5543 C=0.7234
+   ...
+── Cycle 3 ─────────────────────────────────────────────────────
+   Domain confidence: 0.819 → routing to 'medium' problems
+   ...
+   avg U     = 0.6288   (+0.1160 from cycle 1)
+   contradictions = 0
+</pre>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="phases">3. The three phases</h2>
+
+<p>The framework is designed to be built incrementally. Phase 1 is useful on its own. Each phase extends it without breaking what came before.</p>
+
+<div class="cardgrid">
+  <div class="card">
+    <div class="card-phase">Phase 1 <span class="badge done">Simulated ✓</span></div>
+    <h4>Monolithic wrapper</h4>
+    <p>One base model. Utility scoring, contradiction detection, session correction injection, assertions store, calibration-cycle DPO pairs, LoRA fine-tuning pipeline, personality wrapper. No routing. This is what the simulation runs.</p>
+  </div>
+  <div class="card">
+    <div class="card-phase">Phase 2 <span class="badge partial">Designed</span></div>
+    <h4>Routing + specialists</h4>
+    <p>Field classifier routes queries to domain specialist models. Arbiter resolves conflicts between specialists. Blue-green deployment per specialist, independent of each other. Same utility function throughout.</p>
+  </div>
+  <div class="card">
+    <div class="card-phase">Phase 3 <span class="badge future">Future</span></div>
+    <h4>VCG arbitration + hardware graph</h4>
+    <p>Utility-governed arbitration via VCG mechanism (truthful reporting is dominant strategy). Hardware-adaptive graph depth — shallow on high-VRAM, deep specialist graph on consumer GPUs. See <a href="whitepaper_full_v0_5.html#vcg">§10.6</a> for proofs.</p>
+  </div>
+</div>
+
+<div class="callout">
+  <p><strong>Build Phase 1 completely before touching Phase 2.</strong> The correction loop must work correctly on a single model before routing adds complexity. Routing cannot improve what the correction loop cannot fix — it will only route bad outputs to different specialists instead of correcting them.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="utility">4. The utility function</h2>
+
+<h3>Why it exists</h3>
+
+<p>Most agent frameworks monitor quality after the fact. This framework uses a utility score as a <em>control law</em> that governs every decision the system makes:</p>
+
+<ul>
+  <li><strong>At inference time</strong> — if U falls below minimum bounds, the agent abstains instead of answering</li>
+  <li><strong>At correction time</strong> — contradictions penalize confidence proportional to the field's error cost</li>
+  <li><strong>At training time</strong> — the field penalty multiplier is the DPO loss weight, so a wrong answer in surgery is trained against 10× harder than one in creative writing</li>
+  <li><strong>At deployment time</strong> — a new LoRA adapter is only promoted if it passes a benchmark gate measured in U</li>
+</ul>
+
+<h3>The formula</h3>
+
+<pre>
+U = w_e(f) · E_ema  +  w_c(f) · C  +  w_k(f) · K_effective
+
+E_ema  — Efficacy (EMA-accumulated): performance vs human baseline
+C      — Confidence: internal consistency, penalized by contradictions
+K      — Curiosity: exploration bonus for novel domains (capped at 50% of U)
+f      — field, which determines weights and minimum competence thresholds
+
+Decision rule:
+  act    if C ≥ C_min(f) AND E_ema ≥ E_min(f)
+  abstain + escalate  otherwise
+</pre>
+
+<p>The additive weighted structure is not arbitrary — it is the unique functional form satisfying five behavioral axioms (proved from first principles in <a href="whitepaper_full_v0_5.html#appendix-b">Appendix B, Theorem B.1</a>). The weights are set proportional to the cost of each error type in the field, calibrated against professional licensing standards.</p>
+
+<h3>Field configuration in code</h3>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/config.py — FieldConfig and FIELD_CONFIGS</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/config.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+@dataclass
+class FieldConfig:
+    name: str
+    w_efficacy: float       # weight on efficacy term
+    w_confidence: float     # weight on confidence term
+    w_curiosity: float      # weight on curiosity term
+    c_min: float            # minimum confidence to act (hard gate)
+    e_min: float            # minimum efficacy to act (hard gate)
+    penalty_multiplier: float  # contradiction penalty scale → DPO loss weight
+
+    def __post_init__(self):
+        assert abs(self.w_efficacy + self.w_confidence + self.w_curiosity - 1.0) &lt; 1e-6
+
+FIELD_CONFIGS = {
+    "surgery": FieldConfig(
+        w_efficacy=0.20, w_confidence=0.70, w_curiosity=0.10,
+        c_min=0.95, e_min=0.90, penalty_multiplier=10.0
+    ),
+    "aviation": FieldConfig(
+        w_efficacy=0.20, w_confidence=0.70, w_curiosity=0.10,
+        c_min=0.95, e_min=0.90, penalty_multiplier=10.0
+    ),
+    "software_engineering": FieldConfig(
+        w_efficacy=0.55, w_confidence=0.35, w_curiosity=0.10,
+        c_min=0.70, e_min=0.65, penalty_multiplier=2.0
+    ),
+    "creative_writing": FieldConfig(
+        w_efficacy=0.80, w_confidence=0.05, w_curiosity=0.15,
+        c_min=0.05, e_min=0.15, penalty_multiplier=1.0
+    ),
+    ...
+}
+</pre>
+</div>
+
+<p>Read the pattern: surgery and aviation have high confidence weight (w_c=0.70) and tight minimums (c_min=0.95) because a confident wrong answer is dangerous. Creative writing has almost no confidence minimum (c_min=0.05) because hallucination risk is low and exploration is valuable. The penalty multiplier is what makes the utility function an active training signal — it becomes the DPO loss weight at calibration time.</p>
+
+<h3>Full field weight table</h3>
+
+<table>
+  <thead>
+    <tr><th>Field</th><th>w_e</th><th>w_c</th><th>w_k</th><th>C_min</th><th>E_min</th><th>Penalty</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>surgery / aviation</td><td>0.20</td><td>0.70</td><td>0.10</td><td>0.95</td><td>0.90</td><td>10×</td></tr>
+    <tr><td>law</td><td>0.30</td><td>0.60</td><td>0.10</td><td>0.85</td><td>0.80</td><td>5×</td></tr>
+    <tr><td>structural engineering</td><td>0.40</td><td>0.50</td><td>0.10</td><td>0.80</td><td>0.75</td><td>4×</td></tr>
+    <tr><td>software engineering</td><td>0.55</td><td>0.35</td><td>0.10</td><td>0.70</td><td>0.65</td><td>2×</td></tr>
+    <tr><td>STEM research</td><td>0.50</td><td>0.30</td><td>0.20</td><td>0.65</td><td>0.60</td><td>2×</td></tr>
+    <tr><td>education</td><td>0.50</td><td>0.30</td><td>0.20</td><td>0.60</td><td>0.55</td><td>1.5×</td></tr>
+    <tr><td>art / creative writing</td><td>0.80</td><td>0.05–0.10</td><td>0.10–0.15</td><td>0.05–0.10</td><td>0.15–0.20</td><td>1×</td></tr>
+  </tbody>
+</table>
+<p class="caption">From <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/config.py" target="_blank">agent/config.py</a>. Derived from societal licensing standards — see <a href="whitepaper_full_v0_5.html#field-bounds">§5.1 of the whitepaper</a> for the derivation.</p>
+
+<h3>Blending configs under ambiguity</h3>
+
+<p>When a query spans multiple fields, <code>get_effective_config()</code> blends configs by probability weight, which naturally makes the system more conservative under ambiguity — the high C_min of any present high-stakes field pulls the blended minimum up.</p>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/config.py — blending under ambiguity</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/config.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+def get_effective_config(field_distribution: Dict[str, float]) -> FieldConfig:
+    """
+    When field is ambiguous, blend configs by probability weight.
+    This makes the agent more conservative under ambiguity.
+    """
+    for field, prob in field_distribution.items():
+        cfg = FIELD_CONFIGS.get(field, FIELD_CONFIGS["general"])
+        blended.w_confidence += prob * cfg.w_confidence
+        blended.c_min        += prob * cfg.c_min
+        blended.penalty_multiplier += prob * cfg.penalty_multiplier
+        ...
+    return blended
+</pre>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="assertions">5. The assertions store</h2>
+
+<h3>Why it exists</h3>
+
+<p>Session-level correction injection — adding a note to the system prompt that says "don't claim bubble sort is O(n)" — fixes the current conversation. It does nothing for the next session, or the next user. The assertions store is the cross-session memory layer: a persistent fact store where verified corrections accumulate with field-specific confidence decay.</p>
+
+<p>The critical design choice is the decay model. Not all facts age at the same rate. A mathematical proof (bubble sort is O(n²)) does not decay — it will be true in 100 years. A clinical guideline may be superseded in 18 months. The store encodes this directly:</p>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/assertions_store.py — decay classes</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/assertions_store.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+class DecayClass(str, Enum):
+    A = "A"  # no decay — proven mathematical/logical facts
+    B = "B"  # slow decay — τ = 10 years (mechanical engineering, classical physics)
+    C = "C"  # moderate decay — τ = 3 years (medicine, law, architecture)
+    D = "D"  # fast decay — τ = 6 months (clinical guidelines, ML benchmarks, security)
+
+DECAY_TAU_SECONDS = {
+    DecayClass.A: None,                    # immortal
+    DecayClass.B: 10 * 365.25 * 86400,    # 10 years
+    DecayClass.C: 3  * 365.25 * 86400,    # 3 years
+    DecayClass.D: 0.5 * 365.25 * 86400,   # 6 months
+}
+
+# Default decay class per field — subject overrides take priority
+FIELD_DECAY_CLASS = {
+    "surgery":                DecayClass.C,
+    "structural_engineering": DecayClass.B,   # physics principles very stable
+    "software_engineering":   DecayClass.D,   # best practices change fast
+    "mathematics":            DecayClass.A,   # proofs don't expire
+}
+
+# Subject-level overrides always win over field default
+SUBJECT_DECAY_OVERRIDES = {
+    "time_complexity":    DecayClass.A,   # algorithmic complexity is Class A
+    "algorithm_correctness": DecayClass.A,
+    "clinical_guideline": DecayClass.D,
+    "ml_benchmark":       DecayClass.D,
+    "api_version":        DecayClass.D,
+}
+</pre>
+</div>
+
+<h3>Effective confidence over time</h3>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/assertions_store.py — Assertion.effective_confidence()</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/assertions_store.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+def effective_confidence(self, now=None) -> float:
+    """
+    C_effective = C_at_write × exp(-Δt / τ)
+    Class A: no decay — C_effective = C_at_write always.
+    """
+    if self.decay_class == DecayClass.A:
+        return self.confidence_at_write   # proofs don't age
+
+    tau = DECAY_TAU_SECONDS[self.decay_class]
+    delta_t = (now or time.time()) - self.timestamp
+    return self.confidence_at_write * math.exp(-delta_t / tau)
+</pre>
+</div>
+
+<p>When the store is queried, only assertions whose effective confidence exceeds the threshold are returned. Old clinical guidelines fade out of active use without explicit deletion — the decay handles it automatically. Use <code>store.prune_stale()</code> to garbage collect below a floor (default 0.05).</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="contradiction">6. The contradiction detector</h2>
+
+<h3>Why it exists</h3>
+
+<p>The correction loop can only correct what it can detect. The contradiction detector is the layer that turns model outputs into structured error signals. It runs four checks in order of increasing cost, short-circuiting when a contradiction is found:</p>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/contradiction_detector.py — the check pipeline</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/contradiction_detector.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+def check(self, problem, solution, claimed_complexity=None) -> ContradictionResult:
+    result = ContradictionResult()
+
+    self._check_syntax(solution, result)               # 1. Is the code valid Python?
+    self._check_logical_consistency(problem, solution, result)  # 2. Fails own test cases?
+    if claimed_complexity:
+        self._check_complexity_claim(solution, claimed_complexity, result)  # 3. Math wrong?
+    self._check_cross_session(problem, solution, result)  # 4. Contradicts prior solutions?
+
+    # Total penalty: sum of severities × multiplier, capped at 0.5
+    if result.contradictions:
+        total_severity = sum(c.severity for c in result.contradictions)
+        result.confidence_penalty = min(
+            total_severity * self.penalty_multiplier * 0.1,
+            0.5   # never destroy confidence in a single interaction
+        )
+    return result
+</pre>
+</div>
+
+<h3>How it caught the two_sum contradiction</h3>
+
+<p>The mathematical check is what catches the seeded two_sum contradiction. It uses Python's <code>ast</code> module to count nested loop depth, then compares that against the claimed complexity:</p>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/contradiction_detector.py — complexity check via AST</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/contradiction_detector.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+def _check_complexity_claim(self, solution, claimed_complexity, result):
+    code = self._extract_code(solution)
+    nested_loop_count = self._count_nested_loops(code)   # uses ast.parse()
+
+    if "o(n)" in claimed_complexity.lower() or "o(1)" in claimed_complexity.lower():
+        if nested_loop_count >= 2:
+            result.contradictions.append(Contradiction(
+                type="mathematical",
+                description=f"Claimed {claimed_complexity} but code has "
+                            f"{nested_loop_count} nested loop levels",
+                severity=0.7
+            ))
+
+# For two_sum cycle 1:
+# claimed_complexity = "O(n)"  ← from CYCLE_RESPONSES
+# nested_loop_count  = 2       ← two for-loops detected by AST
+# → Contradiction detected, severity=0.7, penalty applied to confidence
+</pre>
+</div>
+
+<div class="callout orange">
+  <p><strong>The penalty flows directly into the utility score.</strong> <code>contradiction_result.confidence_penalty</code> is passed into <code>utility_scorer.score()</code> as an argument. There, it is multiplied by <code>field_config.penalty_multiplier</code> before being applied to the EMA update. For <code>software_engineering</code> (penalty_multiplier=2.0), a severity-0.7 contradiction produces a 14% confidence reduction. For <code>surgery</code> (penalty_multiplier=10.0), the same contradiction produces a 70% reduction.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="confidence">7. The confidence updater</h2>
+
+<h3>Why EMA, not a running average</h3>
+
+<p>The confidence signal needs to be responsive to recent performance without being destroyed by a single bad interaction. An exponential moving average (EMA) with α=0.2 is the right tool: it weights recent observations more heavily, forgets old ones gradually, and — as shown in <a href="whitepaper_full_v0_5.html#appendix-b">Appendix B, Theorem B.4</a> — is Kalman-optimal for a noise ratio ρ=0.05. Both efficacy and confidence use the same EMA update rate.</p>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/utility_scorer.py — EMA updates for E and C</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/utility_scorer.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+EFFICACY_ALPHA  = 0.2   # EMA learning rate for efficacy
+CONFIDENCE_ALPHA = 0.2  # EMA learning rate for confidence
+
+def _update_efficacy_ema(self, state: DomainState, efficacy_raw: float) -> float:
+    """EMA-accumulated domain-level efficacy."""
+    state.efficacy_ema = (
+        (1 - self.EFFICACY_ALPHA) * state.efficacy_ema +
+        self.EFFICACY_ALPHA * efficacy_raw
+    )
+    state.efficacy_ema = max(0.0, min(1.0, state.efficacy_ema))
+    return state.efficacy_ema
+
+def _update_confidence(self, state, test_pass_rate, contradiction_penalty, config):
+    # The penalty is scaled by the field's penalty multiplier
+    effective_penalty = contradiction_penalty * config.penalty_multiplier
+    penalized_signal  = test_pass_rate * (1.0 - effective_penalty)
+
+    state.confidence = (
+        (1 - self.CONFIDENCE_ALPHA) * state.confidence +
+        self.CONFIDENCE_ALPHA * penalized_signal
+    )
+    state.confidence = max(0.0, min(1.0, state.confidence))
+    return state.confidence
+</pre>
+</div>
+
+<h3>The hard gate</h3>
+
+<p>When confidence or efficacy fall below the field minimum, the agent does not produce a low-quality answer. It produces no answer and escalates:</p>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/agent.py — the abstain gate</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/agent.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+# Decision rule from whitepaper §3.1:
+#   act    if C ≥ C_min(f) AND E ≥ E_min(f)
+#   abstain otherwise — hedge response, do not return the answer
+should_abstain = task_score.below_minimum
+
+if should_abstain:
+    abstain_answer = (
+        f"I have insufficient confidence to answer in the {primary_field} domain "
+        f"(confidence {task_score.confidence:.2f} &lt; required {field_config.c_min:.2f}). "
+        f"Please consult a qualified professional."
+    )
+</pre>
+</div>
+
+<h3>Dynamic difficulty routing</h3>
+
+<p>As domain confidence rises, the scorer signals that harder problems should be routed in — resetting the novelty counter and re-engaging the curiosity dynamics. This is visible in the simulation output where cycle 3 shifts to "medium" problems:</p>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/utility_scorer.py — difficulty routing</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/utility_scorer.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+DIFFICULTY_THRESHOLDS = {
+    "hard":   0.85,   # route to Hard when C_domain > 0.85
+    "medium": 0.70,   # route to Medium when C_domain > 0.70
+    # below 0.70 → Easy problems
+}
+
+def _recommended_difficulty(self, confidence: float) -> str:
+    if confidence >= DIFFICULTY_THRESHOLDS["hard"]:   return "hard"
+    if confidence >= DIFFICULTY_THRESHOLDS["medium"]: return "medium"
+    return "easy"
+</pre>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="agent-run">8. Putting it together: agent.run()</h2>
+
+<p>The <code>UtilityAgent.run()</code> method in <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/agent.py" target="_blank"><code>agent/agent.py</code></a> is where all components wire together. It processes one interaction end-to-end through 8 steps:</p>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body"><strong>Field classification</strong> — <code>FieldClassifier.classify(problem)</code> returns a probability distribution over fields. <code>get_effective_config()</code> blends the config. High-stakes fields are floored at 15% minimum probability.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body"><strong>Contradiction detection</strong> — <code>ContradictionDetector.check()</code> runs logical, mathematical, and cross-session checks on the solution. Returns a <code>ContradictionResult</code> with penalties.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body"><strong>Arbiter (if competing solution provided)</strong> — <code>ArbiterAgent.arbitrate()</code> runs the 4-check pipeline, determines the verdict case (1–4), and if Case 3 (both wrong), opens a curiosity gap bonus on the subject.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body"><strong>Utility scoring</strong> — <code>UtilityScorer.score()</code> computes E_ema, C (with contradiction penalty), K_effective (with gap bonus), and final U. Sets <code>below_minimum</code> flag.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body"><strong>DPO pair collection</strong> — if contradictions were found, <code>_record_dpo_pair()</code> stores a (rejected=solution, weight=penalty_multiplier) pair. The preferred response is filled in later from the Arbiter's verified claim or human review.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-body"><strong>Abstain gate</strong> — if <code>task_score.below_minimum</code>, the response is replaced with a formal abstention message. The raw answer is not returned. The caller should escalate.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">7</div>
+    <div class="step-body"><strong>Personality evolution</strong> — every 3 interactions (configurable), <code>PersonalityManager.evolve()</code> updates the behavioral wrapper based on the utility trend and contradiction rate in the domain.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">8</div>
+    <div class="step-body"><strong>Build and return AgentResponse</strong> — returns utility score, verdict, personality state, domain summary, active corrections, abstain flag, and recommended difficulty. Everything needed for monitoring and routing decisions.</div>
+  </div>
+</div>
+
+<h3>What gets injected into the system prompt</h3>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/agent.py — get_system_prompt()</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/agent.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+def get_system_prompt(self, field: str) -> str:
+    config = FIELD_CONFIGS.get(field, FIELD_CONFIGS["general"])
+    wrapper_text = self.personality_manager.build_wrapper_prompt(field)
+
+    corrections_block = ""
+    if self.active_corrections:
+        corrections_str = "\n".join(f"  - {c}" for c in self.active_corrections[-10:])
+        corrections_block = f"\nACTIVE CORRECTIONS (verified — do not repeat these errors):\n{corrections_str}\n"
+
+    return (
+        f"You are an AI assistant operating in the {field} domain.\n\n"
+        f"Minimum confidence standard for this field: {config.c_min:.0%}\n"
+        f"If your confidence is below this threshold, you must abstain and recommend "
+        f"consultation with a qualified professional. Do not guess.\n"
+        f"{corrections_block}"      # ← session corrections injected here
+        f"{wrapper_text}"           # ← personality wrapper (only if non-neutral)
+        f"Always: state your reasoning, acknowledge uncertainty, never fabricate facts."
+    )
+</pre>
+</div>
+
+<p>The personality wrapper only injects when a trait deviates more than τ=0.05 from neutral. At the field-neutral point (after reset or on a new model release), the wrapper contributes nothing — it is identity-transparent by design.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="calibration">9. The calibration pipeline</h2>
+
+<h3>Why session-level corrections aren't enough</h3>
+
+<p>Injecting corrections into the system prompt fixes the current session. It doesn't fix the model. Next session, the same problem will resurface and need the same correction again. The calibration pipeline is what actually changes the weights — making the fix permanent and generalizing it to similar problems the model has never seen.</p>
+
+<h3>Why DPO, not RLHF</h3>
+
+<p>Direct Preference Optimization (DPO, Rafailov et al. 2023) is the right choice here for a specific reason: the utility function already generates exactly the data format DPO needs — (preferred, rejected) pairs with implicit reward. RLHF requires a separate reward model trained separately, adding a component that this system doesn't need. Every scored interaction where a contradiction is detected immediately produces a DPO pair.</p>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/agent.py — DPO pair collection</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/agent.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+def _record_dpo_pair(self, task_id, field, preferred, rejected, weight, reason):
+    self.calibration_dpo_pairs.append({
+        "task_id":   task_id,
+        "field":     field,
+        "preferred": preferred,   # correct version (from Arbiter or human review)
+        "rejected":  rejected,    # the contradictory output
+        "weight":    weight,      # = field_config.penalty_multiplier → DPO loss weight
+        "reason":    reason,
+    })
+
+def export_dpo_pairs(self, min_weight: float = 1.0) -> List[dict]:
+    """Return accumulated pairs for the calibration pipeline."""
+    return [p for p in self.calibration_dpo_pairs if p["weight"] >= min_weight]
+</pre>
+</div>
+
+<h3>The full calibration cycle</h3>
+
+<pre>
+1. Collect all interactions since last run
+2. Filter: keep pairs where U_preferred > U_rejected + threshold
+   (avoid training on marginal differences — only clear signal)
+3. Weight each pair by field_penalty_multiplier:
+      DPO loss for surgery contradiction     → 10× weight
+      DPO loss for software contradiction    →  2× weight
+      DPO loss for creative writing mistake  →  1× weight
+4. Mix with replay buffer (prior calibration pairs, weight=0.5)
+   ← DO NOT SKIP THIS STEP (see §14)
+5. Mix with golden examples (agent's own best responses, weight=0.7)
+6. Run LoRA fine-tuning on weighted (preferred, rejected) pairs
+7. Evaluate on held-out benchmark set
+   → if benchmark U regresses, reject adapter and investigate
+8. Deploy updated LoRA adapter if benchmark passes
+</pre>
+
+<div class="callout">
+  <p><strong>What the replay buffer does.</strong> Without it, every calibration run erases what was fixed in the previous run. The model learns to not-do the new contradiction while re-learning how to do the old one. This is catastrophic forgetting at the calibration level — not the training level. The replay buffer mixes prior pairs with a down-weight (0.5) to prevent this. It is the most commonly skipped step and the most reliably regretted one.</p>
+</div>
+
+<div class="callout orange">
+  <p><strong>Current status.</strong> The LoRA training step itself is not in this codebase — it requires a GPU and a base model checkpoint. The codebase produces the DPO pairs (<code>export_dpo_pairs()</code>) and validates that they accumulate correctly across cycles. The training step connects to standard HuggingFace <code>trl</code> DPO trainer with the pair format above. Full integration is Phase 6 of the <a href="whitepaper_full_v0_5.html#roadmap">roadmap</a>.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="routing">10. Routing and the field classifier</h2>
+
+<h3>Why routing matters so much</h3>
+
+<p>The routing quality experiment (four-arm controlled study, see <a href="whitepaper_full_v0_5.html#routing-experiment">§10.9.4</a>) shows that routing is not a nice-to-have:</p>
+
+<table>
+  <thead>
+    <tr><th>Arm</th><th>Correctness</th><th>Δ vs baseline</th><th>p-value</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>A — No routing (generic prompt)</td><td>59.0%</td><td>—</td><td>—</td></tr>
+    <tr><td>B — Matched routing (oracle)</td><td>71.5%</td><td style="color:var(--accent2);font-weight:700">+12.5%</td><td>0.009</td></tr>
+    <tr><td><strong>C — Mismatched routing (wrong specialist)</strong></td><td>41.5%</td><td style="color:var(--accent3);font-weight:700">−17.5%</td><td>&lt;0.001</td></tr>
+    <tr><td>D — VCG arbitration</td><td>69.5%</td><td style="color:var(--accent2);font-weight:700">+10.5%</td><td>0.029</td></tr>
+  </tbody>
+</table>
+
+<p>Arm C is the critical result. A specialist fine-tuned on one domain is <em>confidently wrong</em> on out-of-domain queries — not just uncertain, but wrong with high confidence (Brier 0.292 vs 0.160). Misrouting is actively worse than no routing at all. This is the "Regime 2" failure mode, and it is why confidence-gated routing — not just domain classification — is required.</p>
+
+<h3>Why a discriminative model beats an LLM for classification</h3>
+
+<p>The field classifier in Phase 1 uses an LLM with keyword fallback. This is the <em>weakest possible choice</em> for routing, and it is explicitly noted in the codebase. Xu et al. (2024) show LLMs force-select a label even when none applies. Raval et al. (2026) show traditional ML models (fine-tuned DeBERTa, LightGBM) consistently outperform LLMs on structured classification. The planned upgrade (M1 mitigation, <a href="whitepaper_full_v0_5.html#routing-mitigations">§10.4.1</a>) replaces the LLM classifier with a discriminative model and retains the LLM only as a fallback for out-of-distribution queries.</p>
+
+<h3>The three robustness mechanisms</h3>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/field_classifier.py — robustness constants</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/field_classifier.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+# 1. High-stakes floor — dangerous fields can't be diluted below this
+HIGH_STAKES_FIELDS    = {"surgery", "aviation", "law"}
+MIN_HIGH_STAKES_PROB  = 0.15
+# If surgery appears at all in a query, it gets at least 15% weight.
+# Under-weighting a dangerous field is asymmetrically more costly than over-weighting.
+
+# 2. EMA smoothing across conversation turns
+HISTORY_EMA_ALPHA = 0.4   # higher = more weight on recent turns
+
+# 3. Entropy-based conservative fallback
+ENTROPY_CONSERVATIVE_THRESHOLD = 0.7
+# When the distribution entropy is high (classifier is uncertain),
+# bounds shift toward the most conservative present field.
+# High ambiguity → more caution, not averaging toward the middle.
+</pre>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="arbiter">11. The Arbiter Agent</h2>
+
+<h3>Why it exists</h3>
+
+<p>In Phase 2, multiple specialist models may produce conflicting outputs on the same query. The Arbiter is the dedicated contradiction resolution agent that runs structured evidence checks — not a heuristic vote — and determines which output is correct, producing a formal verdict and internal evidence chain. Its design ensures that the "loudest" or most recently calibrated specialist cannot simply override others.</p>
+
+<h3>The four checks in order of cost</h3>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/arbiter.py — check weights and confidence threshold</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/arbiter.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+CHECK_WEIGHTS: Dict[str, float] = {
+    "logical":       0.30,   # does output contradict its own premises?
+    "mathematical":  0.40,   # are complexity/numerical claims provably wrong?
+    "cross_session": 0.20,   # contradicts prior verified assertions?
+    "empirical":     0.10,   # contradicts external ground truth? (stub — Phase 1 item)
+}
+
+VERDICT_CONFIDENCE_THRESHOLD = 0.85   # below this → Case 4 (escalate)
+</pre>
+</div>
+
+<p>Checks run in this order because logical and mathematical checks are cheap (AST parsing, pattern matching) while cross-session requires a store lookup and empirical requires an external call. The empirical check is currently a stub — it returns "not converged" to avoid false positives until external knowledge APIs are integrated:</p>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/arbiter.py — empirical check stub</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/arbiter.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+def _check_empirical(self, subject, domain, output_A, output_B) -> CheckResult:
+    """
+    In the MVP this is a stub — the live system calls external APIs.
+    Returns not-converged to avoid false positives.
+    """
+    # TODO Phase 1: integrate external knowledge APIs per field
+    # e.g. PubMed for medicine, arXiv for CS, SymPy for math
+    return CheckResult(
+        "empirical", False, None,
+        "Empirical check not yet implemented (Phase 1 item)", 0.0
+    )
+</pre>
+</div>
+
+<h3>Arbiter confidence and case determination</h3>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/arbiter.py — _compute_confidence() and _determine_case()</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/arbiter.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+def _compute_confidence(self, checks: List[CheckResult]) -> float:
+    """conf_arbiter = Σ(w_i × 1[check_i converges]) / Σ(w_i)"""
+    numerator   = sum(CHECK_WEIGHTS[c.check_type] * (1.0 if c.converged else 0.0)
+                      for c in checks)
+    denominator = sum(CHECK_WEIGHTS[c.check_type] for c in checks)
+    return numerator / denominator
+
+def _determine_case(self, checks, arbiter_conf):
+    if arbiter_conf &lt; VERDICT_CONFIDENCE_THRESHOLD:
+        return VerdictCase.CASE_4, None   # inconclusive → escalate
+
+    converged = [c for c in checks if c.converged]
+    # Weighted majority vote among converged checks
+    vote_A = sum(CHECK_WEIGHTS[c.check_type] for c in converged if c.winner == "A")
+    vote_B = sum(CHECK_WEIGHTS[c.check_type] for c in converged if c.winner == "B")
+    vote_N = sum(CHECK_WEIGHTS[c.check_type] for c in converged if c.winner == "neither")
+
+    if vote_N > vote_A and vote_N > vote_B: return VerdictCase.CASE_3, "neither"
+    if vote_A > vote_B:                     return VerdictCase.CASE_1, "A"
+    if vote_B > vote_A:                     return VerdictCase.CASE_2, "B"
+    return VerdictCase.CASE_4, None
+</pre>
+</div>
+
+<h3>The four verdict cases</h3>
+
+<table>
+  <thead>
+    <tr><th>Case</th><th>Meaning</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Case 1</strong></td><td>A correct, B wrong</td><td>Correct B, reinforce A. Store A's claim in assertions store.</td></tr>
+    <tr><td><strong>Case 2</strong></td><td>B correct, A wrong</td><td>Correct A, reinforce B. Store B's claim in assertions store.</td></tr>
+    <tr><td><strong>Case 3</strong></td><td>Both wrong</td><td>Correct both. Open a <em>curiosity gap bonus</em> — raises K for this subject until both specialists reach C_min on it.</td></tr>
+    <tr><td><strong>Case 4</strong></td><td>Inconclusive</td><td>Set <code>needs_escalation=True</code>. External response is a minimal hedge only. Evidence chain stays internal.</td></tr>
+  </tbody>
+</table>
+
+<h3>Minimum disclosure</h3>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/arbiter.py — ArbiterVerdict.external_response</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/arbiter.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+@property
+def external_response(self) -> str:
+    """
+    What the user sees — minimum disclosure.
+    Cases 1/2/3: the verified answer.
+    Case 4: minimal hedge only.
+    The internal evidence chain is never disclosed externally.
+    """
+    if self.case == VerdictCase.CASE_4:
+        return "I have limited confidence in this answer. Please verify with a domain expert."
+    if self.verified_claim:
+        return self.verified_claim
+    return ""
+</pre>
+</div>
+
+<h3>Calibration sampling — adaptive rate</h3>
+
+<div class="code-block">
+  <div class="code-header">
+    <span>agent/arbiter.py — adaptive sampling</span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/arbiter.py" target="_blank">view on GitHub ↗</a>
+  </div>
+<pre>
+BASE_SAMPLE_RATE  = 0.03    # 3% of verdicts independently verified by default
+SAMPLE_RATE_CEILING = 0.15  # hard cap — never exceeded
+
+ADAPTIVE_SAMPLE_RATES = [
+    (2.0, 0.10),   # correction_rate > 2× baseline → 10%
+    (1.5, 0.08),   # correction_rate > 1.5× baseline → 8%
+    (1.0, BASE_SAMPLE_RATE),
+]
+
+def adaptive_sample_rate(self) -> float:
+    if self.total_verdicts &lt; 20:
+        return BASE_SAMPLE_RATE   # not enough data yet
+    rate_ratio = self.correction_rate() / max(self._baseline_correction_rate, 0.01)
+    for threshold, sample_rate in sorted(ADAPTIVE_SAMPLE_RATES, reverse=True):
+        if rate_ratio >= threshold:
+            return min(sample_rate, SAMPLE_RATE_CEILING)
+    return BASE_SAMPLE_RATE
+</pre>
+</div>
+
+<p>The adaptive sampling rate rises when the Arbiter is issuing many corrections — a signal that the specialists are drifting or the domain is changing. The 15% ceiling prevents runaway expert-sampling costs. For the VCG mechanism that makes this calibration continuous and self-correcting rather than sampled, see <a href="whitepaper_full_v0_5.html#vcg">§10.6 of the whitepaper</a>.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="bluegreen">12. Blue-green deployment</h2>
+
+<h3>Why it exists</h3>
+
+<p>In Phase 2, each specialist has its own independent calibration cycle and its own LoRA adapter. When a new adapter is ready, it cannot be deployed with a hard cutover — a regression in one specialist's new weights could harm thousands of live queries before it's detected. Blue-green deployment solves this by running the old model (BLUE) and the new candidate (GREEN) in parallel, shifting traffic gradually as measured utility confirms the new model is better.</p>
+
+<h3>Trigger condition</h3>
+
+<pre>
+Trigger a deployment cycle when ALL of:
+    |U_current - U_baseline| > δ(field)       ← significant deviation
+    deviation sustained for ≥ T interactions   ← not transient noise
+    held-out benchmark available               ← can evaluate candidate
+
+δ(field) = base_δ / penalty_multiplier(field)    base_δ = 0.05
+
+Surgery:          δ = 0.005   T ≥ 246 interactions  (very sensitive)
+Software Eng:     δ = 0.025   T ≥  10 interactions  (responsive)
+Creative Writing: δ = 0.050   T ≥   2 interactions  (fast)
+</pre>
+
+<p>The T values come from a power analysis on observed utility score variance (σ ≈ 0.04). High-stakes fields require large observation windows before any traffic shifts — a wrong conclusion about a surgery specialist is too costly to risk on thin data.</p>
+
+<h3>Traffic splitting via softmax</h3>
+
+<pre>
+Phase 2 — Canary:  5% GREEN / 95% BLUE (minimum T_min interactions)
+
+Phase 3 — Gradual shift:
+    traffic_green = softmax(U_green, U_blue, τ=τ_field)
+                  = exp(U_green/τ) / (exp(U_green/τ) + exp(U_blue/τ))
+
+    Enforced floor/ceiling: clip(traffic_green, 0.05, 0.95)
+
+    τ(field):
+        Surgery:      τ = 0.05  → slow, winner-takes-all only when clear
+        Software Eng: τ = 0.20  → moderate
+        Creative:     τ = 0.50  → fast, follows any lead
+
+Phase 4 — Promotion:  traffic_green ≥ promotion_threshold → 100%
+Phase 5 — Retirement: GREEN holds through cooldown → BLUE weights freed
+</pre>
+
+<h3>Rollback</h3>
+
+<pre>
+Rollback triggers immediately when:
+    U_green &lt; U_blue - ε  for M interactions
+    OR contradiction_rate_green > contradiction_rate_blue × 1.5
+    OR benchmark regression > field_tolerance
+
+Action: traffic_blue → 100% instantly
+        GREEN failure cases added to replay buffer with negative weight
+        Next candidate is trained against these failure modes
+</pre>
+
+<p>See <a href="whitepaper_full_v0_5.html#bluegreen">§10.7–10.8 of the whitepaper</a> for the full lifecycle specification and traffic split visualization.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="build-plan">13. Phased build plan</h2>
+
+<p>Build in this order. Each phase is independently valuable. Do not start a new phase until the previous one is working correctly under real traffic.</p>
+
+<table>
+  <thead>
+    <tr><th>Component</th><th>Phase</th><th>Status</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Field classifier (keyword fallback)</td><td>1</td><td><span class="badge done">Done</span></td><td><code>field_classifier.py</code></td></tr>
+    <tr><td>Assertions store</td><td>1</td><td><span class="badge done">Done</span></td><td><code>assertions_store.py</code></td></tr>
+    <tr><td>Contradiction detector (stages 1–3)</td><td>1</td><td><span class="badge done">Done</span></td><td><code>contradiction_detector.py</code></td></tr>
+    <tr><td>Utility scorer (E_ema, C, K)</td><td>1</td><td><span class="badge done">Done</span></td><td><code>utility_scorer.py</code></td></tr>
+    <tr><td>Abstain gate</td><td>1</td><td><span class="badge done">Done</span></td><td>In <code>agent.py run()</code></td></tr>
+    <tr><td>DPO pair collector</td><td>1</td><td><span class="badge done">Done</span></td><td><code>agent.py export_dpo_pairs()</code></td></tr>
+    <tr><td>Personality wrapper</td><td>1</td><td><span class="badge done">Done</span></td><td><code>personality_manager.py</code></td></tr>
+    <tr><td>Trust manager</td><td>1</td><td><span class="badge done">Done</span></td><td><code>trust_manager.py</code></td></tr>
+    <tr><td>LoRA calibration pipeline</td><td>1</td><td><span class="badge partial">Partial</span></td><td>Pairs collected; GPU training step external</td></tr>
+    <tr><td>Arbiter Agent (stages 1–3)</td><td>2</td><td><span class="badge done">Done</span></td><td><code>arbiter.py</code></td></tr>
+    <tr><td>Routing with confidence gating</td><td>2</td><td><span class="badge partial">Designed</span></td><td>Classifier done; confidence-gated fan-out planned</td></tr>
+    <tr><td>Blue-green deployment</td><td>2</td><td><span class="badge partial">Designed</span></td><td>Spec complete in §10.7; infra not yet built</td></tr>
+    <tr><td>Empirical check (Arbiter stage 4)</td><td>2</td><td><span class="badge future">Stub</span></td><td>External API integration per field</td></tr>
+    <tr><td>VCG arbitration mechanism</td><td>3</td><td><span class="badge future">Future</span></td><td>Proofs in §10.6; requires submodel value function API</td></tr>
+    <tr><td>Hardware-adaptive graph</td><td>3</td><td><span class="badge future">Future</span></td><td>Analytical model done; physical validation pending</td></tr>
+  </tbody>
+</table>
+
+<div class="callout green">
+  <p><strong>What you can build and run today:</strong> The full Phase 1 simulation (<code>simulate.py</code>, <code>simulate_extended.py</code>), the routing experiment (<code>routing_experiment.py</code>), and the live harness against Claude (<code>harness.py</code>, requires API key). All Phase 1 components are implemented and tested.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="dont-build">14. What not to build first</h2>
+
+<div class="warn">
+  <strong>These are the most common mistakes. All of them make Phase 1 harder without making it better.</strong>
+</div>
+
+<ul>
+  <li>
+    <strong>Do not build a knowledge graph.</strong> The assertions store with embedding-based retrieval is sufficient for cross-session contradiction detection. A knowledge graph adds significant engineering complexity — schema design, graph queries, entity resolution — without improving the correction loop. The framework explicitly does not require one.
+  </li>
+
+  <li>
+    <strong>Do not build routing before the correction loop works.</strong> Routing multiplies whatever behavior the correction loop produces. If the correction loop isn't working correctly on a single model, routing will distribute broken behavior to multiple specialists instead of fixing it.
+  </li>
+
+  <li>
+    <strong>Do not skip the replay buffer.</strong> Every calibration run that omits it will silently erase prior corrections. The first time you see a previously-fixed error reappear, you will add the replay buffer under pressure. Add it at the start. It is one extra parameter in the training batch.
+  </li>
+
+  <li>
+    <strong>Do not lower C_min and E_min to make the system appear more capable.</strong> These are safety properties, not performance parameters. Lowering them means the system will produce confident wrong answers in domains where being wrong is dangerous. The simulation's abstain behavior is the correct behavior — the goal is to expand the domain where the agent can act confidently, not to suppress the abstention signal.
+  </li>
+
+  <li>
+    <strong>Do not build the empirical check (Arbiter stage 4) in Phase 1.</strong> It is expensive, introduces external dependencies, and is the least reliable check type. Logical and mathematical checks catch the most impactful contradictions at near-zero cost. Add empirical checks only after stages 1–3 are working correctly in production.
+  </li>
+
+  <li>
+    <strong>Do not treat the personality wrapper as permanent infrastructure.</strong> It is an interim behavioral mechanism designed to be superseded when fast specialist retraining makes it unnecessary. Do not build deep application logic that depends on specific personality trait values — the wrapper resets on every new model release by design.
+  </li>
+</ul>
+
+<!-- READ NEXT -->
+<div class="read-next">
+  <h3>Where to go from here</h3>
+  <ul>
+    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/simulate.py" target="_blank">agent/simulate.py</a> — run the Phase 1 simulation end-to-end</li>
+    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/routing_experiment.py" target="_blank">agent/routing_experiment.py</a> — run the four-arm routing quality study</li>
+    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/harness.py" target="_blank">agent/harness.py</a> — live harness against Claude (requires API key)</li>
+    <li><a href="whitepaper_full_v0_5.html#field-bounds">§5 — Field Bounds</a> — how C_min and E_min are derived from societal licensing standards</li>
+    <li><a href="whitepaper_full_v0_5.html#appendix-b">Appendix B</a> — formal proofs for the utility function structure, EMA optimality, confidence convergence, and personality stability</li>
+    <li><a href="whitepaper_full_v0_5.html#arbiter">§10.5 — Arbiter Agent</a> — full 4-check specification, external escalation protocol, and minimum disclosure design</li>
+    <li><a href="whitepaper_full_v0_5.html#vcg">§10.6 — VCG Arbitration</a> — game-theoretic treatment: Theorems S1–S3 (dominant strategy truthfulness, POA=1, individual rationality)</li>
+    <li><a href="whitepaper_full_v0_5.html#bluegreen">§10.7 — Blue-Green Deployment</a> — trigger thresholds, softmax traffic routing, rollback specification</li>
+    <li><a href="whitepaper_full_v0_5.html#roadmap">§12 — Roadmap</a> — Phases 1–9 with status and what next empirical validation requires</li>
+    <li><a href="domain_software_engineering_v0_5.html">Software Engineering domain</a> — the recommended first specialist domain, with full worked examples</li>
+    <li><a href="domain_ai_datacenters_v0_5.html">AI Data Centers domain</a> — fleet economics, LoRA multi-tenancy, and the consumer hardware cost model</li>
+  </ul>
+</div>
+
+</div><!-- .body -->
+</div><!-- .page -->
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Energy Systems v0.5</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--paper:#ffffff;--ink:#18181b;--muted:#6b7280;--line:#e4e1da;--accent:#4338ca;--accent2:#0f766e;--accent3:#c2410c;--soft:#f0ede6;--soft2:#ecfdf5;--soft3:#fff7ed;--tag-bg:#eef2ff;--tag-text:#4338ca}
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:16px;line-height:1.75;color:var(--ink);background:var(--bg);margin:0;padding:0}
+.page{max-width:960px;margin:0 auto;padding:0 0 5rem;background:var(--paper);border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
+nav{display:flex;flex-wrap:wrap;gap:.6rem .9rem;padding:1rem 2rem;border-bottom:1px solid var(--line);background:#fafaf8;font-size:.88rem;position:sticky;top:0;z-index:10}
+nav a{color:var(--accent);text-decoration:none;font-weight:500}
+nav a:hover{text-decoration:underline}
+nav a.active{color:var(--ink);font-weight:600}
+.hero{padding:3rem 2.5rem 2.5rem;border-bottom:1px solid var(--line);background:linear-gradient(160deg,#f0ede6 0%,#fff 60%)}
+.hero-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--tag-bg);color:var(--tag-text);padding:.25rem .7rem;border-radius:999px;margin-bottom:1.2rem}
+.hero h1{font-family:'DM Serif Display',Georgia,serif;font-size:2.4rem;line-height:1.2;margin:0 0 .75rem}
+.hero .subtitle{font-size:1.1rem;color:#444;max-width:700px;margin-bottom:1.5rem;line-height:1.6}
+.audience-pills{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem}
+.pill{font-size:.82rem;font-weight:500;padding:.3rem .85rem;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.body{padding:2rem 2.5rem 0}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.5rem;line-height:1.3;margin:2.5rem 0 .75rem;padding-bottom:.5rem;border-bottom:2px solid var(--line);color:var(--ink);scroll-margin-top:60px}
+h3{font-size:1.05rem;font-weight:600;margin:1.8rem 0 .5rem;color:#222}
+h4{font-size:.95rem;font-weight:600;margin:1.3rem 0 .4rem;color:#333}
+p{margin:0 0 1rem}
+a{color:var(--accent)}
+ul,ol{margin:.3rem 0 1rem;padding-left:1.3rem}
+li{margin:.3rem 0}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:#f2f0eb;padding:2px 6px;border-radius:4px;color:#333}
+pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:8px;padding:1.1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:.8rem;line-height:1.65;font-family:'JetBrains Mono',monospace}
+.callout{background:var(--soft);border-left:4px solid var(--accent);padding:1rem 1.25rem;margin:1.25rem 0 1.5rem;border-radius:0 8px 8px 0}
+.callout.green{background:var(--soft2);border-left-color:var(--accent2)}
+.callout.orange{background:var(--soft3);border-left-color:var(--accent3)}
+.callout p{margin:0}.callout p+p{margin-top:.5rem}
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;margin:1.25rem 0 1.75rem}
+.card{border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.1rem .9rem;background:#fff}
+.card .card-icon{font-size:1.4rem;margin-bottom:.5rem}
+.card h4{margin-top:0;font-size:.95rem}
+.card p{font-size:.88rem;color:#444;margin-bottom:0}
+.metricgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:1.25rem 0 1.75rem}
+.metric{border:1px solid var(--line);border-radius:10px;padding:.9rem 1.1rem;background:#fff}
+.metric .label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:4px}
+.metric .value{font-size:1.7rem;font-weight:700;color:var(--accent);line-height:1.1}
+.metric .unit{font-size:.82rem;color:var(--muted);margin-top:2px}
+.metric.green .value{color:var(--accent2)}
+.metric.red .value{color:var(--accent3)}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:1rem 0 1.5rem}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:8px 12px;font-size:.82rem;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.05em}
+td{padding:8px 12px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#fafaf8}
+.caption{font-size:.82rem;color:var(--muted);font-style:italic;margin-top:-.5rem;margin-bottom:1rem}
+.scenario-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:1rem;margin:1.25rem 0 1.75rem}
+.scenario{border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;background:#fff}
+.scenario .sc-label{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.5rem;font-family:'JetBrains Mono',monospace}
+.scenario .sc-title{font-size:.97rem;font-weight:600;margin-bottom:.75rem;color:var(--ink)}
+.weight-row{display:flex;align-items:center;gap:8px;margin:.35rem 0}
+.weight-name{width:115px;font-size:.82rem;color:#444;flex-shrink:0}
+.weight-track{flex:1;height:10px;background:#ece9e3;border-radius:999px;overflow:hidden}
+.weight-fill{height:100%;border-radius:999px}
+.fill-stab{background:#c2410c}
+.fill-cost{background:#4338ca}
+.fill-renew{background:#0f766e}
+.fill-comfort{background:#9333ea}
+.weight-val{font-size:.8rem;color:var(--muted);min-width:34px;text-align:right;font-family:'JetBrains Mono',monospace}
+.toc{background:var(--soft);border-radius:10px;padding:1.1rem 1.4rem;margin:1.5rem 0 2rem}
+.toc p{font-weight:600;margin-bottom:.5rem}
+.toc ol{margin:0}
+.toc li{font-size:.92rem;margin:.2rem 0}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
+.read-next{background:var(--soft);border-radius:10px;padding:1.25rem 1.5rem;margin-top:2.5rem}
+.read-next h3{margin-top:0}
+.read-next ul{margin:0}
+.read-next li{font-size:.92rem;margin:.3rem 0}
+@media(max-width:640px){.hero h1{font-size:1.8rem}.body{padding:1.5rem 1.25rem 0}nav{padding:.75rem 1rem}.weight-name{width:90px}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <a href="whitepaper_v05.html">Home</a>
+  <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+  <a href="tutorial_v0_5.html">Tutorial</a>
+  <a href="domain_ai_datacenters_v0_5.html">AI Data Centers</a>
+  <a href="domain_self_driving_v0_5.html">Self-Driving</a>
+  <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a>
+  <a href="domain_software_engineering_v0_5.html">Software Eng</a>
+  <a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems_v0_5.html" class="active">Energy Systems</a>
+  <a href="domain_creative_systems_v0_5.html">Creative Systems</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Domain Deep-Dive · v0.5</div>
+  <h1>Energy Systems &amp;<br>Grid Optimization</h1>
+  <p class="subtitle">How the Adaptive Utility Agent framework provides the adaptive orchestration layer that current EMS and DERMS architectures are missing — a single formula that balances grid stability, cost, and carbon across every operating state, with confidence-gated escalation when forecasts are unreliable.</p>
+  <div class="audience-pills">
+    <span class="pill">Grid software teams</span>
+    <span class="pill">DER optimization</span>
+    <span class="pill">DERMS / VPP platforms</span>
+    <span class="pill">Smart-home &amp; HEMS</span>
+  </div>
+</div>
+
+<div class="body">
+
+<div class="toc">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#problem">The DER orchestration gap</a></li>
+    <li><a href="#weights">Weight shifting across grid operating states</a></li>
+    <li><a href="#gate">C_min=0.95: the confidence gate under uncertain forecasts</a></li>
+    <li><a href="#smarthome">Smart home: demand response, EV charging, peak shifting</a></li>
+    <li><a href="#grid">Grid scale: VPPs, DER aggregation, and ancillary services</a></li>
+    <li><a href="#tradeoffs">Stability vs. cost vs. carbon — without separate rule sets</a></li>
+    <li><a href="#correction">Correction loop applied to demand forecast errors</a></li>
+    <li><a href="#mvp">MVP shape</a></li>
+  </ol>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="problem">1. The DER orchestration gap</h2>
+
+<p>The energy transition is producing a grid that existing AI approaches were not designed for. By 2025, renewables exceed one-third of global generation mix — solar, wind, and battery storage whose output is variable, distributed, and often bidirectional. At the same time, demand is becoming more complex: EVs charging at unpredictable times, rooftop solar turning consumers into prosumers, and smart appliances that can shed or shift load on millisecond timescales.</p>
+
+<p>Current approaches address pieces of this problem but not the whole:</p>
+
+<ul>
+  <li><strong>Rule-based EMS:</strong> Deterministic dispatch rules work well for predictable conditions but fail when real conditions diverge from the rule assumptions. A rule that says "charge batteries from solar during daylight" doesn't handle cloudy days, unexpected demand peaks, or time-of-use pricing changes.</li>
+  <li><strong>ML-based forecasting and optimization:</strong> Load forecasting models have improved dramatically, but they are largely dependent on historical data and lack the ability to dynamically adjust to real-time grid fluctuations. When conditions shift beyond training distribution — an extreme weather event, a sudden industrial demand spike, a large-scale EV charging surge — ML models produce unreliable forecasts with no internal mechanism to detect their own unreliability or escalate appropriately.</li>
+  <li><strong>Separate systems per objective:</strong> Most deployments have separate systems for load forecasting, demand response, battery dispatch, and renewable optimization. These systems do not share a unified decision objective — a battery dispatch decision that is optimal for cost may be suboptimal for stability, and there is no principled mechanism to resolve the tradeoff.</li>
+</ul>
+
+<p>The framework provides the orchestration layer that resolves this: a single utility function that holds all competing objectives simultaneously, with weights that shift automatically with grid state, and a confidence gate that escalates to human operators when the system's forecasts are too uncertain to act on.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="weights">2. Weight shifting across grid operating states</h2>
+
+<p>The energy grid operates in fundamentally different modes — and the optimal decision changes completely between them. A battery storage dispatch decision that is correct under normal load may be dangerously wrong during a frequency deviation event. The framework handles this with a single formula whose weights shift with detected grid state:</p>
+
+<pre>
+U = w_σ(f) · Stability  +  w_c(f) · Cost  +  w_r(f) · Renewable utilization
+
+f — grid state (normal, demand surge, frequency deviation, renewable surplus...)
+
+Decision rule:
+  act    if C ≥ C_min(f)
+  escalate to human operator  otherwise
+</pre>
+
+<p>These are worked examples from <a href="whitepaper_full_v0_5.html#applications">§2.3–2.4 of the full whitepaper</a>:</p>
+
+<div class="scenario-grid">
+
+  <div class="scenario">
+    <div class="sc-label">Grid · Scenario A</div>
+    <div class="sc-title">Normal load, stable forecast</div>
+    <div class="weight-row"><span class="weight-name">Stability (w_σ)</span><div class="weight-track"><div class="weight-fill fill-stab" style="width:40%"></div></div><span class="weight-val">0.40</span></div>
+    <div class="weight-row"><span class="weight-name">Cost (w_c)</span><div class="weight-track"><div class="weight-fill fill-cost" style="width:40%"></div></div><span class="weight-val">0.40</span></div>
+    <div class="weight-row"><span class="weight-name">Renewables (w_r)</span><div class="weight-track"><div class="weight-fill fill-renew" style="width:20%"></div></div><span class="weight-val">0.20</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Battery storage preferred over gas peaker. Demand response incentivized for off-peak shifting. Cost and stability in balance. From <a href="whitepaper_full_v0_5.html#applications">§2.4</a>.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Grid · Scenario B</div>
+    <div class="sc-title">Demand surge / frequency deviation</div>
+    <div class="weight-row"><span class="weight-name">Stability (w_σ)</span><div class="weight-track"><div class="weight-fill fill-stab" style="width:80%"></div></div><span class="weight-val">0.80</span></div>
+    <div class="weight-row"><span class="weight-name">Cost (w_c)</span><div class="weight-track"><div class="weight-fill fill-cost" style="width:15%"></div></div><span class="weight-val">0.15</span></div>
+    <div class="weight-row"><span class="weight-name">Renewables (w_r)</span><div class="weight-track"><div class="weight-fill fill-renew" style="width:5%"></div></div><span class="weight-val">0.05</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Stability rises to w_σ=0.80. Gas peaker becomes optimal even though it costs more — grid stability now dominates. Decision flips from battery/renewable to peaker dispatch. From <a href="whitepaper_full_v0_5.html#applications">§2.4</a>.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Grid · Scenario C</div>
+    <div class="sc-title">Renewable surplus (curtailment risk)</div>
+    <div class="weight-row"><span class="weight-name">Stability (w_σ)</span><div class="weight-track"><div class="weight-fill fill-stab" style="width:30%"></div></div><span class="weight-val">0.30</span></div>
+    <div class="weight-row"><span class="weight-name">Cost (w_c)</span><div class="weight-track"><div class="weight-fill fill-cost" style="width:25%"></div></div><span class="weight-val">0.25</span></div>
+    <div class="weight-row"><span class="weight-name">Renewables (w_r)</span><div class="weight-track"><div class="weight-fill fill-renew" style="width:45%"></div></div><span class="weight-val">0.45</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">High solar/wind output threatening curtailment. Renewable utilization weight rises — battery charging, EV charging, and flexible industrial loads are dispatched to absorb surplus. No separate "curtailment avoidance rule" required.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Smart Home · Scenario D</div>
+    <div class="sc-title">Peak pricing event</div>
+    <div class="weight-row"><span class="weight-name">Cost (w_c)</span><div class="weight-track"><div class="weight-fill fill-cost" style="width:65%"></div></div><span class="weight-val">0.65</span></div>
+    <div class="weight-row"><span class="weight-name">Comfort (w_comfort)</span><div class="weight-track"><div class="weight-fill fill-comfort" style="width:25%"></div></div><span class="weight-val">0.25</span></div>
+    <div class="weight-row"><span class="weight-name">Renewables (w_r)</span><div class="weight-track"><div class="weight-fill fill-renew" style="width:10%"></div></div><span class="weight-val">0.10</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Cost weight rises from 0.40 to 0.65 during peak pricing event. Appliance scheduling shifts to off-peak automatically. From <a href="whitepaper_full_v0_5.html#applications">§2.3</a>.</p>
+  </div>
+
+</div>
+
+<div class="callout">
+  <p><strong>One formula, all grid states.</strong> The gas peaker dispatch example from the whitepaper is the clearest demonstration: under normal load, battery/renewable is optimal; under demand surge, the gas peaker becomes optimal. The decision flips because w_σ shifts from 0.40 to 0.80 — not because a separate "surge mode program" is activated. No new rules are written when a new grid condition is encountered; a new weight profile is added and the classifier detects the condition.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="gate">3. C_min=0.95: the confidence gate under uncertain forecasts</h2>
+
+<p>From <a href="whitepaper_full_v0_5.html#applications">§2.4 of the full whitepaper</a>: <em>"The C_min=0.95 gate under surge conditions ensures the agent escalates to a human operator when demand forecasts are unreliable, rather than committing a large generation decision under uncertainty."</em></p>
+
+<p>This is the most operationally important property the framework adds to grid management. Current ML forecasting models have no mechanism to detect when they are operating outside their training distribution and escalate accordingly. They produce a forecast number regardless of whether that number is reliable. A grid operator relying on an ML forecast during an extreme weather event has no signal from the model that the forecast may be substantially wrong.</p>
+
+<pre>
+Grid state                     C_min    Behavior below threshold
+──────────────────────────────────────────────────────────────────────
+Normal operating conditions    0.70     Hold prior dispatch; log uncertainty
+Peak demand / high load        0.85     Reduce automated dispatch; alert ops
+Demand surge / freq deviation  0.95     Halt automated decisions; human required
+Extreme event / outlier data   0.95     Mandatory human override; do not dispatch
+</pre>
+
+<p>The 0.95 threshold under surge conditions means the system will only commit a large generation dispatch decision — switching a gas peaker on, shedding industrial load, committing battery discharge — when its internal consistency on the demand forecast is extremely high. When it is not, it escalates to a human operator with the full context: current demand signal, forecast uncertainty, which specialist produced the estimate, and what the conflicting signals are.</p>
+
+<div class="callout orange">
+  <p><strong>Why this matters for grid operators.</strong> A wrong dispatch decision during a surge event can cascade: over-committing battery discharge leaves nothing for the next frequency deviation; under-dispatching a peaker leaves frequency unsupported. The confidence gate is not a performance penalty — it is the mechanism that prevents the AI layer from making large, hard-to-reverse decisions under conditions where it is genuinely uncertain. The human operator who receives the escalation is better positioned to act on a structured uncertainty report than on a confident forecast that happens to be wrong.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="smarthome">4. Smart home: demand response, EV charging, peak shifting</h2>
+
+<p>At the residential edge, the framework operates as a Home Energy Management System (HEMS) that learns from occupant behavior and adapts to grid signals without requiring manual reconfiguration.</p>
+
+<h3>Demand response automation</h3>
+<p>During a peak pricing event (detected from utility time-of-use signal), the cost weight rises from 0.40 to 0.65 automatically. Appliance scheduling shifts to off-peak: dishwasher, laundry, EV charging, and battery pre-conditioning are rescheduled to the lowest-cost window. No occupant action required; no rule for "peak pricing behavior" needed.</p>
+
+<h3>Occupant comfort override</h3>
+<p>From the whitepaper: "When the occupant signals an explicit preference, the system defers — not by overriding the utility function, but by activating a comfort-override weight profile where w_c=0.75." The comfort override is a weight profile shift, not a rule exception. The formula continues to govern; the weights reflect what the occupant currently values.</p>
+
+<h3>EV charging intelligence</h3>
+
+<pre>
+Normal conditions (cheap overnight rate):
+    w_cost=0.40, w_comfort=0.40, w_renew=0.20
+    → charge at full rate overnight, minimize cost
+
+Renewable surplus (midday solar peak):
+    w_cost=0.25, w_comfort=0.25, w_renew=0.50
+    → shift charging to solar peak window
+    → battery absorbs surplus, reduces curtailment
+
+Peak demand event:
+    w_cost=0.65, w_comfort=0.25, w_renew=0.10
+    → defer charging to post-peak window
+    → optionally participate in V2G if SOC sufficient
+</pre>
+
+<h3>Cross-session learning</h3>
+<p>The assertions store accumulates occupant-specific usage patterns: typical wake time, preferred evening temperature, recurring appliance schedules. Future decisions inject these patterns automatically without the occupant needing to reconfigure schedules. When patterns change — a new EV, a work-from-home schedule shift, a seasonal change — the correction loop detects the deviation from expected consumption and updates the priors within a few calibration cycles.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="grid">5. Grid scale: VPPs, DER aggregation, and ancillary services</h2>
+
+<p>At grid scale, the framework operates as the decision layer within a Distributed Energy Resource Management System (DERMS) or Virtual Power Plant (VPP) aggregator, coordinating millions of DERs as a unified grid participant.</p>
+
+<h3>The VPP orchestration problem</h3>
+<p>A VPP aggregates distributed assets — residential batteries, commercial HVAC, EV fleets, industrial flexible loads — and dispatches them as a single grid resource. The orchestration challenge is that each asset has its own constraints (battery SOC, occupant comfort, EV departure time) and the dispatch decision must satisfy all of them simultaneously while meeting the grid service commitment. This is exactly the multi-objective, context-adaptive decision problem the framework is designed for.</p>
+
+<div class="cardgrid">
+  <div class="card">
+    <div class="card-icon">⚡</div>
+    <h4>Frequency response</h4>
+    <p>When frequency deviates from 50/60Hz, stability weight rises to 0.80+. Battery assets with sufficient SOC are dispatched in priority order by confidence of available capacity. Assets below confidence threshold are excluded from dispatch — better to under-deliver on ancillary services than to dispatch unreliable assets.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">☀️</div>
+    <h4>Renewable integration</h4>
+    <p>Renewable surplus shifts the renewable utilization weight upward. Flexible loads (EV charging, heat pumps, industrial processes) are dispatched to absorb surplus in the window before curtailment occurs. The assertions store accumulates which assets reliably respond — unreliable assets are progressively down-weighted in future dispatch.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">💰</div>
+    <h4>Energy market participation</h4>
+    <p>Under wholesale market price signals, cost weight rises. The system identifies the optimal bid quantity given current portfolio confidence — not the maximum technically available, but the maximum reliably deliverable. Confidence-gated dispatch prevents committing capacity that may not actually be available.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🔋</div>
+    <h4>Battery SOC management</h4>
+    <p>Assertions store accumulates SOC degradation patterns per battery asset. Assets showing inconsistent capacity delivery — indicating battery aging or BMS errors — are flagged by the contradiction detector and their confidence ratings updated downward. Dispatch prioritizes the highest-confidence assets for critical grid services.</p>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="tradeoffs">6. Stability vs. cost vs. carbon — without separate rule sets</h2>
+
+<p>The clearest illustration of the framework's value in grid management is the gas peaker vs. battery storage decision under different grid states. From <a href="whitepaper_full_v0_5.html#applications">§2.4 of the full whitepaper</a>:</p>
+
+<pre>
+Normal load:
+    w_σ=0.40, w_cost=0.40, w_renew=0.20
+    → Battery storage + demand response optimal
+    → Gas peaker offline (expensive, high-carbon)
+    → Formula selects: battery dispatch
+
+Demand surge (w_σ rises to 0.80):
+    w_σ=0.80, w_cost=0.15, w_renew=0.05
+    → Gas peaker becomes optimal
+    → Battery reserved for frequency support
+    → Formula selects: peaker dispatch
+
+Result: same formula, different weights → correct decision in each context.
+No "surge mode program". No separate dispatch rules for each grid state.
+</pre>
+
+<p>Current EMS architectures require either separate rule sets for each operating state (which become inconsistent and hard to maintain as grid conditions evolve) or a single ML model that must somehow learn to behave differently across all operating states without explicit objective differentiation. The framework resolves this structurally: the objective function is explicit, the weights encode what matters in each state, and the transition between states is governed by the field classifier detecting the current grid condition.</p>
+
+<h3>Carbon-aware dispatch</h3>
+<p>The renewable utilization weight can be configured to reflect a carbon intensity signal — rising when grid carbon intensity is high (lots of gas/coal on the margin) and falling when carbon intensity is low (lots of solar/wind). Under a high-carbon-intensity signal, the framework shifts toward demand reduction and storage — consuming less grid power when it is dirtiest. Under low carbon intensity, the framework shifts toward demand acceleration — charging EVs, running flexible industrial loads, absorbing renewable surplus. No carbon-specific rules required; the renewable utilization weight carries the signal.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="correction">7. Correction loop applied to demand forecast errors</h2>
+
+<p>Current ML forecasting models produce forecast errors that are not fed back into the model between retraining cycles. The same forecast error — underestimating Monday morning demand ramp, overestimating holiday load reduction — repeats daily until the next quarterly retraining cycle.</p>
+
+<p>The framework's correction loop changes this at two timescales:</p>
+
+<h3>Session-level correction (immediate)</h3>
+<p>When a demand forecast diverges significantly from actual demand (a detectable contradiction between predicted and realized values), the correction is stored in the assertions store and injected into the next forecast session. "Forecast for this node type underestimates morning ramp by ~8% on cold weekdays — apply upward adjustment." The next forecast on a cold weekday morning immediately applies the correction without waiting for a retraining cycle.</p>
+
+<h3>Calibration-level correction (hours-to-daily)</h3>
+<p>Accumulated forecast errors become DPO training pairs — (corrected forecast, original forecast) — weighted by the field penalty multiplier for energy decisions. For high-stakes grid decisions (frequency response commitment, peak demand dispatch), the penalty multiplier is high and the forecast correction is trained against harder. The model's weights improve between quarterly retraining cycles rather than only at them.</p>
+
+<div class="callout green">
+  <p><strong>The practical value for grid operators.</strong> Existing AI-based forecasting research reports 20–30% RMSE reduction from better model architectures. The correction loop adds a different kind of improvement: instead of reducing initial forecast error, it eliminates <em>repeated</em> forecast error patterns — errors the model makes consistently across similar conditions. A 69.6% reduction in repeated errors (the framework's simulation result on software engineering, directly analogous) applied to demand forecasting would mean that a recurring Monday morning underestimate that happened 10 times last month would happen 3 times next month, improving further each cycle.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="mvp">8. MVP shape</h2>
+
+<ol>
+  <li><strong>Pick one decision class — smart home demand response or EV charging scheduling</strong> — the highest-volume, most-validatable starting point. Ground truth is available immediately: scheduled vs. actual consumption, grid price paid, occupant override rate.</li>
+  <li><strong>Stand up the assertions store for occupant/asset behavior patterns</strong> — accumulate consumption patterns, departure time distributions, preference overrides. These are the priors that make future decisions better without retraining.</li>
+  <li><strong>Set conservative C_min for automated dispatch decisions</strong> — start at 0.80 and measure the shadow escalation rate. Do not automate dispatch decisions where confidence is below threshold; surface them to operators as recommendations.</li>
+  <li><strong>Log every forecast deviation as a contradiction event</strong> — predicted demand vs. actual demand; predicted renewable output vs. actual output. These are the correction signals that feed the calibration pipeline.</li>
+  <li><strong>Run first calibration cycle after 2–4 weeks of deviation logs</strong> — measure whether forecast accuracy improves for previously recurring error patterns. This is the validation that the correction loop works on real grid data.</li>
+  <li><strong>Extend to grid-scale dispatch only after single-node validation</strong> — the orchestration value compounds as more DERs are added, but the correction loop must be validated at the single-asset level before fleet-scale dispatch is trusted.</li>
+</ol>
+
+<div class="read-next">
+  <h3>Where to read next</h3>
+  <ul>
+    <li><a href="whitepaper_full_v0_5.html#applications">§2.3 — Smart Home Energy Management</a> — Peak pricing weight shifting (w_k: 0.40→0.65), comfort override (w_c=0.75)</li>
+    <li><a href="whitepaper_full_v0_5.html#applications">§2.4 — Energy Grid Load Balancing</a> — Demand surge (w_σ=0.80), gas peaker vs. battery decision, C_min=0.95 escalation gate</li>
+    <li><a href="whitepaper_full_v0_5.html#correction-loop">§8 — Three-Layer Correction Loop</a> — How forecast errors are detected, stored, and prevented from repeating</li>
+    <li><a href="whitepaper_full_v0_5.html#field-bounds">§5 — Field Bounds</a> — C_min derivation and the confidence gate for high-stakes dispatch decisions</li>
+    <li><a href="tutorial_v0_5.html">Tutorial</a> — Utility function, assertions store, confidence updater, and correction loop in code</li>
+    <li><a href="domain_autonomous_systems_v0_5.html">Autonomous Systems domain doc</a> — Related architecture: edge hardware deployment, pipeline parallelism for real-time decisions</li>
+  </ul>
+</div>
+
+</div></div>
+</body>
+</html>

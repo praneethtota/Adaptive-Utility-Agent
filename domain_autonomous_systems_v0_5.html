@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Autonomous Systems v0.5</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f6f2; --paper: #ffffff; --ink: #18181b; --muted: #6b7280;
+  --line: #e4e1da; --accent: #4338ca; --accent2: #0f766e; --accent3: #c2410c;
+  --soft: #f0ede6; --soft2: #ecfdf5; --soft3: #fff7ed;
+  --tag-bg: #eef2ff; --tag-text: #4338ca;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.75; color: var(--ink); background: var(--bg); margin: 0; padding: 0; }
+.page { max-width: 960px; margin: 0 auto; padding: 0 0 5rem; background: var(--paper); border-left: 1px solid var(--line); border-right: 1px solid var(--line); min-height: 100vh; }
+
+nav { display: flex; flex-wrap: wrap; gap: .6rem .9rem; padding: 1rem 2rem; border-bottom: 1px solid var(--line); background: #fafaf8; font-size: .88rem; position: sticky; top: 0; z-index: 10; }
+nav a { color: var(--accent); text-decoration: none; font-weight: 500; }
+nav a:hover { text-decoration: underline; }
+nav a.active { color: var(--ink); font-weight: 600; }
+
+.hero { padding: 3rem 2.5rem 2.5rem; border-bottom: 1px solid var(--line); background: linear-gradient(160deg, #f0ede6 0%, #fff 60%); }
+.hero-tag { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: .72rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; background: var(--tag-bg); color: var(--tag-text); padding: .25rem .7rem; border-radius: 999px; margin-bottom: 1.2rem; }
+.hero h1 { font-family: 'DM Serif Display', Georgia, serif; font-size: 2.4rem; line-height: 1.2; margin: 0 0 .75rem; }
+.hero .subtitle { font-size: 1.1rem; color: #444; max-width: 700px; margin-bottom: 1.5rem; line-height: 1.6; }
+.audience-pills { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.5rem; }
+.pill { font-size: .82rem; font-weight: 500; padding: .3rem .85rem; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: #fff; }
+
+.body { padding: 2rem 2.5rem 0; }
+
+h2 { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.5rem; line-height: 1.3; margin: 2.5rem 0 .75rem; padding-bottom: .5rem; border-bottom: 2px solid var(--line); color: var(--ink); scroll-margin-top: 60px; }
+h3 { font-size: 1.05rem; font-weight: 600; margin: 1.8rem 0 .5rem; color: #222; }
+h4 { font-size: .95rem; font-weight: 600; margin: 1.3rem 0 .4rem; color: #333; }
+p { margin: 0 0 1rem; }
+a { color: var(--accent); }
+ul, ol { margin: .3rem 0 1rem; padding-left: 1.3rem; }
+li { margin: .3rem 0; }
+code { font-family: 'JetBrains Mono', monospace; font-size: .82rem; background: #f2f0eb; padding: 2px 6px; border-radius: 4px; color: #333; }
+pre { background: #f2f0eb; border: 1px solid #e0dbd4; border-radius: 8px; padding: 1.1rem 1.25rem; overflow-x: auto; margin: 1rem 0 1.5rem; font-size: .8rem; line-height: 1.65; font-family: 'JetBrains Mono', monospace; }
+small, .small { font-size: .88rem; }
+
+.callout { background: var(--soft); border-left: 4px solid var(--accent); padding: 1rem 1.25rem; margin: 1.25rem 0 1.5rem; border-radius: 0 8px 8px 0; }
+.callout.green { background: var(--soft2); border-left-color: var(--accent2); }
+.callout.orange { background: var(--soft3); border-left-color: var(--accent3); }
+.callout p { margin: 0; }
+.callout p + p { margin-top: .5rem; }
+
+.cardgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0 1.75rem; }
+.card { border: 1px solid var(--line); border-radius: 10px; padding: 1.1rem 1.1rem .9rem; background: #fff; }
+.card .card-icon { font-size: 1.4rem; margin-bottom: .5rem; }
+.card h4 { margin-top: 0; font-size: .95rem; }
+.card p { font-size: .88rem; color: #444; margin-bottom: 0; }
+
+.metricgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 12px; margin: 1.25rem 0 1.75rem; }
+.metric { border: 1px solid var(--line); border-radius: 10px; padding: .9rem 1.1rem; background: #fff; }
+.metric .label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 4px; }
+.metric .value { font-size: 1.7rem; font-weight: 700; color: var(--accent); line-height: 1.1; }
+.metric .unit { font-size: .82rem; color: var(--muted); margin-top: 2px; }
+.metric.green .value { color: var(--accent2); }
+.metric.red .value { color: var(--accent3); }
+
+table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: 1rem 0 1.5rem; }
+th { text-align: left; border-bottom: 2px solid #c0bab2; padding: 8px 12px; font-size: .82rem; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .05em; }
+td { padding: 8px 12px; border-bottom: 1px solid #e8e4de; vertical-align: top; }
+tr:nth-child(even) td { background: #fafaf8; }
+.caption { font-size: .82rem; color: var(--muted); font-style: italic; margin-top: -.5rem; margin-bottom: 1rem; }
+
+.scenario-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: 1rem; margin: 1.25rem 0 1.75rem; }
+.scenario { border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.1rem; background: #fff; }
+.scenario .sc-label { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: .5rem; font-family: 'JetBrains Mono', monospace; }
+.scenario .sc-title { font-size: .97rem; font-weight: 600; margin-bottom: .75rem; color: var(--ink); }
+.weight-row { display: flex; align-items: center; gap: 8px; margin: .35rem 0; }
+.weight-name { width: 115px; font-size: .82rem; color: #444; flex-shrink: 0; }
+.weight-track { flex: 1; height: 10px; background: #ece9e3; border-radius: 999px; overflow: hidden; }
+.weight-fill { height: 100%; border-radius: 999px; }
+.fill-safety    { background: #c2410c; }
+.fill-efficacy  { background: #4338ca; }
+.fill-comfort   { background: #0f766e; }
+.fill-curiosity { background: #9333ea; }
+.weight-val { font-size: .8rem; color: var(--muted); min-width: 34px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+.chart-block { background: #faf9f6; border: 1px solid var(--line); border-radius: 10px; padding: 1.25rem 1.5rem; margin: 1.25rem 0 1.75rem; }
+.chart-title { font-size: .88rem; font-weight: 600; margin-bottom: 1rem; color: #444; }
+.barrow { display: flex; align-items: center; gap: 12px; margin: .6rem 0; }
+.barlabel { width: 260px; font-size: .85rem; flex-shrink: 0; color: #333; }
+.bartrack { flex: 1; height: 14px; background: #ece9e3; border-radius: 999px; overflow: hidden; }
+.barfill { height: 100%; border-radius: 999px; background: var(--accent); }
+.barfill.green { background: var(--accent2); }
+.barfill.red { background: var(--accent3); }
+.barval { font-size: .82rem; color: var(--muted); min-width: 44px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+.steps { margin: 1.25rem 0 1.75rem; }
+.step { display: flex; gap: 1.1rem; margin-bottom: 1rem; }
+.step-num { flex-shrink: 0; width: 28px; height: 28px; background: var(--accent); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 700; margin-top: 3px; }
+.step-body p { margin: 0; }
+.step-body strong { display: block; margin-bottom: .15rem; }
+
+.esc-chain { margin: 1.25rem 0 1.75rem; }
+.esc-node { display: flex; gap: 1rem; padding: .9rem 1.1rem; border: 1px solid var(--line); border-radius: 10px; margin-bottom: .5rem; background: #fff; align-items: flex-start; }
+.esc-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 2px; }
+.esc-body h4 { margin: 0 0 .25rem; font-size: .95rem; }
+.esc-body p { margin: 0; font-size: .88rem; color: #444; }
+.esc-arrow { text-align: center; font-size: .85rem; color: var(--muted); margin: .15rem 0; }
+
+.toc { background: var(--soft); border-radius: 10px; padding: 1.1rem 1.4rem; margin: 1.5rem 0 2rem; }
+.toc p { font-weight: 600; margin-bottom: .5rem; }
+.toc ol { margin: 0; }
+.toc li { font-size: .92rem; margin: .2rem 0; }
+.toc a { color: var(--accent); text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
+
+.read-next { background: var(--soft); border-radius: 10px; padding: 1.25rem 1.5rem; margin-top: 2.5rem; }
+.read-next h3 { margin-top: 0; }
+.read-next ul { margin: 0; }
+.read-next li { font-size: .92rem; margin: .3rem 0; }
+
+@media (max-width: 640px) {
+  .hero h1 { font-size: 1.8rem; }
+  .body { padding: 1.5rem 1.25rem 0; }
+  nav { padding: .75rem 1rem; }
+  .metricgrid { grid-template-columns: 1fr 1fr; }
+  .weight-name { width: 90px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <a href="whitepaper_v05.html">Home</a>
+  <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+  <a href="tutorial_v0_5.html">Tutorial</a>
+  <a href="domain_ai_datacenters_v0_5.html">AI Data Centers</a>
+  <a href="domain_self_driving_v0_5.html">Self-Driving</a>
+  <a href="domain_autonomous_systems_v0_5.html" class="active">Autonomous Systems</a>
+  <a href="domain_software_engineering_v0_5.html">Software Eng</a>
+  <a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems_v0_5.html">Energy Systems</a>
+  <a href="domain_creative_systems_v0_5.html">Creative Systems</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Domain Deep-Dive · v0.5</div>
+  <h1>Autonomous Systems</h1>
+  <p class="subtitle">
+    How the Adaptive Utility Agent framework gives autonomous systems — industrial robots, cobots, drones, AMRs, inspection robots — dynamic weight shifting, principled abstention, independently updatable specialists, and the runtime evidence trail that living safety cases require.
+  </p>
+  <div class="audience-pills">
+    <span class="pill">Industrial robot engineers</span>
+    <span class="pill">Cobot integrators</span>
+    <span class="pill">Drone &amp; AMR teams</span>
+    <span class="pill">Safety-case engineers</span>
+    <span class="pill">Autonomy architects</span>
+  </div>
+</div>
+
+<div class="body">
+
+<div class="toc">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#spectrum">The autonomous systems spectrum</a></li>
+    <li><a href="#problem">The structural problem with static AI in autonomous systems</a></li>
+    <li><a href="#weights">Context-adaptive weight shifting across operating modes</a></li>
+    <li><a href="#abstention">Confidence gates, safe states, and formal abstention</a></li>
+    <li><a href="#specialists">Specialist decomposition for the autonomy stack</a></li>
+    <li><a href="#safety-case">The dynamic safety case argument</a></li>
+    <li><a href="#standards">Standards mapping: ISO 10218:2025, IEC 61508, ISO 13482</a></li>
+    <li><a href="#hardware">Edge hardware: Jetson-class specialists and pipeline parallelism</a></li>
+    <li><a href="#updateability">Independent updateability and narrower certification scope</a></li>
+    <li><a href="#fleet">Fleet-level correction propagation</a></li>
+    <li><a href="#not-replace">What the framework does not replace</a></li>
+    <li><a href="#mvp">MVP shape: shadow mode before any live control</a></li>
+    <li><a href="#next">Where to read next</a></li>
+  </ol>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="spectrum">1. The autonomous systems spectrum</h2>
+
+<p>The self-driving domain doc covers one application — road vehicles — in depth. This document covers the broader class: any autonomous system that makes real-time decisions under uncertainty, subject to hard safety constraints, across a range of platforms that share the same structural problems even though their operating environments differ substantially.</p>
+
+<div class="cardgrid">
+  <div class="card">
+    <div class="card-icon">🦾</div>
+    <h4>Industrial robots &amp; cobots</h4>
+    <p>Fixed-arm robots on production lines; collaborative robots (cobots) sharing workspace with humans. Key tension: throughput in free zones, hard safety constraints when humans are present. ISO 10218:2025 governs both.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🤖</div>
+    <h4>Autonomous mobile robots (AMRs)</h4>
+    <p>Warehouse logistics, hospital delivery, factory floor transport. Navigate dynamic environments alongside humans. Must handle unexpected obstacles, changing routes, and safe-stop without damaging payloads.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🚁</div>
+    <h4>Drones — delivery &amp; inspection</h4>
+    <p>Delivery drones balancing speed, energy, and airspace safety. Inspection drones operating in hazardous environments (nuclear, offshore, confined spaces) where sensor degradation and power budgets are hard constraints.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🔬</div>
+    <h4>Surgical &amp; medical robots</h4>
+    <p>Highest-stakes autonomous systems. Confidence minimums are near-absolute. Any AI layer must produce an auditable decision trail, never proceed on low confidence, and support post-procedure review.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🏗️</div>
+    <h4>Inspection &amp; infrastructure robots</h4>
+    <p>Nuclear, subsea, mining, and civil infrastructure inspection. Often operating in environments too hazardous for humans, with no real-time human oversight available. Formal abstention and safe-state behavior are non-negotiable.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">📋</div>
+    <h4>Safety-case engineering teams</h4>
+    <p>Engineers who write assurance cases, conduct STPA/FMEA analyses, and maintain living safety arguments. Need runtime evidence — not just design-time proofs — that the system's behavior still satisfies its safety argument after updates.</p>
+  </div>
+</div>
+
+<p>What all of these share: real-time decisions under uncertainty, hard safety constraints that must not be violated, objectives that conflict across operating contexts, and the same structural problem with static AI — there is no feedback loop between detected errors and system behavior between releases.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="problem">2. The structural problem with static AI in autonomous systems</h2>
+
+<p>Current approaches to AI in autonomous systems treat the AI component as a static artifact: trained offline, validated at design time, deployed into the field. When the AI makes an error — a perception failure at a specific junction type, a planning bias in narrow corridors, a wrong torque estimate under load — there is no mechanism to correct that behavior between training cycles. The system will make the same error tomorrow, and in every unit in the fleet, until a new model version ships.</p>
+
+<p>For autonomous systems, this failure mode compounds in three ways that make it worse than it is for general AI:</p>
+
+<ul>
+  <li><strong>Errors are physical.</strong> A wrong planning decision does not produce a wrong text response — it produces a robot collision, a dropped payload, a drone that fails to abort during a storm. The cost of repeated errors is not user frustration; it is safety incidents and regulatory action.</li>
+  <li><strong>Operating environments change faster than training cycles.</strong> A cobot deployed in a factory where a new human operator joins the team encounters a new movement pattern it was not trained on. An inspection drone enters a tunnel with different acoustic properties than the training set. These environmental drifts happen continuously; retraining cycles happen quarterly at best.</li>
+  <li><strong>Safety cases become stale.</strong> Regulatory and certification bodies are increasingly requiring that safety arguments hold not just at design time but throughout the operational life of the system. A static AI component whose behavior cannot be explained, tracked, or corrected at runtime makes the safety case a point-in-time proof that grows less defensible with every deployment hour.</li>
+</ul>
+
+<p>The framework addresses all three: the correction loop reduces repeated errors between releases, the confidence gate handles environmental drift by abstaining rather than proceeding on low confidence, and the utility log + assertions store produce the runtime evidence that living safety cases require.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="weights">3. Context-adaptive weight shifting across operating modes</h2>
+
+<p>The same autonomous system operates under fundamentally different risk profiles across its operating modes. A cobot moving freely in a cage-free zone has very different safety requirements than the same cobot executing a collaborative task 30cm from a human operator. A delivery drone in clear conditions is operating very differently from the same drone with a battery at 20% capacity and a storm front approaching.</p>
+
+<p>The framework's field-weighted utility function handles this with a single formula — the weights shift with context, producing different behavior without separate rule sets for each scenario:</p>
+
+<pre>
+U = w_s(f) · Safety  +  w_e(f) · Efficacy  +  w_c(f) · Comfort/Throughput
+
+f — operating context (human-present, hazard zone, normal, degraded sensors...)
+
+Decision rule:
+  act    if C ≥ C_min(f)  AND  E ≥ E_min(f)
+  safe-state / abstain     otherwise
+</pre>
+
+<h3>Weight profiles across autonomous system operating contexts</h3>
+
+<div class="scenario-grid">
+
+  <div class="scenario">
+    <div class="sc-label">Industrial Robot · Scenario A</div>
+    <div class="sc-title">Free-operation zone (no humans)</div>
+    <div class="weight-row"><span class="weight-name">Safety (w_s)</span><div class="weight-track"><div class="weight-fill fill-safety" style="width:40%"></div></div><span class="weight-val">0.40</span></div>
+    <div class="weight-row"><span class="weight-name">Efficacy / throughput</span><div class="weight-track"><div class="weight-fill fill-efficacy" style="width:50%"></div></div><span class="weight-val">0.50</span></div>
+    <div class="weight-row"><span class="weight-name">Comfort / smoothness</span><div class="weight-track"><div class="weight-fill fill-comfort" style="width:10%"></div></div><span class="weight-val">0.10</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Throughput is a significant priority in cage-free zones. Safety constraints still apply but do not dominate at the expense of production rate. Typical of high-speed pick-and-place in human-absent areas.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Industrial Robot · Scenario B</div>
+    <div class="sc-title">Human-present / collaborative mode (cobot)</div>
+    <div class="weight-row"><span class="weight-name">Safety (w_s)</span><div class="weight-track"><div class="weight-fill fill-safety" style="width:85%"></div></div><span class="weight-val">0.85</span></div>
+    <div class="weight-row"><span class="weight-name">Efficacy / throughput</span><div class="weight-track"><div class="weight-fill fill-efficacy" style="width:12%"></div></div><span class="weight-val">0.12</span></div>
+    <div class="weight-row"><span class="weight-name">Comfort / smoothness</span><div class="weight-track"><div class="weight-fill fill-comfort" style="width:3%"></div></div><span class="weight-val">0.03</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">ISO 10218:2025 collaborative mode. When a human enters the collaborative workspace, safety dominates at 0.85. The same robot that was optimizing throughput now accepts lower speed and wider clearances without a separate control program.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Drone · Scenario C</div>
+    <div class="sc-title">Standard delivery / inspection (clear conditions)</div>
+    <div class="weight-row"><span class="weight-name">Safety (w_s)</span><div class="weight-track"><div class="weight-fill fill-safety" style="width:50%"></div></div><span class="weight-val">0.50</span></div>
+    <div class="weight-row"><span class="weight-name">Efficiency / speed</span><div class="weight-track"><div class="weight-fill fill-efficacy" style="width:40%"></div></div><span class="weight-val">0.40</span></div>
+    <div class="weight-row"><span class="weight-name">Energy / endurance</span><div class="weight-track"><div class="weight-fill fill-comfort" style="width:10%"></div></div><span class="weight-val">0.10</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Normal delivery or inspection conditions. Efficiency is a meaningful weight — on-time delivery and battery management matter. From <a href="whitepaper_full_v0_5.html#applications">§2.2 of the full whitepaper</a>.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Drone · Scenario D</div>
+    <div class="sc-title">Elevated hazard (storm, low battery, sensor degradation)</div>
+    <div class="weight-row"><span class="weight-name">Safety (w_s)</span><div class="weight-track"><div class="weight-fill fill-safety" style="width:80%"></div></div><span class="weight-val">0.80</span></div>
+    <div class="weight-row"><span class="weight-name">Efficiency / speed</span><div class="weight-track"><div class="weight-fill fill-efficacy" style="width:15%"></div></div><span class="weight-val">0.15</span></div>
+    <div class="weight-row"><span class="weight-name">Energy / endurance</span><div class="weight-track"><div class="weight-fill fill-comfort" style="width:5%"></div></div><span class="weight-val">0.05</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Storm front detected, battery below 25%, or sensor uncertainty above threshold. Safety rises to 0.80 — longer route, lower altitude, or abort-and-return selected automatically. The same formula, different weights. From <a href="whitepaper_full_v0_5.html#applications">§2.2</a>.</p>
+  </div>
+
+</div>
+
+<div class="callout">
+  <p><strong>No separate rule sets.</strong> The cobot does not need a "collaborative mode program" and a "free-operation program." The drone does not need a "storm rule." The operating context updates the weight vector — detected by the field classifier from sensor inputs and environmental signals — and the utility function produces the appropriate behavior automatically. Adding a new operating context means adding a new weight profile and a classifier signal, not a new decision program.</p>
+</div>
+
+<h3>Sensor degradation and confidence-driven weight tightening</h3>
+
+<p>When sensor fusion confidence falls — lidar degraded in dust, camera occluded, GPS denied in a tunnel — the confidence term C falls independently of the weight profile shift. The interaction between falling C and C_min produces the appropriate response: C_min for safety-critical autonomous systems is typically 0.85–0.95, meaning that sensor degradation drives abstention before it drives incorrect action. This is the designed behavior, not a failure mode.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="abstention">4. Confidence gates, safe states, and formal abstention</h2>
+
+<p>Every safety standard governing autonomous systems requires the system to transition to a safe state when it reaches the boundary of its competence. ISO 10218:2025 requires application-specific Performance Level (PL) determination with defined fail-safe behaviors. IEC 61508 requires safe failure fractions and fail-operational / fail-safe mode definitions. The framework's confidence gate produces exactly this behavior formally and testably.</p>
+
+<pre>
+act        if  C ≥ C_min(f)  AND  E ≥ E_min(f)
+safe-state if  C &lt; C_min(f)  OR   E &lt; E_min(f)
+</pre>
+
+<p>The gate is a hard decision boundary, not a soft preference. Below C_min, the system does not produce a lower-quality output — it produces no output and initiates the safe-state transition. This is what makes the abstention behavior formally testable: a test suite can verify that for any input that drives C below C_min, the system always enters the safe state.</p>
+
+<table>
+  <thead>
+    <tr><th>Platform type</th><th>C_min</th><th>Safe-state behavior</th><th>Standard reference</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Surgical / medical robot</td><td>0.95</td><td>Hold position; alert surgeon; await explicit override</td><td>IEC 62304, ISO 14971</td></tr>
+    <tr><td>Industrial robot (human-present)</td><td>0.90</td><td>Reduce speed to collaborative limit; stop if collision predicted</td><td>ISO 10218:2025 PL e</td></tr>
+    <tr><td>Inspection robot (hazardous zone)</td><td>0.90</td><td>Halt; return to safe zone; alert remote operator</td><td>IEC 61508 SIL 2/3</td></tr>
+    <tr><td>Delivery drone (elevated hazard)</td><td>0.85</td><td>Abort delivery; return to base; do not attempt route</td><td>FAA Part 107, EASA UAS</td></tr>
+    <tr><td>AMR (warehouse, humans present)</td><td>0.80</td><td>Reduce speed; sound alert; stop at safe distance</td><td>ISO 3691-4, ANSI B56.5</td></tr>
+    <tr><td>Industrial robot (free zone)</td><td>0.70</td><td>Stop cycle; request human review before resuming</td><td>ISO 10218:2025 PL d</td></tr>
+  </tbody>
+</table>
+<p class="caption">Illustrative thresholds. Must be validated against the specific ODD and risk assessment for each application. See <a href="whitepaper_full_v0_5.html#field-bounds">§5.1 of the full whitepaper</a> for the C_min derivation methodology from professional licensing standards.</p>
+
+<div class="callout orange">
+  <p><strong>Why this matters for functional safety certification.</strong> ISO 10218:2025's shift to explicit, application-specific Performance Level determination means that "the robot stops when it should" must be provable, not assumed. The confidence gate is a directly testable safety function: given any test case that drives measured confidence below C_min, the system must produce a safe-state transition. This maps cleanly to the functional safety requirement structure — it is a defined input-output safety function with a verifiable boundary condition.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="specialists">5. Specialist decomposition for the autonomy stack</h2>
+
+<p>Autonomous systems already reason in terms of functional decomposition — perception, planning, and control are distinct pipelines in every production autonomy stack. The Micro-Expert model formalizes this at the model-graph level: each functional domain becomes an independently deployable specialist with its own weights, calibration cycle, confidence signal, and blue-green deployment lifecycle.</p>
+
+<div class="cardgrid">
+  <div class="card">
+    <div class="card-icon">👁️</div>
+    <h4>Perception specialist</h4>
+    <p>Object detection, tracking, pose estimation, environment mapping. Produces confidence-annotated scene representations. Most update-sensitive — edge cases from field encounters improve this specialist first. Validation via labeled sensor recordings.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🗺️</div>
+    <h4>Motion planning specialist</h4>
+    <p>Trajectory generation, path selection, collision-free motion. Updated independently when planning improvements don't require perception retraining. Confidence signal for trajectory feasibility drives abstention before a manoeuvre executes.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">⚠️</div>
+    <h4>Safety constraint specialist</h4>
+    <p>Encodes hard safety rules: speed limits in human-present zones, force thresholds for collaborative contact, exclusion zones, emergency stop conditions. Narrowest update scope — changing a force threshold updates only this specialist.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">📋</div>
+    <h4>Domain rules specialist</h4>
+    <p>Application-specific policy: warehouse routing rules, nuclear inspection protocols, airspace regulations. Most updateable when entering new geographies or application domains. ISO 10218:2025 collaborative mode parameters live here.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">⚖️</div>
+    <h4>Arbiter Agent</h4>
+    <p>Resolves contradictions between specialists — e.g., planning specialist generates a trajectory that the safety constraint specialist flags. Applies conservation-first policy under unresolved contradiction. Logs all resolution events for post-hoc review.</p>
+  </div>
+</div>
+
+<p>The inter-specialist interface is a structured protocol that all specialists share:</p>
+
+<pre>
+Request:  { query, context, field, confidence_floor, session_id }
+Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
+</pre>
+
+<p>Contradiction between specialists — planning specialist generates a proceed trajectory while the safety constraint specialist flags a threshold violation — is the key case the Arbiter is designed for. The Arbiter's conservation-first policy means: under any unresolved contradiction involving the safety constraint specialist, the most conservative safe output wins. This is not heuristic; it is the defined arbitration policy enforced by the confidence threshold gate on the Arbiter's own output.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="safety-case">6. The dynamic safety case argument</h2>
+
+<p>This is the section of this document that has no equivalent in the self-driving domain doc, because it is most relevant to safety-case engineering teams rather than stack engineers. It addresses a problem that the autonomous systems safety research community has identified as critical: <strong>static safety cases become obsolete as systems evolve.</strong></p>
+
+<h3>The problem with static safety cases</h3>
+
+<p>A traditional safety case is a structured argument — built at design time — that a system meets its safety requirements given the evidence available at that point. For autonomous systems, this is increasingly untenable: the system's AI components learn, its operating environment changes, its software is updated. A safety argument that was valid at initial certification may not be valid after a software update, a new deployment geography, or 10,000 hours of operational learning.</p>
+
+<p>The current research frontier in autonomous systems safety (2024–2025) is the concept of <em>dynamic safety cases</em> — living assurance documents that co-evolve with the operational system, drawing on runtime evidence rather than relying solely on design-time proofs. Regulatory bodies across sectors (CAA, HSE, ONR, RSSB) are converging on the requirement that autonomous systems produce runtime evidence of continued safety compliance, not just a point-in-time certification.</p>
+
+<h3>What the framework contributes to the dynamic safety case</h3>
+
+<p>The framework's architecture produces exactly the runtime evidence that dynamic safety cases require, as a byproduct of its normal operation:</p>
+
+<div class="chart-block">
+  <div class="chart-title">Framework outputs mapped to dynamic safety case evidence requirements</div>
+  <div class="barrow">
+    <span class="barlabel">Utility log (U, E, C per decision)</span>
+    <div class="bartrack"><div class="barfill green" style="width:92%"></div></div>
+    <span class="barval">Continuous</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Contradiction events (type, severity, resolution)</span>
+    <div class="bartrack"><div class="barfill green" style="width:88%"></div></div>
+    <span class="barval">Per-event</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Abstention events (C &lt; C_min, trigger, context)</span>
+    <div class="bartrack"><div class="barfill green" style="width:85%"></div></div>
+    <span class="barval">Per-event</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Assertions store (verified corrections with timestamps)</span>
+    <div class="bartrack"><div class="barfill" style="width:80%"></div></div>
+    <span class="barval">Cumulative</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Blue-green deployment log (trigger, T window, outcome)</span>
+    <div class="bartrack"><div class="barfill" style="width:75%"></div></div>
+    <span class="barval">Per update</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Arbiter evidence chains (internal, per contradiction)</span>
+    <div class="bartrack"><div class="barfill" style="width:72%"></div></div>
+    <span class="barval">Per verdict</span>
+  </div>
+  <p class="caption" style="margin-top:.75rem">Each row is a structured, typed log record produced by the framework's normal operation. Together they constitute runtime evidence that the safety argument's key claims — "the system abstains when uncertain," "errors are detected and corrected," "updates are validated before deployment" — hold in production, not just in the design-time test suite.</p>
+</div>
+
+<h3>The three safety argument claims the framework directly supports</h3>
+
+<p>A safety case for an autonomous system typically needs to argue three things about its AI component. The framework supports all three with runtime evidence:</p>
+
+<ol>
+  <li>
+    <strong>"The system does not proceed when its competence is insufficient."</strong> — Supported by the confidence gate producing a logged abstention event every time C falls below C_min. The log records the field, the confidence value at the time of abstention, and the sensor context. Safety reviewers can query this log to verify the gate is functioning and measure its activation rate over the operational period.
+  </li>
+  <li>
+    <strong>"Errors are detected and the system does not repeat them."</strong> — Supported by the contradiction detection and assertions store pipeline. When an error is detected, a structured correction is stored with a timestamp and confidence level. The correction is injected into future sessions immediately and feeds the calibration pipeline for weight-level correction. The log records both the detection event and the resolution event, providing evidence that the system's correction mechanism is functioning.
+  </li>
+  <li>
+    <strong>"Updates to the AI component are validated before deployment and do not regress safety properties."</strong> — Supported by the blue-green deployment protocol. Every specialist update has a logged trigger (which utility deviation, over which statistical window), a logged promotion trajectory (traffic split over time), a logged benchmark gate result, and a clear rollback path. For safety-critical fields, the T ≥ 246 interaction window ensures the update has demonstrated sustained improvement before promotion. This is directly auditable by a safety reviewer.
+  </li>
+</ol>
+
+<div class="callout green">
+  <p><strong>What this means for the safety case engineer.</strong> The framework does not replace the safety case — it feeds it. The structured logs it produces are the runtime evidence that transforms a static design-time argument into a living document. The safety case engineer's job shifts from "prove at design time that the system will behave safely" to "define what evidence the runtime system must produce to demonstrate continued safety compliance, and configure the framework to produce it." That is a tractable engineering problem rather than an intractable certification bottleneck.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="standards">7. Standards mapping: ISO 10218:2025, IEC 61508, ISO 13482</h2>
+
+<p>The 2025 revision of ISO 10218 (the first major update since 2011) makes functional safety requirements explicit rather than implied, and integrates the former ISO/TS 15066 for collaborative robot applications. The key shift: instead of a blanket Performance Level d (PLd) requirement for all safety functions, ISO 10218:2025 requires application-specific PL determination based on actual risk parameters. This creates a direct mapping opportunity to the framework's field-specific C_min values.</p>
+
+<table>
+  <thead>
+    <tr><th>Standard</th><th>Key requirement</th><th>Framework property that addresses it</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>ISO 10218:2025</strong><br><small>Industrial &amp; cobot safety</small></td>
+      <td>Application-specific Performance Level (PL) with defined fail-safe behavior per safety function; explicit functional safety requirements; cybersecurity scope</td>
+      <td>Confidence gate is a testable safety function with defined PL-equivalent behavior (abstain at C &lt; C_min). Field-specific C_min maps to application-specific PL. Abstention log is the functional safety evidence.</td>
+    </tr>
+    <tr>
+      <td><strong>IEC 61508</strong><br><small>Functional safety (general)</small></td>
+      <td>Safety Integrity Level (SIL) determination; runtime safety monitoring; fail-safe / fail-operational mode; systematic capability</td>
+      <td>Utility score as runtime safety monitor (systematic deviation from baseline triggers response). Contradiction detector catches systematic failures. Assertions store prevents repeated failures — the SIL architecture requires this.</td>
+    </tr>
+    <tr>
+      <td><strong>ISO 13482</strong><br><small>Service robots</small></td>
+      <td>Safety validation for robots operating in proximity to people outside industrial settings; risk assessment for novel applications</td>
+      <td>Shadow-mode validation with T ≥ 246 window before any operational role. Blue-green protocol produces the validation evidence base. Confidence gate handles proximity-to-person risk dynamically.</td>
+    </tr>
+    <tr>
+      <td><strong>ISO 26262</strong><br><small>Automotive / AV</small></td>
+      <td>ASIL decomposition; component-level validation scope on update; software update validation</td>
+      <td>Each specialist has independent weights and update cycle. Updating the domain rules specialist does not force revalidation of perception. ASIL-equivalent decomposition is natural in the specialist architecture.</td>
+    </tr>
+    <tr>
+      <td><strong>EU AI Act (2024)</strong><br><small>High-risk AI systems</small></td>
+      <td>Audit trail, explainability, human oversight capability, post-market monitoring</td>
+      <td>Utility log provides the audit trail. Arbiter evidence chain provides the explanation for each contested decision. Confidence gate enables human oversight by triggering escalation. Post-market monitoring = ongoing utility trend tracking.</td>
+    </tr>
+  </tbody>
+</table>
+<p class="caption">This mapping is not a compliance claim — it identifies where the framework's properties align with standard requirements. Full compliance requires a complete safety case with appropriate evidence, risk assessments, and validation testing. The framework provides the runtime evidence layer, not the complete certification package.</p>
+
+<div class="callout orange">
+  <p><strong>What the 2025 ISO 10218 update means practically.</strong> The old standard's blanket PLd requirement is replaced by application-specific PL determination. This means a cobot in a low-risk application (slow-speed, force-limited, no sharp tooling) may only need PLc, while one in a higher-risk application needs PLe. The framework's field-specific C_min values and penalty multipliers are designed to carry exactly this differentiation — the configuration table maps to the application-specific PL tier, and the confidence gate implements the required fail-safe behavior at that tier's threshold.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="hardware">8. Edge hardware: Jetson-class specialists and pipeline parallelism</h2>
+
+<p>For autonomous systems deployed on physical platforms, the hardware argument is not about cost — it is about physical feasibility. A monolithic frontier model consuming 700W cannot run on a robot, a drone, or a mobile inspection platform. The Micro-Expert model running on Jetson-class hardware is the only path to AI-quality reasoning on battery-constrained edge platforms.</p>
+
+<div class="metricgrid">
+  <div class="metric red">
+    <div class="label">H100 SXM5</div>
+    <div class="value">700 W</div>
+    <div class="unit">Cannot run on any mobile platform</div>
+  </div>
+  <div class="metric">
+    <div class="label">RTX 4090</div>
+    <div class="value">450 W</div>
+    <div class="unit">Drone power budget: 200–500W total</div>
+  </div>
+  <div class="metric green">
+    <div class="label">3× Jetson Orin NX</div>
+    <div class="value">~75 W</div>
+    <div class="unit">3 specialists: perception + planning + rules</div>
+  </div>
+  <div class="metric green">
+    <div class="label">Jetson AGX Orin</div>
+    <div class="value">15–60 W</div>
+    <div class="unit">32 GB unified memory, ~$900</div>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Hardware</th><th>VRAM</th><th>TDP</th><th>Cost (2025)</th><th>Deployment context</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Jetson AGX Orin</strong></td><td>32 GB unified</td><td>15–60 W</td><td>~$900</td><td>Industrial robot, AMR, inspection platform hub</td></tr>
+    <tr><td><strong>Jetson Orin NX</strong></td><td>16 GB unified</td><td>10–25 W</td><td>~$500</td><td>Drone, small mobile platform, specialist node</td></tr>
+    <tr><td>Jetson Orin Nano</td><td>8 GB unified</td><td>7–15 W</td><td>~$250</td><td>Lightweight specialist, sensor fusion assistant</td></tr>
+    <tr><td>H100 SXM5</td><td>80 GB</td><td>700 W</td><td>~$30,000–35,000</td><td>Datacenter only — physically impossible on any mobile platform</td></tr>
+  </tbody>
+</table>
+<p class="caption">Hardware specs from NVIDIA (2025). See <a href="whitepaper_full_v0_5.html#edge-deployment">§10.9.6 of the full whitepaper</a> for the full edge deployment analysis and worked power budget examples.</p>
+
+<h3>Pipeline parallelism: specialists run concurrently, not sequentially</h3>
+
+<p>In the Micro-Expert deployment on a physical platform, specialists do not run sequentially — they run in a pipeline. This is the same architecture that production autonomy stacks (Tesla FSD, Waymo) use for their neural network pipelines. The Micro-Expert model applies it at the model-graph level:</p>
+
+<pre>
+Sequential assumption (naive):
+    Perception  →  Planning  →  Safety constraints  →  Decision
+    [50ms]          [40ms]           [15ms]              [5ms]   Total: ~110ms
+
+Actual pipeline architecture (parallel):
+    Perception        [50ms] ─────────────────────────────┐
+    Planning      ←───────────── [40ms from perception] ──┤→ Arbiter → Output
+    Safety/Rules      [15ms running in parallel] ──────────┘
+    Total: ~55ms + arbitration overhead ≈ 60–65ms
+</pre>
+
+<p>For a cobot running a tight control loop (typically 1kHz for low-level control, 10–100Hz for the AI decision layer), a 65ms AI decision latency — running on embedded Jetson hardware well within the platform's power envelope — is feasible where a 700W datacenter GPU is not.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="updateability">9. Independent updateability and narrower certification scope</h2>
+
+<p>Every update to an autonomous system's AI component is a certification event in safety-critical domains. If the entire AI is a monolithic model, every update — even updating a traffic rule for a new city, adjusting a force threshold for a new material, improving object detection for a new object class — forces revalidation of the entire system. This is the primary reason AI update cadences in certified autonomous systems are so slow.</p>
+
+<div class="chart-block">
+  <div class="chart-title">Revalidation scope: monolithic vs. specialist decomposition — illustrative</div>
+  <div class="barrow">
+    <span class="barlabel">Monolith: update domain rules (new site)</span>
+    <div class="bartrack"><div class="barfill red" style="width:100%"></div></div>
+    <span class="barval">100%</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Specialist: update domain rules (new site)</span>
+    <div class="bartrack"><div class="barfill green" style="width:15%"></div></div>
+    <span class="barval">~15%</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Monolith: improve perception (new object class)</span>
+    <div class="bartrack"><div class="barfill red" style="width:100%"></div></div>
+    <span class="barval">100%</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Specialist: improve perception (new object class)</span>
+    <div class="bartrack"><div class="barfill" style="width:35%"></div></div>
+    <span class="barval">~35%</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Monolith: adjust safety thresholds (new material)</span>
+    <div class="bartrack"><div class="barfill red" style="width:100%"></div></div>
+    <span class="barval">100%</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Specialist: adjust safety thresholds (new material)</span>
+    <div class="bartrack"><div class="barfill green" style="width:12%"></div></div>
+    <span class="barval">~12%</span>
+  </div>
+  <p class="caption" style="margin-top:.75rem">Illustrative. Actual scope depends on interface stability. The domain rules and safety constraint specialists have the narrowest interfaces and the most contained update surfaces — they are the highest-value starting points for adopting the specialist architecture.</p>
+</div>
+
+<p>The principle that enables this is identical to what ASIL decomposition achieves in ISO 26262: safety goals are allocated to components, and component-level validation can satisfy the overall safety case if the decomposition is sound and the interfaces between components are stable. The specialist architecture is not a replacement for ASIL decomposition — it is an AI architecture that is <em>compatible</em> with that reasoning pattern in a way that a monolithic model is not.</p>
+
+<h3>The blue-green deployment trigger for safety-critical autonomous systems</h3>
+
+<pre>
+Trigger a deployment cycle when ALL of:
+    |U_current − U_baseline| > δ(field)     [significant deviation]
+    deviation sustained for ≥ T interactions  [not transient noise]
+    held-out scenario library available        [can evaluate candidate]
+
+For safety-critical fields (surgery, aviation, high-stakes robotics):
+    δ ≈ 0.005–0.010   T ≥ 246 interactions
+
+T = 246 comes from a power analysis on observed utility variance (σ ≈ 0.04)
+with α = 0.05. High-stakes fields demand a large confirmation window
+before any traffic shifts.
+</pre>
+
+<p>For a fleet of 50 cobots in a manufacturing plant each running 8 hours/day, 246 interactions per specialist can accumulate in hours to days — meaning corrections to the safety constraint specialist can be validated and deployed on the order of a workweek, not a quarter. That is the practical value of the combination of statistical rigor (T derived from power analysis) and independent specialist deployment (T applies only to the affected specialist, not the whole system).</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="fleet">10. Fleet-level correction propagation</h2>
+
+<p>A fleet of 100 AMRs in a warehouse, 50 cobots in a factory, or 30 inspection drones across multiple sites constitutes a collective learning resource that no single unit exploits in a static AI architecture. An edge case encountered by one unit — a new pallet configuration that causes a perception failure, a cobot operating mode the planning specialist had not seen, a tunnel with unusual acoustic reflections — takes months to propagate a correction across the fleet under a traditional retrain-and-redeploy cycle.</p>
+
+<p>The framework compresses this cycle for scoped corrections through the assertions store and DPO calibration pipeline:</p>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <strong>Edge case encountered and logged</strong>
+      The specialist on unit X flags a low-confidence output (C &lt; C_min) or the Arbiter detects a contradiction. The full decision context — sensor state, confidence values, specialist outputs, resolution outcome — is logged as a structured event.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <strong>Human review generates a verified correction</strong>
+      The escalation packet is reviewed. The reviewed correct behavior is stored in the assertions store as a typed, confidence-annotated assertion with the scenario context. Decay class is assigned based on the nature of the correction (algorithm-level = Class A, site-specific rule = Class C or D).
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <strong>Correction routed to the relevant specialist only</strong>
+      A new object class → perception specialist only. A site-specific routing rule → domain rules specialist only. Planning specialist and safety constraint specialist are unaffected. The correction's scope is bounded by the specialist architecture.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <strong>DPO calibration cycle updates the specialist</strong>
+      The correction becomes a DPO training pair weighted by the field's penalty multiplier. The next calibration run incorporates it. The replay buffer ensures prior corrections are not erased.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <strong>Blue-green validation across the fleet</strong>
+      The updated specialist is promoted canary-first across fleet units. Statistical window T must be satisfied before full promotion. The log records which units have the updated specialist and which are still on the prior version — mixed-fleet operation is safe because each unit's blue-green state is independent.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-body">
+      <strong>Immediate correction via assertions injection</strong>
+      Before the calibration cycle completes, every unit that queries the assertions store for this scenario class receives the correction as a session-level injection. The model weights are not yet updated, but the behavioral correction is immediate and fleet-wide.
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="not-replace">11. What the framework does not replace</h2>
+
+<p>This section is included because the industrial robotics and safety-case audience will ask this question directly, and the honest answer matters.</p>
+
+<div class="callout orange">
+  <p><strong>The framework sits above the hardware safety layer, not below it.</strong> It is an AI decision-orchestration and continual learning layer. It does not replace — and is not designed to replace — the following:</p>
+</div>
+
+<ul>
+  <li><strong>Hardware interlocks and PLC safety layers.</strong> Emergency stops, safety-rated limit switches, hard-wired safety relays, and PLC-based safety logic (e.g., PILZ, Siemens SIMATIC Safety) operate independently of the AI layer. The framework's confidence gate triggers a safe-state request to the safety layer — the physical enforcement of that safe state is done by the hardware and PLC infrastructure, not by the AI.</li>
+  <li><strong>Low-level control safety.</strong> Servo drive safety functions (safe torque off, safe speed monitoring, safe direction) defined under IEC 61800-5-2 are implemented in certified drive firmware. The framework operates at the decision level, not the servo control level.</li>
+  <li><strong>Risk assessment and FMEA/STPA.</strong> The framework provides runtime evidence; it does not perform the initial hazard analysis. The safety engineer's STPA or FMEA defines what the hazards are and what the required safe behaviors should be — the framework then implements and logs those behaviors.</li>
+  <li><strong>Physical safety design.</strong> Guards, barriers, force/pressure limits on collaborative applications (as defined in ISO 10218:2025 biomechanical limits), and separation monitoring systems are hardware and sensor design decisions. The framework's collision avoidance confidence gate is a complement to, not a substitute for, physical protective measures.</li>
+  <li><strong>Full certification.</strong> The framework produces evidence that feeds a safety case. It does not produce the safety case itself, and it does not perform type approval, third-party certification, or regulatory filing. Those processes require human safety engineers and accredited certification bodies.</li>
+</ul>
+
+<p>The intended architecture is layered: hardware safety (interlocks, drives, physical barriers) → PLC safety logic → framework decision layer (confidence gate, abstention, correction loop) → operator / remote assist escalation. The framework is the AI decision layer in that stack, with well-defined interfaces to the layers above and below it.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="mvp">12. MVP shape: shadow mode before any live control</h2>
+
+<p>The right entry point for any autonomous system team is shadow mode — the framework runs alongside the production system, logs utility values and contradiction events, and builds an evidence base without influencing any physical actuator. This is the same validation logic as AV shadow mode testing, applied to the broader autonomous systems context.</p>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <strong>Deploy in shadow mode — zero influence on actuators</strong>
+      The framework receives the same sensor and decision inputs as the production system. It generates utility values, confidence scores, and contradiction events silently. No output influences any physical actuator. Duration: enough operating cycles to cover the full scenario space of the ODD.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <strong>Identify the highest-value, most-validatable specialist domain</strong>
+      Review shadow logs to find which scenario classes produce the most frequent low-confidence outputs or contradiction events. For industrial robots, this is often the safety constraint specialist (force thresholds, speed limits). For AMRs, often the domain rules specialist (routing policies). This is the highest-value starting point.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <strong>Validate the Arbiter policy against labeled scenario recordings</strong>
+      Run the Arbiter against a library of labeled scenario recordings where the correct outcome is known. Tune the arbitration policy before any live role. Measure the rate at which the Arbiter selects the correct outcome and the rate at which it correctly escalates when the correct outcome is not available.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <strong>Set conservative C_min — expect high shadow escalation rates early</strong>
+      Start with C_min at or above the platform's worst-case safety requirement (e.g., 0.92 for human-present industrial robot). Log the shadow escalation rate. This is the calibration baseline: how often would the framework have escalated under real operating conditions?
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <strong>Run first calibration cycle on shadow-collected DPO pairs</strong>
+      Use the shadow logs to build (preferred, rejected) pairs for the chosen specialist. Run the calibration cycle. Measure whether confidence calibration improves on the held-out scenario library. This is the validation that the correction loop functions on real data from the target platform.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-body">
+      <strong>Promote to advisory role first — no actuator authority</strong>
+      The framework's recommendations are surfaced to the human operator as advisory signals (e.g., on a monitoring dashboard) before any authority over actuators is granted. Validate that the recommendations are coherent and that the confidence values are well-calibrated against actual outcomes.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">7</div>
+    <div class="step-body">
+      <strong>Promote to limited actuator authority only after blue-green validation</strong>
+      The shadow specialist (BLUE) runs alongside the new candidate (GREEN) until GREEN's utility profile matches or exceeds BLUE across all decision classes above the safety threshold, over the T ≥ 246 interaction window. Only after this window closes, and only for the lowest-risk decision class, does any actuator authority begin.
+    </div>
+  </div>
+</div>
+
+<!-- READ NEXT -->
+<div class="read-next">
+  <h3>Where to read next</h3>
+  <ul>
+    <li><a href="whitepaper_full_v0_5.html#applications">§2.1–2.2 — Autonomous Vehicles &amp; Drone Delivery</a> — Full weight-shifting worked examples with numerical derivations</li>
+    <li><a href="whitepaper_full_v0_5.html#field-bounds">§5.1–5.2 — Field Bounds</a> — How C_min and E_min are derived from professional licensing and safety standards</li>
+    <li><a href="whitepaper_full_v0_5.html#arbiter">§10.5 — Arbiter Agent</a> — Full 4-check contradiction resolution, conservation-first policy, and escalation protocol</li>
+    <li><a href="whitepaper_full_v0_5.html#bluegreen">§10.7–10.8 — Blue-Green Deployment</a> — Trigger conditions, T thresholds for safety-critical fields, and rollback specification</li>
+    <li><a href="whitepaper_full_v0_5.html#edge-deployment">§10.9.6 — Edge and Battery-Constrained Deployment</a> — Jetson hardware table, pipeline parallelism argument, power budget analysis, drone examples</li>
+    <li><a href="whitepaper_full_v0_5.html#roadmap">§12 Phase 9 — Safety-Critical Deployment Validation</a> — Shadow-mode evaluation, auditable logs, and abstention testing roadmap</li>
+    <li><a href="domain_self_driving_v0_5.html">Self-Driving domain doc</a> — Road vehicles in depth: Waymo/Cruise/Aurora audience, ISO 26262, NHTSA, blue-green at vehicle scale</li>
+    <li><a href="domain_ai_datacenters_v0_5.html">AI Data Centers domain doc</a> — Fleet economics and LoRA multi-tenancy for operators running mixed hardware tiers</li>
+    <li><a href="tutorial_v0_5.html">Tutorial</a> — Architecture walkthrough, confidence updater, Arbiter code, and the blue-green deployment spec</li>
+    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub — Adaptive-Utility-Agent</a> — Agent code, routing experiment, and reference implementation</li>
+  </ul>
+</div>
+
+</div><!-- .body -->
+</div><!-- .page -->
+</body>
+</html>

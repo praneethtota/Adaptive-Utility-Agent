@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Dynamic Pricing v0.5</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f7f6f2;--paper:#ffffff;--ink:#18181b;--muted:#6b7280;--line:#e4e1da;
+  --accent:#4338ca;--accent2:#0f766e;--accent3:#c2410c;
+  --soft:#f0ede6;--soft2:#ecfdf5;--soft3:#fff7ed;--tag-bg:#eef2ff;--tag-text:#4338ca;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:16px;line-height:1.75;color:var(--ink);background:var(--bg);margin:0;padding:0}
+.page{max-width:960px;margin:0 auto;padding:0 0 5rem;background:var(--paper);border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
+nav{display:flex;flex-wrap:wrap;gap:.6rem .9rem;padding:1rem 2rem;border-bottom:1px solid var(--line);background:#fafaf8;font-size:.88rem;position:sticky;top:0;z-index:10}
+nav a{color:var(--accent);text-decoration:none;font-weight:500}
+nav a:hover{text-decoration:underline}
+nav a.active{color:var(--ink);font-weight:600}
+.hero{padding:3rem 2.5rem 2.5rem;border-bottom:1px solid var(--line);background:linear-gradient(160deg,#f0ede6 0%,#fff 60%)}
+.hero-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--tag-bg);color:var(--tag-text);padding:.25rem .7rem;border-radius:999px;margin-bottom:1.2rem}
+.hero h1{font-family:'DM Serif Display',Georgia,serif;font-size:2.4rem;line-height:1.2;margin:0 0 .75rem}
+.hero .subtitle{font-size:1.1rem;color:#444;max-width:700px;margin-bottom:1.5rem;line-height:1.6}
+.audience-pills{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem}
+.pill{font-size:.82rem;font-weight:500;padding:.3rem .85rem;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.body{padding:2rem 2.5rem 0}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.5rem;line-height:1.3;margin:2.5rem 0 .75rem;padding-bottom:.5rem;border-bottom:2px solid var(--line);color:var(--ink);scroll-margin-top:60px}
+h3{font-size:1.05rem;font-weight:600;margin:1.8rem 0 .5rem;color:#222}
+h4{font-size:.95rem;font-weight:600;margin:1.3rem 0 .4rem;color:#333}
+p{margin:0 0 1rem}
+a{color:var(--accent)}
+ul,ol{margin:.3rem 0 1rem;padding-left:1.3rem}
+li{margin:.3rem 0}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:#f2f0eb;padding:2px 6px;border-radius:4px;color:#333}
+pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:8px;padding:1.1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:.8rem;line-height:1.65;font-family:'JetBrains Mono',monospace}
+.callout{background:var(--soft);border-left:4px solid var(--accent);padding:1rem 1.25rem;margin:1.25rem 0 1.5rem;border-radius:0 8px 8px 0}
+.callout.green{background:var(--soft2);border-left-color:var(--accent2)}
+.callout.orange{background:var(--soft3);border-left-color:var(--accent3)}
+.callout p{margin:0}
+.callout p+p{margin-top:.5rem}
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;margin:1.25rem 0 1.75rem}
+.card{border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.1rem .9rem;background:#fff}
+.card .card-icon{font-size:1.4rem;margin-bottom:.5rem}
+.card h4{margin-top:0;font-size:.95rem}
+.card p{font-size:.88rem;color:#444;margin-bottom:0}
+.metricgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:1.25rem 0 1.75rem}
+.metric{border:1px solid var(--line);border-radius:10px;padding:.9rem 1.1rem;background:#fff}
+.metric .label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:4px}
+.metric .value{font-size:1.7rem;font-weight:700;color:var(--accent);line-height:1.1}
+.metric .unit{font-size:.82rem;color:var(--muted);margin-top:2px}
+.metric.green .value{color:var(--accent2)}
+.metric.red .value{color:var(--accent3)}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:1rem 0 1.5rem}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:8px 12px;font-size:.82rem;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.05em}
+td{padding:8px 12px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#fafaf8}
+.caption{font-size:.82rem;color:var(--muted);font-style:italic;margin-top:-.5rem;margin-bottom:1rem}
+.scenario-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:1rem;margin:1.25rem 0 1.75rem}
+.scenario{border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;background:#fff}
+.scenario .sc-label{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.5rem;font-family:'JetBrains Mono',monospace}
+.scenario .sc-title{font-size:.97rem;font-weight:600;margin-bottom:.75rem;color:var(--ink)}
+.weight-row{display:flex;align-items:center;gap:8px;margin:.35rem 0}
+.weight-name{width:120px;font-size:.82rem;color:#444;flex-shrink:0}
+.weight-track{flex:1;height:10px;background:#ece9e3;border-radius:999px;overflow:hidden}
+.weight-fill{height:100%;border-radius:999px}
+.fill-rev{background:#4338ca}
+.fill-csat{background:#0f766e}
+.fill-mkt{background:#9333ea}
+.fill-loyal{background:#c2410c}
+.weight-val{font-size:.8rem;color:var(--muted);min-width:34px;text-align:right;font-family:'JetBrains Mono',monospace}
+.check{color:var(--accent2);font-weight:700}
+.cross{color:var(--accent3);font-weight:700}
+.partial{color:#b45309;font-weight:700}
+.toc{background:var(--soft);border-radius:10px;padding:1.1rem 1.4rem;margin:1.5rem 0 2rem}
+.toc p{font-weight:600;margin-bottom:.5rem}
+.toc ol{margin:0}
+.toc li{font-size:.92rem;margin:.2rem 0}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
+.read-next{background:var(--soft);border-radius:10px;padding:1.25rem 1.5rem;margin-top:2.5rem}
+.read-next h3{margin-top:0}
+.read-next ul{margin:0}
+.read-next li{font-size:.92rem;margin:.3rem 0}
+@media(max-width:640px){.hero h1{font-size:1.8rem}.body{padding:1.5rem 1.25rem 0}nav{padding:.75rem 1rem}.weight-name{width:90px}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <a href="whitepaper_v05.html">Home</a>
+  <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+  <a href="tutorial_v0_5.html">Tutorial</a>
+  <a href="domain_ai_datacenters_v0_5.html">AI Data Centers</a>
+  <a href="domain_self_driving_v0_5.html">Self-Driving</a>
+  <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a>
+  <a href="domain_software_engineering_v0_5.html">Software Eng</a>
+  <a href="domain_dynamic_pricing_v0_5.html" class="active">Dynamic Pricing</a>
+  <a href="domain_energy_systems_v0_5.html">Energy Systems</a>
+  <a href="domain_creative_systems_v0_5.html">Creative Systems</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Domain Deep-Dive · v0.5</div>
+  <h1>Dynamic Pricing &amp;<br>Marketplace Optimization</h1>
+  <p class="subtitle">How the Adaptive Utility Agent framework gives pricing platforms context-adaptive objectives, a correction loop that prevents errors from amplifying at scale, and the full auditability that regulators now require — without separate rule sets for every scenario.</p>
+  <div class="audience-pills">
+    <span class="pill">Pricing platform engineers</span>
+    <span class="pill">Marketplace optimization teams</span>
+    <span class="pill">Revenue management systems</span>
+    <span class="pill">Platform economics</span>
+  </div>
+</div>
+
+<div class="body">
+
+<div class="toc">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#problem">Why existing pricing systems fail</a></li>
+    <li><a href="#weights">Context-adaptive weight shifting</a></li>
+    <li><a href="#auditability">Full auditability — every price decision explained</a></li>
+    <li><a href="#confidence">Confidence-gated pricing: no opaque moves</a></li>
+    <li><a href="#correction">The correction loop applied to pricing</a></li>
+    <li><a href="#comparison">Comparison: rule-based, ML, hybrid, vs framework</a></li>
+    <li><a href="#regulatory">Regulatory landscape and compliance advantages</a></li>
+    <li><a href="#mvp">MVP shape</a></li>
+  </ol>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="problem">1. Why existing pricing systems fail</h2>
+
+<p>The pricing software landscape has three tiers, each with a structural failure mode that compounds as markets get faster and more complex.</p>
+
+<h3>Rule-based repricing: static by design</h3>
+<p>The majority of pricing systems in production today are rule-based: "if competitor A drops below $X, match at $X-0.50; if inventory falls below 10 units, raise 10%." Rules execute quickly and are auditable in theory — you can trace which rule fired. But they are fundamentally static. Rules are written to handle conditions anticipated at the time of writing. When conditions emerge that weren't anticipated — a flash demand spike, a competitor pulling out of a category, a viral moment shifting demand curves — rules produce the wrong price until someone manually rewrites them. The gap between market conditions changing and rules catching up is where margin is lost.</p>
+
+<h3>ML-based optimization: errors amplify at scale</h3>
+<p>ML repricing models — trained on historical demand, elasticity, and competitor data — appear to solve the static problem. But they introduce a more dangerous failure mode: when a learned pattern is wrong, the error propagates to every SKU, every market, every hour the model runs, before anyone detects it. As one industry analysis notes, "an algorithm that amplifies errors does so at scale, across every SKU it touches, before anyone notices." The model has no mechanism to detect when its own predictions are wrong and stop. There is no feedback loop between a detected pricing error and the model's behavior. It will reprice the same way tomorrow.</p>
+
+<h3>Hybrid systems: the worst of both</h3>
+<p>Hybrid approaches layer ML optimization inside rule-based guardrails. This addresses the most catastrophic ML failure (pricing at a loss) but not the structural problem: the ML component still has no correction loop, and the rule guardrails are still static. The system learns from historical data at retraining time, not from its own live errors.</p>
+
+<div class="metricgrid">
+  <div class="metric red">
+    <div class="label">US state pricing bills (Jan–Jul 2025)</div>
+    <div class="value">51</div>
+    <div class="unit">Up from 10 bills in all of 2024</div>
+  </div>
+  <div class="metric red">
+    <div class="label">States with active bills</div>
+    <div class="value">24</div>
+    <div class="unit">Including NY, CA, MA, RI, AZ</div>
+  </div>
+  <div class="metric orange">
+    <div class="label">NY disclosure law</div>
+    <div class="value">Live</div>
+    <div class="unit">Effective Nov 10, 2025 — algorithm must be disclosed</div>
+  </div>
+  <div class="metric red">
+    <div class="label">DOJ action</div>
+    <div class="value">Active</div>
+    <div class="unit">Suing RealPage for algorithmic pricing, Aug 2024</div>
+  </div>
+</div>
+
+<p>The regulatory wave makes the auditability failure mode — not just the accuracy failure mode — commercially critical. A pricing system that cannot explain why it set a specific price, on a specific day, in structured and retrievable form, is now a regulatory liability in multiple jurisdictions.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="weights">2. Context-adaptive weight shifting</h2>
+
+<p>The framework's utility function governs pricing through a single formula whose weights shift with market context — no separate rule sets, no retraining for new conditions:</p>
+
+<pre>
+U = w_r(f) · Revenue  +  w_cs(f) · Customer satisfaction  +  w_m(f) · Market share
+
+f — pricing context (supply constraint, competitive threat, normal, loyalty defense...)
+</pre>
+
+<p>The key property from <a href="whitepaper_full_v0_5.html#applications">§2.5 of the full whitepaper</a>: <em>"A flat 'never surge' policy is suboptimal in crunch conditions; a flat 'always surge' policy destroys customer relationships in normal conditions. The utility framework selects correctly in each context through a single formula with context-specific field parameters, without pre-programmed rules for each scenario."</em></p>
+
+<div class="scenario-grid">
+
+  <div class="scenario">
+    <div class="sc-label">Scenario A</div>
+    <div class="sc-title">Standard conditions</div>
+    <div class="weight-row"><span class="weight-name">Revenue (w_r)</span><div class="weight-track"><div class="weight-fill fill-rev" style="width:35%"></div></div><span class="weight-val">0.35</span></div>
+    <div class="weight-row"><span class="weight-name">Cust. satisfaction</span><div class="weight-track"><div class="weight-fill fill-csat" style="width:45%"></div></div><span class="weight-val">0.45</span></div>
+    <div class="weight-row"><span class="weight-name">Market share</span><div class="weight-track"><div class="weight-fill fill-mkt" style="width:20%"></div></div><span class="weight-val">0.20</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Balanced profile. Customer satisfaction has meaningful weight — loyalty and repeat purchase matter more than squeezing margin on a single transaction.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Scenario B</div>
+    <div class="sc-title">Genuine supply constraint</div>
+    <div class="weight-row"><span class="weight-name">Revenue (w_r)</span><div class="weight-track"><div class="weight-fill fill-rev" style="width:65%"></div></div><span class="weight-val">0.65</span></div>
+    <div class="weight-row"><span class="weight-name">Cust. satisfaction</span><div class="weight-track"><div class="weight-fill fill-csat" style="width:20%"></div></div><span class="weight-val">0.20</span></div>
+    <div class="weight-row"><span class="weight-name">Market share</span><div class="weight-track"><div class="weight-fill fill-mkt" style="width:15%"></div></div><span class="weight-val">0.15</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Revenue weight rises to w_r=0.65. Surge pricing is optimal — allocates scarce inventory to highest-value buyers. Matches the whitepaper's supply constraint example. See <a href="whitepaper_full_v0_5.html#applications">§2.5</a>.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Scenario C</div>
+    <div class="sc-title">Competitive threat</div>
+    <div class="weight-row"><span class="weight-name">Revenue (w_r)</span><div class="weight-track"><div class="weight-fill fill-rev" style="width:25%"></div></div><span class="weight-val">0.25</span></div>
+    <div class="weight-row"><span class="weight-name">Cust. satisfaction</span><div class="weight-track"><div class="weight-fill fill-csat" style="width:35%"></div></div><span class="weight-val">0.35</span></div>
+    <div class="weight-row"><span class="weight-name">Market share</span><div class="weight-track"><div class="weight-fill fill-mkt" style="width:40%"></div></div><span class="weight-val">0.40</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Market share weight rises to w_m=0.40 — pricing shifts to defend position and retain customers. From <a href="whitepaper_full_v0_5.html#applications">§2.5</a>.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Scenario D</div>
+    <div class="sc-title">Loyalty defense / retention</div>
+    <div class="weight-row"><span class="weight-name">Revenue (w_r)</span><div class="weight-track"><div class="weight-fill fill-rev" style="width:15%"></div></div><span class="weight-val">0.15</span></div>
+    <div class="weight-row"><span class="weight-name">Cust. satisfaction</span><div class="weight-track"><div class="weight-fill fill-csat" style="width:65%"></div></div><span class="weight-val">0.65</span></div>
+    <div class="weight-row"><span class="weight-name">Market share</span><div class="weight-track"><div class="weight-fill fill-mkt" style="width:20%"></div></div><span class="weight-val">0.20</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">High churn risk detected or customer segment identified as price-sensitive long-term buyers. Loyalty incentives dominate. Short-term revenue is sacrificed for LTV.</p>
+  </div>
+
+</div>
+
+<div class="callout">
+  <p><strong>No rule proliferation.</strong> Each scenario above is a weight profile — a few numbers stored as field parameters. Adding a new pricing context (flash sale, event-driven demand, geography-specific campaign) means adding a weight profile and a classifier signal, not writing and testing a new rule set. The formula remains the same; only the weights change.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="auditability">3. Full auditability — every price decision explained</h2>
+
+<p>This is the framework's most commercially important advantage in the current regulatory environment, and the one that existing systems — rule-based, ML, and hybrid — cannot match structurally.</p>
+
+<p>When a regulator, customer, or internal reviewer asks "why did this price change at 2:47pm on Tuesday?" the answer must be structured, retrievable, and factually accurate. A boilerplate notice that "prices are set by an algorithm" does not satisfy the NY disclosure law effective November 2025. The framework produces the answer as a byproduct of its normal operation.</p>
+
+<h3>What the framework logs per pricing decision</h3>
+
+<pre>
+Every pricing decision produces a structured log record:
+{
+  "timestamp": "2025-11-14T14:47:23Z",
+  "product_id": "SKU-9821",
+  "price_set": 47.99,
+  "prior_price": 44.50,
+  "field": "supply_constraint",
+  "field_distribution": {"supply_constraint": 0.72, "standard": 0.28},
+  "utility_score": 0.681,
+  "components": {
+    "efficacy_ema": 0.74,      // revenue performance vs baseline
+    "confidence": 0.82,        // internal consistency of the pricing signal
+    "curiosity": 0.09          // novelty adjustment
+  },
+  "weights_active": {
+    "w_r": 0.65,               // supply constraint profile
+    "w_cs": 0.20,
+    "w_m": 0.15
+  },
+  "confidence_gate": "passed", // C >= C_min — price move was made
+  "active_corrections": [
+    "elasticity overestimated for this segment last cycle — adjusted"
+  ]
+}
+</pre>
+
+<h3>The four auditability properties</h3>
+
+<div class="cardgrid">
+  <div class="card">
+    <div class="card-icon">📊</div>
+    <h4>Component transparency</h4>
+    <p>Every price decision records the exact weight vector active at the time, the U score, and each component (E, C, K). The pricing logic is not a black box — it is a logged arithmetic expression with retrievable inputs.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🛑</div>
+    <h4>Hard accountability floor</h4>
+    <p>Below C_min, the system does not make a pricing move — it escalates to a human reviewer. No automated price change happens when the system's confidence is below threshold. The log records every escalation event.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">📚</div>
+    <h4>Correction audit trail</h4>
+    <p>When a pricing error is corrected — an elasticity misread, a surge that damaged relationships — the correction is stored in the assertions store with a timestamp and evidence summary. The log records not just what was priced, but why the model learned to price differently afterward.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🔍</div>
+    <h4>Disclosure-ready output</h4>
+    <p>The utility log is the disclosure artifact. When the NY law requires "this price was set by an algorithm using [inputs]," the framework's logs contain the exact inputs, their weights, and the decision boundary. The disclosure is factually accurate, not boilerplate.</p>
+  </div>
+</div>
+
+<div class="callout orange">
+  <p><strong>Why no existing system provides this.</strong> Rule-based systems can trace which rule fired, but not why the rule was correct and how confidence was determined. ML systems produce a price from a high-dimensional function with no structured explanation at the decision level. The framework's utility function is an explicit arithmetic expression — every price has a logged decomposition into its components. That decomposition is what regulators and customers are increasingly demanding.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="confidence">4. Confidence-gated pricing: no opaque moves</h2>
+
+<p>The confidence gate applies a hard decision rule: below C_min, the system does not set a price autonomously. It escalates to a human reviewer with the full decision context.</p>
+
+<pre>
+act (set price)   if  C ≥ C_min(f)  AND  E ≥ E_min(f)
+escalate to human  otherwise
+
+Recommended C_min values per pricing context:
+  Commodity / standard goods:    C_min = 0.65
+  High-volume / high-visibility: C_min = 0.75
+  Regulated categories:          C_min = 0.85
+  Premium / relationship pricing: C_min = 0.80
+</pre>
+
+<p>This matters for three practical reasons:</p>
+
+<ul>
+  <li><strong>Wendy's moment prevention.</strong> The confidence gate would have caught the scenario that triggered the Wendy's backlash — a high-visibility category (food, publicly priced) where the model's confidence in the demand response was low. Low confidence → escalate to human, not auto-publish to digital menus. The gate is not a fix to the PR problem; it is a mechanism that catches the underlying problem before it becomes one.</li>
+  <li><strong>Volatile data protection.</strong> When demand signals are noisy — a viral moment inflating short-term demand, a sensor error in inventory counts, an API outage in competitor data — confidence falls. The system does not make a pricing move on bad data; it flags the data quality issue and holds the prior price.</li>
+  <li><strong>Regulatory safe harbor.</strong> A pricing system that can demonstrate it escalates to human review when confidence is below a defined threshold is structurally different from one that prices opaquely at any confidence level. The gate creates a documented human-in-the-loop boundary that compliance teams can point to.</li>
+</ul>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="correction">5. The correction loop applied to pricing</h2>
+
+<p>The framework's core contribution to pricing is that it closes the feedback loop that existing systems leave open. When a pricing decision produces a worse outcome than expected — demand elasticity was overestimated, a surge damaged customer relationships, a competitive response was faster than anticipated — that error is detected, stored as a correction, and the model does not repeat it.</p>
+
+<h3>How a pricing error becomes a correction</h3>
+
+<pre>
+1. Price set at $52.99 during supply constraint (w_r=0.65 active)
+2. Demand response is measured: conversion rate 8% below elasticity model prediction
+3. Contradiction detected: claimed demand response contradicts observed demand response
+4. Correction stored:
+   "supply_constraint surge at this price point for this category overestimates
+    elasticity by ~12%. Adjust surge ceiling downward."
+5. Correction injected into next pricing session for this category
+6. DPO pair accumulated: (lower surge price, $52.99) → preferred response
+7. Next calibration cycle: elasticity model updated with weighted DPO training
+</pre>
+
+<p>The result: the second time the system faces an equivalent supply constraint in this category, it applies the corrected elasticity estimate automatically. Without the correction loop, the same overestimated surge would repeat indefinitely until someone manually reupdated the model.</p>
+
+<h3>Repeat-error reduction</h3>
+
+<p>The framework's simulation (software engineering domain, but directly analogous) demonstrated a <strong>69.6% reduction in repeated errors</strong> over an uncalibrated baseline across five correction cycles. Applied to pricing: a system that misreads elasticity in cycle 1 will misread it 70% less often by cycle 5. See <a href="whitepaper_full_v0_5.html#appendix-a">Appendix A of the full whitepaper</a> for the full simulation results.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="comparison">6. Comparison: rule-based, ML, hybrid, vs framework</h2>
+
+<table>
+  <thead>
+    <tr><th>Property</th><th>Rule-based</th><th>ML-based</th><th>Hybrid</th><th>This framework</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Adapts to emergent conditions</strong></td>
+      <td><span class="cross">✗</span> Rules pre-written</td>
+      <td><span class="partial">~</span> Only at retraining</td>
+      <td><span class="partial">~</span> ML within fixed rules</td>
+      <td><span class="check">✓</span> Weight profiles + correction loop</td>
+    </tr>
+    <tr>
+      <td><strong>Corrects its own errors</strong></td>
+      <td><span class="cross">✗</span> Errors repeat until rules rewritten</td>
+      <td><span class="cross">✗</span> Errors amplify at scale</td>
+      <td><span class="cross">✗</span> ML component uncorrected</td>
+      <td><span class="check">✓</span> Detected, stored, not repeated</td>
+    </tr>
+    <tr>
+      <td><strong>Fully auditable per decision</strong></td>
+      <td><span class="partial">~</span> Rule trace only</td>
+      <td><span class="cross">✗</span> Black box</td>
+      <td><span class="cross">✗</span> ML component opaque</td>
+      <td><span class="check">✓</span> Logged U, weights, components</td>
+    </tr>
+    <tr>
+      <td><strong>Multi-objective balance</strong></td>
+      <td><span class="cross">✗</span> Separate rules per objective</td>
+      <td><span class="partial">~</span> Single loss function</td>
+      <td><span class="partial">~</span> Partial</td>
+      <td><span class="check">✓</span> Explicit weight vector per context</td>
+    </tr>
+    <tr>
+      <td><strong>Hard accountability floor</strong></td>
+      <td><span class="partial">~</span> Hard floor rules only</td>
+      <td><span class="cross">✗</span> No confidence gate</td>
+      <td><span class="partial">~</span> Rules as floor only</td>
+      <td><span class="check">✓</span> C_min gate → human escalation</td>
+    </tr>
+    <tr>
+      <td><strong>Regulatory disclosure capability</strong></td>
+      <td><span class="partial">~</span> Rule audit, not explanation</td>
+      <td><span class="cross">✗</span> Cannot explain per decision</td>
+      <td><span class="cross">✗</span> ML component unexplainable</td>
+      <td><span class="check">✓</span> Structured log per decision</td>
+    </tr>
+    <tr>
+      <td><strong>Adds new pricing context</strong></td>
+      <td><span class="cross">✗</span> Write new rules</td>
+      <td><span class="cross">✗</span> Retrain model</td>
+      <td><span class="cross">✗</span> Both</td>
+      <td><span class="check">✓</span> Add weight profile + classifier signal</td>
+    </tr>
+    <tr>
+      <td><strong>Customer relationship protection</strong></td>
+      <td><span class="partial">~</span> Cap rules only</td>
+      <td><span class="cross">✗</span> No structural protection</td>
+      <td><span class="partial">~</span> Cap rules only</td>
+      <td><span class="check">✓</span> w_cs term + low-confidence escalation</td>
+    </tr>
+  </tbody>
+</table>
+<p class="caption">Based on publicly documented behavior of rule-based and ML pricing systems. Framework properties from <a href="whitepaper_full_v0_5.html#applications">§2.5</a> and the correction loop specification in <a href="whitepaper_full_v0_5.html#correction-loop">§8</a>.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="regulatory">7. Regulatory landscape and compliance advantages</h2>
+
+<p>The 2024–2025 regulatory wave around algorithmic pricing is specifically targeting opacity and the lack of human accountability. The framework's properties map directly onto what regulators are requiring.</p>
+
+<table>
+  <thead>
+    <tr><th>Regulatory requirement</th><th>Jurisdiction / instrument</th><th>Framework property that addresses it</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>"This price was set by an algorithm using [specific inputs]" disclosure</td>
+      <td>New York State — effective Nov 10, 2025</td>
+      <td>Utility log records exact inputs (field distribution, weight vector, signal values) for every price decision. Disclosure is factually accurate, not generic.</td>
+    </tr>
+    <tr>
+      <td>Human oversight requirement for high-impact automated decisions</td>
+      <td>EU AI Act (2024), High-Risk AI classification</td>
+      <td>Confidence gate creates a documented human-in-the-loop boundary. Every escalation event is logged with context. Human reviewer receives the full decision trace.</td>
+    </tr>
+    <tr>
+      <td>Antitrust: no algorithmic price fixing via shared pricing software</td>
+      <td>DOJ / FTC; RealPage suit (2024)</td>
+      <td>The correction loop and confidence gate operate on the platform's own demand signals. No mechanism for cross-platform signal sharing. Assertions store is local by default.</td>
+    </tr>
+    <tr>
+      <td>Price gouging limits — pricing must reflect legitimate supply/demand</td>
+      <td>30+ states; proposed federal Price Gouging Prevention Act</td>
+      <td>Confidence gate prevents pricing on bad or manipulated data signals. The w_cs customer satisfaction weight structurally penalizes pricing that damages relationships.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="mvp">8. MVP shape</h2>
+
+<p>A practical MVP for a pricing platform does not require replacing the existing pricing system. It begins as a shadow layer that builds the correction infrastructure:</p>
+
+<ol>
+  <li><strong>Shadow mode on one product category</strong> — run the framework alongside existing pricing, logging U scores and flagging decisions where confidence would have triggered escalation. Build the baseline without changing any live prices.</li>
+  <li><strong>Identify the highest-error scenario class</strong> — review shadow logs for the scenario type where the existing system's predictions most frequently diverge from observed outcomes. This is the first correction target.</li>
+  <li><strong>Stand up the assertions store for elasticity corrections</strong> — when a prediction error is confirmed in the shadow logs, store the correction. Measure how many repeat errors would have been prevented if corrections had been applied.</li>
+  <li><strong>Set conservative C_min for the category</strong> — start at 0.80 and measure the shadow escalation rate. This is the calibration baseline.</li>
+  <li><strong>Promote to advisory output for one category</strong> — surface the framework's recommended prices alongside the production system's prices for human review. The production system keeps control; the framework builds a track record.</li>
+  <li><strong>Promote to controlled operational authority</strong> — after the advisory track record demonstrates correction rate improvement and calibration quality, grant operational authority for the highest-confidence pricing decisions in the category.</li>
+</ol>
+
+<div class="read-next">
+  <h3>Where to read next</h3>
+  <ul>
+    <li><a href="whitepaper_full_v0_5.html#applications">§2.5 — Dynamic Pricing</a> — Weight shifting worked example: supply constraint w_r=0.65, competitive threat w_m=0.40</li>
+    <li><a href="whitepaper_full_v0_5.html#correction-loop">§8 — Three-Layer Correction Loop</a> — How errors are detected, stored, and prevented from repeating</li>
+    <li><a href="whitepaper_full_v0_5.html#field-bounds">§5 — Field Bounds</a> — C_min derivation and confidence gate specification</li>
+    <li><a href="tutorial_v0_5.html">Tutorial</a> — Contradiction detector, assertions store, and DPO pair collection in code</li>
+    <li><a href="whitepaper_full_v0_5.html#appendix-a">Appendix A</a> — Simulation results: 69.6% repeated-error reduction across 5 calibration cycles</li>
+  </ul>
+</div>
+
+</div></div>
+</body>
+</html>

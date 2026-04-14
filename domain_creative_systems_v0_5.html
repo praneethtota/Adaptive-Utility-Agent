@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Creative Systems v0.5</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--paper:#ffffff;--ink:#18181b;--muted:#6b7280;--line:#e4e1da;--accent:#4338ca;--accent2:#0f766e;--accent3:#c2410c;--soft:#f0ede6;--soft2:#ecfdf5;--soft3:#fff7ed;--tag-bg:#eef2ff;--tag-text:#4338ca}
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:16px;line-height:1.75;color:var(--ink);background:var(--bg);margin:0;padding:0}
+.page{max-width:960px;margin:0 auto;padding:0 0 5rem;background:var(--paper);border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
+nav{display:flex;flex-wrap:wrap;gap:.6rem .9rem;padding:1rem 2rem;border-bottom:1px solid var(--line);background:#fafaf8;font-size:.88rem;position:sticky;top:0;z-index:10}
+nav a{color:var(--accent);text-decoration:none;font-weight:500}
+nav a:hover{text-decoration:underline}
+nav a.active{color:var(--ink);font-weight:600}
+.hero{padding:3rem 2.5rem 2.5rem;border-bottom:1px solid var(--line);background:linear-gradient(160deg,#f0ede6 0%,#fff 60%)}
+.hero-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--tag-bg);color:var(--tag-text);padding:.25rem .7rem;border-radius:999px;margin-bottom:1.2rem}
+.hero h1{font-family:'DM Serif Display',Georgia,serif;font-size:2.4rem;line-height:1.2;margin:0 0 .75rem}
+.hero .subtitle{font-size:1.1rem;color:#444;max-width:700px;margin-bottom:1.5rem;line-height:1.6}
+.audience-pills{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem}
+.pill{font-size:.82rem;font-weight:500;padding:.3rem .85rem;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.body{padding:2rem 2.5rem 0}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.5rem;line-height:1.3;margin:2.5rem 0 .75rem;padding-bottom:.5rem;border-bottom:2px solid var(--line);color:var(--ink);scroll-margin-top:60px}
+h3{font-size:1.05rem;font-weight:600;margin:1.8rem 0 .5rem;color:#222}
+h4{font-size:.95rem;font-weight:600;margin:1.3rem 0 .4rem;color:#333}
+p{margin:0 0 1rem}
+a{color:var(--accent)}
+ul,ol{margin:.3rem 0 1rem;padding-left:1.3rem}
+li{margin:.3rem 0}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:#f2f0eb;padding:2px 6px;border-radius:4px;color:#333}
+pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:8px;padding:1.1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:.8rem;line-height:1.65;font-family:'JetBrains Mono',monospace}
+.callout{background:var(--soft);border-left:4px solid var(--accent);padding:1rem 1.25rem;margin:1.25rem 0 1.5rem;border-radius:0 8px 8px 0}
+.callout.green{background:var(--soft2);border-left-color:var(--accent2)}
+.callout.orange{background:var(--soft3);border-left-color:var(--accent3)}
+.callout p{margin:0}.callout p+p{margin-top:.5rem}
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;margin:1.25rem 0 1.75rem}
+.card{border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.1rem .9rem;background:#fff}
+.card .card-icon{font-size:1.4rem;margin-bottom:.5rem}
+.card h4{margin-top:0;font-size:.95rem}
+.card p{font-size:.88rem;color:#444;margin-bottom:0}
+.metricgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:1.25rem 0 1.75rem}
+.metric{border:1px solid var(--line);border-radius:10px;padding:.9rem 1.1rem;background:#fff}
+.metric .label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:4px}
+.metric .value{font-size:1.7rem;font-weight:700;color:var(--accent);line-height:1.1}
+.metric .unit{font-size:.82rem;color:var(--muted);margin-top:2px}
+.metric.green .value{color:var(--accent2)}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:1rem 0 1.5rem}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:8px 12px;font-size:.82rem;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.05em}
+td{padding:8px 12px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#fafaf8}
+.caption{font-size:.82rem;color:var(--muted);font-style:italic;margin-top:-.5rem;margin-bottom:1rem}
+.scenario-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:1rem;margin:1.25rem 0 1.75rem}
+.scenario{border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;background:#fff}
+.scenario .sc-label{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.5rem;font-family:'JetBrains Mono',monospace}
+.scenario .sc-title{font-size:.97rem;font-weight:600;margin-bottom:.75rem;color:var(--ink)}
+.weight-row{display:flex;align-items:center;gap:8px;margin:.35rem 0}
+.weight-name{width:110px;font-size:.82rem;color:#444;flex-shrink:0}
+.weight-track{flex:1;height:10px;background:#ece9e3;border-radius:999px;overflow:hidden}
+.weight-fill{height:100%;border-radius:999px}
+.fill-eff{background:#4338ca}
+.fill-conf{background:#0f766e}
+.fill-cur{background:#9333ea}
+.weight-val{font-size:.8rem;color:var(--muted);min-width:34px;text-align:right;font-family:'JetBrains Mono',monospace}
+.signal-bar{display:flex;align-items:center;gap:10px;margin:.45rem 0}
+.sb-label{width:180px;font-size:.85rem;flex-shrink:0;color:#333}
+.sb-track{flex:1;height:12px;background:#ece9e3;border-radius:999px;overflow:hidden}
+.sb-fill{height:100%;border-radius:999px;background:var(--accent)}
+.sb-val{font-size:.8rem;font-family:'JetBrains Mono',monospace;color:var(--muted);min-width:28px;text-align:right}
+.toc{background:var(--soft);border-radius:10px;padding:1.1rem 1.4rem;margin:1.5rem 0 2rem}
+.toc p{font-weight:600;margin-bottom:.5rem}
+.toc ol{margin:0}
+.toc li{font-size:.92rem;margin:.2rem 0}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
+.read-next{background:var(--soft);border-radius:10px;padding:1.25rem 1.5rem;margin-top:2.5rem}
+.read-next h3{margin-top:0}
+.read-next ul{margin:0}
+.read-next li{font-size:.92rem;margin:.3rem 0}
+@media(max-width:640px){.hero h1{font-size:1.8rem}.body{padding:1.5rem 1.25rem 0}nav{padding:.75rem 1rem}.weight-name{width:90px}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <a href="whitepaper_v05.html">Home</a>
+  <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+  <a href="tutorial_v0_5.html">Tutorial</a>
+  <a href="domain_ai_datacenters_v0_5.html">AI Data Centers</a>
+  <a href="domain_self_driving_v0_5.html">Self-Driving</a>
+  <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a>
+  <a href="domain_software_engineering_v0_5.html">Software Eng</a>
+  <a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems_v0_5.html">Energy Systems</a>
+  <a href="domain_creative_systems_v0_5.html" class="active">Creative Systems</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Domain Deep-Dive · v0.5</div>
+  <h1>Creative Systems</h1>
+  <p class="subtitle">How the Adaptive Utility Agent framework closes the feedback loop between creative output and platform engagement signal — and why the curiosity term, suppressed in every other domain, finally takes center stage here.</p>
+  <div class="audience-pills">
+    <span class="pill">Generative media builders</span>
+    <span class="pill">Creative tooling teams</span>
+    <span class="pill">Content platforms</span>
+    <span class="pill">Brand &amp; voice systems</span>
+  </div>
+</div>
+
+<div class="body">
+
+<div class="toc">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#problem">The missing feedback loop in creative AI</a></li>
+    <li><a href="#utility">The utility function in creative domains</a></li>
+    <li><a href="#two-component">The two-component creative efficacy model</a></li>
+    <li><a href="#signals">Platform signal collection and weighting</a></li>
+    <li><a href="#modes">Operating modes: exploration vs. refinement</a></li>
+    <li><a href="#applications">Applications: generative media, brand voice, content platforms</a></li>
+    <li><a href="#correction">The correction loop for creative feedback</a></li>
+    <li><a href="#mvp">MVP shape</a></li>
+  </ol>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="problem">1. The missing feedback loop in creative AI</h2>
+
+<p>Generative AI tools for creative work — image generators, music models, writing assistants, video synthesis — share a structural problem with every other deployed AI system: there is no feedback loop between what gets generated today and what the model produces tomorrow. A model that consistently produces images in a style that doesn't resonate with an audience will continue producing them until someone retrains the model from scratch.</p>
+
+<p>For creative platforms this failure mode is particularly costly for two reasons:</p>
+
+<ul>
+  <li><strong>Platform signal is abundant and continuous.</strong> Saves, downloads, shares, purchases, playlist adds — these are strong behavioral signals of creative quality that are produced automatically by every user interaction. Unlike most AI domains where quality signals require human annotation, creative platforms generate quality signal as a byproduct of normal operation. The signal exists; it is just not being fed back into the model.</li>
+  <li><strong>Quality is contextual and evolving.</strong> What works on Spotify in ambient electronic differs from what works in hip-hop. What works on Behance in product photography differs from what works in editorial. A creative AI that cannot differentiate these contexts — and cannot improve its output in each one separately — is not a useful creative collaborator; it is a template engine.</li>
+</ul>
+
+<p>The framework addresses both: the two-component creative efficacy model turns platform signal into a structured quality measure, and the correction loop feeds that measure back into the model continuously between releases.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="utility">2. The utility function in creative domains</h2>
+
+<p>The creative domain has a fundamentally different utility profile from every other domain in the framework. Compare it to surgery:</p>
+
+<div class="metricgrid">
+  <div class="metric">
+    <div class="label">Surgery — Confidence weight (w_c)</div>
+    <div class="value">0.70</div>
+    <div class="unit">Confidence dominates; wrong-but-confident is dangerous</div>
+  </div>
+  <div class="metric">
+    <div class="label">Creative writing — Confidence weight (w_c)</div>
+    <div class="value">0.05</div>
+    <div class="unit">Confidence is nearly irrelevant; consistency ≠ quality</div>
+  </div>
+  <div class="metric green">
+    <div class="label">Creative writing — Curiosity weight (w_k)</div>
+    <div class="value">0.15</div>
+    <div class="unit">Exploration is the primary creative value driver</div>
+  </div>
+  <div class="metric green">
+    <div class="label">Art — Efficacy weight (w_e)</div>
+    <div class="value">0.80</div>
+    <div class="unit">Platform resonance is the dominant quality signal</div>
+  </div>
+</div>
+
+<p>From <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/config.py" target="_blank"><code>agent/config.py</code></a>:</p>
+
+<pre>
+"creative_writing": FieldConfig(
+    w_efficacy=0.80,    # platform resonance is the primary signal
+    w_confidence=0.05,  # internal consistency barely matters — this is art
+    w_curiosity=0.15,   # exploration and novelty are core value drivers
+    c_min=0.05,         # almost no floor — allowed to take creative risks
+    e_min=0.15,         # minimal efficacy floor
+    penalty_multiplier=1.0  # creative mistakes are recoverable; no harsh penalty
+),
+
+"art": FieldConfig(
+    w_efficacy=0.80,
+    w_confidence=0.10,
+    w_curiosity=0.10,
+    c_min=0.10,
+    e_min=0.20,
+    penalty_multiplier=1.0
+)
+</pre>
+
+<p>In surgery, the curiosity term is suppressed to zero (alpha=0.00) — an exploring surgeon is a dangerous surgeon. In creative domains, curiosity alpha rises to 0.15, and the cap of 50% of total utility (which prevents curiosity from dominating in safety-critical fields) becomes practically non-binding at the low confidence minimum. The system is explicitly designed to explore, take creative risks, and produce unexpected outputs — and to learn from what resonates.</p>
+
+<div class="callout green">
+  <p><strong>The curiosity term finally has a home.</strong> In every other domain documented here — AV, industrial robots, grid management, pricing — the curiosity term is a minor background signal, kept small by high confidence minimums and penalty multipliers. In creative domains, with c_min=0.05 and penalty=1.0, curiosity is the primary driver of differentiated output. A system that only produces what it is already confident is good is not a creative system — it is a interpolation engine. The framework's curiosity term is what enables the framework to generate genuinely novel work rather than averaging existing styles.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="two-component">3. The two-component creative efficacy model</h2>
+
+<p>The core engineering challenge in creative domains is measuring quality. Unlike software engineering (tests pass or fail) or surgery (outcome is medically verifiable), creative quality is contextual, audience-dependent, and cannot be reduced to a single ground truth. The framework's response, implemented in <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/creative_efficacy.py" target="_blank"><code>agent/creative_efficacy.py</code></a>, is a two-component model that mirrors how human creators actually measure their own success:</p>
+
+<pre>
+Creative_Efficacy = sqrt(Content_Efficacy × Discoverability_Efficacy)
+
+Content_Efficacy      — weighted engagement per view
+                        "can the work hold attention when shown?"
+                        Measures: saves, likes, shares, purchases ÷ views
+
+Discoverability_Efficacy — raw reach relative to human creator baseline
+                        "can it find an audience at all?"
+                        Measures: total impressions, streams, plays vs. baseline
+
+Combined: geometric mean — both components must be strong.
+A viral but low-quality work (high reach, low engagement rate) scores low.
+A high-quality but undiscovered work (high engagement rate, no reach) also scores low.
+The score rewards genuine resonance at scale.
+</pre>
+
+<p>This is the same efficacy scale used in STEM fields — 0.5 means matching human creator average in the category, &gt;0.5 means outperforming the baseline, &lt;0.5 means underperforming. The consistency across domains is intentional: it allows the same utility function formula to govern both a surgical AI and a music generation system, with only the weights and the efficacy measurement method changing.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="signals">4. Platform signal collection and weighting</h2>
+
+<p>The two-component model is only as good as the signals feeding it. From the actual implementation:</p>
+
+<pre>
+# Signal weights by intent strength — from creative_efficacy.py
+SIGNAL_WEIGHTS = {
+    "purchase":    1.0,   # strongest — real economic behavior
+    "download":    1.0,
+    "save":        0.8,   # strong intent signal
+    "bookmark":    0.8,
+    "share":       0.7,   # audience endorsement
+    "repost":      0.7,
+    "like":        0.5,   # moderate — easy to give, less meaningful
+    "upvote":      0.5,
+    "comment":     0.4,   # engagement signal, noisy
+    "view":        0.1,   # weak — could be accidental
+    "listen":      0.1,
+    "impression":  0.05,  # nearly no signal
+}
+
+# Platform → recommended signals
+PLATFORM_SIGNALS = {
+    "soundcloud":  ["listens", "likes", "reposts", "downloads"],
+    "spotify":     ["streams", "saves", "playlist_adds"],
+    "pinterest":   ["saves", "clicks", "reposts"],
+    "istockphoto": ["downloads", "purchases"],
+    "medium":      ["reads", "claps", "saves"],
+    "youtube":     ["views", "likes", "shares", "saves"],
+    "behance":     ["views", "appreciations", "saves"],
+}
+</pre>
+
+<div class="callout">
+  <p><strong>Minimum observations before scoring.</strong> The model requires 50 observations (views/listens) before a content efficacy score is considered meaningful (<code>MIN_OBSERVATIONS = 50</code>). Below this threshold, the system returns <code>sufficient_data=False</code> and withholds the score to prevent spurious corrections based on single-digit engagement counts. This is the creative domain equivalent of the confidence gate — the system does not act on insufficient signal.</p>
+</div>
+
+<h3>Content efficacy vs. discoverability: why both matter</h3>
+
+<pre>
+Example A — High content efficacy, low discoverability:
+    Views: 40        Likes: 30    Saves: 20    Downloads: 8
+    Content efficacy: ~0.85   (extremely high engagement rate)
+    Discoverability: ~0.15    (almost no one saw it)
+    Combined: sqrt(0.85 × 0.15) ≈ 0.36   ← low overall score
+
+Example B — Low content efficacy, high discoverability:
+    Views: 50,000    Likes: 200   Saves: 50    Downloads: 10
+    Content efficacy: ~0.25   (very low engagement per view)
+    Discoverability: ~0.85    (strong reach)
+    Combined: sqrt(0.25 × 0.85) ≈ 0.46   ← below baseline
+
+Example C — Balanced:
+    Views: 5,000     Likes: 400   Saves: 200   Downloads: 80
+    Content efficacy: ~0.72   (strong engagement rate)
+    Discoverability: ~0.70    (good reach)
+    Combined: sqrt(0.72 × 0.70) ≈ 0.71   ← above baseline
+</pre>
+
+<p>The geometric mean penalizes imbalance. A model that generates content optimizing for virality at the expense of actual engagement quality will score no better than one that generates high-quality-but-invisible work. Both components must improve together.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="modes">5. Operating modes: exploration vs. refinement</h2>
+
+<p>Creative AI systems face a fundamental tension: too much consistency produces derivative, predictable output; too much novelty produces work that doesn't connect with any audience. The framework handles this with operating modes that shift the weight on the curiosity term:</p>
+
+<div class="scenario-grid">
+
+  <div class="scenario">
+    <div class="sc-label">Mode A</div>
+    <div class="sc-title">Exploration / ideation</div>
+    <div class="weight-row"><span class="weight-name">Efficacy (w_e)</span><div class="weight-track"><div class="weight-fill fill-eff" style="width:60%"></div></div><span class="weight-val">0.60</span></div>
+    <div class="weight-row"><span class="weight-name">Confidence (w_c)</span><div class="weight-track"><div class="weight-fill fill-conf" style="width:5%"></div></div><span class="weight-val">0.05</span></div>
+    <div class="weight-row"><span class="weight-name">Curiosity (w_k)</span><div class="weight-track"><div class="weight-fill fill-cur" style="width:35%"></div></div><span class="weight-val">0.35</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Novelty exploration mode. System is rewarded for producing unfamiliar outputs that still resonate. Used for ideation, style development, and breaking established patterns. Curiosity weight elevated.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Mode B</div>
+    <div class="sc-title">Standard creative production</div>
+    <div class="weight-row"><span class="weight-name">Efficacy (w_e)</span><div class="weight-track"><div class="weight-fill fill-eff" style="width:80%"></div></div><span class="weight-val">0.80</span></div>
+    <div class="weight-row"><span class="weight-name">Confidence (w_c)</span><div class="weight-track"><div class="weight-fill fill-conf" style="width:5%"></div></div><span class="weight-val">0.05</span></div>
+    <div class="weight-row"><span class="weight-name">Curiosity (w_k)</span><div class="weight-track"><div class="weight-fill fill-cur" style="width:15%"></div></div><span class="weight-val">0.15</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Platform resonance dominates. Exploration still present but secondary. Default creative_writing profile from config.py.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Mode C</div>
+    <div class="sc-title">Brand voice / consistency</div>
+    <div class="weight-row"><span class="weight-name">Efficacy (w_e)</span><div class="weight-track"><div class="weight-fill fill-eff" style="width:65%"></div></div><span class="weight-val">0.65</span></div>
+    <div class="weight-row"><span class="weight-name">Confidence (w_c)</span><div class="weight-track"><div class="weight-fill fill-conf" style="width:30%"></div></div><span class="weight-val">0.30</span></div>
+    <div class="weight-row"><span class="weight-name">Curiosity (w_k)</span><div class="weight-track"><div class="weight-fill fill-cur" style="width:5%"></div></div><span class="weight-val">0.05</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Brand voice consistency mode. Confidence weight rises — the system is penalized for outputs that deviate from established style. Exploration is suppressed. Used for brand compliance and style guide adherence.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Mode D</div>
+    <div class="sc-title">Platform optimization</div>
+    <div class="weight-row"><span class="weight-name">Efficacy (w_e)</span><div class="weight-track"><div class="weight-fill fill-eff" style="width:90%"></div></div><span class="weight-val">0.90</span></div>
+    <div class="weight-row"><span class="weight-name">Confidence (w_c)</span><div class="weight-track"><div class="weight-fill fill-conf" style="width:5%"></div></div><span class="weight-val">0.05</span></div>
+    <div class="weight-row"><span class="weight-name">Curiosity (w_k)</span><div class="weight-track"><div class="weight-fill fill-cur" style="width:5%"></div></div><span class="weight-val">0.05</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Maximum resonance optimization. Platform signal almost entirely governs output. Used when the objective is explicit: maximize saves, downloads, or conversions for a specific content type and platform.</p>
+  </div>
+
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="applications">6. Applications: generative media, brand voice, content platforms</h2>
+
+<div class="cardgrid">
+  <div class="card">
+    <div class="card-icon">🎵</div>
+    <h4>Music generation platforms</h4>
+    <p>Platform signals: Spotify saves and playlist adds (weight 0.8), SoundCloud reposts (0.7), downloads (1.0). Content efficacy measured against human creator baseline in the same genre and release period. Correction loop feeds back which melodic or production patterns resonated and which didn't.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🎨</div>
+    <h4>Image &amp; visual generation</h4>
+    <p>Platform signals: iStockPhoto downloads/purchases (1.0), Pinterest saves (0.8), Behance appreciations (0.5). Discoverability efficacy measures whether the work surfaces in search results and recommendations — tagging, titling, and category alignment are part of the creative skill.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">✍️</div>
+    <h4>Long-form writing &amp; editorial</h4>
+    <p>Platform signals: Medium saves (0.8), reads completion rate (0.4), comments (0.4). Content efficacy measures conversion from view to completion — a piece that holds attention to the end scores higher than one that gets opened and abandoned.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🎬</div>
+    <h4>Video &amp; short-form content</h4>
+    <p>Platform signals: YouTube saves (0.8), shares (0.7), like/view ratio (0.5). Discoverability efficacy measures click-through rate from thumbnails and titles — the creative framing of content, not just its substance, is part of the quality measure.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">🏷️</div>
+    <h4>Brand voice systems</h4>
+    <p>Brand mode (Mode C above) uses confidence weight to enforce style consistency. The assertions store accumulates brand voice guidelines as high-confidence Class C assertions. Deviations from brand voice are treated as contradictions and corrected exactly as factual errors are in STEM domains.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">📱</div>
+    <h4>Creator economy tooling</h4>
+    <p>Tools that help individual creators improve their own work over time. Personal assertions store accumulates what resonates with the creator's specific audience. The correction loop is personalized — not averaging across all users but learning from each creator's own signal.</p>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="correction">7. The correction loop for creative feedback</h2>
+
+<p>The correction loop in creative domains works differently from high-stakes domains in three important ways:</p>
+
+<h3>No hard abstention — creative risk is allowed</h3>
+<p>With c_min=0.05, the system almost never triggers the abstention gate. In creative domains, "I'm not confident this will resonate" is not a reason to withhold output — it is an invitation to explore. The correction loop is the safety mechanism: if the low-confidence output doesn't resonate (low platform signal), the correction prevents that pattern from repeating. If it does resonate unexpectedly, that positive signal updates the efficacy EMA upward and the system learns the pattern works.</p>
+
+<h3>Platform signal lag requires patience</h3>
+<p>Creative signal takes time to accumulate — a newly uploaded track needs time to gather saves and reposts. The <code>MIN_OBSERVATIONS = 50</code> threshold prevents premature corrections on sparse data. Calibration cycles for creative domains should be longer than for STEM domains: weekly rather than several-times-daily, allowing engagement signal to accumulate before the next DPO calibration run.</p>
+
+<h3>Category-specific baselines prevent cross-contamination</h3>
+<p>Ambient electronic music that underperforms relative to ambient electronic baselines should not contaminate the model's behavior on hip-hop production. The two-component efficacy model stores baselines per <code>platform:category</code> key — a work is only compared to its category peers. The correction loop updates are scoped by category, not applied globally.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="mvp">8. MVP shape</h2>
+
+<p>Phase 5 of the framework roadmap is dedicated to creative fields — platform signal collection pipeline and two-component efficacy measurement. See <a href="whitepaper_full_v0_5.html#roadmap">§12 of the full whitepaper</a>.</p>
+
+<ol>
+  <li><strong>Pick one platform and one category</strong> — Spotify ambient music, or Pinterest product photography. The category-specific baseline is what makes the efficacy score meaningful. Start narrow enough to build a robust human creator baseline.</li>
+  <li><strong>Collect human creator baseline signals</strong> — register human creator engagement signals for the category using <code>CreativeEfficacyTracker.add_baseline()</code>. Aim for at least 20–30 works to build a meaningful average.</li>
+  <li><strong>Deploy in production and collect 50+ observations per work</strong> — the minimum observation threshold before any correction is applied. In early deployment, focus on data collection, not correction.</li>
+  <li><strong>Run first calibration cycle on content efficacy signal</strong> — identify works where content efficacy is consistently below baseline for the same category. These are the first correction targets.</li>
+  <li><strong>Extend to discoverability efficacy</strong> — after content quality corrections are stable, add the discoverability component. This requires more platform instrumentation (impressions, search rank) but produces the combined score that distinguishes genuinely resonant work from well-distributed mediocrity.</li>
+</ol>
+
+<div class="read-next">
+  <h3>Where to read next</h3>
+  <ul>
+    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/creative_efficacy.py" target="_blank">agent/creative_efficacy.py</a> — Full two-component model implementation: signal weights, platform mappings, baseline tracker, efficacy scoring</li>
+    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/config.py" target="_blank">agent/config.py</a> — creative_writing and art field configs with actual weight values</li>
+    <li><a href="whitepaper_full_v0_5.html#roadmap">§12 Phase 5 — Creative Fields</a> — Platform signal collection pipeline, two-component efficacy measurement, roadmap status</li>
+    <li><a href="whitepaper_full_v0_5.html#field-bounds">§5 — Field Bounds</a> — How the curiosity cap works and why c_min=0.05 is the correct floor for creative domains</li>
+    <li><a href="tutorial_v0_5.html">Tutorial</a> — Utility function mechanics, EMA accumulation, and the correction loop in code</li>
+  </ul>
+</div>
+
+</div></div>
+</body>
+</html>

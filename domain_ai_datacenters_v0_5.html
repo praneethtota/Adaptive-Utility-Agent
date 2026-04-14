@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — AI Data Centers v0.5</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f6f2;
+  --paper: #ffffff;
+  --ink: #18181b;
+  --muted: #6b7280;
+  --line: #e4e1da;
+  --accent: #4338ca;
+  --accent2: #0f766e;
+  --accent3: #c2410c;
+  --soft: #f0ede6;
+  --soft2: #ecfdf5;
+  --soft3: #fff7ed;
+  --tag-bg: #eef2ff;
+  --tag-text: #4338ca;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--ink);
+  background: var(--bg);
+  margin: 0;
+  padding: 0;
+}
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 0 5rem;
+  background: var(--paper);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  min-height: 100vh;
+}
+
+/* ── NAV ── */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem .9rem;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--line);
+  background: #fafaf8;
+  font-size: .88rem;
+  font-family: 'DM Sans', sans-serif;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+nav a { color: var(--accent); text-decoration: none; font-weight: 500; }
+nav a:hover { text-decoration: underline; }
+nav a.active { color: var(--ink); font-weight: 600; }
+
+/* ── HERO ── */
+.hero {
+  padding: 3rem 2.5rem 2.5rem;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(160deg, #f0ede6 0%, #fff 60%);
+}
+.hero-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  padding: .25rem .7rem;
+  border-radius: 999px;
+  margin-bottom: 1.2rem;
+}
+.hero h1 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 2.4rem;
+  line-height: 1.2;
+  margin: 0 0 .75rem;
+  color: var(--ink);
+}
+.hero .subtitle {
+  font-size: 1.1rem;
+  color: #444;
+  max-width: 680px;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+.audience-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1.5rem;
+}
+.pill {
+  font-size: .82rem;
+  font-weight: 500;
+  padding: .3rem .85rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: #fff;
+}
+
+/* ── BODY ── */
+.body {
+  padding: 2rem 2.5rem 0;
+}
+
+/* ── TYPOGRAPHY ── */
+h2 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.5rem;
+  line-height: 1.3;
+  margin: 2.5rem 0 .75rem;
+  padding-bottom: .5rem;
+  border-bottom: 2px solid var(--line);
+  color: var(--ink);
+}
+h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 1.8rem 0 .5rem;
+  color: #222;
+}
+h4 {
+  font-size: .95rem;
+  font-weight: 600;
+  margin: 1.3rem 0 .4rem;
+  color: #333;
+}
+p { margin: 0 0 1rem; }
+.lead { font-size: 1.05rem; color: #333; }
+.muted { color: var(--muted); }
+a { color: var(--accent); }
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .82rem;
+  background: #f2f0eb;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #333;
+}
+pre {
+  background: #f2f0eb;
+  border: 1px solid #e0dbd4;
+  border-radius: 8px;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  margin: 1rem 0 1.5rem;
+  font-size: .8rem;
+  line-height: 1.65;
+  font-family: 'JetBrains Mono', monospace;
+}
+ul, ol { margin: .3rem 0 1rem; padding-left: 1.3rem; }
+li { margin: .3rem 0; }
+small, .small { font-size: .88rem; }
+
+/* ── CALLOUT ── */
+.callout {
+  background: var(--soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0 1.5rem;
+  border-radius: 0 8px 8px 0;
+}
+.callout.green { background: var(--soft2); border-left-color: var(--accent2); }
+.callout.orange { background: var(--soft3); border-left-color: var(--accent3); }
+.callout strong { color: var(--ink); }
+.callout a { color: var(--accent); }
+
+/* ── CARD GRID ── */
+.cardgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0 1.75rem;
+}
+.card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.1rem 1.1rem .9rem;
+  background: #fff;
+}
+.card .card-icon {
+  font-size: 1.4rem;
+  margin-bottom: .5rem;
+}
+.card h4 { margin-top: 0; font-size: .95rem; }
+.card p { font-size: .88rem; color: #444; margin-bottom: 0; }
+
+/* ── METRIC GRID ── */
+.metricgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 12px;
+  margin: 1.25rem 0 1.75rem;
+}
+.metric {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: .9rem 1.1rem;
+  background: #fff;
+}
+.metric .label {
+  font-size: .75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-family: 'DM Sans', sans-serif;
+}
+.metric .value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.1;
+}
+.metric .unit {
+  font-size: .82rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.metric.green .value { color: var(--accent2); }
+.metric.red .value { color: var(--accent3); }
+
+/* ── TABLE ── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .88rem;
+  margin: 1rem 0 1.5rem;
+}
+th {
+  text-align: left;
+  border-bottom: 2px solid #c0bab2;
+  padding: 8px 12px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: #555;
+  font-family: 'DM Sans', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e8e4de;
+  vertical-align: top;
+  font-family: 'DM Sans', sans-serif;
+}
+tr:nth-child(even) td { background: #fafaf8; }
+.caption {
+  font-size: .82rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: -.5rem;
+  margin-bottom: 1rem;
+}
+
+/* ── BAR CHARTS ── */
+.chart-block {
+  background: #faf9f6;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin: 1.25rem 0 1.75rem;
+}
+.chart-title {
+  font-size: .88rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #444;
+}
+.barrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: .6rem 0;
+}
+.barlabel {
+  width: 240px;
+  font-size: .85rem;
+  flex-shrink: 0;
+  color: #333;
+}
+.bartrack {
+  flex: 1;
+  height: 14px;
+  background: #ece9e3;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.barfill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.barfill.green { background: var(--accent2); }
+.barfill.red { background: var(--accent3); }
+.barval {
+  font-size: .82rem;
+  color: var(--muted);
+  min-width: 44px;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── PHASE STEPS ── */
+.steps { counter-reset: step; margin: 1.25rem 0 1.75rem; }
+.step {
+  display: flex;
+  gap: 1.1rem;
+  margin-bottom: 1.1rem;
+  counter-increment: step;
+}
+.step-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .78rem;
+  font-weight: 700;
+  margin-top: 3px;
+}
+.step-body p { margin: 0; }
+.step-body strong { display: block; margin-bottom: .15rem; }
+
+/* ── TOC ── */
+.toc {
+  background: var(--soft);
+  border-radius: 10px;
+  padding: 1.1rem 1.4rem;
+  margin: 1.5rem 0 2rem;
+}
+.toc p { font-weight: 600; margin-bottom: .5rem; }
+.toc ol { margin: 0; }
+.toc li { font-size: .92rem; margin: .2rem 0; }
+.toc a { color: var(--accent); text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+/* ── DIVIDER ── */
+hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
+
+/* ── FOOTER LINKS ── */
+.read-next {
+  background: var(--soft);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-top: 2.5rem;
+}
+.read-next h3 { margin-top: 0; }
+.read-next ul { margin: 0; }
+.read-next li { font-size: .92rem; margin: .3rem 0; }
+
+@media (max-width: 640px) {
+  .hero h1 { font-size: 1.8rem; }
+  .body { padding: 1.5rem 1.25rem 0; }
+  nav { padding: .75rem 1rem; }
+  .barlabel { width: 160px; }
+  .metricgrid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- NAV -->
+<nav>
+  <a href="whitepaper_v05.html">Home</a>
+  <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+  <a href="blueprint_v0_5.html">Blueprint</a>
+  <a href="domain_ai_datacenters_v0_5.html" class="active">AI Data Centers</a>
+  <a href="domain_self_driving_v0_5.html">Self-Driving</a>
+  <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a>
+  <a href="domain_software_engineering_v0_5.html">Software Eng</a>
+  <a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems_v0_5.html">Energy Systems</a>
+  <a href="domain_creative_systems_v0_5.html">Creative Systems</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Domain Deep-Dive · v0.5</div>
+  <h1>AI Data Centers &amp;<br>GPU Cloud Platforms</h1>
+  <p class="subtitle">
+    How the Adaptive Utility Agent framework turns heterogeneous GPU fleets into tiered, self-routing inference infrastructure — reducing cost per useful query and unlocking revenue from stranded lower-tier hardware.
+  </p>
+  <div class="audience-pills">
+    <span class="pill">Inference infrastructure engineers</span>
+    <span class="pill">GPU cloud architects</span>
+    <span class="pill">ML platform teams</span>
+    <span class="pill">Fleet economics &amp; capacity planners</span>
+  </div>
+</div>
+
+<div class="body">
+
+<!-- TOC -->
+<div class="toc">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#problem">The structural problem with homogeneous fleet serving</a></li>
+    <li><a href="#architecture">Micro-Expert Architecture: from monolith to specialist graph</a></li>
+    <li><a href="#hardware">Hardware-adaptive decomposition: matching submodel size to GPU tier</a></li>
+    <li><a href="#cost">Analytical cost model: the 2–6× cheaper argument</a></li>
+    <li><a href="#routing">Routing quality experiment: what correct routing is actually worth</a></li>
+    <li><a href="#bluegreen">Blue-green deployment: per-submodel updates without fleet downtime</a></li>
+    <li><a href="#lora">LoRA multi-tenancy and fleet utilization</a></li>
+    <li><a href="#utility">Utility function mechanics for fleet operators</a></li>
+    <li><a href="#mvp">MVP shape for datacenter teams</a></li>
+    <li><a href="#next">Where to read next</a></li>
+  </ol>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="problem">The structural problem with homogeneous fleet serving</h2>
+
+<p>AI datacenters and GPU cloud operators today face a structural tension that manifests in fleet economics. Frontier models — the ones that deliver the broadest capability — require the highest tier of hardware to run at commercial throughput. Mid-tier and older GPU inventory (A40s, A100 40GB, consumer-adjacent parts) cannot run those models at useful latency, so they default to smaller commodity workloads that underutilize their memory and compute.</p>
+
+<p>This creates three compounding problems:</p>
+
+<ul>
+  <li><strong>Stranded inventory.</strong> Lower-tier GPUs sit in the product catalogue below the "frontier" tier with limited high-margin workloads. They are not cheap enough to be commodities and not powerful enough to run frontier models. They earn less revenue per watt than either end of the spectrum.</li>
+  <li><strong>Binary product story.</strong> Without routing intelligence, the operator's offering is effectively binary: pay for frontier-tier inference, or accept that you're on a lower-quality tier. There is no principled middle ground where a customer gets frontier-quality output on the tasks their domain actually requires, at a price point that reflects what it actually costs to serve those tasks.</li>
+  <li><strong>Static routing based on model size.</strong> Traffic is routed today primarily by model size and hardware availability, not by whether a given query actually needs a frontier model. A developer asking a domain-specific coding question and a researcher asking a novel cross-domain reasoning question both land on the same model tier, even though the first query could be served by a well-trained 7B specialist at a fraction of the cost.</li>
+</ul>
+
+<p>The framework addresses this by reframing the dispatch question. Instead of asking <em>can a smaller model substitute for a frontier model on all tasks?</em> — which the answer to is clearly no — it asks: <em>which specific query classes can be served at high quality at each hardware tier?</em> Efficacy becomes a per-domain, per-hardware-class signal rather than a global model-level judgment, and routing follows that signal.</p>
+
+<div class="callout">
+  <strong>Core claim for operators.</strong> A graph of domain-specialist submodels running on lower-tier hardware can match the output quality of a frontier monolith on the domain tasks where professional AI use is most valuable — at 2–6× lower cost per token — while the frontier tier is reserved for genuinely hard or cross-domain queries. See the <a href="whitepaper_full_v0_5.html#cost-model">cost model in the full whitepaper (§10.9.3)</a> for the derivation from public hardware specs.
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="architecture">Micro-Expert Architecture: from monolith to specialist graph</h2>
+
+<p>The framework's central architectural contribution for this domain is the <strong>Micro-Expert model</strong>: a graph of independently deployable domain submodels, each a specialist in its field, coordinated by a shared router and utility layer but <em>isolated at the weight level</em>. This is the model-graph analogue of what microservice architectures did for backend infrastructure.</p>
+
+<p>The analogy is exact and intentional. A monolithic backend couples all functionality in shared code and shared state — a change to the billing service can break the notification service. The Micro-Expert model couples all domain knowledge in shared weights — a calibration run on the surgery domain can degrade CS knowledge through weight interference. The solution in both cases is the same: decompose into independently deployable units with well-defined interfaces.</p>
+
+<pre>
+                    ┌─────────────────────┐
+                    │    Router / Hub      │
+                    │  (field classifier   │
+                    │   + query parser     │
+                    │   + context merger)  │
+                    └──────────┬──────────┘
+                               │
+         ┌─────────────────────┼──────────────────────┐
+         │                     │                      │
+    ┌────▼────┐           ┌────▼────┐           ┌────▼────┐
+    │Medicine │           │   CS    │           │   Law   │
+    │  model  │           │  model  │           │  model  │
+    └─────────┘           └────┬────┘           └─────────┘
+                     ┌─────────┼─────────┐
+                   ┌─▼──┐   ┌──▼──┐   ┌──▼──┐
+                   │ ML  │   │Algo │   │Prog │
+                   └─────┘   └─────┘   └─────┘
+</pre>
+
+<p>Each node is a separately deployed model with its own weights, calibration cycle, and utility tracker. The interface between nodes is a structured protocol that the wrapper layer already produces — no new interface design required:</p>
+
+<pre>
+Request:  { query, context, field, confidence_floor, session_id }
+Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
+</pre>
+
+<p><strong>Why this matters for operators specifically:</strong> In a monolithic deployment, updating one domain risks regressing every other domain. Rolling back means reverting the entire model. In the Micro-Expert model, updating the coding specialist only modifies coding weights; rolling back requires swapping one model file. The blast radius of any update is bounded to one submodel. Each submodel has its own blue-green deployment cycle, and they are fully decoupled from each other. See <a href="whitepaper_full_v0_5.html#distributed-graph">§10 of the full whitepaper</a> for the full architecture specification.</p>
+
+<p><strong>Catastrophic forgetting — actually solved.</strong> The standard continual learning approach (replay buffers + careful DPO weighting) slows forgetting but cannot eliminate it when weights are shared. The Micro-Expert model physically eliminates shared weights for domain-specific knowledge. Cross-domain knowledge lives exclusively in the router and a thin shared embedding layer. Domain-specific updates are contained. This is the reason the architecture is structured as a graph rather than as a larger monolith with mixture-of-experts routing — MoE routing is a compute optimization; the Micro-Expert model is an update isolation mechanism.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="hardware">Hardware-adaptive decomposition: matching submodel size to GPU tier</h2>
+
+<p>The granularity of the model graph is not fixed — it is <em>relative to the hardware it runs on</em>. This is a deliberate design property, not a constraint. The core principle that drives it:</p>
+
+<div class="callout green">
+  <strong>Intra-GPU compute is orders of magnitude faster than inter-GPU communication.</strong> When a model operation stays within a single GPU's memory, it executes at full memory bandwidth (up to ~3.35 TB/s on an H100). The moment computation crosses a GPU boundary, it is throttled by the interconnect — NVLink at ~900 GB/s for close neighbors, PCIe at ~64 GB/s further. The larger the submodel that fits on a single GPU, the less inter-GPU communication overhead per query.
+</div>
+
+<p>Decomposition depth therefore scales directly with GPU memory. Each hardware tier naturally determines the appropriate graph shape:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Hardware</th>
+      <th>VRAM</th>
+      <th>TDP</th>
+      <th>Approx cost (2025)</th>
+      <th>Submodel fit</th>
+      <th>Graph shape</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>H100 SXM5</strong></td>
+      <td>80 GB</td>
+      <td>700 W</td>
+      <td>~$30,000–35,000</td>
+      <td>~70B params per GPU</td>
+      <td>Shallow graph, few large nodes</td>
+    </tr>
+    <tr>
+      <td><strong>A100 80GB</strong></td>
+      <td>80 GB</td>
+      <td>400 W</td>
+      <td>~$10,000–15,000</td>
+      <td>~70B params per GPU</td>
+      <td>Shallow-to-medium depth</td>
+    </tr>
+    <tr>
+      <td><strong>A100 40GB / A40</strong></td>
+      <td>40 GB</td>
+      <td>300 W</td>
+      <td>~$4,000–7,000</td>
+      <td>~35B params per GPU</td>
+      <td>Medium depth</td>
+    </tr>
+    <tr>
+      <td><strong>RTX 4090</strong></td>
+      <td>24 GB</td>
+      <td>450 W</td>
+      <td>~$1,600–2,000</td>
+      <td>~20B params per GPU</td>
+      <td>Deeper graph, fine-grained specialists</td>
+    </tr>
+    <tr>
+      <td><strong>RTX 4080 / L40S-class</strong></td>
+      <td>16 GB</td>
+      <td>320 W</td>
+      <td>~$700–900</td>
+      <td>~14B params per GPU</td>
+      <td>Deep graph</td>
+    </tr>
+    <tr>
+      <td><strong>Edge / older (8–16 GB)</strong></td>
+      <td>8–16 GB</td>
+      <td>75–150 W</td>
+      <td>&lt;$500</td>
+      <td>~7B params per GPU</td>
+      <td>Very deep, fine-grained specialist nodes</td>
+    </tr>
+  </tbody>
+</table>
+<p class="caption">Hardware specs and pricing derived from published Lambda Labs, CoreWeave, RunPod, and Vast.ai data (2025). See <a href="whitepaper_full_v0_5.html#hardware-adaptive">§10.9.1 in the full whitepaper</a> for the derivation.</p>
+
+<p><strong>Graph branching heuristics.</strong> The graph branches recursively until one of two stopping conditions is met. The <em>hardware bound</em>: stop when a single submodel fits comfortably on one GPU. The <em>statistical bound</em>: stop branching when the within-domain contradiction rate drops below a threshold — typically &lt;2% — meaning the submodel is internally consistent enough that further specialization adds noise rather than signal. In practice: branch until the hardware bound is reached for active domains, and use the statistical bound to decide which domains warrant a branch at all. This prevents over-decomposition of low-volume or already-accurate domains.</p>
+
+<p><strong>Practical implication for mixed fleets.</strong> Providers such as CoreWeave and other GPU clouds often hold inventory across hardware generations: H100s, A100s, A40s, L40S-class parts, and consumer-adjacent hardware. Without routing, lower-tier inventory risks being stranded. A specialist-graph architecture gives those GPUs a high-value role. H100s serve the general frontier fallback and genuinely cross-domain queries. A100s and A40s serve mid-tier specialists for high-volume, well-defined domains. Consumer-class hardware serves deep specialists on narrow, high-confidence query types. The fleet becomes heterogeneous by design rather than by accident.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="cost">Analytical cost model: the 2–6× cheaper argument</h2>
+
+<p>The following is derived entirely from published hardware specifications and cloud provider pricing — no original measurement. The key comparison is cost per 1,000 output tokens across hardware tiers:</p>
+
+<div class="metricgrid">
+  <div class="metric">
+    <div class="label">70B on 2× H100</div>
+    <div class="value">$0.00083</div>
+    <div class="unit">per 1K output tokens</div>
+  </div>
+  <div class="metric green">
+    <div class="label">7B specialist on 1× 4090</div>
+    <div class="value">$0.00014</div>
+    <div class="unit">per 1K output tokens</div>
+  </div>
+  <div class="metric green">
+    <div class="label">3-specialist fan-out on 4090s</div>
+    <div class="value">$0.00042</div>
+    <div class="unit">per 1K output tokens</div>
+  </div>
+  <div class="metric">
+    <div class="label">Cost inversion threshold</div>
+    <div class="value">5</div>
+    <div class="unit">specialists activated (still cheaper)</div>
+  </div>
+</div>
+
+<p>The derivation is straightforward from published specs:</p>
+
+<pre>
+H100 SXM5 (enterprise):
+  VRAM:                 80 GB
+  Memory bandwidth:     3.35 TB/s
+  Cloud cost:           ~$2.50–3.50/hr (Lambda Labs, CoreWeave, 2025)
+  Llama 3.1 70B:        ~140 GB fp16 → requires 2× H100, or 1× H100 at 4-bit quant
+  Inference throughput: ~2,000 tokens/sec (batch=1, 200-token output)
+
+RTX 4090 (consumer):
+  VRAM:                 24 GB
+  Memory bandwidth:     1.01 TB/s
+  Cloud cost:           ~$0.35–0.50/hr (RunPod, Vast.ai, 2025)
+  Mistral/Llama 7B:     ~14 GB fp16 → fits in 1× 4090 with headroom
+  Inference throughput: ~800 tokens/sec (batch=1)
+
+Cost per 1,000 output tokens:
+  70B on 2× H100:   (2 × $3.00/hr) ÷ (2,000 tok/sec × 3,600) × 1,000 = $0.00083
+  7B on 1× 4090:    ($0.40/hr)     ÷ (800  tok/sec × 3,600) × 1,000 = $0.00014
+
+  Single-specialist query: 7B/4090 is ~6× cheaper per token.
+  3 specialists activated (fan-out):  3 × $0.00014 = $0.00042 — still 2× cheaper.
+  Cost inversion point: ~6 activated specialists simultaneously.
+</pre>
+<p class="caption">This is an analytical result from public data. Latency measurement on physical hardware is primary future work (Phase 8, <a href="whitepaper_full_v0_5.html#roadmap">§12 in the full whitepaper</a>).</p>
+
+<div class="callout orange">
+  <strong>The important nuance on latency.</strong> A single 7B model on a 4090 generates tokens at ~800 tok/sec versus ~2,000 tok/sec for a 70B on an H100 — slower per model. But a domain-specialist 7B model may need fewer tokens to produce an accurate, concise domain response than a general frontier model that must hedge across all possible interpretations of the query. The latency picture depends heavily on average response length per query class. Latency measurement on physical hardware is the primary item of empirical future work.
+</div>
+
+<h3>Revenue per watt: the operator-relevant metric</h3>
+
+<p>For infrastructure operators, the practically useful frame is not abstract model size but <strong>revenue per watt</strong> and <strong>fleet utilization</strong>. The question is: can a lower-tier GPU serve a specialist workload well enough that the operator earns more per useful query and per watt consumed?</p>
+
+<div class="chart-block">
+  <div class="chart-title">Illustrative revenue per watt comparison — mixed-fleet specialist routing</div>
+  <div class="barrow">
+    <span class="barlabel">H100 (frontier general)</span>
+    <div class="bartrack"><div class="barfill" style="width:70%"></div></div>
+    <span class="barval">baseline</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">A100 40GB (mid-tier specialist)</span>
+    <div class="bartrack"><div class="barfill green" style="width:82%"></div></div>
+    <span class="barval">~+17%</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">RTX 4090 (narrow specialist)</span>
+    <div class="bartrack"><div class="barfill green" style="width:91%"></div></div>
+    <span class="barval">~+30%</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">H100 (frontier general, stranded inventory)</span>
+    <div class="bartrack"><div class="barfill red" style="width:35%"></div></div>
+    <span class="barval">~−50%</span>
+  </div>
+  <p class="caption" style="margin-top:.75rem">Illustrative only. Values from the analytical cost model in <a href="whitepaper_full_v0_5.html#datacenter-economics">§10.9.4 of the full whitepaper</a>. The "stranded inventory" row represents H100-class hardware serving low-value undifferentiated workloads at low utilization — the failure mode the framework addresses.</p>
+</div>
+
+<p>The second lever is <strong>LoRA multi-tenancy</strong> (covered in detail below). A base specialist can remain resident while domain- or customer-specific adapters are rotated in, allowing several customers' specialist workloads to share one logical serving tier. Under export restrictions, supply constraints, or simply uneven access to H100-class hardware, this flexibility is strategic rather than cosmetic.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="routing">Routing quality experiment: what correct routing is actually worth</h2>
+
+<p>The claim that a specialist-graph architecture improves output quality — not just reduces cost — rests on an empirical question: how much does the routing and arbitration layer contribute to correctness, independent of model size? A controlled four-arm experiment was run using the production agent codebase to answer this directly. See <a href="whitepaper_full_v0_5.html#routing-experiment">§10.9.4 of the full whitepaper</a> for the full experimental setup and citations.</p>
+
+<p>All four arms used identical task plans (200 tasks, 25 problem types, 11 algorithm families). The quality model for each arm was parameterized from published domain benchmarks.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Arm</th>
+      <th>Description</th>
+      <th>Correctness</th>
+      <th>Δ vs baseline</th>
+      <th>Brier score</th>
+      <th>p-value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>A</strong></td>
+      <td>No routing — single generic system prompt, no specialization</td>
+      <td>59.0%</td>
+      <td>—</td>
+      <td>0.1596</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><strong>B</strong></td>
+      <td>Matched routing (oracle) — query always sent to correct domain specialist</td>
+      <td>71.5%</td>
+      <td style="color: var(--accent2); font-weight:700">+12.5%</td>
+      <td>0.1062</td>
+      <td>0.0086</td>
+    </tr>
+    <tr>
+      <td><strong>C</strong></td>
+      <td>Mismatched routing (Regime 2) — query sent to wrong domain specialist</td>
+      <td>41.5%</td>
+      <td style="color: var(--accent3); font-weight:700">−17.5%</td>
+      <td>0.2919</td>
+      <td>0.0004</td>
+    </tr>
+    <tr>
+      <td><strong>D</strong></td>
+      <td>VCG arbitration — probabilistic fan-out, VCG selects among specialists</td>
+      <td>69.5%</td>
+      <td style="color: var(--accent2); font-weight:700">+10.5%</td>
+      <td>0.1097</td>
+      <td>0.0285</td>
+    </tr>
+  </tbody>
+</table>
+<p class="caption">Quality model sources: DeepSeek Coder 7B vs GPT-3.5 on HumanEval; WizardMath 7B vs Llama 2 70B on MATH; Med-PaLM 2 vs GPT-4 on MedQA. Mismatch penalty from Raval et al. (2026). Routing accuracy from Xu et al. (2024). Full citations in <a href="whitepaper_full_v0_5.html#routing-experiment">§10.9.4</a>.</p>
+
+<div class="metricgrid">
+  <div class="metric green">
+    <div class="label">Correct routing gain</div>
+    <div class="value">+10.5%</div>
+    <div class="unit">VCG arbitration vs unrouted (p=0.029)</div>
+  </div>
+  <div class="metric red">
+    <div class="label">Misrouting penalty</div>
+    <div class="value">−17.5%</div>
+    <div class="unit">Wrong specialist vs unrouted (p&lt;0.001)</div>
+  </div>
+  <div class="metric">
+    <div class="label">Upper bound gain</div>
+    <div class="value">+12.5%</div>
+    <div class="unit">Oracle matched routing (p=0.009)</div>
+  </div>
+</div>
+
+<div class="callout orange">
+  <strong>The misrouting result (Arm C, −17.5%) is the most operationally important finding.</strong> It quantifies the cost of what the whitepaper calls the "Regime 2" failure mode: routing a query to a specialist that is confidently wrong rather than a generalist that is appropriately uncertain. A specialist that has been fine-tuned to be confident in its domain can produce confidently wrong answers on out-of-domain queries. This means that a routing system deployed without confidence gating — routing on predicted domain match without checking whether the specialist can actually serve the query — can be actively worse than no routing at all.
+</div>
+
+<p>The practical implication: the value of the routing layer depends entirely on routing <em>correctly</em>, which in the framework means routing on <strong>predicted confidence</strong> before the specialist attempts a query, not just on predicted domain classification. The confidence threshold is what prevents Regime 2.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="bluegreen">Blue-green deployment: per-submodel updates without fleet downtime</h2>
+
+<p>In a monolithic deployment, a model update is a fleet event: the entire serving infrastructure is involved. In the Micro-Expert model, each submodel has its own independent blue-green deployment cycle, and those cycles are fully decoupled. A coding specialist being updated does not affect the medical specialist serving traffic simultaneously.</p>
+
+<h3>Trigger condition</h3>
+
+<p>A submodel monitors its own utility score over a sliding window. A deployment cycle triggers when deviation from baseline is both significant and sustained:</p>
+
+<pre>
+Trigger when ALL of:
+    |U_current - U_baseline| > δ(field)    [significant deviation]
+    deviation sustained for ≥ T interactions  [not transient noise]
+    held-out benchmark available              [can evaluate candidate]
+
+δ(field) = base_δ / penalty_multiplier(field)    base_δ = 0.05
+
+Software Engineering:   δ = 0.025   T ≥ 10 interactions   (responsive)
+General/data domains:   δ = 0.040   T ≥ 4 interactions    (moderate)
+Creative/low-stakes:    δ = 0.050   T ≥ 2 interactions    (fast)
+</pre>
+
+<h3>Deployment lifecycle</h3>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num">0</div>
+    <div class="step-body"><strong>Detection</strong> — Utility monitor triggers training phase. BLUE model continues serving 100% of traffic throughout training.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body"><strong>Training (offline)</strong> — DPO calibration on accumulated (preferred, rejected) pairs, weighted by field penalty multiplier, mixed with replay buffer. Produces candidate GREEN model.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body"><strong>Canary (5% green / 95% blue)</strong> — Router sends 5% of traffic to GREEN. Minimum N_min interactions required before any traffic shift (N_min = 2× the detection window T).</div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body"><strong>Gradual shift (utility-weighted)</strong> — Traffic split recalculated every evaluation window via softmax on U scores. No manual intervention required. Enforced floor/ceiling of 5%–95%.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body"><strong>Promotion</strong> — When traffic_green ≥ promotion_threshold (field-calibrated), GREEN takes 100%. BLUE enters cooldown — instant rollback still available.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body"><strong>Retirement</strong> — If GREEN holds through cooldown, BLUE weights are freed. U_baseline is updated to U_green for the next cycle.</div>
+  </div>
+</div>
+
+<p><strong>Rollback is automatic and instant.</strong> Triggers on utility regression, contradiction rate increase (&gt;1.5× blue's rate), or benchmark regression beyond field tolerance. Traffic reverts to BLUE immediately; GREEN failure cases are added to the replay buffer as negative-weight DPO pairs for the next candidate.</p>
+
+<h3>Auditability advantage</h3>
+
+<p>Every submodel update in this protocol has a logged trigger (which utility deviation, over which window), a logged promotion trajectory (traffic split over time), and a clear rollback path. For GPU cloud operators offering SLAs and for customers who need model behavior change audit trails, this is significantly more auditable than a monolithic model release, which has a single release event with aggregate changes that cannot be attributed to individual domain corrections. See <a href="whitepaper_full_v0_5.html#bluegreen">§10.7–10.8 in the full whitepaper</a> for the full specification.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="lora">LoRA multi-tenancy and fleet utilization</h2>
+
+<p>Each submodel in the graph is a base specialist that can carry one or more LoRA adapters. This enables a serving architecture that reduces cold-start overhead and improves utilization across customers who share domain but differ in application context:</p>
+
+<ul>
+  <li><strong>Base resident specialist</strong> — The core domain model stays loaded in GPU memory for the duration of its serving window, paying the load cost once.</li>
+  <li><strong>Adapter rotation</strong> — Customer-specific or application-specific adapters are rotated in as needed. For a GPU cloud serving multiple enterprise customers in the same domain (e.g., legal document analysis, clinical note summarization), the base specialist is shared; only the thin adapter changes per customer.</li>
+  <li><strong>Tiered SLAs on shared infrastructure</strong> — Premium customers get adapter priority and quality guarantees backed by confidence-gating. Standard customers are served by the base specialist with looser routing constraints.</li>
+</ul>
+
+<div class="chart-block">
+  <div class="chart-title">Illustrative utilization improvement — LoRA multi-tenancy on a single serving node</div>
+  <div class="barrow">
+    <span class="barlabel">Monolithic serving (one model per node)</span>
+    <div class="bartrack"><div class="barfill red" style="width:45%"></div></div>
+    <span class="barval">~45%</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Specialist + adapter rotation (2 customers)</span>
+    <div class="bartrack"><div class="barfill" style="width:68%"></div></div>
+    <span class="barval">~68%</span>
+  </div>
+  <div class="barrow">
+    <span class="barlabel">Specialist + adapter rotation (4 customers)</span>
+    <div class="bartrack"><div class="barfill green" style="width:87%"></div></div>
+    <span class="barval">~87%</span>
+  </div>
+  <p class="caption" style="margin-top:.75rem">Illustrative. Actual utilization depends on inter-customer request timing and adapter swap latency. The key point is that shared base specialist + customer-specific adapters reduces the per-customer GPU allocation required to maintain quality SLAs, improving overall fleet utilization.</p>
+</div>
+
+<p>Under hardware supply constraints or export restrictions on frontier-class GPUs, this multi-tenancy model is particularly important. An operator who cannot expand H100 inventory can still grow customer count on specialist tiers by improving utilization through adapter sharing. The floor for this is that shared customers' request patterns must not perfectly overlap (if all customers send requests simultaneously, no utilization gain is possible); in practice, enterprise workload patterns are staggered enough for meaningful sharing.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="utility">Utility function mechanics for fleet operators</h2>
+
+<p>The framework's utility function governs routing and escalation decisions at every level of the graph. For datacenter operators, the key terms map directly to fleet economics:</p>
+
+<pre>
+U = w_e(f)·E + w_c(f)·C + w_k(f)·K
+
+E — Efficacy:    did the specialist produce a verified, useful output?
+C — Confidence:  internal consistency, penalized by detected contradictions
+K — Curiosity:   exploration bonus for high-upside unexplored domains (minor weight in serving)
+f — field, determining weights and minimum competence thresholds
+</pre>
+
+<h3>Operator-relevant interpretation of each term</h3>
+
+<div class="cardgrid">
+  <div class="card">
+    <div class="card-icon">🎯</div>
+    <h4>Efficacy (E)</h4>
+    <p>For datacenter workloads: validated code, accurate technical answers, well-formed structured outputs. Failed outputs requiring escalation count <em>against</em> efficacy and trigger escalation logs. Strong efficacy on a specialist tier means that tier earns its cost differential.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">📊</div>
+    <h4>Confidence (C)</h4>
+    <p>The most economically important term for routing. Low confidence on a query class is a pre-inference signal to route to a higher tier — avoiding wasted GPU cycles on likely-to-fail attempts. This is where fleet economics are improved: routing on predicted confidence before the compute is spent.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">⚡</div>
+    <h4>Field penalty multiplier</h4>
+    <p>Operators can configure field-specific penalty multipliers that reflect the cost of an error in that domain. A wrong answer in a high-stakes professional domain (legal, medical, financial) gets penalized more harshly at the DPO training step than a wrong answer in a low-stakes creative domain. This is how the system calibrates specialist quality to domain risk.</p>
+  </div>
+  <div class="card">
+    <div class="card-icon">💰</div>
+    <h4>Cost-efficiency layer</h4>
+    <p>The base utility function does not include an explicit cost term — that is an operator-layer addition. The framework architecture supports adding a hardware-tier cost weight to the routing decision, so that the router explicitly values a correct A40-class answer over an equivalent H100-class answer by the cost differential.</p>
+  </div>
+</div>
+
+<h3>Confidence thresholds by hardware tier</h3>
+
+<p>Confidence thresholds take on a specific economic meaning in fleet serving. Setting them too low causes expensive under-routing — cheap specialists attempt queries they will fail, consuming GPU time and producing escalations anyway. Setting them too high causes over-routing — cheap specialists never serve queries they could have handled well, and margin on lower-tier hardware collapses.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Hardware tier</th>
+      <th>Recommended confidence floor</th>
+      <th>Escalation target</th>
+      <th>Economic rationale</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Consumer / A40-class</td>
+      <td>κ ≥ 0.80 for specialist domain queries</td>
+      <td>A100 / mid-tier pool</td>
+      <td>Preserve cheap tier margin; escalate at first uncertainty</td>
+    </tr>
+    <tr>
+      <td>A100 / mid-tier</td>
+      <td>κ ≥ 0.70 for broad domain queries</td>
+      <td>H100-class frontier pool</td>
+      <td>Mid-tier earns its margin on queries specialists couldn't serve</td>
+    </tr>
+    <tr>
+      <td>H100-class / frontier</td>
+      <td>κ ≥ 0.55 (broad model fallback)</td>
+      <td>Human review / refusal</td>
+      <td>Frontier tier absorbs hard queries; abstention is acceptable</td>
+    </tr>
+  </tbody>
+</table>
+<p class="caption">Illustrative starting values. Calibrate thresholds by measuring escalation rates per query class under real traffic, then adjust to hit target escalation budgets.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="mvp">MVP shape for datacenter and GPU cloud teams</h2>
+
+<p>A minimum deployable configuration does not require building all specialists at once. A staged approach focuses on the highest-volume, most-validatable query class first and builds the routing and assertions infrastructure that all future specialists will share.</p>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <strong>Pick one specialist domain — code and developer queries</strong>
+      The strongest starting point for two reasons: validation signals are abundant and unambiguous (tests pass or fail; type checkers flag errors), and code queries are typically the highest-volume professional workload on GPU clouds. See <a href="whitepaper_full_v0_5.html#mvp">§11 in the full whitepaper</a> for the code generation MVP specification.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <strong>Stand up the canonical query normalizer</strong>
+      Deduplicate and route similar queries to the same specialist path so the assertions store builds meaningful signal quickly. Without normalization, semantically equivalent queries are treated as independent and the routing calibration takes far longer.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <strong>Set confidence thresholds conservatively</strong>
+      Start high (κ ≥ 0.85) and loosen as the specialist builds a validated track record on live traffic. The goal is not to maximize the percentage of queries served at the cheap tier — it is to maximize the percentage of queries served <em>correctly</em> at the cheap tier. Early over-escalation is operationally safe; early under-escalation trains customers to distrust the specialist tier.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <strong>Log every escalation to the assertions store</strong>
+      Escalated queries are the training signal for threshold tuning and eventual specialist expansion. Without this logging, the operator has no mechanism to distinguish "this query class should always escalate" from "this query class escalates because the threshold is miscalibrated." The assertions store is also where DPO calibration pairs are accumulated for the specialist's improvement cycle.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <strong>Measure queries served per GPU-hour, not just answer quality</strong>
+      Track utilization and escalation rate per hardware tier. This is the operator-relevant metric that benchmark scores do not capture. A specialist that achieves 88% correctness and serves 95% of domain queries without escalation is more valuable to fleet economics than a generalist that achieves 93% correctness but costs 6× more per token.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-body">
+      <strong>Expand to second specialist domain after first calibration cycle</strong>
+      Use the escalation logs from the first domain to identify the second-highest-volume query class. The routing infrastructure and assertions store are already in place; adding a second specialist is an incremental cost, not a greenfield build.
+    </div>
+  </div>
+</div>
+
+<div class="callout green">
+  <strong>The key operational insight from the routing experiment.</strong> The +10.5% correctness gain from VCG arbitration routing (Arm D) over no routing (Arm A) is available with a correctly implemented routing layer independent of the specialist model quality. And the −17.5% penalty from mismatched routing (Arm C) is also available — to the downside — from a routing layer that classifies without confidence-gating. Getting routing right is the most impactful single step, and it is also the one that most depends on the confidence threshold calibration described in steps 3 and 4 above.
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="next">Where to read next</h2>
+
+<div class="read-next">
+  <h3>From this page</h3>
+  <ul>
+    <li><a href="whitepaper_full_v0_5.html#distributed-graph">§10 — Distributed Model Graph Architecture</a> — Full Micro-Expert Architecture specification, submodel interface protocols, and catastrophic forgetting analysis</li>
+    <li><a href="whitepaper_full_v0_5.html#hardware-adaptive">§10.9 — Hardware-Adaptive Decomposition</a> — Consumer GPU argument, analytical cost model derivation, and routing quality experiment in full</li>
+    <li><a href="whitepaper_full_v0_5.html#bluegreen">§10.7–10.8 — Blue-Green Deployment</a> — Trigger conditions, deployment lifecycle, traffic split visualization, and rollback specification</li>
+    <li><a href="whitepaper_full_v0_5.html#datacenter-economics">§10.9.4 — Data Center Operator Economics</a> — Revenue per watt framing, LoRA multi-tenancy, and tiered SLA discussion</li>
+    <li><a href="whitepaper_full_v0_5.html#mvp">§11 — MVP: Code Generation Agent</a> — The recommended first specialist deployment, feedback loop, and success criteria</li>
+    <li><a href="whitepaper_full_v0_5.html#roadmap">§12 — Roadmap</a> — Phase 8 (physical hardware validation and datacenter economics) and Phase 9 (safety-critical deployment)</li>
+    <li><a href="blueprint_v0_5.html">Blueprint</a> — Architecture walkthrough, routing mechanics, correction loop, and confidence updater with code references</li>
+    <li><a href="domain_software_engineering_v0_5.html">Software Engineering domain doc</a> — The recommended first specialist domain for GPU cloud MVPs, covered in full</li>
+    <li><a href="domain_autonomous_systems_v0_5.html">Autonomous Systems domain doc</a> — Edge and battery-constrained deployment; the Jetson-class hardware argument</li>
+    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub — Adaptive-Utility-Agent</a> — Agent code, routing experiment source, and reference implementation</li>
+  </ul>
+</div>
+
+</div><!-- .body -->
+</div><!-- .page -->
+</body>
+</html>
