@@ -111,6 +111,8 @@ tr:nth-child(even) td{background:#fafaf8}
     <li><a href="#failures">Failure modes &amp; mitigations</a></li>
     <li><a href="#implementation">Implementation approach</a></li>
     <li><a href="#scaling">Scaling considerations</a></li>
+    <li><a href="#microexpert">Micro-Expert Architecture</a></li>
+    <li><a href="#bluegreen-auto">Utility-driven automated deployment</a></li>
   </ol>
 </div>
 
@@ -551,6 +553,227 @@ Client
   <li>Canary rollout of evaluator and correction policy changes</li>
 </ul>
 
+<h2 id="microexpert">13. Micro-Expert Architecture</h2>
+
+<p>The monolithic control plane described above is the right starting point — deployable today with standard infrastructure. But it has a structural ceiling that becomes a real problem at scale: every calibration update touches the entire model's weight space. Fixing a recurring error in software engineering advice can subtly degrade medical reasoning through weight interference. Rollback means rolling back everything.</p>
+
+<p>The Micro-Expert Architecture is the production evolution of this design — the same utility-governed control plane, decomposed into a graph of independently deployable domain submodels. Architecturally it is microservices applied to model inference: each specialist has its own weights, its own calibration cycle, and its own utility tracker. Updating surgery weights cannot affect software engineering weights. There are no shared parameters to interfere.</p>
+
+<pre>
+Router (Raft HA cluster — 150–300ms failover)
+    |
+    |-- field classifier + query decomposer
+    |-- probabilistic fan-out to 1-3 specialists per query
+    +-- response merger + conflict detection
+         |
+         |-- Surgery submodel      -- own weights, own calibration
+         |-- Software Eng submodel -- own weights, own calibration
+         |-- Law submodel          -- own weights, own calibration
+         +-- ...N domain submodels
+              |
+         Arbiter Agent
+              |
+         |-- 4-check contradiction resolution
+         |   (logical, mathematical, cross-session, empirical)
+         |-- VCG arbitration -- dominant strategy truthfulness
+         +-- verified corrections --&gt; DPO signal per submodel
+</pre>
+
+<h3>13.1 Why this resolves the monolithic ceiling</h3>
+
+<div class="cardgrid">
+  <div class="card">
+    <h4>No catastrophic forgetting</h4>
+    <p>Updating one submodel only modifies its own weights. Rolling back a bad surgery update is swapping one model file — not re-running the full training pipeline. Blast radius of any update is bounded to one domain.</p>
+  </div>
+  <div class="card">
+    <h4>Independent deployability</h4>
+    <p>A surgery model update in progress does not block a software engineering update. Each submodel runs its own blue-green cycle independently. Updates are decoupled at the infrastructure level.</p>
+  </div>
+  <div class="card">
+    <h4>Cost proportional to query</h4>
+    <p>Only the relevant 1–3 submodels activate per query. A graph of 20 domain submodels costs roughly the same per query as a single-domain model — inference cost scales with query complexity, not graph size.</p>
+  </div>
+  <div class="card">
+    <h4>Graceful degradation</h4>
+    <p>If a submodel is mid-update, the router falls back to a parent or sibling domain model. The router maintains a fallback graph — no single point of failure at the specialist level.</p>
+  </div>
+</div>
+
+<h3>13.2 Cross-domain query handling</h3>
+
+<p>Multi-domain queries — "write Python code to analyze patient drug dosage data" — require both software engineering and medicine submodels simultaneously. The router handles this through query decomposition and parallel fan-out:</p>
+
+<pre>
+1. Field classifier returns a distribution:
+      {"software_engineering": 0.65, "medicine": 0.35}
+
+2. Router decomposes the query:
+      CS subquery:  "Write Python data analysis code"
+      Med subquery: "What are clinical constraints on dosage data?"
+
+3. Fan out: send subqueries to respective submodels in parallel
+
+4. Merge: combine responses, apply weighted confidence from
+          field distribution (medicine response gets 35% weight)
+
+5. Arbitration: if CS and Medicine models contradict each other
+          --&gt; Arbiter Agent --&gt; 4-check resolution --&gt; DPO signal
+</pre>
+
+<div class="callout orange">
+  <p><strong>The routing failure risk.</strong> Misrouted queries are not merely suboptimal — the routing experiment quantifies this: mismatched routing actively worsens correctness by 17.5% and dramatically degrades confidence calibration (Brier 0.292 vs 0.160). The system becomes confidently wrong. Mitigations: probabilistic fan-out, entropy-based fallback, VCG arbitration, and the confidence gate which catches most out-of-domain answers before they are returned. Full regime analysis in <a href="whitepaper_full_v0_5.html#distributed-graph">§10.4.1 of the whitepaper</a>.</p>
+</div>
+
+<h2 id="bluegreen-auto">14. Utility-driven automated deployment</h2>
+
+<p>This is the most operationally consequential property of the architecture: the decision of <em>when</em> to deploy an update, <em>how fast</em> to roll it out, and <em>when</em> to roll back is not made by a human operator on a schedule. It is made by the utility function itself — continuously, field-calibrated, with no manual intervention required under normal conditions.</p>
+
+<p>The same U score that governs correction injection and DPO training weight also governs the entire deployment lifecycle. There is no separate deployment system — deployment is a direct consequence of sustained utility deviation.</p>
+
+<h3>14.1 The trigger: utility deviation as the deployment signal</h3>
+
+<p>Each submodel monitors its own utility score over a sliding window. A deployment cycle triggers automatically when deviation from baseline is both significant and sustained:</p>
+
+<pre>
+Trigger when ALL of:
+    |U_current - U_baseline| &gt; delta(field)   [significant deviation]
+    deviation sustained for &gt;= T interactions  [not noise]
+    held-out benchmark available               [can evaluate candidate]
+</pre>
+
+<p>Both delta and T are derived directly from the field penalty multiplier that already governs DPO training — the same sensitivity that makes a surgical contradiction weighted 10x harder at training time also makes the surgical submodel 50x harder to trigger for deployment than a creative writing submodel:</p>
+
+<pre>
+delta(field) = 0.05 / penalty_multiplier(field)
+
+Surgery:          delta = 0.005   penalty = 10x  — very sensitive
+Software Eng:     delta = 0.025   penalty =  2x  — moderate
+Creative Writing: delta = 0.050   penalty =  1x  — relaxed
+
+T(field) = (z_alpha * sigma / delta)^2    [power analysis, alpha=0.05, sigma~0.04]
+
+Surgery:          T &gt;= 246 interactions   — high confidence required
+Software Eng:     T &gt;=  10 interactions   — responsive
+Creative Writing: T &gt;=   2 interactions   — fast
+</pre>
+
+<div class="callout green">
+  <p><strong>Why field-calibration matters here.</strong> A wrong surgical update that serves 246 interactions before rollback causes real harm. A wrong creative writing update that serves 2 interactions before rollback is nearly harmless. The penalty multiplier that controls training severity also controls deployment sensitivity — the two are in the correct relationship by construction, not by tuning a separate parameter.</p>
+</div>
+
+<h3>14.2 The five-phase lifecycle</h3>
+
+<p>Once triggered, deployment proceeds through five phases — each governed by the utility score, with no manual gates required:</p>
+
+<pre>
+Phase 0 — Detection (ongoing):
+    U_monitor watches sliding window
+    If |U_current - U_baseline| &gt; delta for T consecutive interactions:
+        trigger Phase 1
+
+Phase 1 — Training (offline):
+    DPO calibration on accumulated (preferred, rejected) pairs
+    Weighted by field_penalty_multiplier + replay buffer
+    Produces candidate GREEN model
+    BLUE model continues serving 100% of traffic — no disruption
+
+Phase 2 — Canary (5% green / 95% blue):
+    Router sends 5% of traffic to GREEN, 95% to BLUE
+    Minimum N_min = T(field) x 2 interactions before any shift
+    Both models log U scores per interaction
+
+Phase 3 — Gradual shift (utility-weighted routing):
+    Every evaluation window, traffic split recomputed:
+
+        traffic_green = exp(U_green/tau) / (exp(U_green/tau) + exp(U_blue/tau))
+
+        tau(field): small tau = fast promotion, large tau = conservative
+            Surgery:      tau = 0.05   promotes only when clearly better
+            Software Eng: tau = 0.20   moderate
+            Creative:     tau = 0.50   fast, promotes on small differences
+
+        Enforced: clip(traffic_green, 0.05, 0.95)
+
+    As U_green &gt; U_blue, traffic shifts automatically.
+    No manual intervention required.
+
+Phase 4 — Promotion (traffic_green &gt;= 1 - delta(field)):
+    traffic_green --&gt; 1.0
+    BLUE enters cooldown — not retired, instant rollback still available
+    Cooldown = T(field) interactions
+
+Phase 5 — Retirement:
+    If GREEN holds through cooldown without regression:
+        BLUE retired, weights freed
+        U_baseline = U_green   (new baseline for next cycle)
+        delta recalibrated from observed variance
+</pre>
+
+<h3>14.3 Automated rollback</h3>
+
+<p>Rollback is also fully automated — it does not require an on-call engineer to notice a problem:</p>
+
+<pre>
+Rollback triggers (any phase):
+    U_green &lt; U_blue - epsilon  for M consecutive interactions
+    OR  contradiction_rate_green &gt; contradiction_rate_blue x 1.5
+    OR  benchmark regression &gt; field_tolerance
+
+Rollback action:
+    traffic_blue --&gt; 1.0 instantly
+    GREEN flagged
+    Failure DPO pairs added to replay buffer with negative weight
+    Next candidate trained against this failure pattern explicitly
+</pre>
+
+<p>Negative-weight failure DPO pairs mean each bad deployment makes the next candidate better — the system learns from failed deployments as well as from bad answers.</p>
+
+<h3>14.4 What this looks like operationally</h3>
+
+<p>Traffic split across a typical successful promotion cycle:</p>
+
+<pre>
+Traffic %
+  100 BLUE ----------------+
+                           +--+
+                              +--+
+                                 +-----------+
+    5 GREEN-----------------+               |
+                            +--+            |
+                               +--+         |
+    0                             +---------+-----&gt; time
+           | Canary  | Gradual shift | Promotion
+           | (5/95)  | (utility-driven) | (100% green)
+</pre>
+
+<p>The team's role is not to make deployment decisions — it is to set field parameters (delta, T, tau) once and monitor autonomous operation. The utility function makes every deployment and rollback decision. The audit trail logs every trigger event, traffic split, and rollback with the U scores that drove each decision.</p>
+
+<div class="cardgrid">
+  <div class="card">
+    <h4>No deployment toil</h4>
+    <p>Under normal operation, no engineer needs to approve or execute a deployment. Engineers are involved when rollback triggers fire — the exception path, not the normal path.</p>
+  </div>
+  <div class="card">
+    <h4>Field-calibrated risk</h4>
+    <p>High-stakes domains deploy conservatively by construction. A surgical submodel requires 246 canary interactions before any traffic shift. A creative writing submodel can promote in 4.</p>
+  </div>
+  <div class="card">
+    <h4>Full auditability</h4>
+    <p>Every update has a logged trigger, a logged promotion trajectory, and a logged rollback path. More auditable than any monolithic release cycle — the U scores that drove each decision are retrievable.</p>
+  </div>
+  <div class="card">
+    <h4>Failure improves next attempt</h4>
+    <p>Rolled-back candidates contribute negative-weight DPO pairs to the replay buffer. The next training run is explicitly conditioned against the failure pattern that caused the rollback.</p>
+  </div>
+</div>
+
+<div class="callout">
+  <p><strong>The architectural payoff.</strong> In the monolithic control plane (§§1–12), the utility function governs inference behavior. In the Micro-Expert Architecture with utility-driven deployment, the utility function governs the entire system lifecycle — from the first correction injection through to the decision to retire a model version. One governing signal, operating at every timescale, from milliseconds to months.</p>
+</div>
+
+<p>Full specification — including delta derivations, T power analysis, tau field calibration, and the mathematical relationship to VCG arbitration — is in <a href="whitepaper_full_v0_5.html#bluegreen">§10.7 of the full whitepaper</a>.</p>
+
 <div class="read-next">
   <h3>Read next</h3>
   <ul>
@@ -558,6 +781,9 @@ Client
     <li><a href="whitepaper_full_v0_5.html">Read the full research whitepaper</a></li>
     <li><a href="domain_software_engineering_v0_5.html">See the MVP domain deep-dive: software engineering</a></li>
     <li><a href="tutorial_v0_5.html">Walk through the tutorial version of the framework</a></li>
+    <li><a href="whitepaper_full_v0_5.html#bluegreen">§10.7 — Blue-Green Deployment (full specification)</a></li>
+    <li><a href="whitepaper_full_v0_5.html#distributed-graph">§10 — Distributed Model Graph Architecture</a></li>
+    <li><a href="whitepaper_full_v0_5.html#arbiter">§10.5 — The Arbiter Agent</a></li>
   </ul>
 </div>
 
