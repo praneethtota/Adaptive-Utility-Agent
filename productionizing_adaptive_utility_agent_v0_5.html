@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Productionizing the Adaptive Utility Agent</title>
+<meta name="description" content="A staff-level production architecture view of the Adaptive Utility Agent: control plane, evaluation, correction, memory, observability, tradeoffs, and scaling considerations.">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--paper:#ffffff;--ink:#18181b;--muted:#6b7280;--line:#e4e1da;--accent:#4338ca;--accent2:#0f766e;--accent3:#c2410c;--soft:#f0ede6;--soft2:#ecfdf5;--soft3:#fff7ed;--tag-bg:#eef2ff;--tag-text:#4338ca}
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:16px;line-height:1.75;color:var(--ink);background:var(--bg);margin:0;padding:0}
+.page{max-width:960px;margin:0 auto;padding:0 0 5rem;background:var(--paper);border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
+nav{display:flex;flex-wrap:wrap;gap:.6rem .9rem;padding:1rem 2rem;border-bottom:1px solid var(--line);background:#fafaf8;font-size:.88rem;position:sticky;top:0;z-index:10}
+nav a{color:var(--accent);text-decoration:none;font-weight:500}
+nav a:hover{text-decoration:underline}
+nav a.active{color:var(--ink);font-weight:600}
+.hero{padding:3rem 2.5rem 2.5rem;border-bottom:1px solid var(--line);background:linear-gradient(160deg,#f0ede6 0%,#fff 60%)}
+.hero-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--tag-bg);color:var(--tag-text);padding:.25rem .7rem;border-radius:999px;margin-bottom:1.2rem}
+.hero h1{font-family:'DM Serif Display',Georgia,serif;font-size:2.4rem;line-height:1.2;margin:0 0 .75rem}
+.hero .subtitle{font-size:1.1rem;color:#444;max-width:740px;margin-bottom:1.5rem;line-height:1.6}
+.audience-pills{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem}
+.pill{font-size:.82rem;font-weight:500;padding:.3rem .85rem;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.body{padding:2rem 2.5rem 0}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.5rem;line-height:1.3;margin:2.5rem 0 .75rem;padding-bottom:.5rem;border-bottom:2px solid var(--line);color:var(--ink);scroll-margin-top:60px}
+h3{font-size:1.05rem;font-weight:600;margin:1.8rem 0 .5rem;color:#222}
+h4{font-size:.95rem;font-weight:600;margin:1.3rem 0 .4rem;color:#333}
+p{margin:0 0 1rem}
+a{color:var(--accent)}
+ul,ol{margin:.3rem 0 1rem;padding-left:1.3rem}
+li{margin:.3rem 0}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:#f2f0eb;padding:2px 6px;border-radius:4px;color:#333}
+pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:8px;padding:1.1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:.8rem;line-height:1.65;font-family:'JetBrains Mono',monospace}
+.callout{background:var(--soft);border-left:4px solid var(--accent);padding:1rem 1.25rem;margin:1.25rem 0 1.5rem;border-radius:0 8px 8px 0}
+.callout.green{background:var(--soft2);border-left-color:var(--accent2)}
+.callout.orange{background:var(--soft3);border-left-color:var(--accent3)}
+.callout p{margin:0}.callout p+p{margin-top:.5rem}
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;margin:1.25rem 0 1.75rem}
+.card{border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.1rem .9rem;background:#fff}
+.card h4{margin-top:0;font-size:.95rem}
+.card p{font-size:.88rem;color:#444;margin-bottom:0}
+.metricgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:1.25rem 0 1.75rem}
+.metric{border:1px solid var(--line);border-radius:10px;padding:.9rem 1.1rem;background:#fff}
+.metric .label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:4px}
+.metric .value{font-size:1.55rem;font-weight:700;color:var(--accent);line-height:1.15}
+.metric .unit{font-size:.82rem;color:var(--muted);margin-top:2px}
+.metric.green .value{color:var(--accent2)}
+.metric.red .value{color:var(--accent3)}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:1rem 0 1.5rem}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:8px 12px;font-size:.82rem;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.05em}
+td{padding:8px 12px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#fafaf8}
+.caption{font-size:.82rem;color:var(--muted);font-style:italic;margin-top:-.5rem;margin-bottom:1rem}
+.toc{background:var(--soft);border-radius:10px;padding:1.1rem 1.4rem;margin:1.5rem 0 2rem}
+.toc p{font-weight:600;margin-bottom:.5rem}
+.toc ol{margin:0}
+.toc li{font-size:.92rem;margin:.2rem 0}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.read-next{background:var(--soft);border-radius:10px;padding:1.25rem 1.5rem;margin-top:2.5rem}
+.read-next h3{margin-top:0}
+.read-next ul{margin:0}
+.read-next li{font-size:.92rem;margin:.3rem 0}
+@media(max-width:640px){.hero h1{font-size:1.8rem}.body{padding:1.5rem 1.25rem 0}nav{padding:.75rem 1rem}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <a href="whitepaper_v05.html">Home</a>
+  <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+  <a href="tutorial_v0_5.html">Tutorial</a>
+  <a href="domain_ai_datacenters_v0_5.html">AI Data Centers</a>
+  <a href="domain_self_driving_v0_5.html">Self-Driving</a>
+  <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a>
+  <a href="domain_software_engineering_v0_5.html">Software Eng</a>
+  <a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems_v0_5.html">Energy Systems</a>
+  <a href="domain_creative_systems_v0_5.html">Creative Systems</a>
+  <a href="productionizing_adaptive_utility_agent_v0_5.html" class="active">Production Design</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Systems Architecture · v0.5</div>
+  <h1>Productionizing the Adaptive Utility Agent</h1>
+  <p class="subtitle">A staff-level systems view of the framework: how to turn the research into a production control plane around LLM inference, with evaluation, correction, memory, observability, and scaling discipline.</p>
+  <div class="audience-pills">
+    <span class="pill">Staff / Senior SWE</span>
+    <span class="pill">AI infrastructure teams</span>
+    <span class="pill">Recruiters &amp; hiring managers</span>
+    <span class="pill">LLM systems builders</span>
+  </div>
+</div>
+
+<div class="body">
+
+<div class="toc">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#summary">Executive summary</a></li>
+    <li><a href="#overview">System overview</a></li>
+    <li><a href="#architecture">High-level architecture</a></li>
+    <li><a href="#components">Core components</a></li>
+    <li><a href="#loop">Adaptive control loop</a></li>
+    <li><a href="#utility">Utility function design</a></li>
+    <li><a href="#state">Data &amp; state management</a></li>
+    <li><a href="#observability">Observability &amp; metrics</a></li>
+    <li><a href="#tradeoffs">Tradeoffs</a></li>
+    <li><a href="#failures">Failure modes &amp; mitigations</a></li>
+    <li><a href="#implementation">Implementation approach</a></li>
+    <li><a href="#scaling">Scaling considerations</a></li>
+  </ol>
+</div>
+
+<h2 id="summary">1. Executive summary</h2>
+
+<p>Modern LLM systems are fundamentally stateless at runtime. A wrong answer produced today is often produced again tomorrow, and the system typically has no durable mechanism for learning from that failure until the next model release. That is the operational gap this architecture is designed to close.</p>
+
+<p>The Adaptive Utility Agent can be productionized as a <strong>control plane around LLM inference</strong>. Instead of treating the model as the entire system, the model becomes one component inside a larger closed-loop architecture that evaluates outputs, corrects failures, stores useful lessons, and biases future behavior accordingly.</p>
+
+<div class="metricgrid">
+  <div class="metric">
+    <div class="label">Primary system role</div>
+    <div class="value">Control Plane</div>
+    <div class="unit">Sits around model inference rather than inside the model</div>
+  </div>
+  <div class="metric green">
+    <div class="label">Adaptation path</div>
+    <div class="value">Runtime</div>
+    <div class="unit">Improves behavior without waiting for retraining</div>
+  </div>
+  <div class="metric">
+    <div class="label">Core loop</div>
+    <div class="value">Evaluate → Correct</div>
+    <div class="unit">Adds feedback to otherwise stateless inference</div>
+  </div>
+  <div class="metric red">
+    <div class="label">Main cost</div>
+    <div class="value">Latency + complexity</div>
+    <div class="unit">Better reliability is not free</div>
+  </div>
+</div>
+
+<div class="callout green">
+  <p><strong>The design goal is not to replace the model.</strong> The design goal is to surround the model with enough structure that repeated failures become detectable, correctable, and less likely to recur.</p>
+</div>
+
+<h2 id="overview">2. System overview</h2>
+
+<p>A standard LLM application pipeline is usually little more than prompt construction followed by inference and response return. That simplicity is attractive, but it also means there is no persistent operational memory and no meaningful notion of control.</p>
+
+<pre>
+Prompt → LLM → Output
+</pre>
+
+<p>The production version of the Adaptive Utility Agent inserts multiple stages around that core inference call:</p>
+
+<pre>
+Prompt → LLM → Evaluate → Correct → Learn → Output
+</pre>
+
+<div class="cardgrid">
+  <div class="card">
+    <h4>Evaluation layer</h4>
+    <p>Scores generated outputs against correctness, consistency, policy, and domain-specific constraints.</p>
+  </div>
+  <div class="card">
+    <h4>Correction layer</h4>
+    <p>Performs targeted retries, rewriting, constraint injection, or heavier secondary reasoning passes.</p>
+  </div>
+  <div class="card">
+    <h4>Memory layer</h4>
+    <p>Stores failure cases, successful corrections, and reusable patterns that can influence future requests.</p>
+  </div>
+  <div class="card">
+    <h4>Utility layer</h4>
+    <p>Balances correctness gains against latency, cost, and confidence to decide whether the loop should continue.</p>
+  </div>
+</div>
+
+<h2 id="architecture">3. High-level architecture</h2>
+
+<pre>
+                    ┌────────────────────┐
+                    │   Client Request   │
+                    └─────────┬──────────┘
+                              │
+                     ┌────────▼────────┐
+                     │  Orchestrator   │
+                     │  (API Layer)    │
+                     └────────┬────────┘
+                              │
+                     ┌────────▼────────┐
+                     │ LLM Inference   │
+                     │  (Base Model)   │
+                     └────────┬────────┘
+                              │
+                 ┌────────────▼────────────┐
+                 │   Evaluation Engine     │
+                 │ - Consistency checks    │
+                 │ - Constraint validation │
+                 │ - Failure detection     │
+                 └────────────┬────────────┘
+                              │
+                 ┌────────────▼────────────┐
+                 │   Correction Engine     │
+                 │ - Regeneration          │
+                 │ - Constraint injection  │
+                 │ - Output rewriting      │
+                 └────────────┬────────────┘
+                              │
+                 ┌────────────▼────────────┐
+                 │  Memory / Learning Store│
+                 │ - Failure logs          │
+                 │ - Correction patterns   │
+                 │ - Context embeddings    │
+                 └────────────┬────────────┘
+                              │
+                     ┌────────▼────────┐
+                     │  Final Output   │
+                     └─────────────────┘
+</pre>
+
+<p class="caption">The key architectural move is separating inference from control. The model generates candidates; the surrounding system decides what should be trusted, corrected, persisted, or returned.</p>
+
+<h2 id="components">4. Core components</h2>
+
+<h3>4.1 Orchestrator (control plane API)</h3>
+<p>The orchestrator owns the full request lifecycle. It is responsible for request admission, trace propagation, latency budget enforcement, retry boundaries, and routing decisions between lightweight and heavyweight correction paths.</p>
+
+<ul>
+  <li>Assigns request IDs and correlation IDs</li>
+  <li>Applies tenant-specific policies and limits</li>
+  <li>Decides whether a request should invoke memory retrieval before generation</li>
+  <li>Stops the control loop when utility gain no longer justifies additional cost</li>
+</ul>
+
+<h3>4.2 LLM inference layer</h3>
+<p>The base model remains stateless and unchanged. This is an explicit design constraint. The point of the architecture is to improve behavior without requiring fine-tuning every time the system discovers a recurring class of mistakes.</p>
+
+<div class="callout">
+  <p><strong>Practical implication:</strong> the same control plane can sit in front of different models and be upgraded independently of the underlying model provider.</p>
+</div>
+
+<h3>4.3 Evaluation engine</h3>
+<p>The evaluation engine is where the system turns “this answer feels wrong” into machine-actionable signals. The exact checks are domain dependent, but the contract is stable: inspect the candidate output and emit structured failure metadata.</p>
+
+<pre>
+{
+  "is_valid": false,
+  "failure_type": "logical_inconsistency",
+  "confidence": 0.82,
+  "details": {
+    "rule_id": "consistency.cross_step.v1",
+    "severity": 0.74
+  }
+}
+</pre>
+
+<p>Examples of evaluation strategies:</p>
+<ul>
+  <li>Logical consistency checks across steps or assertions</li>
+  <li>Constraint validation for schema, format, or domain rules</li>
+  <li>Cross-response contradiction detection against recent history</li>
+  <li>Heuristic or learned scorers for quality and confidence</li>
+</ul>
+
+<h3>4.4 Correction engine</h3>
+<p>The correction engine turns evaluation output into intervention. In production, this should be tiered rather than monolithic. Cheap fixes should run first; expensive fixes should be reserved for requests whose expected utility gain is high enough to justify the added cost.</p>
+
+<div class="cardgrid">
+  <div class="card">
+    <h4>Constraint injection</h4>
+    <p>Augment the next pass with specific rules or forbidden patterns derived from the evaluator.</p>
+  </div>
+  <div class="card">
+    <h4>Targeted regeneration</h4>
+    <p>Retry only the failing span or step rather than regenerating the full answer from scratch.</p>
+  </div>
+  <div class="card">
+    <h4>Rule-based rewriting</h4>
+    <p>Use deterministic transforms when the failure is mechanical and well understood.</p>
+  </div>
+  <div class="card">
+    <h4>Escalation path</h4>
+    <p>Invoke a stronger model or heavier reasoning path only when lower-cost options fail.</p>
+  </div>
+</div>
+
+<h3>4.5 Memory / learning layer</h3>
+<p>This is the system’s adaptive substrate. The memory layer stores failure traces, successful corrections, and high-value context embeddings that can be retrieved to steer future generations away from known failure modes.</p>
+
+<pre>
+{
+  "failure_type": "numerical_error",
+  "input_context": "...",
+  "incorrect_output": "...",
+  "corrected_output": "...",
+  "embedding": [...],
+  "tenant_id": "acme-prod",
+  "created_at": "2026-04-13T12:00:00Z"
+}
+</pre>
+
+<h2 id="loop">5. Adaptive control loop</h2>
+
+<p>The production system should be understood as a closed loop, not a stateless request-response chain:</p>
+
+<ol>
+  <li>Generate a candidate response</li>
+  <li>Evaluate it against domain and system constraints</li>
+  <li>If it fails, select the least-cost corrective action</li>
+  <li>Persist the failure and successful correction signal</li>
+  <li>Use stored context to bias future generations</li>
+</ol>
+
+<p>That gives the system the three properties most LLM deployments lack today:</p>
+<ul>
+  <li><strong>Feedback</strong> — errors become machine-readable signals</li>
+  <li><strong>State</strong> — useful lessons persist beyond the current request</li>
+  <li><strong>Adaptation</strong> — future behavior changes without waiting for a new model version</li>
+</ul>
+
+<div class="callout orange">
+  <p><strong>Important boundary:</strong> this is not “learning” in the same sense as gradient updates during model training. It is operational adaptation through retrieval, constraints, routing, and memory-informed control.</p>
+</div>
+
+<h2 id="utility">6. Utility function design</h2>
+
+<p>The utility function is the policy surface that decides whether additional correction is worth the cost. Without this layer, systems tend to either stop too early and return bad answers, or over-correct themselves into latency and cost collapse.</p>
+
+<pre>
+U = w1 * correctness + w2 * consistency - w3 * latency - w4 * cost + w5 * confidence
+</pre>
+
+<p style="font-size:.88rem;color:#666;">This is a production-oriented adaptation — weights are configurable per tenant and task class, and latency/cost appear explicitly as production objectives. The canonical derivation, formal axioms, and field-specific weight values are in <a href="whitepaper_full_v0_5.html#utility-function">§4 of the full whitepaper</a>.</p>
+
+<p>In production, weights should be configurable by tenant, task class, and domain. A legal assistant, a coding agent, and a creative writing system should not all optimize the same objective.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Signal</th>
+      <th>Why it matters</th>
+      <th>Typical source</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Correctness</td>
+      <td>Primary reliability objective</td>
+      <td>Evaluators, tests, validators</td>
+    </tr>
+    <tr>
+      <td>Consistency</td>
+      <td>Prevents internal contradictions</td>
+      <td>Cross-step or cross-turn checks</td>
+    </tr>
+    <tr>
+      <td>Latency</td>
+      <td>Bounds user-facing delay</td>
+      <td>Request timers</td>
+    </tr>
+    <tr>
+      <td>Cost</td>
+      <td>Prevents runaway correction loops</td>
+      <td>Token and model spend accounting</td>
+    </tr>
+    <tr>
+      <td>Confidence</td>
+      <td>Supports abstention and routing</td>
+      <td>Scorers, historical outcomes</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="state">7. Data &amp; state management</h2>
+
+<p>The easiest way to build a fragile version of this system is to throw every artifact into a single blob store and hope retrieval works. A better production design separates fast-path, structured, and semantic state.</p>
+
+<div class="cardgrid">
+  <div class="card">
+    <h4>Postgres</h4>
+    <p>Structured logs, evaluation records, correction metadata, per-tenant policies, and audit tables.</p>
+  </div>
+  <div class="card">
+    <h4>Vector store</h4>
+    <p>Semantic retrieval over prior failures, corrections, and domain context for memory-augmented prompting.</p>
+  </div>
+  <div class="card">
+    <h4>Redis</h4>
+    <p>Hot cache for recent session context, active traces, routing hints, and short-lived correction state.</p>
+  </div>
+  <div class="card">
+    <h4>Object storage</h4>
+    <p>Longer-term artifact retention for raw traces, evaluator evidence, and offline analysis datasets.</p>
+  </div>
+</div>
+
+<p>Useful persisted objects include:</p>
+<ul>
+  <li>Failure logs with explicit failure types and severities</li>
+  <li>Correction mappings from bad outputs to known-good revisions</li>
+  <li>Embeddings for semantic recall of similar error patterns</li>
+  <li>Utility and evaluation metadata for offline tuning</li>
+</ul>
+
+<h2 id="observability">8. Observability &amp; metrics</h2>
+
+<p>A system like this can easily become opaque unless observability is a first-class requirement. Every correction step should be traceable, attributable, and measurable.</p>
+
+<div class="metricgrid">
+  <div class="metric">
+    <div class="label">Failure detection rate</div>
+    <div class="value">Detected / total</div>
+    <div class="unit">How often evaluators catch bad outputs</div>
+  </div>
+  <div class="metric green">
+    <div class="label">Correction success rate</div>
+    <div class="value">Improved / corrected</div>
+    <div class="unit">Whether intervention actually helped</div>
+  </div>
+  <div class="metric">
+    <div class="label">Repeated error rate</div>
+    <div class="value">Down over time</div>
+    <div class="unit">The metric most aligned with the framework thesis</div>
+  </div>
+  <div class="metric red">
+    <div class="label">Latency overhead</div>
+    <div class="value">p50 / p95</div>
+    <div class="unit">How expensive the control loop is in practice</div>
+  </div>
+</div>
+
+<p>Recommended trace fields:</p>
+<ul>
+  <li>request_id, tenant_id, model_id, evaluator_version, correction_strategy</li>
+  <li>input token count, output token count, latency by stage, utility deltas</li>
+  <li>initial verdict, final verdict, retry count, memory hit / miss</li>
+</ul>
+
+<h2 id="tradeoffs">9. Tradeoffs</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Dimension</th>
+      <th>Benefit</th>
+      <th>Cost / risk</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Reliability</td>
+      <td>Higher correctness and fewer repeated mistakes</td>
+      <td>More moving parts and more operational complexity</td>
+    </tr>
+    <tr>
+      <td>Latency</td>
+      <td>Multi-pass correction can rescue bad responses</td>
+      <td>Each pass adds user-visible delay</td>
+    </tr>
+    <tr>
+      <td>Cost</td>
+      <td>Heavier reasoning available when needed</td>
+      <td>Runaway inference spend if not bounded</td>
+    </tr>
+    <tr>
+      <td>Memory</td>
+      <td>System improves behavior across sessions</td>
+      <td>Stale, low-quality, or poisoned memory can degrade outputs</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="failures">10. Failure modes &amp; mitigations</h2>
+
+<h3>10.1 False positives in evaluation</h3>
+<p>If evaluators incorrectly flag good outputs as failures, the correction loop will waste cost and may degrade answer quality. This argues for confidence thresholds, evaluator versioning, and offline calibration against labeled datasets.</p>
+
+<h3>10.2 Over-correction</h3>
+<p>Some outputs become worse after intervention, especially when the system over-indexes on one constraint and destroys fluency or usefulness. Mitigation: tiered correction, candidate comparison, and hard retry caps.</p>
+
+<h3>10.3 Memory poisoning</h3>
+<p>If bad corrections enter the memory store and are later retrieved as guidance, the system can institutionalize the wrong behavior. Mitigation: write-path validation, trust scores, expiry policies, and periodic pruning.</p>
+
+<h3>10.4 Cascading loops</h3>
+<p>If every correction step produces new evaluator findings, the system can spiral into latency or cost collapse. Mitigation: utility-based stop conditions, maximum pass counts, and explicit fallback modes.</p>
+
+<div class="callout">
+  <p><strong>Staff-level reality:</strong> the hard part is not inventing the loop. The hard part is keeping the loop from becoming operationally pathological under real traffic, noisy evaluators, and cost constraints.</p>
+</div>
+
+<h2 id="implementation">11. Implementation approach</h2>
+
+<p>A pragmatic implementation can be built with standard backend infrastructure rather than exotic custom systems.</p>
+
+<pre>
+Client
+  │
+  ├── FastAPI / Python control plane
+  │     ├── Request orchestration
+  │     ├── Evaluator dispatch
+  │     ├── Correction policy engine
+  │     └── Metrics / tracing hooks
+  │
+  ├── LLM provider APIs
+  │     ├── Primary model
+  │     └── Escalation model
+  │
+  ├── Postgres
+  ├── Redis
+  ├── Vector DB
+  └── Async queue (optional)
+        ├── Celery
+        └── Kafka for higher-scale decoupling
+</pre>
+
+<p>This design is intentionally modular. Each evaluator can be implemented as an independent service or library. Each correction strategy can be swapped out or A/B tested. Each memory retrieval policy can evolve without changing the base model.</p>
+
+<h2 id="scaling">12. Scaling considerations</h2>
+
+<p>The architecture is straightforward at small scale and substantially more interesting at real production volume. The main scaling questions are not just throughput, but <em>which requests deserve expensive correction</em> and <em>how to isolate tenants, memory, and policy state safely</em>.</p>
+
+<div class="cardgrid">
+  <div class="card">
+    <h4>Multi-tenant isolation</h4>
+    <p>Keep memory, policies, and evaluation traces scoped by tenant to avoid cross-customer contamination.</p>
+  </div>
+  <div class="card">
+    <h4>Tiered correction</h4>
+    <p>Run cheap evaluators and fixes first; reserve heavy passes for high-value or high-risk requests.</p>
+  </div>
+  <div class="card">
+    <h4>Batching opportunities</h4>
+    <p>Group evaluator calls and asynchronous analysis tasks where latency budgets allow it.</p>
+  </div>
+  <div class="card">
+    <h4>Streaming support</h4>
+    <p>For interactive products, decide whether corrections happen before first token, during streaming, or after a draft is emitted.</p>
+  </div>
+</div>
+
+<p>At larger scale, a mature system would likely introduce:</p>
+<ul>
+  <li>Per-domain evaluator registries</li>
+  <li>Budget-aware routing and admission control</li>
+  <li>Offline learning jobs to refine utility weights</li>
+  <li>Canary rollout of evaluator and correction policy changes</li>
+</ul>
+
+<div class="read-next">
+  <h3>Read next</h3>
+  <ul>
+    <li><a href="whitepaper_v05.html">Return to the main landing page</a></li>
+    <li><a href="whitepaper_full_v0_5.html">Read the full research whitepaper</a></li>
+    <li><a href="domain_software_engineering_v0_5.html">See the MVP domain deep-dive: software engineering</a></li>
+    <li><a href="tutorial_v0_5.html">Walk through the tutorial version of the framework</a></li>
+  </ul>
+</div>
+
+</div>
+</div>
+</body>
+</html>
