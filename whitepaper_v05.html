@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — A Framework for Self-Optimizing AI Systems</title>
+<meta name="description" content="A framework for building AI agents that correct their own errors between model releases — through utility-governed feedback loops, structured contradiction resolution, and hardware-adaptive deployment.">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f6f2;
+  --paper: #ffffff;
+  --ink: #18181b;
+  --muted: #6b7280;
+  --line: #e4e1da;
+  --accent: #4338ca;
+  --accent2: #0f766e;
+  --accent3: #c2410c;
+  --soft: #f0ede6;
+  --soft2: #ecfdf5;
+  --soft3: #fff7ed;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--ink);
+  background: var(--bg);
+  margin: 0; padding: 0;
+}
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  background: var(--paper);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  min-height: 100vh;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .85rem 2.5rem;
+  border-bottom: 1px solid var(--line);
+  background: #fafaf8;
+  font-size: .85rem;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.topbar-brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: .03em;
+}
+.topbar-links { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+.topbar-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: .83rem;
+  transition: color .15s;
+}
+.topbar-links a:hover { color: var(--accent); }
+.topbar-links a.cta {
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: .2rem .7rem;
+  border-radius: 6px;
+  font-size: .8rem;
+}
+.topbar-links a.cta:hover { background: var(--accent); color: #fff; }
+
+/* ── HERO ── */
+.hero {
+  padding: 4rem 2.5rem 3rem;
+  background: linear-gradient(170deg, #eeeaf7 0%, #f7f6f2 45%, #fff 100%);
+  border-bottom: 1px solid var(--line);
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 360px; height: 360px;
+  background: radial-gradient(circle, rgba(67,56,202,.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.1rem;
+}
+.hero h1 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: clamp(2.2rem, 4.5vw, 3.2rem);
+  line-height: 1.15;
+  margin: 0 0 1rem;
+  color: var(--ink);
+  max-width: 780px;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+.hero-lead {
+  font-size: 1.15rem;
+  color: #3a3a3a;
+  max-width: 680px;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+.hero-meta {
+  font-size: .85rem;
+  color: var(--muted);
+  margin-bottom: 2.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.5rem;
+  align-items: center;
+}
+.hero-meta a { color: var(--accent); text-decoration: none; }
+.hero-meta a:hover { text-decoration: underline; }
+.hero-meta .sep { color: #ccc; }
+
+/* ── HERO METRICS ── */
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  gap: 12px;
+  margin-bottom: 2rem;
+  max-width: 820px;
+}
+.hm {
+  background: rgba(255,255,255,.85);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: .85rem 1.1rem;
+  backdrop-filter: blur(4px);
+}
+.hm .hm-val {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--accent);
+  margin-bottom: .2rem;
+}
+.hm .hm-val.green { color: var(--accent2); }
+.hm .hm-val.orange { color: var(--accent3); }
+.hm .hm-label { font-size: .78rem; color: var(--muted); line-height: 1.4; }
+
+/* ── HERO ACTIONS ── */
+.hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: .75rem; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .6rem 1.3rem;
+  border-radius: 8px;
+  font-size: .9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all .15s;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+}
+.btn-primary:hover { background: #3730a3; border-color: #3730a3; }
+.btn-secondary {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── HONEST SCOPE ── */
+.scope-bar {
+  background: #fafaf8;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: .85rem 2.5rem;
+  font-size: .82rem;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem 1.5rem;
+  align-items: center;
+}
+.scope-bar strong { color: #444; }
+.scope-item { display: flex; align-items: center; gap: .4rem; }
+.dot-measured { width: 8px; height: 8px; background: var(--accent2); border-radius: 50%; flex-shrink: 0; }
+.dot-analytical { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; flex-shrink: 0; }
+.dot-pending { width: 8px; height: 8px; background: #d1d5db; border-radius: 50%; flex-shrink: 0; }
+
+/* ── BODY SECTIONS ── */
+.section { padding: 3rem 2.5rem; border-bottom: 1px solid var(--line); }
+.section:last-child { border-bottom: none; }
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+h2 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.75rem;
+  line-height: 1.25;
+  margin: 0 0 1rem;
+  color: var(--ink);
+}
+h3 { font-size: 1.05rem; font-weight: 600; margin: 1.5rem 0 .5rem; color: #222; }
+p { margin: 0 0 1rem; }
+a { color: var(--accent); }
+ul { margin: .3rem 0 1rem; padding-left: 1.3rem; }
+li { margin: .3rem 0; }
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .82rem;
+  background: #f2f0eb;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #333;
+}
+pre {
+  background: #f2f0eb;
+  border: 1px solid #e0dbd4;
+  border-radius: 8px;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  margin: .75rem 0 0;
+  font-size: .8rem;
+  line-height: 1.7;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── HOW IT WORKS ── */
+.mechanism {
+  background: var(--soft);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .8rem;
+  line-height: 1.8;
+  color: #333;
+}
+.timescales {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.ts-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  background: #fff;
+}
+.ts-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent);
+  margin-bottom: .3rem;
+}
+.ts-card h4 { margin: 0 0 .3rem; font-size: .95rem; font-weight: 600; }
+.ts-card p { font-size: .85rem; color: #444; margin: 0; }
+
+/* ── DOMAIN CARDS ── */
+.domain-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.domain-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.4rem 1.4rem 1.1rem;
+  background: #fff;
+  text-decoration: none;
+  color: var(--ink);
+  display: block;
+  transition: border-color .15s, box-shadow .15s;
+  position: relative;
+}
+.domain-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px rgba(67,56,202,.1);
+}
+.dc-badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent);
+  background: #eef2ff;
+  padding: .18rem .55rem;
+  border-radius: 4px;
+  margin-bottom: .6rem;
+}
+.domain-card h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 400;
+  margin: 0 0 .4rem;
+  color: var(--ink);
+}
+.domain-card p {
+  font-size: .86rem;
+  color: #555;
+  margin: 0 0 .75rem;
+  line-height: 1.6;
+}
+.dc-link {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+.dc-link::after { content: '→'; }
+
+/* ── TUTORIAL FEATURE ── */
+.tutorial-card {
+  background: linear-gradient(135deg, #eef2ff 0%, #f0fdf4 100%);
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  padding: 2rem;
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2rem;
+  align-items: start;
+}
+.tutorial-card h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+  margin: 0 0 .5rem;
+  color: var(--ink);
+}
+.tutorial-card p { font-size: .92rem; color: #444; margin-bottom: .75rem; }
+.tutorial-pills { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.tp {
+  font-size: .78rem;
+  font-weight: 500;
+  padding: .2rem .65rem;
+  border-radius: 999px;
+  border: 1px solid #c7d2fe;
+  color: var(--accent);
+  background: rgba(255,255,255,.7);
+}
+.tutorial-side { text-align: right; }
+.tutorial-side .btn { margin-bottom: .5rem; }
+
+/* ── WHITEPAPER LINKS ── */
+.wp-clusters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+.wp-cluster h4 {
+  font-size: .82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin: 0 0 .75rem;
+  padding-bottom: .4rem;
+  border-bottom: 2px solid var(--line);
+}
+.wp-cluster ul { margin: 0; padding: 0; list-style: none; }
+.wp-cluster li { margin: .4rem 0; }
+.wp-cluster a {
+  font-size: .88rem;
+  color: var(--accent);
+  text-decoration: none;
+  line-height: 1.4;
+}
+.wp-cluster a:hover { text-decoration: underline; }
+.wp-cluster .wp-desc {
+  font-size: .78rem;
+  color: var(--muted);
+  display: block;
+  margin-top: .1rem;
+}
+
+/* ── QUICKSTART ── */
+.qs-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.qs-step {
+  background: var(--soft);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+.qs-step .qs-n {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: .35rem;
+}
+.qs-step h4 { margin: 0 0 .3rem; font-size: .9rem; font-weight: 600; }
+.qs-step p { font-size: .82rem; color: #555; margin: 0 0 .5rem; }
+
+/* ── CALLOUT ── */
+.callout {
+  background: var(--soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0 1.5rem;
+  border-radius: 0 8px 8px 0;
+  font-size: .92rem;
+}
+.callout p { margin: 0; }
+.callout.green { background: var(--soft2); border-left-color: var(--accent2); }
+
+/* ── FOOTER ── */
+footer {
+  padding: 2.5rem 2.5rem;
+  border-top: 2px solid var(--line);
+  background: #fafaf8;
+  font-size: .85rem;
+  color: var(--muted);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.5rem;
+  align-items: end;
+}
+footer a { color: var(--accent); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+.footer-author { font-weight: 600; color: #333; font-size: .9rem; }
+.footer-right { text-align: right; }
+.footer-right .footer-links { display: flex; gap: 1rem; justify-content: flex-end; margin-bottom: .4rem; flex-wrap: wrap; }
+
+@media (max-width: 680px) {
+  .hero { padding: 2.5rem 1.5rem 2rem; }
+  .section { padding: 2rem 1.5rem; }
+  .topbar { padding: .75rem 1.5rem; }
+  .scope-bar { padding: .75rem 1.5rem; }
+  .tutorial-card { grid-template-columns: 1fr; }
+  .tutorial-side { text-align: left; }
+  footer { grid-template-columns: 1fr; }
+  .footer-right { text-align: left; }
+  .footer-right .footer-links { justify-content: flex-start; }
+  .hero h1 { font-size: 1.9rem; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <span class="topbar-brand">Adaptive Utility Agents · v0.5</span>
+  <div class="topbar-links">
+    <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+    <a href="tutorial_v0_5.html">Tutorial</a>
+    <a href="#domains">Domains</a>
+    <a href="#quickstart">Quick Start</a>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="cta">GitHub ↗</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">Praneeth Tota · April 2026 · v0.5</div>
+  <h1>AI agents that <em>correct</em><br>their own errors between releases</h1>
+  <p class="hero-lead">
+    Every deployed language model shares the same structural flaw: a wrong answer produced today will be produced again tomorrow, and every day until the next version ships. There is no feedback loop. This framework builds one — through a utility function that governs learning at every timescale, structured contradiction resolution, and correction that persists across sessions without waiting for a full retraining cycle.
+  </p>
+
+  <!-- Validated metrics -->
+  <div class="hero-metrics">
+    <div class="hm">
+      <div class="hm-val green">69.6%</div>
+      <div class="hm-label">Reduction in repeated errors vs. uncalibrated baseline (cycles 2–5)</div>
+    </div>
+    <div class="hm">
+      <div class="hm-val green">+10.5%</div>
+      <div class="hm-label">Correctness gain from VCG arbitration routing (p&nbsp;=&nbsp;0.029)</div>
+    </div>
+    <div class="hm">
+      <div class="hm-val orange">−17.5%</div>
+      <div class="hm-label">Correctness loss from mismatched routing — quantifying Regime 2 (p&nbsp;&lt;&nbsp;0.001)</div>
+    </div>
+    <div class="hm">
+      <div class="hm-val">r&nbsp;=&nbsp;0.461</div>
+      <div class="hm-label">U&nbsp;↔&nbsp;correctness correlation (p&nbsp;&lt;&nbsp;10⁻⁴⁰) — utility score is a real quality signal</div>
+    </div>
+  </div>
+
+  <div class="hero-actions">
+    <a href="tutorial_v0_5.html" class="btn btn-primary">Builder's Tutorial →</a>
+    <a href="whitepaper_full_v0_5.html" class="btn btn-secondary">Full Whitepaper</a>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="btn btn-secondary">GitHub ↗</a>
+  </div>
+
+  <div class="hero-meta">
+    <span><strong>Praneeth Tota</strong></span>
+    <span class="sep">·</span>
+    <span>Ph.D. Computer Science · Algorithmic Game Theory</span>
+    <span class="sep">·</span>
+    <span>Illinois Institute of Technology</span>
+    <span class="sep">·</span>
+    <a href="https://www.linkedin.com/in/praneethtota/" target="_blank">linkedin.com/in/praneethtota</a>
+  </div>
+</div>
+
+<!-- SCOPE BAR -->
+<div class="scope-bar">
+  <strong>Evidence scope:</strong>
+  <span class="scope-item"><span class="dot-measured"></span> Measured in this work: 69.6% error reduction, routing correctness gains, U↔quality correlation</span>
+  <span class="scope-item"><span class="dot-analytical"></span> Analytical (public specs): 2–6× cost advantage on consumer hardware</span>
+  <span class="scope-item"><span class="dot-pending"></span> Pending empirical validation: physical hardware comparison, LoRA calibration in production</span>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="section">
+  <div class="section-label">The Framework</div>
+  <h2>Utility as a control law, not a monitor</h2>
+  <p style="max-width:700px;font-size:1.02rem;color:#333;">
+    The utility function <code>U = w_e(f)·E + w_c(f)·C + w_k(f)·K</code> governs everything: how strongly each detected error is penalized at training time, when behavioral corrections are injected into the system prompt, whether a new model deployment passes acceptance, and whether the system should act or abstain. It is the same formula across every domain — only the field weights change.
+  </p>
+
+  <div class="mechanism">
+U = w_e(f) · E  +  w_c(f) · C  +  w_k(f) · K
+
+  E — Efficacy:    performance relative to a human baseline           [0, 1]
+  C — Confidence:  internal consistency, penalized by contradictions  [0, 1]
+  K — Curiosity:   exploration bonus for novel high-upside domains    [capped at 50%]
+  f — field: surgery / software / creative / AV / energy / ...
+
+Decision rule:
+  act     if C ≥ C_min(f)  AND  E ≥ E_min(f)
+  abstain otherwise  →  escalate to human or safe state
+
+Field-specific penalty multipliers route into DPO training:
+  Surgery contradiction   → 10× training weight
+  Software engineering    →  2× training weight
+  Creative writing        →  1× training weight
+  </div>
+
+  <p style="color:#555;font-size:.92rem;">The additive weighted structure is not a design choice — it is the unique functional form required by five behavioral axioms, proved from first principles via Debreu's representation theorem (Theorem B.1, Appendix B). Field weights are derived from professional licensing standards, not arbitrary parameters. See <a href="whitepaper_full_v0_5.html#utility-function">§4–5 of the full whitepaper</a>.</p>
+
+  <div class="timescales">
+    <div class="ts-card">
+      <div class="ts-label">Layer 1 · Milliseconds</div>
+      <h4>Session correction</h4>
+      <p>Contradiction detected → corrective assertion stored → injected into system prompt. Immediate, no weight change. Effect is session-scoped but persists across sessions via the assertions store.</p>
+    </div>
+    <div class="ts-card">
+      <div class="ts-label">Layer 2 · Hours</div>
+      <h4>Calibration cycle</h4>
+      <p>Utility-scored pairs → field-penalty-weighted DPO fine-tuning → LoRA adapter → benchmark gate → deploy. Weight-level, permanent, generalizing. A surgical error trained 10× harder than a creative writing mistake.</p>
+    </div>
+    <div class="ts-card">
+      <div class="ts-label">Layer 3 · Monthly</div>
+      <h4>Release integration</h4>
+      <p>Accumulated adapters distilled into new base fine-tune. Full regression suite. New starting point for the next correction cycle. Wrapper-level learning baked into base model weights.</p>
+    </div>
+  </div>
+
+  <p style="font-size:.9rem;color:#555;">
+    Full architecture in the <a href="tutorial_v0_5.html">Tutorial</a> (with code) and <a href="whitepaper_full_v0_5.html#correction-loop">§8 of the whitepaper</a>.
+  </p>
+</div>
+
+<!-- DOMAIN DEEP-DIVES -->
+<div class="section" id="domains">
+  <div class="section-label">Domain Deep-Dives</div>
+  <h2>Built for the problems that actually matter</h2>
+  <p style="max-width:680px;color:#555;">Each domain doc is a standalone, comprehensive read for a specific audience — no whitepaper prerequisite. Every page cross-links to the whitepaper sections where depth is needed.</p>
+
+  <div class="domain-grid">
+
+    <a href="domain_software_engineering_v0_5.html" class="domain-card">
+      <div class="dc-badge">Start here · MVP domain</div>
+      <h3>Software Engineering</h3>
+      <p>The framework's strongest first domain: correctness signals are automatic and unambiguous. Tests pass or fail. Type checkers flag errors. AST-based complexity analysis is deterministic. The entire simulation runs here today — 69.6% repeated-error reduction, +0.1160 utility improvement, Brier score calibration measured and validated.</p>
+      <span class="dc-link">Coding agents, dev-tools, backend / infra</span>
+    </a>
+
+    <a href="domain_ai_datacenters_v0_5.html" class="domain-card">
+      <div class="dc-badge">Fleet economics</div>
+      <h3>AI Data Centers</h3>
+      <p>6× cheaper per token for specialist domain queries on consumer hardware. Stranded lower-tier GPU inventory becomes high-value specialist serving. LoRA multi-tenancy improves utilisation without expanding hardware. The routing experiment quantifies what correct routing is worth — and what misrouting costs.</p>
+      <span class="dc-link">Inference infra, GPU cloud, ML platforms</span>
+    </a>
+
+    <a href="domain_self_driving_v0_5.html" class="domain-card">
+      <div class="dc-badge">Safety · certification</div>
+      <h3>Self-Driving Vehicles</h3>
+      <p>Weight profiles shift automatically — safety dominates in school zones (w_s=0.90), efficiency rises in emergency transport (w_e=0.40). Blue-green deployment with T≥246 interactions for safety-critical fields. An auditable decision trail for every manoeuvre: utility values, confidence gates, arbitration results, escalation events.</p>
+      <span class="dc-link">Waymo · Cruise · Aurora · AV stack engineers</span>
+    </a>
+
+    <a href="domain_autonomous_systems_v0_5.html" class="domain-card">
+      <div class="dc-badge">ISO 10218:2025 · IEC 61508</div>
+      <h3>Autonomous Systems</h3>
+      <p>Industrial robots, cobots, AMRs, drones, surgical systems, inspection robots. Covers the dynamic safety case argument: the framework's utility log + assertions store + blue-green deployment log constitute the runtime evidence that living assurance documents require — not just design-time proofs.</p>
+      <span class="dc-link">Robotics, safety-case engineering, autonomy</span>
+    </a>
+
+    <a href="domain_dynamic_pricing_v0_5.html" class="domain-card">
+      <div class="dc-badge">Full auditability</div>
+      <h3>Dynamic Pricing</h3>
+      <p>Rule-based systems can't adapt. ML-based systems amplify errors at scale without correction. The framework corrects both — and adds the property neither has: full auditability per decision. With 51 state pricing bills introduced in Jan–Jul 2025 and NY's disclosure law live since November 2025, that audit trail is no longer optional.</p>
+      <span class="dc-link">Pricing platforms, marketplace optimisation, revenue management</span>
+    </a>
+
+    <a href="domain_energy_systems_v0_5.html" class="domain-card">
+      <div class="dc-badge">Grid · DER · Smart home</div>
+      <h3>Energy Systems</h3>
+      <p>Gas peaker or battery storage? The same formula — stability weight shifting from 0.40 to 0.80 under demand surge — produces the correct dispatch in both conditions without separate rule sets. C_min=0.95 halts automated dispatch when demand forecasts are unreliable. Covers smart home demand response, VPP orchestration, and DER aggregation.</p>
+      <span class="dc-link">Grid software, DERMS / VPP, smart-home EMS</span>
+    </a>
+
+    <a href="domain_creative_systems_v0_5.html" class="domain-card">
+      <div class="dc-badge">Curiosity-led · Platform signal</div>
+      <h3>Creative Systems</h3>
+      <p>The only domain where curiosity (w_k=0.15) is the primary value driver. The two-component efficacy model turns platform signal — saves, downloads, shares — into a structured quality measure that feeds the correction loop. Content Efficacy × Discoverability Efficacy as geometric mean: viral-but-shallow and high-quality-but-invisible both score low.</p>
+      <span class="dc-link">Generative media, creative tooling, content platforms</span>
+    </a>
+
+  </div>
+</div>
+
+<!-- TUTORIAL -->
+<div class="section">
+  <div class="section-label">Tutorial</div>
+  <h2>Architecture-first. Code-grounded. Runs today.</h2>
+
+  <div class="tutorial-card">
+    <div>
+      <h3>Builder's Tutorial</h3>
+      <p>A ground-up walkthrough of every component — what it is, why it exists, how the pieces wire together. Quotes verbatim from the actual source code. No whitepaper prerequisite. 14 sections from the utility function through blue-green deployment, with direct GitHub links on every code block.</p>
+      <div class="tutorial-pills">
+        <span class="tp">Utility function</span>
+        <span class="tp">Assertions store</span>
+        <span class="tp">Contradiction detector</span>
+        <span class="tp">Confidence updater</span>
+        <span class="tp">DPO calibration</span>
+        <span class="tp">Routing</span>
+        <span class="tp">Arbiter Agent</span>
+        <span class="tp">Blue-green deployment</span>
+      </div>
+      <p style="font-size:.85rem;color:#666;margin:0;">Honest about WIP status throughout — clear markers for what runs today vs. what's designed vs. future work.</p>
+    </div>
+    <div class="tutorial-side">
+      <a href="tutorial_v0_5.html" class="btn btn-primary" style="display:block;text-align:center;margin-bottom:.6rem;">Read the Tutorial →</a>
+      <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="btn btn-secondary" style="display:block;text-align:center;font-size:.82rem;">View on GitHub ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- WHITEPAPER SECTIONS -->
+<div class="section">
+  <div class="section-label">Full Whitepaper</div>
+  <h2>Go deeper on any part of the framework</h2>
+  <p style="color:#555;max-width:680px;">The full whitepaper is the complete theoretical and empirical reference. It is a long document. These anchored links take you directly to the section you need.</p>
+
+  <div class="wp-clusters">
+
+    <div class="wp-cluster">
+      <h4>Theory</h4>
+      <ul>
+        <li>
+          <a href="whitepaper_full_v0_5.html#utility-function">§4 — Utility Function</a>
+          <span class="wp-desc">Formal derivation of U = w_e·E + w_c·C + w_k·K from five behavioral axioms</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#field-bounds">§5 — Field Bounds</a>
+          <span class="wp-desc">C_min and E_min derived from professional licensing standards; blending under ambiguity</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#vcg">§10.6 — VCG Arbitration</a>
+          <span class="wp-desc">Theorems S1–S3: dominant strategy truthfulness, POA=1, individual rationality</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#appendix-b">Appendix B — Proofs</a>
+          <span class="wp-desc">B.1 additive structure (Cauchy), B.4 Kalman-optimal EMA, B.5 confidence convergence, B.7 Lyapunov stability</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="wp-cluster">
+      <h4>Architecture</h4>
+      <ul>
+        <li>
+          <a href="whitepaper_full_v0_5.html#correction-loop">§8 — Three-Layer Correction Loop</a>
+          <span class="wp-desc">Session injection, calibration DPO, release distillation — full specification</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#distributed-graph">§10 — Micro-Expert Architecture</a>
+          <span class="wp-desc">Model decomposition, independent deployability, catastrophic forgetting resolved</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#arbiter">§10.5 — Arbiter Agent</a>
+          <span class="wp-desc">4-check contradiction resolution, evidence chain, minimum disclosure, external escalation</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#bluegreen">§10.7 — Blue-Green Deployment</a>
+          <span class="wp-desc">Utility-deviation trigger, softmax traffic routing, T thresholds by field, rollback</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#router-ha">§10.10 — Router High Availability</a>
+          <span class="wp-desc">Raft consensus, 150–300ms failover, graceful degradation during leader election</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="wp-cluster">
+      <h4>Empirical</h4>
+      <ul>
+        <li>
+          <a href="whitepaper_full_v0_5.html#appendix-a">Appendix A — Simulation Results</a>
+          <span class="wp-desc">500-task two-arm study + 10-cycle stability. 69.6% error reduction, Brier 0.049 by cycle 7</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#routing-experiment">§10.9.4 — Routing Experiment</a>
+          <span class="wp-desc">Four-arm study: oracle +12.5%, VCG +10.5%, Regime 2 −17.5%, all statistically significant</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#hardware-adaptive">§10.9 — Hardware-Adaptive Deployment</a>
+          <span class="wp-desc">Consumer GPU cost model, Jetson edge deployment, pipeline parallelism argument</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#applications">§2 — Applications Overview</a>
+          <span class="wp-desc">Seven domain worked examples with numerical weight derivations</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="wp-cluster">
+      <h4>Scope &amp; Roadmap</h4>
+      <ul>
+        <li>
+          <a href="whitepaper_full_v0_5.html#mvp">§11 — Code Generation MVP</a>
+          <span class="wp-desc">10-step feedback loop, success criteria, why code is the right first domain</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#roadmap">§12 — Roadmap</a>
+          <span class="wp-desc">Phases 1–9: from single-domain MVP through physical hardware validation and safety-critical deployment</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html#open-questions">§13 — Open Questions</a>
+          <span class="wp-desc">Resolution status of all identified open problems; what remains future work</span>
+        </li>
+        <li>
+          <a href="whitepaper_full_v0_5.html">Full Whitepaper ↗</a>
+          <span class="wp-desc">Complete document — abstract through appendices</span>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- QUICKSTART -->
+<div class="section" id="quickstart">
+  <div class="section-label">Quick Start</div>
+  <h2>No API key, no GPU, no special setup</h2>
+  <p style="color:#555;max-width:640px;">The simulation runs on standard scientific Python. The full pipeline — utility scoring, contradiction detection, assertions store, DPO pair collection, personality evolution — runs today on any laptop.</p>
+
+  <div class="qs-steps">
+    <div class="qs-step">
+      <div class="qs-n">Step 1 · Install</div>
+      <h4>Clone and install</h4>
+      <p>Standard scientific Python stack. No GPU required for any simulation.</p>
+      <pre>git clone https://github.com/praneethtota/\
+  Adaptive-Utility-Agent.git
+cd Adaptive-Utility-Agent/agent
+pip install numpy scipy matplotlib</pre>
+    </div>
+    <div class="qs-step">
+      <div class="qs-n">Step 2 · Simulate</div>
+      <h4>Run the correction loop</h4>
+      <p>3-cycle simulation: seeded O(n²)→O(n) contradiction detected in cycle 1, resolved in cycle 2, +0.1160 utility improvement by cycle 3.</p>
+      <pre># 3-cycle simulation
+python3 simulate.py
+
+# Extended 500-task two-arm study
+python3 simulate_extended.py</pre>
+    </div>
+    <div class="qs-step">
+      <div class="qs-n">Step 3 · Route</div>
+      <h4>Run the routing experiment</h4>
+      <p>Four-arm study: oracle +12.5%, VCG +10.5%, mismatched −17.5%. Outputs JSON + 4 figures.</p>
+      <pre>python3 routing_experiment.py
+# → routing_output/routing_results.json
+# → routing_output/plots/ (4 PNG figures)</pre>
+    </div>
+  </div>
+
+  <div class="callout green">
+    <p><strong>Live harness (requires API key):</strong> <code>export ANTHROPIC_API_KEY=sk-ant-... && python3 harness.py</code> — runs LeetCode-style problems through the full pipeline with real Claude responses, automated scoring, and DPO pair export.</p>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-author">Praneeth Tota</div>
+    <div style="margin-top:.3rem;">Ph.D. Computer Science (Algorithmic Game Theory) · Illinois Institute of Technology · April 2026</div>
+    <div style="margin-top:.3rem;">
+      <a href="https://www.linkedin.com/in/praneethtota/" target="_blank">linkedin.com/in/praneethtota</a>
+      &nbsp;·&nbsp; Code: GPL-3.0 &nbsp;·&nbsp; Whitepaper: CC BY 4.0
+    </div>
+  </div>
+  <div class="footer-right">
+    <div class="footer-links">
+      <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+      <a href="tutorial_v0_5.html">Tutorial</a>
+      <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+    </div>
+    <div>Adaptive Utility Agents v0.5 · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/CITATION.cff" target="_blank">Cite this work</a></div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>
