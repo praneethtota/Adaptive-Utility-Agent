@@ -40,18 +40,12 @@ body {
 
 /* ── TOPBAR ── */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: .85rem 2.5rem;
   border-bottom: 1px solid var(--line);
-  background: rgba(250, 250, 248, 0.85);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  background: #fafaf8;
   font-size: .85rem;
   flex-wrap: wrap;
   gap: .5rem;
@@ -467,6 +461,7 @@ footer a:hover { text-decoration: underline; }
 .footer-right .footer-links { display: flex; gap: 1rem; justify-content: flex-end; margin-bottom: .4rem; flex-wrap: wrap; }
 
 @media (max-width: 680px) {
+  .topbar{display:none}
   .hero { padding: 2.5rem 1.5rem 2rem; }
   .section { padding: 2rem 1.5rem; }
   .topbar { padding: .75rem 1.5rem; }
@@ -511,6 +506,10 @@ footer a:hover { text-decoration: underline; }
       <div class="hm-label">Reduction in repeated errors vs. uncalibrated baseline (cycles 2–5)</div>
     </div>
     <div class="hm">
+      <div class="hm-val green">2–6×</div>
+      <div class="hm-label">Lower cost per token vs. monolithic LLMs · Frontier-quality domain AI, no H100 required <span style="font-size:.7rem;opacity:.7">(analytical)</span></div>
+    </div>
+    <div class="hm">
       <div class="hm-val green">+10.5%</div>
       <div class="hm-label">Correctness gain from VCG arbitration routing (p&nbsp;=&nbsp;0.029)</div>
     </div>
@@ -531,16 +530,13 @@ footer a:hover { text-decoration: underline; }
   </div>
 
   <div class="hero-meta">
-    <span><strong><a href="https://praneethtota.github.io" style="color:inherit;text-decoration:none;">Praneeth Tota</a></strong>
-</span>
+    <span><strong>Praneeth Tota</strong></span>
     <span class="sep">·</span>
     <span>Ph.D. Computer Science · Algorithmic Game Theory</span>
     <span class="sep">·</span>
     <span>Illinois Institute of Technology</span>
     <span class="sep">·</span>
     <a href="https://www.linkedin.com/in/praneethtota/" target="_blank">linkedin.com/in/praneethtota</a>
-    <span class="sep">·</span>
-    <a href="https://praneethtota.github.io" target="_blank">praneethtota.github.io</a>
   </div>
 </div>
 
@@ -864,12 +860,10 @@ python3 simulate_extended.py</pre>
 <!-- FOOTER -->
 <footer>
   <div>
-    <div class="footer-author"><a href="https://praneethtota.github.io" style="color:inherit;text-decoration:none;">Praneeth Tota</a></div>
+    <div class="footer-author">Praneeth Tota</div>
     <div style="margin-top:.3rem;">Ph.D. Computer Science (Algorithmic Game Theory) · Illinois Institute of Technology · April 2026</div>
     <div style="margin-top:.3rem;">
       <a href="https://www.linkedin.com/in/praneethtota/" target="_blank">linkedin.com/in/praneethtota</a>
-    <span class="sep">·</span>
-    <a href="https://praneethtota.github.io" target="_blank">praneethtota.github.io</a>
       &nbsp;·&nbsp; Code: GPL-3.0 &nbsp;·&nbsp; Whitepaper: CC BY 4.0
     </div>
   </div>
