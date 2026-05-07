@@ -1,0 +1,215 @@
+
+<div style="padding: 1rem 0;">
+
+<div style="margin-bottom: 8px;">
+  <div style="font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 4px;">Figure 1 — Utility function components across calibration cycles</div>
+  <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; font-size: 12px; color: var(--color-text-secondary);">
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:24px;height:3px;background:#534AB7;display:inline-block;border-radius:2px;"></span>avg U (total utility)</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:24px;height:3px;background:#1D9E75;display:inline-block;border-radius:2px;"></span>avg E (efficacy)</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:24px;height:3px;background:#D85A30;display:inline-block;border-radius:2px;"></span>avg C (confidence)</span>
+  </div>
+  <div style="position:relative;width:100%;height:260px;">
+    <canvas id="utilityChart"></canvas>
+  </div>
+</div>
+
+<div style="margin-top: 2rem; margin-bottom: 8px;">
+  <div style="font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 4px;">Figure 2 — Personality trait evolution across calibration cycles</div>
+  <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; font-size: 12px; color: var(--color-text-secondary);">
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:24px;height:3px;background:#534AB7;display:inline-block;border-radius:2px;"></span>curiosity</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:24px;height:3px;background:#1D9E75;display:inline-block;border-radius:2px;"></span>analytical rigor</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:24px;height:3px;background:#D85A30;display:inline-block;border-radius:2px;"></span>creativity</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:24px;height:3px;background:#888780;display:inline-block;border-radius:2px;"></span>caution</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:24px;height:3px;background:#378ADD;display:inline-block;border-radius:2px;"></span>assertiveness</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:24px;height:3px;background:#BA7517;display:inline-block;border-radius:2px;"></span>conciseness</span>
+  </div>
+  <div style="position:relative;width:100%;height:260px;">
+    <canvas id="personalityChart"></canvas>
+  </div>
+</div>
+
+<div style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px;">
+    <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px;">U improvement</div>
+    <div style="font-size:22px;font-weight:500;color:var(--color-text-primary);">+0.0755</div>
+    <div style="font-size:11px;color:var(--color-text-tertiary);">0.5949 → 0.6704</div>
+  </div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px;">
+    <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px;">Contradictions</div>
+    <div style="font-size:22px;font-weight:500;color:var(--color-text-primary);">1 → 0</div>
+    <div style="font-size:11px;color:var(--color-text-tertiary);">eliminated by cycle 2</div>
+  </div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px;">
+    <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px;">Confidence gain</div>
+    <div style="font-size:22px;font-weight:500;color:var(--color-text-primary);">+0.231</div>
+    <div style="font-size:11px;color:var(--color-text-tertiary);">0.763 → 0.993</div>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const labels = ['Cycle 1', 'Cycle 2', 'Cycle 3'];
+
+const gridColor = 'rgba(128,128,128,0.12)';
+const tickColor = '#888780';
+
+new Chart(document.getElementById('utilityChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      {
+        label: 'avg U',
+        data: [0.5949, 0.6588, 0.6704],
+        borderColor: '#534AB7',
+        backgroundColor: 'rgba(83,74,183,0.08)',
+        borderWidth: 2.5,
+        pointRadius: 5,
+        pointBackgroundColor: '#534AB7',
+        fill: false,
+        tension: 0.3,
+      },
+      {
+        label: 'avg E',
+        data: [0.5867, 0.5867, 0.5867],
+        borderColor: '#1D9E75',
+        backgroundColor: 'rgba(29,158,117,0.08)',
+        borderWidth: 2.5,
+        pointRadius: 5,
+        pointBackgroundColor: '#1D9E75',
+        fill: false,
+        tension: 0.3,
+        borderDash: [6, 3],
+      },
+      {
+        label: 'avg C',
+        data: [0.7628, 0.9602, 0.9933],
+        borderColor: '#D85A30',
+        backgroundColor: 'rgba(216,90,48,0.08)',
+        borderWidth: 2.5,
+        pointRadius: 5,
+        pointBackgroundColor: '#D85A30',
+        fill: false,
+        tension: 0.3,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(4)}`
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: gridColor },
+        ticks: { color: tickColor, font: { size: 12 } },
+      },
+      y: {
+        min: 0.50,
+        max: 1.05,
+        grid: { color: gridColor },
+        ticks: {
+          color: tickColor,
+          font: { size: 12 },
+          callback: v => v.toFixed(2),
+          stepSize: 0.1,
+        }
+      }
+    }
+  }
+});
+
+const pLabels = ['Initial', 'After cycle 1', 'After cycle 2', 'After cycle 3'];
+
+new Chart(document.getElementById('personalityChart'), {
+  type: 'line',
+  data: {
+    labels: pLabels,
+    datasets: [
+      {
+        label: 'curiosity',
+        data: [0.60, 0.63, 0.66, 0.69],
+        borderColor: '#534AB7',
+        pointBackgroundColor: '#534AB7',
+        borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3,
+      },
+      {
+        label: 'analytical rigor',
+        data: [0.60, 0.60, 0.60, 0.60],
+        borderColor: '#1D9E75',
+        pointBackgroundColor: '#1D9E75',
+        borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3,
+        borderDash: [5, 3],
+      },
+      {
+        label: 'creativity',
+        data: [0.40, 0.42, 0.44, 0.46],
+        borderColor: '#D85A30',
+        pointBackgroundColor: '#D85A30',
+        borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3,
+      },
+      {
+        label: 'caution',
+        data: [0.50, 0.50, 0.50, 0.50],
+        borderColor: '#888780',
+        pointBackgroundColor: '#888780',
+        borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3,
+        borderDash: [5, 3],
+      },
+      {
+        label: 'assertiveness',
+        data: [0.50, 0.50, 0.50, 0.50],
+        borderColor: '#378ADD',
+        pointBackgroundColor: '#378ADD',
+        borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3,
+        borderDash: [3, 3],
+      },
+      {
+        label: 'conciseness',
+        data: [0.50, 0.50, 0.50, 0.50],
+        borderColor: '#BA7517',
+        pointBackgroundColor: '#BA7517',
+        borderWidth: 2.5, pointRadius: 5, fill: false, tension: 0.3,
+        borderDash: [3, 3],
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)}`
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: gridColor },
+        ticks: { color: tickColor, font: { size: 12 } },
+      },
+      y: {
+        min: 0.30,
+        max: 0.80,
+        grid: { color: gridColor },
+        ticks: {
+          color: tickColor,
+          font: { size: 12 },
+          callback: v => v.toFixed(2),
+          stepSize: 0.1,
+        }
+      }
+    }
+  }
+});
+</script>

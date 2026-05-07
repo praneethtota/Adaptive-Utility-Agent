@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Recommendation Engines v0.5</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--paper:#ffffff;--ink:#18181b;--muted:#6b7280;--line:#e4e1da;--accent:#4338ca;--accent2:#0f766e;--accent3:#c2410c;--soft:#f0ede6;--soft2:#ecfdf5;--soft3:#fff7ed;--tag-bg:#eef2ff;--tag-text:#4338ca}
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:16px;line-height:1.75;color:var(--ink);background:var(--bg);margin:0;padding:0}
+.page{max-width:960px;margin:0 auto;padding:0 0 5rem;background:var(--paper);border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
+nav{display:flex;flex-wrap:wrap;gap:.6rem .9rem;padding:1rem 2rem;border-bottom:1px solid var(--line);background:#fafaf8;font-size:.88rem;position:sticky;top:0;z-index:10}
+nav a{color:var(--accent);text-decoration:none;font-weight:500}
+nav a:hover{text-decoration:underline}
+nav a.active{color:var(--ink);font-weight:600}
+.hero{padding:3rem 2.5rem 2.5rem;border-bottom:1px solid var(--line);background:linear-gradient(160deg,#f0ede6 0%,#fff 60%)}
+.hero-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--tag-bg);color:var(--tag-text);padding:.25rem .7rem;border-radius:999px;margin-bottom:1.2rem}
+.hero h1{font-family:'DM Serif Display',Georgia,serif;font-size:2.4rem;line-height:1.2;margin:0 0 .75rem}
+.hero .subtitle{font-size:1.1rem;color:#444;max-width:700px;margin-bottom:1.5rem;line-height:1.6}
+.audience-pills{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem}
+.pill{font-size:.82rem;font-weight:500;padding:.3rem .85rem;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.body{padding:2rem 2.5rem 0}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.5rem;line-height:1.3;margin:2.5rem 0 .75rem;padding-bottom:.5rem;border-bottom:2px solid var(--line);color:var(--ink);scroll-margin-top:60px}
+h3{font-size:1.05rem;font-weight:600;margin:1.8rem 0 .5rem;color:#222}
+p{margin:0 0 1rem}
+a{color:var(--accent)}
+ul,ol{margin:.3rem 0 1rem;padding-left:1.3rem}
+li{margin:.3rem 0}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:#f2f0eb;padding:2px 6px;border-radius:4px;color:#333}
+pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:8px;padding:1.1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:.8rem;line-height:1.65;font-family:'JetBrains Mono',monospace}
+.callout{background:var(--soft);border-left:4px solid var(--accent);padding:1rem 1.25rem;margin:1.25rem 0 1.5rem;border-radius:0 8px 8px 0}
+.callout.green{background:var(--soft2);border-left-color:var(--accent2)}
+.callout.orange{background:var(--soft3);border-left-color:var(--accent3)}
+.callout p{margin:0}.callout p+p{margin-top:.5rem}
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;margin:1.25rem 0 1.75rem}
+.card{border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.1rem .9rem;background:#fff}
+.card .card-icon{font-size:1.4rem;margin-bottom:.5rem}
+.card h4{margin-top:0;font-size:.95rem}
+.card p{font-size:.88rem;color:#444;margin-bottom:0}
+.metricgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:1.25rem 0 1.75rem}
+.metric{border:1px solid var(--line);border-radius:10px;padding:.9rem 1.1rem;background:#fff}
+.metric .label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:4px}
+.metric .value{font-size:1.7rem;font-weight:700;color:var(--accent);line-height:1.1}
+.metric .unit{font-size:.82rem;color:var(--muted);margin-top:2px}
+.metric.green .value{color:var(--accent2)}
+.metric.red .value{color:var(--accent3)}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:1rem 0 1.5rem}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:8px 12px;font-size:.82rem;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.05em}
+td{padding:8px 12px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#fafaf8}
+.caption{font-size:.82rem;color:var(--muted);font-style:italic;margin-top:-.5rem;margin-bottom:1rem}
+.scenario-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:1rem;margin:1.25rem 0 1.75rem}
+.scenario{border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;background:#fff}
+.scenario .sc-label{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.5rem;font-family:'JetBrains Mono',monospace}
+.scenario .sc-title{font-size:.97rem;font-weight:600;margin-bottom:.75rem;color:var(--ink)}
+.weight-row{display:flex;align-items:center;gap:8px;margin:.35rem 0}
+.weight-name{width:120px;font-size:.82rem;color:#444;flex-shrink:0}
+.weight-track{flex:1;height:10px;background:#ece9e3;border-radius:999px;overflow:hidden}
+.weight-fill{height:100%;border-radius:999px}
+.fill-rel{background:#4338ca}
+.fill-div{background:#0f766e}
+.fill-nov{background:#9333ea}
+.fill-biz{background:#c2410c}
+.weight-val{font-size:.8rem;color:var(--muted);min-width:34px;text-align:right;font-family:'JetBrains Mono',monospace}
+.check{color:var(--accent2);font-weight:700}
+.cross{color:var(--accent3);font-weight:700}
+.partial{color:#b45309;font-weight:700}
+.toc{background:var(--soft);border-radius:10px;padding:1.1rem 1.4rem;margin:1.5rem 0 2rem}
+.toc p{font-weight:600;margin-bottom:.5rem}
+.toc ol{margin:0}
+.toc li{font-size:.92rem;margin:.2rem 0}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.read-next{background:var(--soft);border-radius:10px;padding:1.25rem 1.5rem;margin-top:2.5rem}
+.read-next h3{margin-top:0}
+.read-next ul{margin:0}
+.read-next li{font-size:.92rem;margin:.3rem 0}
+@media(max-width:640px){.hero h1{font-size:1.8rem}.body{padding:1.5rem 1.25rem 0}nav{display:none}.weight-name{width:90px}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <a href="whitepaper_v05.html">Home</a>
+  <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+  <a href="tutorial_v0_5.html">Tutorial</a>
+  <a href="domain_ai_datacenters_v0_5.html">AI Data Centers</a>
+  <a href="domain_self_driving_v0_5.html">Self-Driving</a>
+  <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a>
+  <a href="domain_software_engineering_v0_5.html">Software Eng</a>
+  <a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems_v0_5.html">Energy Systems</a>
+  <a href="domain_creative_systems_v0_5.html">Creative Systems</a>
+  <a href="domain_recommendation_engines_v0_5.html" class="active">Recommendation</a>
+  <a href="productionizing_adaptive_utility_agent_v0_5.html">Production Design</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Domain Deep-Dive · v0.5</div>
+  <h1>Recommendation Engines &amp;<br>Personalization Platforms</h1>
+  <p class="subtitle">Recommendation systems optimize for engagement signals. The framework adds what they're missing: a correction loop that learns from explicit rejections, a confidence gate that handles cold-start honestly, and a single utility function that makes multi-objective tradeoffs explicit, tunable, and auditable.</p>
+  <div class="audience-pills">
+    <span class="pill">Recommendation platform engineers</span>
+    <span class="pill">Personalization teams</span>
+    <span class="pill">E-commerce ML teams</span>
+    <span class="pill">Content platform engineers</span>
+  </div>
+</div>
+
+<div class="body">
+
+<div class="toc">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#problem">What existing recommendation systems are missing</a></li>
+    <li><a href="#utility">The utility function for recommendations</a></li>
+    <li><a href="#weights">Context-adaptive weight shifting</a></li>
+    <li><a href="#correction">The correction loop applied to preference signals</a></li>
+    <li><a href="#coldstart">Confidence-gated cold start</a></li>
+    <li><a href="#auditability">Auditability and regulatory compliance</a></li>
+    <li><a href="#comparison">Comparison: existing approaches vs. the framework</a></li>
+    <li><a href="#mvp">MVP shape</a></li>
+  </ol>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="problem">1. What existing recommendation systems are missing</h2>
+
+<p>Netflix, Spotify, and YouTube have sophisticated recommendation systems — multimodal content embeddings, LLM-augmented architectures, unified search and recommendation models, and domain-specific LoRA adapters. These approaches have produced meaningful production gains: M3CSR (Kuaishou) showed +3.4% clicks; 360Brew (LinkedIn) supports 30+ ranking tasks matching specialised models; UniCoRn (Netflix) shows 10% improvement in recommendations. The framework documented here doesn't compete with these on recommendation quality. That is not what it does.</p>
+
+<p>What it does is add a <strong>control layer</strong> that sits on top of whatever base recommendation model a platform runs — including any of the architectures above. The control layer provides three properties that none of the current production approaches, including the most sophisticated ones, have built in.</p>
+
+<h3>No persistent correction loop for explicit rejections</h3>
+<p>A user who clicks "not interested" on a category repeatedly still gets recommended that category — because engagement models and preference models don't share a persistent correction store. The signal is logged, but it decays quickly and rarely propagates across sessions. The same pattern resurfaces next week, next month, at the next login. There is no mechanism to say "this preference signal was verified and should not decay."</p>
+
+<h3>No confidence gate on sparse signals</h3>
+<p>Recommendation models produce a ranked list regardless of how confident they actually are in those rankings. A new user, a new item, or a session with thin behavioural signals gets the same confident output as a well-calibrated recommendation for a power user. Cold-start is still one of the hardest unsolved problems in production recommendation precisely because there's no principled mechanism to say "I don't know enough — here's a safe fallback."</p>
+
+<h3>Multi-objective tradeoffs resolved heuristically</h3>
+<p>Most production recommendation systems combine relevance, diversity, novelty, and business objectives (margin, sponsored content, inventory clearance) through hand-tuned heuristics and post-processing steps. The weights are implicit, undocumented, and difficult to audit. When a regulator or a user asks "why did you recommend this?" the honest answer is usually "a weighted combination of signals we can't fully decompose."</p>
+
+<div class="callout orange">
+  <p><strong>Why this matters now.</strong> The EU Digital Services Act (DSA) — in force for very large online platforms since August 2023 — requires algorithmic transparency for recommendation systems, including the ability to explain why content was recommended and to offer users a non-profiling-based alternative. A system that cannot decompose a recommendation into its component signals and weights cannot satisfy those requirements. Separate EU AI Act obligations may apply where recommendation systems affect employment, education, or access to services.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="utility">2. The utility function for recommendations</h2>
+
+<p>The recommendation utility function uses the same three-term formula as every other domain in the framework — proved as the unique functional form satisfying five behavioral axioms via Debreu's representation theorem (Theorem B.1, <a href="whitepaper_full_v0_5.html#appendix-b">Appendix B</a>). The weights and their domain-specific meaning shift, but the structure is unchanged:</p>
+
+<pre>
+U = w_e(f) · E  +  w_c(f) · C  +  w_k(f) · K
+
+  E — Efficacy:   how well the recommendation serves the platform's
+                  definition of a good outcome in this context.
+                  Crucially, what counts as "effective" is domain-defined:
+                  in discovery mode, E measures novelty-weighted engagement;
+                  in fulfillment mode, E measures relevance to known intent;
+                  in a business campaign, E measures margin-weighted conversion.
+                  Business objectives are not a separate term — they are part
+                  of what the platform defines as efficacious recommendation.
+
+  C — Confidence: internal consistency of the recommendation signal.
+                  Penalised by sparse data, contradictory signals, cold-start.
+                  Below C_min(f), the system falls back to safe defaults.
+
+  K — Curiosity:  exploration bonus for novel items the user hasn't seen.
+                  Governs diversity and serendipity within the E constraint.
+
+f — recommendation context (discovery, fulfillment, new user, campaign...)
+</pre>
+
+<p>This framing is consistent with how the framework handles domain variation elsewhere. Surgery defines E to include protocol adherence and patient safety compliance — those aren't separate terms, they're what "effective" means in that context. The same logic applies here: a recommendation platform that values margin-weighted conversion defines E accordingly, with the weight vector making that definition explicit and auditable rather than implicit in a black-box loss function.</p>
+
+<pre>
+Decision rule:
+  recommend      if C ≥ C_min(f)   [confidence above threshold]
+  safe fallback  otherwise          [popular/proven items for this user segment]
+</pre>
+
+<p>The key properties that make this different from existing multi-objective approaches:</p>
+
+<ul>
+  <li><strong>Explicit weight vector per context</strong> — not a single heuristic blending function, but a documented weight profile per mode that can be audited, adjusted, and explained</li>
+  <li><strong>Confidence gate as a first-class component</strong> — the system can abstain from a personalised recommendation and fall back to a high-confidence baseline, rather than always producing a ranked list regardless of signal quality</li>
+  <li><strong>Correction loop feeding back into weights</strong> — explicit rejections and verified preference signals become DPO training pairs that adjust the recommendation model's weights at calibration time, not just session-level re-ranking</li>
+</ul>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="weights">3. Context-adaptive weight shifting</h2>
+
+<p>The optimal recommendation objective changes completely depending on what the user is trying to do and where they are in their lifecycle. The framework handles this with weight profiles — not separate recommendation systems per mode, but a single formula whose weights shift with the detected context. The values below are illustrative profiles; field-specific calibration is required for each deployment.</p>
+
+<div class="scenario-grid">
+
+  <div class="scenario">
+    <div class="sc-label">Mode A</div>
+    <div class="sc-title">Discovery / exploration</div>
+    <div class="weight-row"><span class="weight-name">Efficacy (w_e)</span><div class="weight-track"><div class="weight-fill fill-rel" style="width:30%"></div></div><span class="weight-val">0.30</span></div>
+    <div class="weight-row"><span class="weight-name">Confidence (w_c)</span><div class="weight-track"><div class="weight-fill fill-div" style="width:25%"></div></div><span class="weight-val">0.25</span></div>
+    <div class="weight-row"><span class="weight-name">Curiosity (w_k)</span><div class="weight-track"><div class="weight-fill fill-nov" style="width:35%"></div></div><span class="weight-val">0.35</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">E is defined as novelty-weighted engagement in this mode. Curiosity dominates — the user wants to be surprised. Confidence is moderate; the system tolerates lower certainty in exchange for serendipity.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Mode B</div>
+    <div class="sc-title">Fulfillment / known intent</div>
+    <div class="weight-row"><span class="weight-name">Efficacy (w_e)</span><div class="weight-track"><div class="weight-fill fill-rel" style="width:70%"></div></div><span class="weight-val">0.70</span></div>
+    <div class="weight-row"><span class="weight-name">Confidence (w_c)</span><div class="weight-track"><div class="weight-fill fill-div" style="width:20%"></div></div><span class="weight-val">0.20</span></div>
+    <div class="weight-row"><span class="weight-name">Curiosity (w_k)</span><div class="weight-track"><div class="weight-fill fill-nov" style="width:10%"></div></div><span class="weight-val">0.10</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">E is defined as relevance to known intent. User has a clear goal — similar to a search query. Efficacy dominates. Curiosity is suppressed; novelty is a distraction in this mode.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Mode C</div>
+    <div class="sc-title">New user / cold start</div>
+    <div class="weight-row"><span class="weight-name">Efficacy (w_e)</span><div class="weight-track"><div class="weight-fill fill-rel" style="width:20%"></div></div><span class="weight-val">0.20</span></div>
+    <div class="weight-row"><span class="weight-name">Confidence (w_c)</span><div class="weight-track"><div class="weight-fill fill-div" style="width:40%"></div></div><span class="weight-val">0.40</span></div>
+    <div class="weight-row"><span class="weight-name">Curiosity (w_k)</span><div class="weight-track"><div class="weight-fill fill-nov" style="width:20%"></div></div><span class="weight-val">0.20</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Below C_min — confidence gate fires. System falls back to segment baseline. High curiosity weight maximises information gathering about preferences. E is low because the system cannot yet define what "effective" means for this user.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="sc-label">Mode D</div>
+    <div class="sc-title">Business campaign / inventory</div>
+    <div class="weight-row"><span class="weight-name">Efficacy (w_e)</span><div class="weight-track"><div class="weight-fill fill-rel" style="width:65%"></div></div><span class="weight-val">0.65</span></div>
+    <div class="weight-row"><span class="weight-name">Confidence (w_c)</span><div class="weight-track"><div class="weight-fill fill-div" style="width:25%"></div></div><span class="weight-val">0.25</span></div>
+    <div class="weight-row"><span class="weight-name">Curiosity (w_k)</span><div class="weight-track"><div class="weight-fill fill-nov" style="width:10%"></div></div><span class="weight-val">0.10</span></div>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">E is redefined to include margin-weighted conversion — business objectives shift what "effective" means in this mode, not how the formula works. The weight vector makes this redefinition explicit and auditable. Curiosity is suppressed; novelty is irrelevant to campaign goals.</p>
+  </div>
+
+</div>
+
+<div class="callout">
+  <p><strong>One formula, all modes.</strong> The formula doesn't change between modes — only the weights and the definition of E change. Business campaign mode doesn't add a new term; it redefines what "effective" means in E. This is the same mechanism that makes surgery and creative writing use the same formula with radically different weights and E definitions. The weight vector makes the platform's objective explicit and auditable rather than baking it into a black-box loss function.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="correction">4. The correction loop applied to preference signals</h2>
+
+<p>This is the framework's most distinctive contribution to recommendation. Existing systems log explicit rejections but don't propagate them systematically across sessions and don't use them to update model weights between retraining cycles. The correction loop changes both.</p>
+
+<h3>Signal decay classification</h3>
+
+<p>Not all preference signals should persist equally. The assertions store applies field-specific decay classes to recommendation signals:</p>
+
+<pre>
+Signal type                  Decay class   Persistence (video recommendation)
+──────────────────────────────────────────────────────────────────────────────
+Explicit rejection            Class A       Never decays
+  ("not interested", thumbs down, hide)
+  → stored as verified negative preference
+  → injected into all future sessions for this user
+
+Strong positive (purchase,    Class B       Slow (τ = 2yr)
+  save to watchlist, rewatch)               [framework default: τ = 10yr]
+
+Engagement (completion        Class C       Moderate (τ = 6mo)
+  ≥80%, rating given)                       [framework default: τ = 3yr]
+
+Weak signal (click, start     Class D       Fast (τ = 2wk)
+  but abandon &lt;20%)                         [framework default: τ = 6mo]
+  → decays quickly; accidental clicks and
+    abandoned pilots are noisier here
+    than equivalent signals in other domains
+</pre>
+
+<p style="font-size:.88rem;color:#555;margin-top:-.5rem;margin-bottom:1rem;">Decay constants for video recommendation are set shorter than framework defaults because preference signals in this domain have higher temporal specificity than medical or engineering facts. A user's genre preferences shift meaningfully within 6–12 months as tastes evolve, household composition changes, and the content catalogue refreshes. Class A (explicit rejection) is unchanged — a deliberate "not interested" signal is as durable here as anywhere. Class D decays within 2 weeks rather than the default 6 months because accidental clicks and abandoned pilots on a video platform are meaningfully noisier than equivalent weak signals in other domains. The same logic that sets c_min=0.95 for surgery and c_min=0.05 for creative writing applies here: domain characteristics, not arbitrary parameters, determine the right calibration.</p>
+
+<h3>How a rejection becomes a correction</h3>
+
+<pre>
+1. User clicks "not interested" on Action genre recommendations
+   for the 4th time this month
+
+2. Contradiction detected:
+   "Repeated explicit rejection of [Action] category
+    contradicts model's continued recommendation of this category"
+
+3. Correction stored (Class A — never decays):
+   "User [id] has verified negative preference for [Action].
+    Exclude from personalised recommendations permanently."
+
+4. Correction injected into every future recommendation session:
+   → Action items scored to zero in utility function
+   → No re-ranking required — excluded at retrieval stage
+
+5. DPO pair accumulated:
+   preferred: [recommendations without Action]
+   rejected:  [recommendations with Action]
+   weight:    high (explicit rejection, repeated)
+
+6. Next calibration cycle:
+   → DPO pairs weighted into recommendation model training
+   → Model learns not to retrieve Action for this user segment
+   → Correction no longer needs injection — baked into weights
+</pre>
+
+<div class="callout green">
+  <p><strong>The key difference from existing approaches.</strong> Current systems apply rejection signals as re-ranking penalties that decay over time. The framework applies them as permanent corrections at the retrieval stage for verified preferences, and as weighted training signal at calibration time. The same category does not resurface next month. The model learns the preference, not just the penalty.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="coldstart">5. Confidence-gated cold start</h2>
+
+<p>Cold-start has more sophisticated solutions in the literature than what the confidence gate provides. Multimodal content embeddings — YouTube's Semantic IDs, Kuaishou's M3CSR — address cold-start by learning item representations from visual, textual, and audio content, so a new item with no interaction history still gets a meaningful embedding. These are genuinely stronger solutions to the cold-start quality problem than a confidence-gated fallback to segment baselines.</p>
+
+<p>The confidence gate is not a quality solution to cold-start — it is an <strong>honesty solution</strong>. The problem it addresses is not "how do we recommend better for new users" but "how do we avoid confidently recommending things we have no basis for recommending." A platform that labels a segment-average recommendation as "Recommended for you" when it has zero user signal is making a small misrepresentation that users notice. The confidence gate makes the label accurate.</p>
+
+<pre>
+New user — session 1:
+  Signal count: 0
+  C = 0.10   [illustrative — far below C_min; C_min requires empirical calibration]
+  
+  Action: safe fallback
+  → Recommend from high-confidence segment baseline
+     (most-saved items in user's declared interest category)
+  → Present as "Popular in [category]" not "Recommended for you"
+  → Maximise diversity to gather preference signal quickly
+
+New user — session 3 (5 interactions logged):
+  Signal count: 5 (2 saves, 3 completions)
+  C = 0.58   [illustrative — approaching C_min]
+  
+  Action: partial personalisation
+  → Blend segment baseline (60%) with early personalisation (40%)
+  → Still diverse — learning phase continues
+
+New user — session 7 (20 interactions, 3 explicit saves):
+  C = 0.72   [illustrative — above C_min]
+  
+  Action: full personalisation
+  → Utility function governs recommendations
+  → "Recommended for you" label is now honest
+
+C_min for new users requires calibration against your platform's
+own data — the point below which personalised recommendations
+show measurably lower conversion than segment baselines.
+</pre>
+
+<div class="callout">
+  <p><strong>Complementary to content-based cold start, not a replacement.</strong> A platform running Semantic IDs or M3CSR for content-based cold-start representation can still benefit from the confidence gate: even with a content embedding, a new user's preferences are unknown. The gate prevents the system from claiming personalisation before the user's own signals have been observed — regardless of how good the item embeddings are.</p>
+</div>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="auditability">6. Auditability and regulatory compliance</h2>
+
+<p>The framework produces a structured log for every recommendation decision — not just what was recommended, but why, with what confidence, and under which weight profile. This is the audit trail that regulators increasingly require and that current production recommendation systems cannot produce at the per-decision level.</p>
+
+<pre>
+Every recommendation session produces a log record:
+{
+  "user_id": "u_8821",
+  "timestamp": "2025-11-14T14:47:23Z",
+  "mode": "discovery",
+  "weights_active": {
+    "w_e": 0.30,
+    "w_c": 0.25,
+    "w_k": 0.35,
+    "mode": "discovery"
+  },
+  "confidence": 0.78,
+  "confidence_gate": "passed",
+  "top_recommendations": ["item_A", "item_B", "item_C"],
+  "active_corrections": [
+    "User has verified negative preference for [Action] genre — excluded"
+  ],
+  "utility_scores": {
+    "item_A": 0.731,
+    "item_B": 0.698,
+    "item_C": 0.672
+  }
+}
+</pre>
+
+<p>When a regulator or user asks "why was this recommended?", the answer is in a structured, retrievable log — not reconstructed from a black-box model. When a user asks "why do I keep seeing this category?", the corrections store shows exactly what signals have been accumulated and why the category is or isn't being suppressed.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="comparison">7. Comparison: existing approaches vs. the framework</h2>
+
+<table>
+  <thead>
+    <tr><th>Property</th><th>Collaborative filtering</th><th>Deep learning rec</th><th>This framework</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Explicit rejection persists</strong></td>
+      <td><span class="partial">~</span> Incorporated but decays; varies by system</td>
+      <td><span class="cross">✗</span> Re-ranking penalty only; no persistent store</td>
+      <td><span class="check">✓</span> Class A — never decays</td>
+    </tr>
+    <tr>
+      <td><strong>Confidence gate on sparse signals</strong></td>
+      <td><span class="cross">✗</span> Always produces ranking</td>
+      <td><span class="cross">✗</span> Always produces ranking</td>
+      <td><span class="check">✓</span> C_min → safe fallback</td>
+    </tr>
+    <tr>
+      <td><strong>Multi-objective weights explicit</strong></td>
+      <td><span class="partial">~</span> Heuristic blending</td>
+      <td><span class="partial">~</span> Single loss function</td>
+      <td><span class="check">✓</span> Documented weight vector per mode</td>
+    </tr>
+    <tr>
+      <td><strong>Per-decision auditability</strong></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="cross">✗</span></td>
+      <td><span class="check">✓</span> Structured log per session</td>
+    </tr>
+    <tr>
+      <td><strong>Correction propagates to model weights</strong></td>
+      <td><span class="cross">✗</span> Only at retraining</td>
+      <td><span class="cross">✗</span> Only at retraining</td>
+      <td><span class="check">✓</span> DPO pairs → calibration cycle</td>
+    </tr>
+    <tr>
+      <td><strong>Context-adaptive objective</strong></td>
+      <td><span class="cross">✗</span> Fixed similarity metric</td>
+      <td><span class="partial">~</span> Context features only</td>
+      <td><span class="check">✓</span> Weight profile per mode</td>
+    </tr>
+    <tr>
+      <td><strong>Cold-start handled honestly</strong></td>
+      <td><span class="partial">~</span> Popularity fallback; content embeddings in advanced systems</td>
+      <td><span class="partial">~</span> Multimodal content embeddings (stronger on quality)</td>
+      <td><span class="check">✓</span> C_min gate — honest labelling, not a quality solution</td>
+    </tr>
+  </tbody>
+</table>
+<p class="caption">Framework properties from <a href="whitepaper_full_v0_5.html#correction-loop">§8 — Correction Loop</a> and <a href="whitepaper_full_v0_5.html#field-bounds">§5 — Field Bounds</a>.</p>
+
+<!-- ─────────────────────────────────────── -->
+<h2 id="mvp">8. MVP shape</h2>
+
+<p>A practical MVP for a recommendation platform doesn't replace the existing recommendation system. It begins as a correction and confidence layer on top of existing rankings:</p>
+
+<ol>
+  <li><strong>Stand up the assertions store for explicit rejections</strong> — intercept all "not interested," hide, and thumbs-down signals. Store as Class A corrections. Measure how many times the same rejected category resurfaces in the next 30 days without corrections vs. with. This is the baseline metric.</li>
+  <li><strong>Set C_min for new users</strong> — identify the signal count threshold below which your current recommendations have measurably lower conversion. That's your C_min calibration point. Below it, present segment baselines as "Popular in [category]" rather than "Recommended for you."</li>
+  <li><strong>Shadow-mode weight profiles</strong> — run the discovery/fulfillment/cold-start weight profiles in shadow mode alongside the existing system. Log U scores per recommendation. Measure which profile produces better engagement on a per-session basis before any traffic is shifted.</li>
+  <li><strong>First calibration cycle</strong> — after 4–6 weeks of accumulated correction signals, run the first DPO calibration. Measure whether rejection recurrence drops and whether Brier score improves. This is the Phase 1 validation gate.</li>
+  <li><strong>Promote to advisory recommendations</strong> — surface the framework's recommendations alongside the existing system's for human review or A/B testing. The framework builds a track record before it controls production traffic.</li>
+</ol>
+
+<div class="read-next">
+  <h3>Where to read next</h3>
+  <ul>
+    <li><a href="whitepaper_full_v0_5.html#correction-loop">§8 — Three-Layer Correction Loop</a> — How errors and rejections are detected, stored, and propagated to model weights</li>
+    <li><a href="whitepaper_full_v0_5.html#field-bounds">§5 — Field Bounds</a> — C_min derivation and confidence gate specification</li>
+    <li><a href="domain_creative_systems_v0_5.html">Creative Systems</a> — Platform signal weighting (saves, shares, downloads) — directly analogous to recommendation engagement signals</li>
+    <li><a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a> — Full auditability per decision — same log structure applies to recommendation</li>
+    <li><a href="tutorial_v0_5.html">Tutorial</a> — Assertions store, confidence updater, and correction loop in code</li>
+  </ul>
+</div>
+
+</div></div>
+</body>
+</html>

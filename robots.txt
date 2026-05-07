@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://praneethtota.github.io/Adaptive-Utility-Agent/sitemap.xml
