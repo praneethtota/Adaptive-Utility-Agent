@@ -1,8 +1,11 @@
 """
 MVP test harness — Adaptive Utility Agent v0.4.
 
-Runs LeetCode-style problems through the full pipeline with a live Claude API call.
-Incorporates all v0.4 changes:
+Runs LeetCode-style problems through the full pipeline. Default backend is the
+local vLLM SWE specialist (Stage 1 cloud); legacy Anthropic backend is preserved
+for off-cloud use.
+
+v0.4 features (all preserved):
     - Efficacy EMA accumulation
     - Dynamic difficulty routing based on domain confidence
     - Arbiter Agent for cross-problem consistency checks
@@ -10,17 +13,27 @@ Incorporates all v0.4 changes:
     - Trust manager
     - DPO pair export after each cycle
 
-Usage:
+v0.4-cloud additions:
+    - argparse CLI: --endpoint, --model, --cycles, --queries, --export-dpo, --field
+    - Multi-cycle paired DPO output: cycle-1 contradicting solution = rejected;
+      later cycle's improved solution = chosen.
+
+Usage (cloud, default — Stage 1 SWE specialist on RunPod):
+    python harness.py --cycles 2 --queries seeded_contradictions.json \\
+                       --export-dpo dpo_pairs/cycle1.json
+
+Usage (legacy, Anthropic API):
     export ANTHROPIC_API_KEY=sk-ant-...
-    python harness.py
+    python harness.py --endpoint https://api.anthropic.com --model claude-haiku-4-5-20251001
 """
 
 import os
 import json
 import httpx
 import asyncio
+import argparse
 from datetime import datetime
-from typing import Optional
+from typing import Callable, Optional
 
 from config import FIELD_CONFIGS, get_effective_config
 from field_classifier import FieldClassifier
@@ -96,6 +109,36 @@ def get_problems_for_difficulty(difficulty: str):
     return PROBLEMS.get(difficulty, PROBLEMS["easy"])
 
 
+async def call_vllm(
+    prompt: str,
+    system_prompt: str,
+    endpoint: str,
+    model: str = "swe",
+    timeout: float = 120.0,
+    max_tokens: int = 1024,
+) -> str:
+    """Call a vLLM OpenAI-compatible /v1/chat/completions endpoint."""
+    url = endpoint.rstrip("/") + "/v1/chat/completions"
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.post(url, json={
+            "model": model,
+            "max_tokens": max_tokens,
+            "temperature": 0.2,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": prompt},
+            ],
+        })
+        try:
+            resp.raise_for_status()
+        except Exception as e:
+            return f"[vLLM error: {type(e).__name__}: {str(e)[:200]}]"
+        body = resp.json()
+        if "choices" in body and body["choices"]:
+            return body["choices"][0]["message"].get("content", "") or ""
+        return f"[vLLM unexpected response: {str(body)[:200]}]"
+
+
 async def call_claude(
     prompt: str,
     system_prompt: str,
@@ -131,13 +174,17 @@ async def run_problem(
     detector: ContradictionDetector,
     arbiter: ArbiterAgent,
     personality: PersonalityManager,
-    api_key: str,
+    call_fn: Callable[[str, str], "asyncio.Future[str]"],
     field: str,
     field_config,
     active_corrections: list,
     prior_solution: Optional[str] = None,
 ) -> dict:
-    """Run one problem through the full pipeline."""
+    """Run one problem through the full pipeline.
+
+    `call_fn(prompt, system_prompt) -> str` is an async callable abstracting the
+    backend (vLLM or Anthropic). Bound at the top of main().
+    """
 
     # Build system prompt with personality and active corrections
     traits = personality.get_active_weights(field)
@@ -154,9 +201,9 @@ Approach: analytical_rigor={traits.get('analytical_rigor', 0.6):.2f}, caution={t
 
 Always include: working code, time complexity claim, at least one assert statement."""
 
-    # Call Claude
-    print(f"  Calling API for {problem['id']}...", end=" ", flush=True)
-    solution = await call_claude(problem["prompt"], system_prompt, api_key)
+    # Call the bound LLM backend
+    print(f"  Calling LLM for {problem['id']}...", end=" ", flush=True)
+    solution = await call_fn(problem["prompt"], system_prompt)
     print("done")
 
     # Extract claimed complexity from response
@@ -226,18 +273,114 @@ Always include: working code, time complexity claim, at least one assert stateme
     }
 
 
+def _load_queries(path: Optional[str]) -> list:
+    """Load problems from a JSON file (list of {id, prompt, baseline, novelty}) or
+    flatten the built-in PROBLEMS dict if path is None."""
+    if path:
+        with open(path) as f:
+            data = json.load(f)
+        if isinstance(data, dict) and "queries" in data:
+            return data["queries"]
+        return data
+    return [p for tier in PROBLEMS.values() for p in tier]
+
+
+def _build_paired_dpo(per_problem_history: dict, field: str, weight: float) -> list:
+    """Produce paired (chosen, rejected) DPO entries from cross-cycle history.
+
+    For each problem, find the earliest cycle with contradictions (rejected) and
+    a later cycle with strictly fewer contradictions (chosen). If no improvement
+    occurs, emit an unpaired rejected-only entry so the contradiction is still
+    recorded.
+    """
+    pairs = []
+    for pid, history in per_problem_history.items():
+        # history: list of {"cycle", "solution", "n_contradictions", "prompt", "details"}
+        rejected_idx = None
+        for i, h in enumerate(history):
+            if h["n_contradictions"] > 0:
+                rejected_idx = i
+                break
+        if rejected_idx is None:
+            continue
+
+        rejected = history[rejected_idx]
+        chosen = None
+        for h in history[rejected_idx + 1 :]:
+            if h["n_contradictions"] < rejected["n_contradictions"]:
+                chosen = h
+                break
+
+        if chosen is not None:
+            pairs.append({
+                "task_id":               pid,
+                "field":                 field,
+                "prompt":                rejected["prompt"],
+                "chosen":                chosen["solution"],
+                "rejected":              rejected["solution"],
+                "weight":                weight,
+                "source":                "cross_cycle_improvement",
+                "rejected_cycle":        rejected["cycle"],
+                "chosen_cycle":          chosen["cycle"],
+                "rejected_contradictions": rejected["details"],
+                "rejected_n_contradictions": rejected["n_contradictions"],
+                "chosen_n_contradictions":   chosen["n_contradictions"],
+            })
+        else:
+            pairs.append({
+                "task_id":               pid,
+                "field":                 field,
+                "prompt":                rejected["prompt"],
+                "chosen":                None,
+                "rejected":              rejected["solution"],
+                "weight":                weight,
+                "source":                "contradiction_only_no_improvement",
+                "rejected_cycle":        rejected["cycle"],
+                "rejected_contradictions": rejected["details"],
+                "rejected_n_contradictions": rejected["n_contradictions"],
+            })
+    return pairs
+
+
 async def main():
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not set.")
-        print("Run: export ANTHROPIC_API_KEY=sk-ant-...")
-        return
+    parser = argparse.ArgumentParser(
+        description="Adaptive Utility Agent harness — runs problems through the full pipeline and exports DPO pairs.")
+    parser.add_argument("--endpoint", default="http://localhost:9001",
+                        help="LLM endpoint base URL. Default: vLLM SWE specialist on port 9001. Use https://api.anthropic.com for legacy Claude path (requires ANTHROPIC_API_KEY).")
+    parser.add_argument("--model", default="swe",
+                        help="Served model name. For vLLM, matches --served-model-name from server start. (default: %(default)s)")
+    parser.add_argument("--cycles", type=int, default=2,
+                        help="Number of cycles to run per problem (default: %(default)s)")
+    parser.add_argument("--queries", default=None,
+                        help="Path to JSON of {id, prompt, baseline, novelty} problems. Default: built-in PROBLEMS bank.")
+    parser.add_argument("--export-dpo", default=None,
+                        help="Path to write paired DPO JSON (default: dpo_pairs/cycle1_<timestamp>.json)")
+    parser.add_argument("--field", default="software_engineering",
+                        help="Field name (must exist in FIELD_CONFIGS). Default: %(default)s")
+    parser.add_argument("--out", default=None,
+                        help="Path for full harness results JSON (default: harness_results_<timestamp>.json)")
+    args = parser.parse_args()
 
-    field = "software_engineering"
+    field = args.field
     field_config = FIELD_CONFIGS[field]
-    num_cycles = 3
+    num_cycles = args.cycles
 
-    # Initialize all components
+    # Bind backend ───────────────────────────────────────────────────────────
+    is_anthropic = "anthropic.com" in args.endpoint
+    if is_anthropic:
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            print("ERROR: ANTHROPIC_API_KEY not set; required for endpoint pointing at Anthropic.")
+            return
+        async def call_fn(prompt, sys_p):
+            return await call_claude(prompt, sys_p, api_key, model=args.model)
+        backend_label = f"Anthropic ({args.model})"
+    else:
+        async def call_fn(prompt, sys_p):
+            return await call_vllm(prompt, sys_p, args.endpoint, model=args.model)
+        backend_label = f"vLLM ({args.endpoint}, model={args.model})"
+
+    # Components ─────────────────────────────────────────────────────────────
     assertions_store = AssertionsStore(confidence_threshold=0.5)
     arbiter = ArbiterAgent(assertions_store=assertions_store)
     scorer = UtilityScorer(arbiter=arbiter)
@@ -246,31 +389,29 @@ async def main():
     trust_manager = TrustManager()
 
     active_corrections = []
-    prior_solutions = {}     # problem_id → solution from last cycle
+    prior_solutions = {}
     all_results = []
-    dpo_pairs = []
+    per_problem_history = {}    # pid -> list of cycle entries (for paired DPO)
+
+    queries = _load_queries(args.queries)
 
     print(f"\n{'='*60}")
-    print(f"Adaptive Utility Agent Harness v0.4")
-    print(f"Field: {field}  |  Cycles: {num_cycles}")
+    print("Adaptive Utility Agent Harness v0.4-cloud")
+    print(f"  Backend: {backend_label}")
+    print(f"  Field:   {field}")
+    print(f"  Cycles:  {num_cycles}")
+    print(f"  Queries: {len(queries)}  (from {args.queries or 'built-in PROBLEMS bank'})")
     print(f"{'='*60}\n")
 
     for cycle in range(num_cycles):
         print(f"\n── Cycle {cycle+1} {'─'*45}")
-
-        # Determine difficulty routing from current domain confidence
         domain_summary = scorer.get_domain_summary(field)
         current_confidence = domain_summary.get("confidence", 0.5)
         recommended_diff = scorer._recommended_difficulty(current_confidence)
-
         print(f"   Domain confidence: {current_confidence:.3f} → routing to '{recommended_diff}' problems\n")
 
-        # Run all problems regardless of tier for harness coverage
-        # (In production, the router would select by difficulty tier)
         cycle_results = []
-        all_problems = [p for tier in PROBLEMS.values() for p in tier]
-
-        for problem in all_problems:
+        for problem in queries:
             result = await run_problem(
                 problem=problem,
                 cycle=cycle,
@@ -278,7 +419,7 @@ async def main():
                 detector=detector,
                 arbiter=arbiter,
                 personality=personality,
-                api_key=api_key,
+                call_fn=call_fn,
                 field=field,
                 field_config=field_config,
                 active_corrections=active_corrections,
@@ -286,38 +427,33 @@ async def main():
             )
             prior_solutions[problem["id"]] = result["solution"]
 
-            # Collect DPO pairs for contradictions
-            if result["contradictions"] > 0:
-                dpo_pairs.append({
-                    "task_id": problem["id"],
-                    "field": field,
-                    "rejected_preview": result["solution_preview"],
-                    "reason": result["contradiction_details"],
-                    "weight": field_config.penalty_multiplier,
-                    "cycle": cycle + 1,
-                })
+            per_problem_history.setdefault(problem["id"], []).append({
+                "cycle":             cycle + 1,
+                "solution":          result["solution"],
+                "n_contradictions":  result["contradictions"],
+                "details":           result["contradiction_details"],
+                "prompt":            problem["prompt"],
+                "utility":           result["utility"],
+                "claimed_complexity": result["claimed_complexity"],
+            })
 
             print(
-                f"   {problem['id']:<22} U={result['utility']:.4f} "
+                f"   {problem['id']:<28} U={result['utility']:.4f} "
                 f"E_ema={result['efficacy_ema']:.4f} "
                 f"C={result['confidence']:.4f}"
                 + (f" gap={result['gap_bonus']:.3f}" if result["gap_bonus"] > 0 else "")
-                + (" ⚠" if result["contradictions"] > 0 else "")
+                + (f" ⚠ x{result['contradictions']}" if result["contradictions"] > 0 else "")
                 + (" 🔴 ABSTAIN" if result["below_minimum"] else "")
             )
-
             cycle_results.append(result)
             all_results.append(result)
 
-        # Cycle summary
         avg_U = sum(r["utility"] for r in cycle_results) / len(cycle_results)
         avg_E = sum(r["efficacy_ema"] for r in cycle_results) / len(cycle_results)
         avg_C = sum(r["confidence"] for r in cycle_results) / len(cycle_results)
-        total_contradictions = sum(r["contradictions"] for r in cycle_results)
+        total_contra = sum(r["contradictions"] for r in cycle_results)
+        print(f"\n   Cycle {cycle+1}: avg U={avg_U:.4f} | E_ema={avg_E:.4f} | C={avg_C:.4f} | contradictions={total_contra}")
 
-        print(f"\n   Cycle {cycle+1}: avg U={avg_U:.4f} | E_ema={avg_E:.4f} | C={avg_C:.4f} | contradictions={total_contradictions}")
-
-        # Personality evolution
         utility_trend = scorer.get_utility_trend(field)
         domain_sum = scorer.get_domain_summary(field)
         personality.evolve(
@@ -330,37 +466,62 @@ async def main():
               f"caution={traits.get('caution', 0):.2f} "
               f"analytical_rigor={traits.get('analytical_rigor', 0):.2f}")
 
-    # Final report
+    # Build paired DPO output ────────────────────────────────────────────────
+    dpo_pairs = _build_paired_dpo(per_problem_history, field, field_config.penalty_multiplier)
+    n_paired   = sum(1 for p in dpo_pairs if p.get("chosen") is not None)
+    n_unpaired = len(dpo_pairs) - n_paired
+
     print(f"\n{'='*60}")
     print("HARNESS COMPLETE")
     print(f"{'='*60}")
-    print(f"  Arbiter verdicts:      {arbiter.total_verdicts}")
-    print(f"  Arbiter corrections:   {arbiter.total_corrections_issued}")
-    print(f"  Correction rate:       {arbiter.correction_rate():.1%}")
-    print(f"  DPO pairs collected:   {len(dpo_pairs)}")
-    print(f"  Assertions stored:     {assertions_store.summary()['total']}")
-    print(f"  Active corrections:    {len(active_corrections)}")
+    print(f"  Arbiter verdicts:        {arbiter.total_verdicts}")
+    print(f"  Arbiter corrections:     {arbiter.total_corrections_issued}")
+    print(f"  Correction rate:         {arbiter.correction_rate():.1%}")
+    print(f"  DPO pairs (total):       {len(dpo_pairs)}")
+    print(f"    paired chosen+rejected: {n_paired}")
+    print(f"    rejected-only:          {n_unpaired}")
+    print(f"  Assertions stored:       {assertions_store.summary()['total']}")
+    print(f"  Active corrections:      {len(active_corrections)}")
 
-    # Save results
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+    out_path = args.out or f"harness_results_{timestamp}.json"
     out = {
-        "timestamp": timestamp,
-        "field": field,
-        "cycles": num_cycles,
+        "timestamp":         timestamp,
+        "backend":           backend_label,
+        "endpoint":          args.endpoint,
+        "model":             args.model,
+        "field":             field,
+        "cycles":            num_cycles,
+        "n_queries":         len(queries),
         "results": [
-            {k: v for k, v in r.items() if k != "solution"}  # omit full solution from JSON
+            {k: v for k, v in r.items() if k != "solution"}
             for r in all_results
         ],
-        "dpo_pairs": dpo_pairs,
-        "arbiter_status": arbiter.status(),
-        "assertions_store": assertions_store.summary(),
+        "dpo_summary":       { "total": len(dpo_pairs), "paired": n_paired, "rejected_only": n_unpaired },
+        "arbiter_status":    arbiter.status(),
+        "assertions_store":  assertions_store.summary(),
         "personality_final": personality.get_trait_summary(),
     }
-
-    out_path = f"harness_results_{timestamp}.json"
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
-    print(f"\n  Results saved to {out_path}")
+    print(f"\n  Full results: {out_path}")
+
+    dpo_path = args.export_dpo or f"dpo_pairs/cycle1_{timestamp}.json"
+    os.makedirs(os.path.dirname(dpo_path) or ".", exist_ok=True)
+    with open(dpo_path, "w") as f:
+        json.dump({
+            "timestamp": timestamp,
+            "field":     field,
+            "cycles":    num_cycles,
+            "endpoint":  args.endpoint,
+            "model":     args.model,
+            "n_pairs":   len(dpo_pairs),
+            "n_paired":  n_paired,
+            "n_rejected_only": n_unpaired,
+            "pairs":     dpo_pairs,
+        }, f, indent=2)
+    print(f"  DPO pairs:    {dpo_path}")
 
 
 if __name__ == "__main__":

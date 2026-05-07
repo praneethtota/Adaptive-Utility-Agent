@@ -46,7 +46,7 @@ LIVE OLLAMA INSTRUCTIONS
   4. All downstream code (scoring, statistics, plots) is identical
 """
 
-import json, math, os, random, sys
+import argparse, json, math, os, random, sys, time
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field as dc_field
 from typing import Dict, List, Optional, Tuple
@@ -148,6 +148,25 @@ WRONG_DOMAIN = {
     "general":              "software_engineering",
 }
 
+# ── Live-mode routing tables (Stage 1: only swe/math/arbiter specialists exist) ─
+# Maps a domain label to which of our 3 cloud specialists serves it.
+LIVE_DOMAIN_TO_SPECIALIST = {
+    "software_engineering": "swe",
+    "mathematics":          "math",
+    "general":              "arbiter",
+    "medicine":             "arbiter",
+}
+# Mismatched routing in live mode must pick a specialist that actually exists.
+LIVE_WRONG_SPECIALIST = {
+    "software_engineering": "math",   # SWE problem → math specialist (Regime 2)
+    "mathematics":          "swe",    # Math problem → SWE specialist (Regime 2)
+}
+LIVE_PROMPTS = {
+    "software_engineering": "You are an expert software engineer. Write correct Python code, state time complexity in big-O notation, and include at least one assert statement.",
+    "mathematics":          "You are an expert mathematician. Solve rigorously and show all steps.",
+    "general":              "You are a helpful assistant. Solve the following accurately.",
+}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # RESPONSE GENERATION
 # ══════════════════════════════════════════════════════════════════════════════
@@ -197,43 +216,109 @@ def _generate_response(
     return round(pass_rate, 4), round(conf, 4), is_correct
 
 
-# ── Live Ollama stub (replace _generate_response body with this when available)
+# ── Live vLLM dispatcher (Stage 1 cloud — calls /v1/chat/completions) ───────────
 def live_generate_response(
     problem: dict,
-    prompt_type: str,
-    ollama_model: str = "mistral:7b-instruct",
-) -> Tuple[float, float, bool]:
-    """Live inference via Ollama. Install: https://ollama.ai, then 'ollama pull mistral:7b-instruct'"""
+    prompt_type: str,                    # "generic" | "matched" | "mismatched" | "vcg"
+    endpoints: Dict[str, str],           # {"swe": "http://host:9001", "math": "...", "arbiter": "..."}
+    timeout: float = 90.0,
+    max_tokens: int = 512,
+    temperature: float = 0.2,
+) -> Tuple[float, float, bool, dict]:
+    """
+    Live inference via vLLM OpenAI-compatible API.
+
+    Routes based on prompt_type:
+      generic     → arbiter (general 3B model, no domain prompt)
+      matched     → correct specialist for the problem family
+      mismatched  → wrong specialist (Regime 2 — produces overconfident wrong answers)
+      vcg         → correct specialist with VCG confidence tempering
+
+    Pass-rate is a contradiction-based heuristic on the model output (not real test
+    execution). Intent is relative comparison across arms, not absolute correctness.
+
+    Returns (pass_rate, confidence, is_correct, meta).
+    """
     import httpx, re
-    PROMPTS = {
-        "software_engineering": "You are an expert software engineer. Write correct code, state time complexity, include at least one assert.",
-        "mathematics": "You are an expert mathematician. Solve rigorously, show all steps.",
-        "general": "You are a helpful assistant.",
-    }
     domain = FAMILY_TO_DOMAIN.get(problem["family"], "software_engineering")
-    wrong  = WRONG_DOMAIN.get(domain, "general")
-    sys_p  = {
-        "generic":    "You are a helpful assistant. Solve the following problem accurately.",
-        "matched":    PROMPTS.get(domain, PROMPTS["general"]),
-        "mismatched": PROMPTS.get(wrong,  PROMPTS["general"]),
-        "vcg":        PROMPTS.get(domain, PROMPTS["general"]),
-    }[prompt_type]
-    resp = httpx.post(
-        "http://localhost:11434/api/chat",
-        json={"model": ollama_model, "messages": [
+
+    if prompt_type == "generic":
+        sys_p = "You are a helpful assistant. Solve the following problem accurately."
+        spec  = "arbiter"
+    elif prompt_type == "matched":
+        sys_p = LIVE_PROMPTS.get(domain, LIVE_PROMPTS["general"])
+        spec  = LIVE_DOMAIN_TO_SPECIALIST.get(domain, "arbiter")
+    elif prompt_type == "mismatched":
+        spec       = LIVE_WRONG_SPECIALIST.get(domain, "arbiter")
+        wrong_dom  = {"swe":"software_engineering","math":"mathematics","arbiter":"general"}[spec]
+        sys_p      = LIVE_PROMPTS.get(wrong_dom, LIVE_PROMPTS["general"])
+    elif prompt_type == "vcg":
+        sys_p = LIVE_PROMPTS.get(domain, LIVE_PROMPTS["general"])
+        spec  = LIVE_DOMAIN_TO_SPECIALIST.get(domain, "arbiter")
+    else:
+        raise ValueError(f"unknown prompt_type: {prompt_type}")
+
+    if spec not in endpoints:
+        raise KeyError(f"endpoint missing for specialist '{spec}'; have {list(endpoints)}")
+    url = endpoints[spec].rstrip("/") + "/v1/chat/completions"
+    user_msg = f"Solve: {problem['id']}. Include Python code, time complexity, and an assert."
+    payload = {
+        "model": spec,
+        "messages": [
             {"role": "system", "content": sys_p},
-            {"role": "user", "content": f"Solve: {problem['id']}. Include code, complexity, assert."},
-        ], "stream": False},
-        timeout=60,
-    )
-    text = resp.json()["message"]["content"]
+            {"role": "user",   "content": user_msg},
+        ],
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+    }
+
+    t0 = time.perf_counter()
+    try:
+        resp = httpx.post(url, json=payload, timeout=timeout)
+        resp.raise_for_status()
+        body = resp.json()
+        text = body["choices"][0]["message"]["content"] or ""
+        usage = body.get("usage", {}) or {}
+    except Exception as e:
+        return 0.10, 0.05, False, {
+            "error": f"{type(e).__name__}: {str(e)[:200]}",
+            "specialist": spec, "latency_ms": int((time.perf_counter()-t0)*1000),
+        }
+    latency_ms = int((time.perf_counter() - t0) * 1000)
+
+    # Heuristic correctness via self-consistency (no real test execution at this stage)
     from contradiction_detector import ContradictionDetector
     cx = re.search(r"O\([^)]+\)", text)
-    cd = ContradictionDetector(2.0).check(f"Solve {problem['id']}", text, cx.group(0) if cx else None)
-    pass_rate  = max(0.30, 1.0 - len(cd.contradictions) * 0.30)
+    cd = ContradictionDetector(2.0).check(
+        problem=f"Solve {problem['id']}",
+        solution=text,
+        claimed_complexity=cx.group(0) if cx else None,
+    )
+    n_contra  = len(cd.contradictions)
+    pass_rate = max(0.30, 1.0 - n_contra * 0.30)
     is_correct = pass_rate >= 0.80
-    conf       = 0.75 if re.search(r"confident|certain", text.lower()) else 0.60
-    return pass_rate, conf, is_correct
+
+    has_conf_word = bool(re.search(r"\b(confident|certain|definitely|clearly)\b", text.lower()))
+    base_conf = 0.75 if has_conf_word else 0.60
+    if prompt_type == "vcg":
+        conf = round(0.82 * base_conf + 0.18 * 0.50, 4)
+    elif prompt_type == "mismatched":
+        conf = min(0.95, base_conf + 0.15)
+    else:
+        conf = base_conf
+
+    meta = {
+        "specialist":       spec,
+        "latency_ms":       latency_ms,
+        "n_contradictions": n_contra,
+        "complexity_claim": cx.group(0) if cx else None,
+        "tokens": {
+            "prompt":     usage.get("prompt_tokens"),
+            "completion": usage.get("completion_tokens"),
+        },
+        "response_chars": len(text),
+    }
+    return pass_rate, conf, is_correct, meta
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DATA STRUCTURES & RUNNERS
@@ -255,19 +340,37 @@ class RoutingRecord:
     brier:           float
 
 
-def run_arm(label: str, prompt_type: str, n_tasks: int, seed: int) -> List[RoutingRecord]:
+def run_arm(
+    label: str,
+    prompt_type: str,
+    n_tasks: int,
+    seed: int,
+    endpoints: Optional[Dict[str, str]] = None,
+) -> Tuple[List[RoutingRecord], List[dict]]:
+    """Run one arm. If `endpoints` is provided, use live vLLM inference; else simulate.
+
+    Returns (records, metas). `metas` is empty in simulated mode; in live mode it
+    contains per-call latency, specialist, contradiction count, and token usage.
+    """
     rng       = random.Random(seed)
     field_cfg = FIELD_CONFIGS["software_engineering"]
     scorer    = UtilityScorer(arbiter=None)
-    records   = []
+    records: List[RoutingRecord] = []
+    metas:   List[dict]          = []
 
     for seq in range(n_tasks):
         prob   = rng.choice(PROBLEMS)
         domain = FAMILY_TO_DOMAIN.get(prob["family"], "software_engineering")
 
-        pr, conf, correct = _generate_response(prob, prompt_type, rng)
+        if endpoints is not None:
+            pr, conf, correct, meta = live_generate_response(prob, prompt_type, endpoints)
+            metas.append({"seq": seq, "problem_id": prob["id"], "arm": label, **meta})
+            if seq % 10 == 0 or seq == n_tasks - 1:
+                lat = meta.get("latency_ms", -1)
+                print(f"    [{label}] {seq+1}/{n_tasks}  problem={prob['id']:<22}  spec={meta.get('specialist','?'):<7}  pr={pr:.2f}  lat={lat}ms", flush=True)
+        else:
+            pr, conf, correct = _generate_response(prob, prompt_type, rng)
 
-        # Contradiction penalty for overconfident wrong answers
         contra = 0.12 if (prompt_type == "mismatched" and not correct) else 0.0
         ts = scorer.score(
             task_id=prob["id"], field_config=field_cfg,
@@ -283,7 +386,7 @@ def run_arm(label: str, prompt_type: str, n_tasks: int, seed: int) -> List[Routi
             utility=round(ts.utility, 4),
             brier=round((conf - int(correct)) ** 2, 4),
         ))
-    return records
+    return records, metas
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -577,26 +680,69 @@ def make_report(metrics: dict, pw: dict, out_path: str) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Routing Quality Experiment — simulated by default, --live for vLLM inference"
+    )
+    parser.add_argument("--live", action="store_true",
+                        help="Use real vLLM inference instead of the simulated quality model")
+    parser.add_argument("--swe-endpoint",     default="http://localhost:9001",
+                        help="SWE specialist base URL (default %(default)s)")
+    parser.add_argument("--math-endpoint",    default="http://localhost:9002",
+                        help="Math specialist base URL (default %(default)s)")
+    parser.add_argument("--arbiter-endpoint", default="http://localhost:9003",
+                        help="Arbiter / general specialist base URL (default %(default)s)")
+    parser.add_argument("--n", type=int, default=None,
+                        help="Tasks per arm. Default: 200 (sim) / 50 (live)")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--output-suffix", default=None,
+                        help="Suffix for output files (default: 'live' if --live, else '')")
+    args = parser.parse_args()
+
     OUT = os.path.join(os.path.dirname(__file__), "routing_output")
     os.makedirs(OUT, exist_ok=True)
-    N = 200; SEED = 42
+
+    SEED = args.seed
+    if args.n is not None:
+        N = args.n
+    else:
+        N = 50 if args.live else 200
+
+    suffix = args.output_suffix if args.output_suffix is not None else ("live" if args.live else "")
+    sfx    = f"_{suffix}" if suffix else ""
+
+    if args.live:
+        endpoints = {
+            "swe":     args.swe_endpoint,
+            "math":    args.math_endpoint,
+            "arbiter": args.arbiter_endpoint,
+        }
+        mode_label = "LIVE vLLM"
+    else:
+        endpoints = None
+        mode_label = "simulation (quality model from published benchmarks)"
 
     print(f"\n{'='*60}")
     print("ROUTING QUALITY EXPERIMENT")
-    print("  Mode: simulation (quality model from published benchmarks)")
-    print(f"  n={N} per arm | 25 problem types | seed={SEED}")
+    print(f"  Mode: {mode_label}")
+    print(f"  n={N} per arm | {len(PROBLEMS)} problem types | seed={SEED}")
+    if args.live:
+        for k, v in endpoints.items():
+            print(f"  {k:<8} → {v}")
     print(f"{'='*60}\n")
 
+    t0 = time.perf_counter()
     print("[1/5] Arm A — no routing (generic prompt)...")
-    arm_a = run_arm("A_no_routing",  "generic",    N, SEED)
+    arm_a, meta_a = run_arm("A_no_routing",  "generic",    N, SEED,   endpoints)
     print("[2/5] Arm B — matched routing (oracle)...")
-    arm_b = run_arm("B_matched",     "matched",    N, SEED+1)
+    arm_b, meta_b = run_arm("B_matched",     "matched",    N, SEED+1, endpoints)
     print("[3/5] Arm C — mismatched routing (Regime 2)...")
-    arm_c = run_arm("C_mismatched",  "mismatched", N, SEED+2)
+    arm_c, meta_c = run_arm("C_mismatched",  "mismatched", N, SEED+2, endpoints)
     print("[4/5] Arm D — VCG arbitration...")
-    arm_d = run_arm("D_vcg",         "vcg",        N, SEED+3)
+    arm_d, meta_d = run_arm("D_vcg",         "vcg",        N, SEED+3, endpoints)
+    elapsed = time.perf_counter() - t0
 
-    arms = {"A_no_routing":arm_a,"B_matched":arm_b,"C_mismatched":arm_c,"D_vcg":arm_d}
+    arms  = {"A_no_routing":arm_a,"B_matched":arm_b,"C_mismatched":arm_c,"D_vcg":arm_d}
+    metas = {"A_no_routing":meta_a,"B_matched":meta_b,"C_mismatched":meta_c,"D_vcg":meta_d}
 
     m  = {k: arm_metrics(v) for k, v in arms.items()}
     pw = {
@@ -607,35 +753,41 @@ def main():
         "D_vs_C": pairwise(arm_d, arm_c),
     }
 
-    print("[5/5] Writing outputs...")
+    print(f"\n[5/5] Writing outputs (elapsed {elapsed:.1f}s)...")
 
-    json_out = os.path.join(OUT, "routing_results.json")
+    json_out = os.path.join(OUT, f"routing_results{sfx}.json")
+    payload = {
+        "experiment_config": {
+            "n_per_arm": N, "n_problems": len(PROBLEMS), "seed": SEED,
+            "mode": "live_vllm" if args.live else "simulation",
+            "elapsed_seconds": round(elapsed, 1),
+        },
+        "metrics": m, "pairwise": pw,
+        "arms": {k: [asdict(r) for r in v] for k, v in arms.items()},
+    }
+    if args.live:
+        payload["experiment_config"]["endpoints"] = endpoints
+        payload["live_metas"] = metas
+    else:
+        payload["experiment_config"]["quality_sources"] = {
+            "software_engineering": "DeepSeek-AI (2024) arXiv:2401.14196",
+            "mathematics":  "Luo et al. (2023) arXiv:2308.09583",
+            "medicine":     "Singhal et al. (2023) Nature Medicine",
+            "general":      "Jiang et al. (2023) arXiv:2310.06825",
+            "mismatch_penalty": "Raval et al. (2026) arXiv:2601.16549",
+            "routing_accuracy": "Xu et al. (2024) arXiv:2406.16203",
+        }
     with open(json_out, "w") as f:
-        json.dump({
-            "experiment_config": {
-                "n_per_arm": N, "n_problems": len(PROBLEMS), "seed": SEED,
-                "mode": "simulation",
-                "quality_sources": {
-                    "software_engineering": "DeepSeek-AI (2024) arXiv:2401.14196",
-                    "mathematics":  "Luo et al. (2023) arXiv:2308.09583",
-                    "medicine":     "Singhal et al. (2023) Nature Medicine",
-                    "general":      "Jiang et al. (2023) arXiv:2310.06825",
-                    "mismatch_penalty": "Raval et al. (2026) arXiv:2601.16549",
-                    "routing_accuracy": "Xu et al. (2024) arXiv:2406.16203",
-                },
-            },
-            "metrics": m, "pairwise": pw,
-            "arms": {k: [asdict(r) for r in v] for k, v in arms.items()},
-        }, f, indent=2)
+        json.dump(payload, f, indent=2)
     print(f"  → JSON:   {json_out}")
 
-    report_out = os.path.join(OUT, "routing_report.txt")
+    report_out = os.path.join(OUT, f"routing_report{sfx}.txt")
     report = make_report(m, pw, report_out)
     print(f"  → Report: {report_out}")
     print()
     print(report)
 
-    make_plots(arms, m, os.path.join(OUT, "plots"))
+    make_plots(arms, m, os.path.join(OUT, f"plots{sfx}"))
     return m, pw
 
 if __name__ == "__main__":

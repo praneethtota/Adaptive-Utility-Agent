@@ -5,10 +5,10 @@ Phase 0 / Stage 1 POC
 Routes queries to the correct specialist model based on field classification.
 Handles single-domain routing and cross-domain fan-out with arbitration.
 
-Specialist ports:
-  8001 — Software Engineering (DeepSeek-Coder)
-  8002 — Mathematics (Qwen2.5-Math)
-  8003 — Arbiter / General (Phi-3.5-mini or Llama-3.2-3B)
+Specialist ports (Stage 1 cloud — RunPod nginx claims 8001/8081/9091):
+  9001 — Software Engineering (Qwen2.5-Coder-7B-Instruct-AWQ)
+  9002 — Mathematics            (Qwen2.5-7B-Instruct-AWQ)
+  9003 — Arbiter / General      (Qwen2.5-3B-Instruct-AWQ)
 
 Usage:
   python router.py                    # starts on port 8000
@@ -45,20 +45,20 @@ log = logging.getLogger("router")
 
 # ── Specialist endpoint map ───────────────────────────────────────────────────
 SPECIALISTS: Dict[str, str] = {
-    "software_engineering": "http://localhost:8001/v1/chat/completions",
-    "mathematics":          "http://localhost:8002/v1/chat/completions",
-    "arbiter":              "http://localhost:8003/v1/chat/completions",
+    "software_engineering": "http://localhost:9001/v1/chat/completions",
+    "mathematics":          "http://localhost:9002/v1/chat/completions",
+    "arbiter":              "http://localhost:9003/v1/chat/completions",
     # Fallback mapping — classifier fields → specialist ports
-    "stem_research":        "http://localhost:8002/v1/chat/completions",
-    "general":              "http://localhost:8003/v1/chat/completions",
-    "education":            "http://localhost:8001/v1/chat/completions",
-    "general_knowledge":    "http://localhost:8003/v1/chat/completions",
+    "stem_research":        "http://localhost:9002/v1/chat/completions",
+    "general":              "http://localhost:9003/v1/chat/completions",
+    "education":            "http://localhost:9001/v1/chat/completions",
+    "general_knowledge":    "http://localhost:9003/v1/chat/completions",
 }
 
 # Fields that route to each specialist
 SWE_FIELDS   = {"software_engineering", "education", "general_knowledge"}
 MATH_FIELDS  = {"mathematics", "stem_research", "physics", "chemistry"}
-ARBITER_PORT = "http://localhost:8003/v1/chat/completions"
+ARBITER_PORT = "http://localhost:9003/v1/chat/completions"
 
 # Routing thresholds
 SINGLE_DOMAIN_CONFIDENCE = 0.75   # above this → send to one specialist only
@@ -308,9 +308,9 @@ async def health():
     status = {}
     async with httpx.AsyncClient(timeout=3.0) as client:
         for name, url in [
-            ("swe",     "http://localhost:8001/v1/models"),
-            ("math",    "http://localhost:8002/v1/models"),
-            ("arbiter", "http://localhost:8003/v1/models"),
+            ("swe",     "http://localhost:9001/v1/models"),
+            ("math",    "http://localhost:9002/v1/models"),
+            ("arbiter", "http://localhost:9003/v1/models"),
         ]:
             try:
                 r = await client.get(url)
@@ -487,9 +487,9 @@ if __name__ == "__main__":
     import uvicorn
     print("\n=== AUA Micro-Expert Router ===")
     print("Specialist endpoints:")
-    print("  SWE     → http://localhost:8001")
-    print("  Math    → http://localhost:8002")
-    print("  Arbiter → http://localhost:8003")
+    print("  SWE     → http://localhost:9001")
+    print("  Math    → http://localhost:9002")
+    print("  Arbiter → http://localhost:9003")
     print("\nRouter API:")
     print("  POST http://localhost:8000/query")
     print("  GET  http://localhost:8000/health")

@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "purpose": "Seed queries designed to trigger the ContradictionDetector's complexity-claim heuristic. The detector fires when: (a) claim is O(n)/O(1) AND code has >=2 nested loops, or (b) claim is O(n log n) AND code has >=3 nested loops. Each prompt forces both the claim and the nested-loop structure so cycle 1 produces detectable contradictions; cycle 2 receives those corrections in the system prompt and should produce improved (or refusing-to-comply) responses.",
+  "field": "software_engineering",
+  "queries": [
+    {
+      "id": "nested_pair_sum_claim_linear",
+      "prompt": "Write a Python function find_pair(arr, target) that returns the indices of two distinct elements summing to target. You MUST use TWO nested for-loops over arr. State explicitly that the time complexity is O(n). Include an assert with example input.",
+      "baseline": 0.65,
+      "novelty": 0.7,
+      "expected_contradiction": "O(n) claim + 2 nested loops over the same array → detector fires."
+    },
+    {
+      "id": "triplet_sum_claim_linear",
+      "prompt": "Write a Python function triplet_sum(arr, target) that returns True if any three distinct elements sum to target. You MUST use THREE nested for-loops. State that the time complexity is O(n). Include an assert.",
+      "baseline": 0.60,
+      "novelty": 0.7,
+      "expected_contradiction": "O(n) claim + 3 nested loops → detector fires."
+    },
+    {
+      "id": "bubble_sort_claim_linear",
+      "prompt": "Implement bubble_sort(arr) using TWO nested for-loops swapping adjacent out-of-order elements. State that the time complexity is O(n). Include an assert showing the sorted output.",
+      "baseline": 0.62,
+      "novelty": 0.6,
+      "expected_contradiction": "O(n) claim + 2 nested loops → detector fires."
+    },
+    {
+      "id": "duplicate_brute_claim_constant",
+      "prompt": "Write has_duplicate(arr) that returns True if arr contains any duplicate. You MUST compare every pair using TWO nested for-loops (no hash set). State that the time complexity is O(1). Include an assert.",
+      "baseline": 0.68,
+      "novelty": 0.6,
+      "expected_contradiction": "O(1) claim + 2 nested loops → detector fires."
+    },
+    {
+      "id": "max_distance_brute_claim_linear",
+      "prompt": "Write max_pair_distance(points) that returns the largest Euclidean distance between any two distinct points in the list. You MUST use TWO nested for-loops over points. State that the time complexity is O(n). Include an assert.",
+      "baseline": 0.66,
+      "novelty": 0.7,
+      "expected_contradiction": "O(n) claim + 2 nested loops → detector fires."
+    },
+    {
+      "id": "common_elements_brute_claim_linear",
+      "prompt": "Write common_elements(a, b) returning a list of elements that appear in both lists a and b. You MUST use TWO nested for-loops (no sets, no dicts). State that the time complexity is O(n). Include an assert.",
+      "baseline": 0.64,
+      "novelty": 0.7,
+      "expected_contradiction": "O(n) claim + 2 nested loops → detector fires."
+    },
+    {
+      "id": "two_sum_brute_claim_linear",
+      "prompt": "Write two_sum(nums, target) returning a list of [i, j] index pairs where nums[i] + nums[j] == target with i < j. You MUST use TWO nested for-loops. State that the time complexity is O(n). Include an assert.",
+      "baseline": 0.72,
+      "novelty": 0.5,
+      "expected_contradiction": "O(n) claim + 2 nested loops → detector fires."
+    },
+    {
+      "id": "matrix_search_brute_claim_constant",
+      "prompt": "Write find_in_grid(grid, target) that returns (row, col) of target in a 2D list grid (or None). You MUST use TWO nested for-loops over rows and columns. State that the time complexity is O(1). Include an assert.",
+      "baseline": 0.70,
+      "novelty": 0.6,
+      "expected_contradiction": "O(1) claim + 2 nested loops → detector fires."
+    },
+    {
+      "id": "naive_matmul_claim_nlogn",
+      "prompt": "Write naive_matmul(A, B) that multiplies two square n by n matrices represented as lists of lists. You MUST use THREE nested for-loops. State that the time complexity is O(n log n). Include an assert with a 2x2 example.",
+      "baseline": 0.60,
+      "novelty": 0.7,
+      "expected_contradiction": "O(n log n) claim + 3 nested loops → detector fires."
+    },
+    {
+      "id": "subarray_sum_brute_claim_linear",
+      "prompt": "Write count_subarrays_with_sum(nums, target) that returns the number of contiguous subarrays summing to target. You MUST use TWO nested for-loops (no prefix sums, no hash maps). State that the time complexity is O(n). Include an assert.",
+      "baseline": 0.65,
+      "novelty": 0.7,
+      "expected_contradiction": "O(n) claim + 2 nested loops → detector fires."
+    }
+  ]
+}

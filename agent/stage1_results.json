@@ -1,0 +1,265 @@
+{
+  "stage": 1,
+  "label": "Cloud POC — RunPod RTX 4090, 7B AWQ specialists",
+  "session_started": "2026-05-07",
+  "session_status": "in_progress",
+  "intent": "Empirical validation of the Micro-Expert Architecture: 3 specialist vLLM servers + router + arbiter. Upgrades whitepaper Appendix A from simulation-validated to measured on real 7B-class models.",
+
+  "hardware": {
+    "provider":          "RunPod",
+    "gpu":               "1× NVIDIA GeForce RTX 4090",
+    "gpu_vram_mib":      24564,
+    "cuda_version":      "13.0",
+    "driver_version":    "580.126.20",
+    "host_ram_gib":      126,
+    "shm_gib":           29,
+    "workspace_storage": "MooseFS network volume, 500TB free at session start",
+    "ephemeral_storage_gib": 20,
+    "python_version":    "3.11.10",
+    "key_packages": {
+      "vllm":             "0.20.1",
+      "transformers":     "5.8.0",
+      "torch":            "2.11.0",
+      "huggingface_hub":  "1.14.0",
+      "peft":             "0.19.1",
+      "trl":              "1.3.0",
+      "scipy":            "1.17.1",
+      "matplotlib":       "3.10.9",
+      "hf_transfer":      "0.1.9"
+    }
+  },
+
+  "cost": {
+    "billed_rate_usd_per_hr": 0.69,
+    "note": "Plan document quoted $0.44/hr; user confirmed actual billed rate is $0.69/hr. All cost numbers in this file use the $0.69/hr rate.",
+    "rescaled_total_budget_usd": "25–31 (from plan's $16–20 at $0.44/hr)"
+  },
+
+  "models": {
+    "swe": {
+      "repo":           "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ",
+      "role":           "Software Engineering specialist",
+      "params_total_b": 7.6,
+      "quantization":   { "method": "awq", "bits": 4, "group_size": 128, "version": "gemm" },
+      "local_path":     "./models/swe",
+      "disk_size_gib":  5.3,
+      "weight_files":   ["model-00001-of-00002.safetensors (4.0 GB)", "model-00002-of-00002.safetensors (1.6 GB)"],
+      "model_type":     "qwen2",
+      "served_port":    9001,
+      "served_name":    "swe"
+    },
+    "math": {
+      "repo":           "Qwen/Qwen2.5-7B-Instruct-AWQ",
+      "role":           "Mathematics specialist (substitute — see deviations)",
+      "params_total_b": 7.6,
+      "quantization":   { "method": "awq", "bits": 4, "group_size": 128, "version": "gemm" },
+      "local_path":     "./models/math",
+      "disk_size_gib":  5.3,
+      "weight_files":   ["model-00001-of-00002.safetensors (4.0 GB)", "model-00002-of-00002.safetensors (1.6 GB)"],
+      "model_type":     "qwen2",
+      "served_port":    9002,
+      "served_name":    "math"
+    },
+    "arbiter": {
+      "repo":           "Qwen/Qwen2.5-3B-Instruct-AWQ",
+      "role":           "Arbiter / general specialist (cross-domain conflict resolution)",
+      "params_total_b": 3.1,
+      "quantization":   { "method": "awq", "bits": 4, "group_size": 128, "version": "gemm" },
+      "local_path":     "./models/arbiter",
+      "disk_size_gib":  2.6,
+      "weight_files":   ["model.safetensors (2.7 GB)"],
+      "model_type":     "qwen2",
+      "served_port":    9003,
+      "served_name":    "arbiter"
+    },
+    "total_disk_gib": 13.2
+  },
+
+  "deviations_from_plan": [
+    {
+      "topic":      "Model lineup",
+      "planned":    "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct + Qwen2.5-Math-7B-Instruct + meta-llama/Llama-3.2-3B-Instruct",
+      "actual":     "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ + Qwen/Qwen2.5-7B-Instruct-AWQ + Qwen/Qwen2.5-3B-Instruct-AWQ",
+      "rationale":  [
+        "Plan called for AWQ quantization (--quantization awq) but listed fp16 base repos. AWQ kernels require AWQ-quantized weights — fp16 weights would have rejected --quantization awq.",
+        "DeepSeek-Coder-V2-Lite is 16B MoE (not 7B); at AWQ ~9GB it would have broken the symmetric 0.30/0.30/0.30 GPU memory budget on a single 24GB 4090.",
+        "meta-llama/Llama-3.2-3B-Instruct is gated; environment had no HF_TOKEN configured.",
+        "No official AWQ exists for Qwen/Qwen2.5-Math-7B-Instruct (verified against Qwen, solidrust, cortecs, kaitchup, and TheBloke namespaces). Closest math-specialist AWQ alternatives were either non-existent or near-zero-download community shards.",
+        "Selected lineup uses official Qwen AWQ releases for all three roles, ungated, single-family (Qwen2.5), fits the 24GB budget."
+      ],
+      "tradeoff":   "Math specialist is a general 7B (Qwen2.5-7B-Instruct-AWQ), not a math-fine-tuned model. POC tests routing+arbitration mechanism; absolute math benchmark numbers (GSM8K/MATH) will be lower than a true Qwen2.5-Math specialist would deliver. Future work: auto-quantize Qwen2.5-Math-7B to AWQ on-pod (~30 min, ~$0.35 at $0.69/hr)."
+    },
+    {
+      "topic":      "Specialist ports",
+      "planned":    "8001 (SWE) / 8002 (math) / 8003 (arbiter); router on 8000",
+      "actual":     "9001 (SWE) / 9002 (math) / 9003 (arbiter); router on 8000",
+      "rationale":  "RunPod's nginx reverse proxy claims port 8001 (and 3001, 7270, 7861, 8081, 9091) for external traffic forwarding. First vLLM bind to 8001 failed with `OSError: [Errno 98] Address already in use`. Shifted port plan +1000 to clear the nginx range while preserving the convention. router.py updated accordingly (19 references)."
+    },
+    {
+      "topic":      "GPU memory utilization split",
+      "planned":    "0.30 / 0.30 / 0.30 (symmetric, 7.2GB each)",
+      "actual":     "0.34 / 0.34 / 0.18 (asymmetric, 8.4 / 8.4 / 4.4 GiB)",
+      "rationale":  "vLLM 0.20.1 introduced default CUDA-graph memory profiling that consumes ~0.8GB per server before KV cache allocation. At 0.30 utilization (7.2GB), after 5.5GB AWQ weights + 0.8GB CUDA graphs, 0.9GB remained — insufficient for even one KV cache block. vLLM raised `ValueError: No available memory for the cache blocks`. Rebalanced to give 7B servers more headroom and 3B server less (it has lower KV-cache demand)."
+    },
+    {
+      "topic":      "Routing experiment live mode",
+      "planned":    "python routing_experiment.py --live --swe-endpoint ... --math-endpoint ...",
+      "actual":     "Same CLI surface, after wiring it up.",
+      "rationale":  "Original routing_experiment.py had no argparse; --live and the endpoint flags were silently ignored. The pre-existing live_generate_response() was a hardcoded Ollama stub on port 11434. Patched: added argparse (--live, --swe/--math/--arbiter-endpoint, --n, --seed, --output-suffix), rewrote live_generate_response() to call OpenAI-compatible vLLM /v1/chat/completions with per-arm specialist dispatch, added per-call meta tracking (latency_ms, n_contradictions, tokens, complexity_claim)."
+    }
+  ],
+
+  "phase_1_cloud_setup": {
+
+    "step_1_1_environment": {
+      "status":      "complete",
+      "gpu_idle_at_start_mib": 1,
+      "workspace_free_at_start_tib": 500,
+      "notes": "RunPod PyTorch 2.x base template provided most cloud dependencies (vllm, fastapi, uvicorn, httpx, aiohttp, trl, peft, transformers, torch) preinstalled. Added: scipy, matplotlib, hf_transfer."
+    },
+
+    "step_1_2_dependencies": {
+      "status":     "complete",
+      "added_packages": ["scipy 1.17.1", "matplotlib 3.10.9", "hf_transfer 0.1.9"],
+      "skipped":    "Most plan-listed packages (vllm, fastapi, uvicorn, httpx, aiohttp, trl, peft) were already in the base template.",
+      "wall_time_seconds": "<60"
+    },
+
+    "step_1_3_model_downloads": {
+      "status":     "complete",
+      "wall_time_seconds": 16.9,
+      "throughput_aggregate_mb_per_s_estimate": 800,
+      "method": "huggingface_hub.snapshot_download with HF_HUB_ENABLE_HF_TRANSFER=1 (chunked parallel transfer)",
+      "per_model_seconds": { "swe": 7.1, "math": 5.7, "arbiter": 4.0 },
+      "verification": {
+        "all_safetensors_present":           true,
+        "all_tokenizer_files_present":       true,
+        "awq_quantization_config_validated": true,
+        "config_consistency": "All three configs report quant_method=awq, bits=4, group_size=128, version=gemm — vLLM-compatible."
+      },
+      "cost_usd": 0.003
+    },
+
+    "step_1_4_vllm_servers": {
+      "status":          "complete",
+      "first_attempt":   "FAILED — OSError [Errno 98] Address already in use on port 8001 (RunPod nginx)",
+      "second_attempt":  "FAILED — ValueError: No available memory for the cache blocks at --gpu-memory-utilization 0.30 (vLLM 0.20.1 CUDA-graph profiling overhead)",
+      "third_attempt":   "SUCCESS — ports 9001/9002/9003, utilization 0.34/0.34/0.18",
+      "startup_seconds":   { "swe": 28, "math": 48, "arbiter": 44 },
+      "vram_after_each_server_mib": {
+        "swe_only":         8842,
+        "swe_and_math":    17331,
+        "all_three_up":    22206
+      },
+      "total_vram_used_pct": 90.4,
+      "headroom_mib":      1876,
+      "smoke_test": {
+        "method": "Single chat-completion request per server, max_tokens=20-40, temperature=0",
+        "results": {
+          "swe":     { "prompt": "Write a one-line Python function reverse(s) that returns s reversed. No commentary.", "response": "def reverse(s): return s[::-1]", "tokens": { "prompt": 46, "completion": 14 }, "verdict": "correct" },
+          "math":    { "prompt": "What is 17*23? Reply with only the number.", "response": "391", "tokens": { "prompt": 44, "completion": 4 }, "verdict": "correct (17×23 = 391)" },
+          "arbiter": { "prompt": "Reply with exactly: ARBITER OK", "response": "ARBITER OK", "tokens": { "prompt": 37, "completion": 5 }, "verdict": "correct (exact echo)" }
+        }
+      },
+      "router_py_updated": "19 port references shifted from 800X to 900X; docstring updated to note RunPod nginx port reservations.",
+      "wall_time_minutes_including_failed_attempts": 6,
+      "cost_usd": 0.07
+    },
+
+    "step_1_5_routing_experiment_live": {
+      "status":   "complete",
+      "command":  "python routing_experiment.py --live --n 30 --seed 42",
+      "config":   { "n_per_arm": 30, "n_problems": 25, "seed": 42, "max_tokens": 512, "temperature": 0.2, "endpoints": { "swe": "http://localhost:9001", "math": "http://localhost:9002", "arbiter": "http://localhost:9003" } },
+      "total_calls":          120,
+      "wall_time_seconds":    2457,
+      "wall_time_minutes":    41,
+      "actual_cost_usd":      0.47,
+      "raw_results_file":     "routing_output/routing_results_live.json",
+      "human_report_file":    "routing_output/routing_report_live.txt",
+      "figures_dir":          "routing_output/plots_live/",
+
+      "per_arm_metrics": {
+        "A_no_routing":  { "accuracy": 0.4333, "mean_utility": 0.5426, "mean_conf": 0.605, "brier": 0.2801, "pearson_r":  0.3899, "pearson_p": 0.0332, "spearman_rho": 0.3769, "spearman_p": 0.0401, "specialist_used": "arbiter" },
+        "B_matched":     { "accuracy": 0.7667, "mean_utility": 0.6297, "mean_conf": 0.600, "brier": 0.2067, "pearson_r":  0.0790, "pearson_p": 0.6783, "spearman_rho": 0.2959, "spearman_p": 0.1123, "specialist_used": "swe + math (per-domain match)" },
+        "C_mismatched":  { "accuracy": 0.5667, "mean_utility": 0.5761, "mean_conf": 0.750, "brier": 0.2792, "pearson_r":  0.3945, "pearson_p": 0.0310, "spearman_rho": 0.3925, "spearman_p": 0.0319, "specialist_used": "swe + math (deliberately wrong)" },
+        "D_vcg":         { "accuracy": 0.8667, "mean_utility": 0.6329, "mean_conf": 0.582, "brier": 0.1966, "pearson_r":  0.2705, "pearson_p": 0.1483, "spearman_rho": 0.3059, "spearman_p": 0.1002, "specialist_used": "swe + math (matched, with VCG confidence tempering)" }
+      },
+
+      "pairwise_comparisons": {
+        "B_vs_A": { "delta_correctness":  0.3333, "t_stat":  2.7553, "p_value": 0.007822, "cohens_d":  0.7236, "significant_p_lt_0.05": true,  "interpretation": "Matched specialist routing yields a large, highly significant gain over generic prompting." },
+        "C_vs_A": { "delta_correctness":  0.1333, "t_stat":  1.0246, "p_value": 0.309814, "cohens_d":  0.2691, "significant_p_lt_0.05": false, "interpretation": "Mismatched 7B specialist still beats the 3B generic arbiter on raw correctness, because the wrong-domain 7B is stronger than the right-domain 3B. The Regime 2 signature shows up in Brier (overconfidence: mean_conf=0.75) rather than in pass-rate." },
+        "D_vs_A": { "delta_correctness":  0.4333, "t_stat":  3.8833, "p_value": 0.000267, "cohens_d":  1.0198, "significant_p_lt_0.05": true,  "interpretation": "VCG arbitration with confidence tempering produces the largest gain over generic — over a full Cohen's d, p<0.001." },
+        "B_vs_D": { "delta_correctness": -0.1000, "t_stat": -0.9924, "p_value": 0.325113, "cohens_d": -0.2606, "significant_p_lt_0.05": false, "interpretation": "D outperforms B by 10 pp — not statistically significant at n=30, but unexpected: the simulated baseline assumed B was the upper bound. In live mode VCG's confidence tempering reduces overconfident contradictions enough that the heuristic-based pass-rate scores it higher than oracle matched routing." },
+        "D_vs_C": { "delta_correctness":  0.3000, "t_stat":  2.6884, "p_value": 0.009355, "cohens_d":  0.7060, "significant_p_lt_0.05": true,  "interpretation": "Correct specialist + arbitration beats wrong specialist by a large, significant margin." }
+      },
+
+      "latency_per_arm_ms": {
+        "A_no_routing":  { "n": 30, "mean": 8856,  "median": 9582,  "specialist": "arbiter (3B)" },
+        "B_matched":     { "n": 30, "mean": 24164, "median": 26757, "specialist": "swe/math (7B)" },
+        "C_mismatched":  { "n": 30, "mean": 25760, "median": 26765, "specialist": "swe/math (7B, wrong)" },
+        "D_vcg":         { "n": 30, "mean": 23042, "median": 25399, "specialist": "swe/math (7B)" }
+      },
+
+      "tokens_per_arm_completion_mean": {
+        "A_no_routing": 473, "B_matched": 462, "C_mismatched": 493, "D_vcg": 441
+      },
+
+      "contradictions_per_arm_mean": {
+        "A_no_routing": 0.90, "B_matched": 0.23, "C_mismatched": 0.50, "D_vcg": 0.13
+      },
+
+      "by_domain_accuracy": {
+        "A_no_routing":  { "software_engineering": { "accuracy": 0.4091, "n": 22 }, "mathematics": { "accuracy": 0.5000, "n": 8 } },
+        "B_matched":     { "software_engineering": { "accuracy": 0.7500, "n": 24 }, "mathematics": { "accuracy": 0.8333, "n": 6 } },
+        "C_mismatched":  { "software_engineering": { "accuracy": 0.4783, "n": 23 }, "mathematics": { "accuracy": 0.8571, "n": 7 } },
+        "D_vcg":         { "software_engineering": { "accuracy": 0.8400, "n": 25 }, "mathematics": { "accuracy": 1.0000, "n": 5 } }
+      },
+
+      "key_findings": [
+        "Matched specialist routing (B) improves correctness by +33.3 pp over generic (A): p=0.0078, Cohen's d=0.72. Highly significant.",
+        "VCG arbitration (D) improves by +43.3 pp over generic: p=0.00027, Cohen's d=1.02. Strongest measured effect.",
+        "Mismatched routing (C) signature appears in Brier (0.279, near-tied with A's 0.280) and in overconfidence (mean_conf 0.75 vs A=0.60, B=0.60, D=0.58) — not in raw pass-rate. This is the live-mode Regime 2 fingerprint.",
+        "D > B by 10 pp in this measurement (not statistically significant at n=30). Unexpected vs the simulated upper-bound model. Driver: live confidence tempering in VCG (0.82·base + 0.18·0.5) reduces overconfident contradictions enough that the contradiction-based pass-rate heuristic scores D above oracle B.",
+        "Per-domain: D solved 100% of math problems (n=5) and 84% of SWE (n=25). C reached 86% on math but only 48% on SWE — a 7B math model, given a math-style prompt for a SWE problem, often produces correct math-flavoured code but with worse domain fit.",
+        "Latency: A averaged 8.9 s (arbiter alone); B/C/D averaged 23–26 s (7B specialists under concurrent KV pressure with three servers sharing 24 GB)."
+      ],
+
+      "limitations_and_caveats": [
+        "Pass-rate heuristic is contradiction-based (ContradictionDetector(2.0).check), not test execution. It penalises stated complexity inconsistencies but not functional bugs. Relative comparison across arms is valid; absolute correctness is overestimated.",
+        "Math role is filled by Qwen2.5-7B-Instruct-AWQ (general), not Qwen2.5-Math-7B-Instruct, because no AWQ exists for the math variant. This narrows the SPECIALIST_GAIN gap and likely understates B's advantage over A for math problems.",
+        "Mismatch in Arm C maps SWE→math and math→SWE — both 7B Qwen models. The 'wrong domain' here is more 'wrong prompt' than 'wrong model class'. This dampens the simulated baseline's expected Regime 2 pass-rate drop.",
+        "n=30 per arm gives detectable Cohen's d ~0.7. Trends with d~0.3 (e.g. C-vs-A pass-rate, D-vs-B) are underpowered. A future longer run (n=100–200) would tighten these bands.",
+        "Stale text in the auto-generated routing_report_live.txt: the report still says 'Mode: simulation' and 'Live Ollama validation is the next step' because make_report() was not updated. The numbers in the report are correct; only the prose context is stale. JSON output and per-arm tables in this file are authoritative."
+      ],
+
+      "figures_for_appendix_a": [
+        "routing_output/plots_live/figR1_correctness.png — bar chart of correctness rate per arm",
+        "routing_output/plots_live/figR2_brier.png — Brier score per arm (lower = better calibration)",
+        "routing_output/plots_live/figR3_domain_heatmap.png — per-domain accuracy by arm (red→green)",
+        "routing_output/plots_live/figR4_summary.png — 4-panel summary (correctness, Brier, U↔correctness Pearson r, gain over baseline)"
+      ]
+    }
+  },
+
+  "phase_2_dpo_accumulation":   "not_started",
+  "phase_3_blue_green_cycle_1": "not_started",
+  "phase_4_blue_green_cycle_2": "not_started",
+  "phase_5_arbitration":        "not_started",
+
+  "code_changes_this_session": [
+    { "file": "agent/router.py",            "change": "All 19 specialist-port references shifted 800X → 900X; module docstring updated for Stage 1 cloud port plan." },
+    { "file": "agent/routing_experiment.py", "change": "Added argparse (--live, --swe/--math/--arbiter-endpoint, --n, --seed, --output-suffix). Added LIVE_DOMAIN_TO_SPECIALIST, LIVE_WRONG_SPECIALIST, LIVE_PROMPTS constants. Rewrote live_generate_response() to call OpenAI-compatible vLLM API with per-arm specialist dispatch. run_arm() now returns (records, metas) tuple; in live mode metas include latency_ms, specialist, n_contradictions, complexity_claim, token counts, response_chars. main() refactored to support both simulated (default n=200) and live (default n=50) modes with separate output filenames." }
+  ],
+
+  "artifacts_for_appendix_a": [
+    { "path": "agent/stage0_results.json",                                 "purpose": "Stage 0 local validation gate results (M1 Max, mlx_lm)" },
+    { "path": "agent/stage1_results.json",                                 "purpose": "This file — Stage 1 cloud setup + measurement results" },
+    { "path": "agent/routing_output/routing_results_live.json",            "purpose": "Per-arm per-call live routing experiment results (pending completion)" },
+    { "path": "agent/routing_output/routing_report_live.txt",              "purpose": "Human-readable routing arm-comparison summary (pending)" },
+    { "path": "agent/routing_output/plots_live/",                          "purpose": "Routing experiment figures (pending): figR1_correctness, figR2_brier, figR3_domain_heatmap, figR4_summary" },
+    { "path": "agent/logs/swe.log",                                        "purpose": "vLLM SWE server startup + inference log" },
+    { "path": "agent/logs/math.log",                                       "purpose": "vLLM math server startup + inference log" },
+    { "path": "agent/logs/arbiter.log",                                    "purpose": "vLLM arbiter server startup + inference log" },
+    { "path": "agent/logs/routing_live.log",                               "purpose": "Live routing experiment progress log" }
+  ]
+}
