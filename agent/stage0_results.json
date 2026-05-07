@@ -1,0 +1,154 @@
+{
+  "stage": 0,
+  "label": "Local Validation — M1 Max",
+  "date": "2026-05-07",
+  "hardware": "Apple M1 Max, 32GB RAM, mlx_lm servers (CPU/MPS)",
+  "models": {
+    "swe":     { "path": "models/swe_local",     "arch": "llama",  "size_mb": 736,  "port": 8001 },
+    "math":    { "path": "models/math_local",    "arch": "qwen2",  "size_mb": 851,  "port": 8002 },
+    "arbiter": { "path": "models/arbiter_local", "arch": "phi3",   "size_mb": 2048, "port": 8003 }
+  },
+  "router": {
+    "port": 8000,
+    "single_domain_confidence_threshold": 0.75,
+    "fanout_threshold": 0.30
+  },
+
+  "queries": [
+    {
+      "id": "q1_binary_search",
+      "query": "Write a Python function binary_search(nums, target) on a sorted array. State time complexity.",
+      "routing_mode": "single",
+      "domain_distribution": { "software_engineering": 1.0 },
+      "primary_domain": "software_engineering",
+      "specialist_port": 8001,
+      "u_score": 0.489,
+      "confidence": 0.75,
+      "contradictions_detected": 0,
+      "dpo_pairs_generated": 0,
+      "latency_ms": 2080,
+      "notes": "Clean single-domain route. No contradictions."
+    },
+    {
+      "id": "q2_drug_dosage",
+      "query": "Write a Python function that finds the optimal drug dosage given patient weight in kg. Time complexity must be O(n).",
+      "routing_mode": "single",
+      "domain_distribution": { "software_engineering": 0.78, "medicine": 0.22 },
+      "primary_domain": "software_engineering",
+      "specialist_port": 8001,
+      "u_score": 0.505,
+      "confidence": 0.75,
+      "contradictions_detected": 0,
+      "dpo_pairs_generated": 0,
+      "latency_ms": 3102,
+      "notes": "Medicine not in MATH_FIELDS so no fanout. SWE dominated at 0.78 > single-domain threshold."
+    },
+    {
+      "id": "q3_linear_equation_matrix",
+      "query": "Write a Python function to solve a linear equation system using matrix operations. Prove the time complexity is O(n^3).",
+      "routing_mode": "arbiter",
+      "domain_distribution": { "software_engineering": 0.68, "mathematics": 0.17, "surgery": 0.085, "medicine": 0.067 },
+      "primary_domain": "general",
+      "specialist_port": 8003,
+      "u_score": 0.434,
+      "confidence": 0.16,
+      "contradictions_detected": 2,
+      "dpo_pairs_generated": 2,
+      "latency_ms": 14918,
+      "notes": "Low top-domain confidence (0.68 < 0.75) → Arbiter fallback. 2 contradictions caught, 2 DPO pairs accumulated."
+    },
+    {
+      "id": "q4_bubble_sort_proof",
+      "query": "Prove that bubble sort has O(n^2) time complexity and write Python code demonstrating this with a counter of operations.",
+      "routing_mode": "single",
+      "domain_distribution": { "software_engineering": 0.783, "medicine": 0.055, "surgery": 0.115, "mathematics": 0.047 },
+      "primary_domain": "software_engineering",
+      "specialist_port": 8001,
+      "u_score": 0.517,
+      "confidence": 0.75,
+      "contradictions_detected": 0,
+      "dpo_pairs_generated": 0,
+      "latency_ms": 2916,
+      "notes": "SWE dominated. Math signal too weak for fanout."
+    },
+    {
+      "id": "q5_markov_fanout_run1",
+      "query": "Write Python code to compute the probability matrix for a Markov chain. Prove the steady-state theorem using eigenvalue equations.",
+      "routing_mode": "fanout",
+      "domain_distribution": { "software_engineering": 0.583, "mathematics": 0.328, "surgery": 0.043, "medicine": 0.045 },
+      "primary_domain": "mathematics",
+      "swe_port": 8001,
+      "math_port": 8002,
+      "arbiter_port": 8003,
+      "arbiter_verdict": "mathematics",
+      "u_score": 0.434,
+      "confidence": 0.50,
+      "contradictions_detected": 2,
+      "dpo_pairs_generated": 2,
+      "latency_ms": 33704,
+      "notes": "FANOUT TRIGGERED. SWE=0.58 and Math=0.33 both above 0.30 threshold. All 3 specialists called. Arbiter chose Math. DPO pair source=contradiction_detector on losing SWE response."
+    },
+    {
+      "id": "q5_markov_fanout_run2",
+      "query": "Write Python code to compute the probability matrix for a Markov chain. Prove the steady-state theorem using eigenvalue equations.",
+      "routing_mode": "fanout",
+      "domain_distribution": { "software_engineering": 0.541, "mathematics": 0.385, "surgery": 0.036, "medicine": 0.038 },
+      "primary_domain": "mathematics",
+      "swe_port": 8001,
+      "math_port": 8002,
+      "arbiter_port": 8003,
+      "arbiter_verdict": "mathematics",
+      "u_score": 0.456,
+      "confidence": 0.75,
+      "contradictions_detected": 1,
+      "dpo_pairs_generated": 1,
+      "latency_ms": 26592,
+      "notes": "Second fanout run. EMA history shifted Math weight up (0.33 → 0.385). Fewer contradictions (2 → 1) on repeat. U improved (0.434 → 0.456)."
+    }
+  ],
+
+  "aggregate": {
+    "total_queries": 6,
+    "routing_mode_counts": { "single": 3, "arbiter": 1, "fanout": 2 },
+    "total_contradictions_detected": 5,
+    "total_dpo_pairs_accumulated": 5,
+    "total_assertions_stored": 4,
+    "u_score_range": { "min": 0.434, "max": 0.517 },
+    "u_score_mean": 0.473,
+    "latency_ms": {
+      "single_domain_mean": 2699,
+      "arbiter_fallback": 14918,
+      "fanout_mean": 30148
+    },
+    "domain_confidence_final": {
+      "software_engineering": 0.426,
+      "mathematics": 0.550,
+      "general": 0.432
+    }
+  },
+
+  "stage0_gates": {
+    "servers_up": true,
+    "contradiction_detection_fires": true,
+    "dpo_pairs_accumulate": true,
+    "u_scores_in_expected_range": true,
+    "fanout_triggers_on_cross_domain": true,
+    "arbiter_verdict_logged": true,
+    "dpo_pair_source_correct": "contradiction_detector"
+  },
+
+  "bugs_fixed": [
+    "Created missing confidence_updater.py",
+    "ContradictionDetector(store) → ContradictionDetector(penalty_multiplier=2.0)",
+    "detector.detect() → detector.check(problem=, solution=)",
+    "scorer.score(efficacy=...) → correct signature with field_config",
+    "store.get_relevant_assertions() → store.query(subject=, domain=)",
+    "store.add_correction() → store.add(subject=, domain=, claim=, ...)",
+    "store.count()/count_dpo() → store.summary()",
+    "Removed double asyncio.gather (was calling specialist servers twice)",
+    "Added missing: from config import FIELD_CONFIGS",
+    "\"local-model\" → \"default_model\" (mlx_lm server requirement)"
+  ],
+
+  "next": "Stage 1 — RunPod RTX 4090, 7B models, vLLM, two real blue-green cycles"
+}
