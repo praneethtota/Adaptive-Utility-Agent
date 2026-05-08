@@ -13,13 +13,20 @@
 #   Therefore domains run SEQUENTIALLY — each cycle starts/stops its own servers.
 #
 # Flow:
-#   STEP 1: Free VRAM
-#   STEP 2: SWE  merge (LoRA already trained, loss=1.7294)
-#   STEP 3: Math train  (with WQLinear_GEMM.dequantize() fix in place)
-#   STEP 4: Math merge
-#   STEP 5: SWE  blue-green cycle (9001 AWQ blue + 9011 fp16 green → phases 2-5)
-#   STEP 6: Math blue-green cycle (9002 AWQ blue + 9012 fp16 green → phases 2-5)
-#   STEP 7: Summary + git commit
+#   STEP 1 : Free VRAM
+#   STEP 2 : Train SWE  seed LoRA  (30 gold pairs → swe_green_v1 adapter)
+#   STEP 3 : Merge SWE  seed       (swe_green_v1 → swe_green_v1_merged)
+#   STEP 3b: SWE organic accumulation — start :9011 fp16 server, run harness
+#            in --append loop until 250 organic DPO pairs, stop :9011
+#   STEP 3c: SWE v2 retrain + merge  (swe_green_v1_merged + 250 organic
+#            pairs → swe_green_v2 adapter → swe_green_v2_merged)
+#   STEP 4 : Train Math seed LoRA  (22 gold pairs → math_green_v1 adapter)
+#   STEP 5 : Merge Math seed       (math_green_v1 → math_green_v1_merged)
+#   STEP 5b: Math organic accumulation — same pattern as 3b, port :9012
+#   STEP 5c: Math v2 retrain + merge  (→ math_green_v2_merged)
+#   STEP 6 : SWE  blue-green cycle (9001 AWQ blue + 9011 fp16 green → phases 2-5)
+#   STEP 7 : Math blue-green cycle (9002 AWQ blue + 9012 fp16 green → phases 2-5)
+#   STEP 8 : Summary + git commit
 #
 # Usage:
 #   nohup bash run_bluegreen_full.sh > logs/bluegreen_tty.log 2>&1 &
@@ -84,13 +91,13 @@ start_awq_server() {
 }
 
 start_fp16_server() {
-  local port=$1 name=$3 mem=$4
+  local port=$1 name=$3 mem=$4 maxlen=${5:-2048}
   local model; model=$(realpath "$2" 2>/dev/null || echo "$2")
   if check_server "$port"; then log "  $name :$port already up"; return 0; fi
-  log "  Starting $name (fp16) on :$port mem=$mem | VRAM used: $(vram_used)"
+  log "  Starting $name (fp16) on :$port mem=$mem max-model-len=$maxlen | VRAM used: $(vram_used)"
   python -m vllm.entrypoints.openai.api_server \
     --model "$model" --port "$port" \
-    --max-model-len 2048 \
+    --max-model-len "$maxlen" \
     --served-model-name "$name" \
     --gpu-memory-utilization "$mem" \
     --dtype float16 &
@@ -114,8 +121,10 @@ import json
 base_path, adapter_path, output_path = sys.argv[1], sys.argv[2], sys.argv[3]
 
 cfg = json.load(open(Path(base_path) / "config.json"))
-is_awq = cfg.get("quantization_config", {}).get("quant_type","").lower() == "awq" or \
-         cfg.get("quantization_config", {}).get("bits", 0) == 4
+qcfg = cfg.get("quantization_config") or {}
+is_awq = (str(qcfg.get("quant_type")  or "").lower() == "awq" or
+          str(qcfg.get("quant_method") or "").lower() == "awq" or
+          qcfg.get("bits", 0) == 4)
 
 if is_awq:
     print("AWQ base — loading via autoawq and dequantizing per-layer...")
@@ -129,7 +138,7 @@ if is_awq:
             cls = type(child_module).__name__
             if "WQLinear" in cls:
                 try:
-                    w = child_module.dequantize()
+                    w = child_module.dequantize()   # returns (in_features, out_features)
                 except AttributeError:
                     from awq.utils.packing_utils import dequantize_gemm
                     w = dequantize_gemm(child_module.qweight, child_module.qzeros,
@@ -140,7 +149,7 @@ if is_awq:
                     child_module.in_features, child_module.out_features,
                     bias=child_module.bias is not None,
                     dtype=torch.float16, device=dev)
-                new_lin.weight = nn.Parameter(w.to(dev))
+                new_lin.weight = nn.Parameter(w.T.to(dev))  # nn.Linear expects (out, in)
                 if child_module.bias is not None:
                     new_lin.bias = nn.Parameter(child_module.bias.to(dev))
                 setattr(parent_module, child_name, new_lin)
@@ -157,6 +166,15 @@ else:
 print("Applying and merging LoRA adapter...")
 peft_model = PeftModel.from_pretrained(model, adapter_path)
 merged = peft_model.merge_and_unload()
+# Move to CPU before serializing: merge_and_unload leaves the full fp16 model
+# on GPU (~13 GiB). save_pretrained needs additional headroom for serialization
+# which causes OOM on a 24 GiB GPU. CPU offload avoids this entirely.
+import gc
+print("Moving merged model to CPU for serialization...")
+merged = merged.cpu()
+torch.cuda.empty_cache()
+gc.collect()
+print("Saving merged model from CPU...")
 Path(output_path).mkdir(parents=True, exist_ok=True)
 merged.save_pretrained(output_path, safe_serialization=True)
 tok = AutoTokenizer.from_pretrained(adapter_path)
@@ -165,6 +183,9 @@ cfg_out = Path(output_path) / "config.json"
 if cfg_out.exists():
     c = json.load(open(cfg_out))
     c.pop("quantization_config", None)
+    # Remove AWQ-inherited max_seq_len so vLLM uses max_position_embeddings (32768).
+    # Without this, vLLM caps context at 2048 and refuses --max-model-len 4096.
+    c.pop("max_seq_len", None)
     json.dump(c, open(cfg_out,"w"), indent=2)
 print(f"Merge complete → {output_path}")
 PYEOF
@@ -180,10 +201,89 @@ train_lora() {
     --dpo-pairs  "$pairs" \
     --output     "$output" \
     --field      "$field" \
-    --epochs 3 --lora-r 16 --lora-alpha 32 \
+    --epochs 5 --lora-r 16 --lora-alpha 32 \
     --batch-size 1 \
     --apply-field-weights \
     2>&1 | tee -a "$LOG" || warn "train_lora.py exited non-zero"
+}
+
+# ── DPO pair counter ──────────────────────────────────────────────────────────
+# Prints count of entries that have both 'chosen' and 'rejected' fields.
+
+_count_dpo_pairs() {
+  python3 - "$1" <<'EOF' 2>/dev/null || echo 0
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+    entries = d if isinstance(d, list) else d.get("pairs", d.get("entries", []))
+    print(sum(1 for x in entries if x.get("chosen") and x.get("rejected")))
+except:
+    print(0)
+EOF
+}
+
+# =============================================================================
+# accumulate_organic_dpo — Harness loop to generate organic DPO pairs
+# =============================================================================
+# Runs harness.py against a LIVE server in --append mode, repeating until
+# TARGET paired entries are in OUT_FILE or MAX_RUNS is exhausted.
+#
+# Args: DOMAIN  PORT  MODEL_NAME  QUERIES_FILE  OUT_FILE  FIELD  TARGET
+#   DOMAIN       – label for logs (swe, math)
+#   PORT         – port of the live inference server
+#   MODEL_NAME   – must match the server's --served-model-name
+#   QUERIES_FILE – 100-problem adversarial set (seeded_contradictions.json)
+#   OUT_FILE     – accumulation file; each harness run appends to it
+#   FIELD        – harness field (software_engineering, mathematics)
+#   TARGET       – paired-entry goal (e.g. 250)
+#
+# VRAM contract: caller starts/stops the server.  Only ONE server should be
+# live during accumulation (fp16 @ 0.80 → ~19651 MiB = 82% of 24564 MiB).
+# =============================================================================
+accumulate_organic_dpo() {
+  local domain=$1 port=$2 model_name=$3 queries=$4 out_file=$5 field=$6 target=$7
+
+  local current; current=$(_count_dpo_pairs "$out_file")
+  if [ "$current" -ge "$target" ]; then
+    log "  $domain organic DPO: $current/$target pairs already present — skipping"
+    return 0
+  fi
+
+  log "──────────────────────────────────────────────"
+  log "ORGANIC ACCUMULATION: domain=$domain  port=$port  target=$target"
+  log "  model=$model_name  field=$field"
+  log "  queries=$queries  output=$out_file"
+  log "  starting pairs: $current"
+  log "──────────────────────────────────────────────"
+  mkdir -p dpo_pairs
+
+  local run=0 max_runs=20
+  while [ "$current" -lt "$target" ] && [ "$run" -lt "$max_runs" ]; do
+    run=$((run+1))
+    log "  Organic run $run/$max_runs — pairs so far: $current/$target | VRAM: $(vram_used)"
+
+    python harness.py \
+      --endpoint "http://localhost:${port}" \
+      --model    "$model_name" \
+      --cycles   3 \
+      --queries  "$queries" \
+      --export-dpo "$out_file" \
+      --field    "$field" \
+      --temperature 0.4 \
+      --append \
+      --out "logs/${domain}_organic_run${run}.json" \
+      2>&1 | tee "logs/${domain}_organic_run${run}.log" \
+      || warn "harness run $run exited non-zero (continuing)"
+
+    current=$(_count_dpo_pairs "$out_file")
+    log "  After run $run: $current/$target paired entries"
+  done
+
+  if [ "$current" -lt "$target" ]; then
+    warn "$domain organic: $current/$target pairs after $max_runs runs — proceeding with what we have"
+  else
+    log "$domain organic accumulation COMPLETE: $current entries ≥ $target target"
+  fi
 }
 
 # =============================================================================
@@ -366,6 +466,12 @@ log "  VRAM total: $(nvidia-smi --query-gpu=memory.total --format=csv,noheader 2
 log "  VRAM free:  $(vram_free)"
 log "================================================================"
 
+# State variables — updated by 3b/3c and 5b/5c; promotion steps read them.
+SWE_ORGANIC_SKIP=no
+MATH_ORGANIC_SKIP=no
+SWE_GREEN_MODEL=./models/swe_green_v1_merged   # upgraded to v2 after 3c
+MATH_GREEN_MODEL=./models/math_green_v1_merged  # upgraded to v2 after 5c
+
 # Ensure libnvJitLink symlink
 ln -sf /usr/local/lib/python3.11/dist-packages/nvidia/cu13/lib/libnvJitLink.so.13 \
        /usr/local/lib/libnvJitLink.so.13 2>/dev/null || true
@@ -375,56 +481,155 @@ ldconfig 2>/dev/null || true
 log "STEP 1 — Free all VRAM (offline training requires full GPU)"
 kill_all_inference
 
-# ── STEP 2: SWE merge (LoRA already trained: loss=1.7294) ────────────────────
-log "STEP 2 — Merge SWE GREEN v1 (adapter already trained)"
+# ── STEP 2: SWE training (clean DPO pairs — corrupted pairs replaced) ────────
+log "STEP 2 — Train SWE GREEN v1 (clean gold-standard DPO pairs)"
+train_lora ./models/swe dpo_pairs/swe_accumulation.json ./models/swe_green_v1 software_engineering
+log "  SWE train done. VRAM free: $(vram_free)"
+
+# ── STEP 3: SWE merge ────────────────────────────────────────────────────────
+log "STEP 3 — Merge SWE GREEN v1"
 merge_lora ./models/swe ./models/swe_green_v1 ./models/swe_green_v1_merged
 log "  SWE merge done. VRAM free: $(vram_free)"
 
-# ── STEP 3: Math training (with WQLinear_GEMM.dequantize() fix active) ───────
-log "STEP 3 — Train Math GREEN v1 (WQLinear_GEMM fix in place)"
+# ── STEP 3b: SWE organic accumulation ────────────────────────────────────────
+# Start the seed GREEN v1 server alone (fp16, 0.80 util → ~19651 MiB = 82%).
+# Run harness in --append loop until 250 organic DPO pairs are in the file.
+# seeded_contradictions.json: 100 adversarial complexity questions (Type A + B).
+log "STEP 3b — SWE organic DPO accumulation (target: 250 pairs)"
+if [ -f ./models/swe_green_v1_merged/config.json ]; then
+  start_fp16_server 9011 ./models/swe_green_v1_merged swe 0.80 4096 || {
+    warn "STEP 3b — seed GREEN :9011 failed to start — skipping organic accumulation"
+    SWE_ORGANIC_SKIP=yes
+  }
+  if [ "$SWE_ORGANIC_SKIP" != "yes" ]; then
+    accumulate_organic_dpo \
+      swe 9011 swe seeded_contradictions.json \
+      dpo_pairs/swe_organic.json software_engineering 250
+    log "  Stopping seed GREEN :9011 before offline retraining..."
+    kill_port 9011
+    sleep 8
+    log "  VRAM free after :9011 shutdown: $(vram_free)"
+  fi
+else
+  warn "STEP 3b — swe_green_v1_merged missing, skipping SWE organic accumulation"
+  SWE_ORGANIC_SKIP=yes
+fi
+
+# ── STEP 3c: SWE v2 retrain on organic pairs + merge ─────────────────────────
+# Base model: fp16 swe_green_v1_merged (train_lora fallback handles non-AWQ base).
+# LoRA adapter: swe_green_v2   Merged: swe_green_v2_merged
+# Falls back to v1_merged for promotion if accumulation produced < 10 pairs.
+log "STEP 3c — Retrain SWE GREEN v2 on organic pairs + merge"
+SWE_ORGANIC_COUNT=$(_count_dpo_pairs dpo_pairs/swe_organic.json)
+log "  Organic pairs available: $SWE_ORGANIC_COUNT"
+if [ "$SWE_ORGANIC_SKIP" != "yes" ] && [ "$SWE_ORGANIC_COUNT" -ge 10 ]; then
+  train_lora ./models/swe_green_v1_merged \
+             dpo_pairs/swe_organic.json \
+             ./models/swe_green_v2 \
+             software_engineering
+  log "  SWE v2 train done. VRAM free: $(vram_free)"
+  merge_lora ./models/swe_green_v1_merged \
+             ./models/swe_green_v2 \
+             ./models/swe_green_v2_merged
+  log "  SWE v2 merge done. VRAM free: $(vram_free)"
+else
+  warn "STEP 3c — skipping v2 retrain (skip=$SWE_ORGANIC_SKIP pairs=$SWE_ORGANIC_COUNT)"
+fi
+[ -f ./models/swe_green_v2_merged/config.json ] && SWE_GREEN_MODEL=./models/swe_green_v2_merged
+log "  SWE green model for promotion: $SWE_GREEN_MODEL"
+
+# ── STEP 4: Math training (with WQLinear_GEMM.dequantize() fix active) ───────
+log "STEP 4 — Train Math GREEN v1 (clean DPO pairs + WQLinear_GEMM fix)"
 train_lora ./models/math dpo_pairs/math_accumulation.json ./models/math_green_v1 mathematics
 log "  Math train done. VRAM free: $(vram_free)"
 
-# ── STEP 4: Math merge ───────────────────────────────────────────────────────
-log "STEP 4 — Merge Math GREEN v1"
+# ── STEP 5: Math merge ───────────────────────────────────────────────────────
+log "STEP 5 — Merge Math GREEN v1"
 merge_lora ./models/math ./models/math_green_v1 ./models/math_green_v1_merged
 log "  Math merge done. VRAM free: $(vram_free)"
 
-# Verify merged models exist before proceeding
-for m in ./models/swe_green_v1_merged ./models/math_green_v1_merged; do
+# ── STEP 5b: Math organic accumulation ───────────────────────────────────────
+# Uses seeded_contradictions.json with --field mathematics. The adversarial
+# complexity questions are valid for both SWE and math specialist models.
+log "STEP 5b — Math organic DPO accumulation (target: 250 pairs)"
+if [ -f ./models/math_green_v1_merged/config.json ]; then
+  start_fp16_server 9012 ./models/math_green_v1_merged math 0.80 4096 || {
+    warn "STEP 5b — seed GREEN :9012 failed to start — skipping organic accumulation"
+    MATH_ORGANIC_SKIP=yes
+  }
+  if [ "$MATH_ORGANIC_SKIP" != "yes" ]; then
+    accumulate_organic_dpo \
+      math 9012 math seeded_contradictions.json \
+      dpo_pairs/math_organic.json mathematics 250
+    log "  Stopping seed GREEN :9012 before offline retraining..."
+    kill_port 9012
+    sleep 8
+    log "  VRAM free after :9012 shutdown: $(vram_free)"
+  fi
+else
+  warn "STEP 5b — math_green_v1_merged missing, skipping Math organic accumulation"
+  MATH_ORGANIC_SKIP=yes
+fi
+
+# ── STEP 5c: Math v2 retrain on organic pairs + merge ────────────────────────
+log "STEP 5c — Retrain Math GREEN v2 on organic pairs + merge"
+MATH_ORGANIC_COUNT=$(_count_dpo_pairs dpo_pairs/math_organic.json)
+log "  Organic pairs available: $MATH_ORGANIC_COUNT"
+if [ "$MATH_ORGANIC_SKIP" != "yes" ] && [ "$MATH_ORGANIC_COUNT" -ge 10 ]; then
+  train_lora ./models/math_green_v1_merged \
+             dpo_pairs/math_organic.json \
+             ./models/math_green_v2 \
+             mathematics
+  log "  Math v2 train done. VRAM free: $(vram_free)"
+  merge_lora ./models/math_green_v1_merged \
+             ./models/math_green_v2 \
+             ./models/math_green_v2_merged
+  log "  Math v2 merge done. VRAM free: $(vram_free)"
+else
+  warn "STEP 5c — skipping v2 retrain (skip=$MATH_ORGANIC_SKIP pairs=$MATH_ORGANIC_COUNT)"
+fi
+[ -f ./models/math_green_v2_merged/config.json ] && MATH_GREEN_MODEL=./models/math_green_v2_merged
+log "  Math green model for promotion: $MATH_GREEN_MODEL"
+
+# Verify promotion models exist before proceeding
+for m in "$SWE_GREEN_MODEL" "$MATH_GREEN_MODEL"; do
   if [ ! -f "${m}/config.json" ]; then
     warn "MISSING merged model: $m — corresponding cycle will be skipped"
   fi
 done
+log "  SWE green for promotion:  $SWE_GREEN_MODEL"
+log "  Math green for promotion: $MATH_GREEN_MODEL"
 
-# ── STEP 5: SWE blue-green cycle ─────────────────────────────────────────────
+# ── STEP 6: SWE blue-green cycle ─────────────────────────────────────────────
 # VRAM: Blue AWQ 0.20 (~4913 MiB) + Green fp16 0.70 (~17195 MiB) = ~22108 MiB (90.1%)
-log "STEP 5 — SWE blue-green cycle (§10.7)"
+# Uses SWE_GREEN_MODEL: swe_green_v2_merged if organic retrain succeeded, else v1_merged.
+log "STEP 6 — SWE blue-green cycle (§10.7)  green=$SWE_GREEN_MODEL"
 SWE_PROMOTED=no
-if [ -f ./models/swe_green_v1_merged/config.json ]; then
-  run_bg_cycle swe 9001 9011 ./models/swe ./models/swe_green_v1_merged software_engineering \
+if [ -f "${SWE_GREEN_MODEL}/config.json" ]; then
+  run_bg_cycle swe 9001 9011 ./models/swe "$SWE_GREEN_MODEL" software_engineering \
     && SWE_PROMOTED=yes
-  log "STEP 5 done. SWE_PROMOTED=$SWE_PROMOTED. VRAM free: $(vram_free)"
+  log "STEP 6 done. SWE_PROMOTED=$SWE_PROMOTED. VRAM free: $(vram_free)"
 else
-  warn "STEP 5 — swe_green_v1_merged missing, skipping SWE cycle"
+  warn "STEP 6 — $SWE_GREEN_MODEL missing, skipping SWE cycle"
 fi
 
-# Ensure port 9001 is free before Math cycle (no VRAM conflict)
+# Ensure ports free before Math cycle
 kill_port 9001
 kill_port 9011
 sleep 8
 log "  VRAM before Math cycle: $(vram_free)"
 
-# ── STEP 6: Math blue-green cycle ────────────────────────────────────────────
+# ── STEP 7: Math blue-green cycle ────────────────────────────────────────────
 # VRAM: Blue AWQ 0.20 (~4913 MiB) + Green fp16 0.70 (~17195 MiB) = ~22108 MiB (90.1%)
-log "STEP 6 — Math blue-green cycle (§10.7)"
+# Uses MATH_GREEN_MODEL: math_green_v2_merged if organic retrain succeeded, else v1_merged.
+log "STEP 7 — Math blue-green cycle (§10.7)  green=$MATH_GREEN_MODEL"
 MATH_PROMOTED=no
-if [ -f ./models/math_green_v1_merged/config.json ]; then
-  run_bg_cycle math 9002 9012 ./models/math ./models/math_green_v1_merged mathematics \
+if [ -f "${MATH_GREEN_MODEL}/config.json" ]; then
+  run_bg_cycle math 9002 9012 ./models/math "$MATH_GREEN_MODEL" mathematics \
     && MATH_PROMOTED=yes
-  log "STEP 6 done. MATH_PROMOTED=$MATH_PROMOTED. VRAM free: $(vram_free)"
+  log "STEP 7 done. MATH_PROMOTED=$MATH_PROMOTED. VRAM free: $(vram_free)"
 else
-  warn "STEP 6 — math_green_v1_merged missing, skipping Math cycle"
+  warn "STEP 7 — $MATH_GREEN_MODEL missing, skipping Math cycle"
 fi
 
 # Ensure all ports free after math cycle

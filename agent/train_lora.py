@@ -251,7 +251,7 @@ def train(args):
             for child_name, child_module in list(parent_module.named_children()):
                 cls_name = type(child_module).__name__
                 if "WQLinear" in cls_name:
-                    w = child_module.dequantize()   # returns fp16 weight tensor
+                    w = child_module.dequantize()   # (in_features, out_features)
                     new_lin = nn.Linear(
                         child_module.in_features,
                         child_module.out_features,
@@ -259,7 +259,7 @@ def train(args):
                         dtype=torch.float16,
                         device="cuda:0",
                     )
-                    new_lin.weight = nn.Parameter(w.to("cuda:0"))
+                    new_lin.weight = nn.Parameter(w.T.to("cuda:0"))  # nn.Linear expects (out, in)
                     if child_module.bias is not None:
                         new_lin.bias = nn.Parameter(child_module.bias.to("cuda:0"))
                     setattr(parent_module, child_name, new_lin)
@@ -295,7 +295,7 @@ def train(args):
         output_dir=str(output_dir),
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size,
-        gradient_accumulation_steps=max(1, 8 // args.batch_size),
+        gradient_accumulation_steps=4,
         learning_rate=args.lr,
         fp16=True,
         gradient_checkpointing=True,

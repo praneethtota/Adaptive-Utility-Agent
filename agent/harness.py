@@ -292,6 +292,19 @@ def _load_queries(path: Optional[str]) -> list:
     return [p for tier in PROBLEMS.values() for p in tier]
 
 
+_ERROR_MARKERS = (
+    "vLLM error", "HTTPStatusError", "Client error '", "Server error '",
+    "Connection refused", "TimeoutError", "ConnectError", "ReadError",
+    "Error '4", "Error '5", "raise_for_status",
+)
+
+def _is_valid_solution(text: str) -> bool:
+    """Return False if text is a server error string rather than a model response."""
+    if not text or len(text) < 10:
+        return False
+    return not any(m in text for m in _ERROR_MARKERS)
+
+
 def _build_paired_dpo(per_problem_history: dict, field: str, weight: float) -> list:
     """Produce paired (chosen, rejected) DPO entries from cross-cycle history.
 
@@ -299,10 +312,18 @@ def _build_paired_dpo(per_problem_history: dict, field: str, weight: float) -> l
     a later cycle with strictly fewer contradictions (chosen). If no improvement
     occurs, emit an unpaired rejected-only entry so the contradiction is still
     recorded.
+
+    Server error strings (vLLM 400/500, connection refused, etc.) are filtered
+    out and never recorded as chosen or rejected.
     """
     pairs = []
     for pid, history in per_problem_history.items():
         # history: list of {"cycle", "solution", "n_contradictions", "prompt", "details"}
+        # Filter out error-string entries entirely
+        history = [h for h in history if _is_valid_solution(h.get("solution", ""))]
+        if not history:
+            continue
+
         rejected_idx = None
         for i, h in enumerate(history):
             if h["n_contradictions"] > 0:
@@ -437,7 +458,11 @@ async def main():
                 active_corrections=active_corrections,
                 prior_solution=prior_solutions.get(problem["id"]),
             )
-            prior_solutions[problem["id"]] = result["solution"]
+            if _is_valid_solution(result["solution"]):
+                prior_solutions[problem["id"]] = result["solution"]
+            else:
+                # Server returned an error string — skip history recording
+                continue
 
             per_problem_history.setdefault(problem["id"], []).append({
                 "cycle":             cycle + 1,
@@ -460,6 +485,9 @@ async def main():
             cycle_results.append(result)
             all_results.append(result)
 
+        if not cycle_results:
+            print(f"\n   Cycle {cycle+1}: no valid responses (all filtered — likely context-length overflow)")
+            continue
         avg_U = sum(r["utility"] for r in cycle_results) / len(cycle_results)
         avg_E = sum(r["efficacy_ema"] for r in cycle_results) / len(cycle_results)
         avg_C = sum(r["confidence"] for r in cycle_results) / len(cycle_results)
