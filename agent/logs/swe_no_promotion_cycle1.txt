@@ -1,0 +1,41 @@
+SWE Cycle 1 NOT promoted
+2026-05-08 13:23:12,745 [INFO] httpx: HTTP Request: POST http://localhost:9001/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-08 13:23:12,745 [INFO] check_promotion: [ 94/100] s09 → BLUE  traffic_g=5% blue_U=0.460 green_U=N/A T_sus=0
+2026-05-08 13:23:33,188 [INFO] httpx: HTTP Request: POST http://localhost:9001/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-08 13:23:33,188 [INFO] check_promotion: [ 95/100] s02 → BLUE  traffic_g=5% blue_U=0.460 green_U=N/A T_sus=0
+2026-05-08 13:23:54,186 [INFO] httpx: HTTP Request: POST http://localhost:9001/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-08 13:23:54,187 [INFO] check_promotion: [ 96/100] s06 → BLUE  traffic_g=5% blue_U=0.460 green_U=N/A T_sus=0
+2026-05-08 13:24:20,269 [INFO] httpx: HTTP Request: POST http://localhost:9001/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-08 13:24:20,269 [INFO] check_promotion: [ 97/100] s05 → BLUE  traffic_g=5% blue_U=0.461 green_U=N/A T_sus=0
+2026-05-08 13:24:36,039 [INFO] httpx: HTTP Request: POST http://localhost:9001/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-08 13:24:36,039 [INFO] check_promotion: [ 98/100] s04 → BLUE  traffic_g=5% blue_U=0.461 green_U=N/A T_sus=0
+2026-05-08 13:25:02,118 [INFO] httpx: HTTP Request: POST http://localhost:9001/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-08 13:25:02,119 [INFO] check_promotion: [ 99/100] s05 → BLUE  traffic_g=5% blue_U=0.462 green_U=N/A T_sus=0
+2026-05-08 13:25:22,310 [INFO] httpx: HTTP Request: POST http://localhost:9001/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-08 13:25:22,310 [INFO] check_promotion: [100/100] s02 → BLUE  traffic_g=5% blue_U=0.462 green_U=N/A T_sus=0
+2026-05-08 13:25:22,310 [INFO] check_promotion: 
+2026-05-08 13:25:22,310 [INFO] check_promotion: === GRADUAL SHIFT SUMMARY ===
+2026-05-08 13:25:22,310 [INFO] check_promotion: BLUE  mean U:   0.4620
+Traceback (most recent call last):
+  File "/workspace/Adaptive-Utility-Agent/agent/check_promotion.py", line 484, in <module>
+    asyncio.run(run_shift(args))
+  File "/usr/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/workspace/Adaptive-Utility-Agent/agent/check_promotion.py", line 417, in run_shift
+    log.info(f"GREEN mean U:   {final_green_u:.4f if final_green_u else 'N/A'}")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: unsupported format string passed to NoneType.__format__
+Traceback (most recent call last):
+  File "/workspace/Adaptive-Utility-Agent/agent/check_promotion.py", line 482, in <module>
+    check_promotion(args.results, args.field)
+  File "/workspace/Adaptive-Utility-Agent/agent/check_promotion.py", line 123, in check_promotion
+    with open(results_path) as f:
+         ^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'results/swe_shift_cycle1.json'

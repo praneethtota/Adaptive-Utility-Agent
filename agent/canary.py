@@ -124,6 +124,7 @@ def score_response(response: str, prompt: str, correct: bool, domain: str) -> tu
     scorer   = UtilityScorer()
 
     contradiction_result = detector.check(problem=prompt, solution=response)
+    n_contra = len(contradiction_result.contradictions)
     base_conf = 0.75 if correct else 0.45
     conf = updater.update(
         prior=base_conf,
@@ -131,13 +132,16 @@ def score_response(response: str, prompt: str, correct: bool, domain: str) -> tu
         contradiction_result=contradiction_result,
         field=domain,
     )
-    u = scorer.score(
-        efficacy=0.60 if correct else 0.35,
-        confidence=conf,
-        curiosity=0.05,
-        field=domain,
+    field_cfg = FIELD_CONFIGS.get(domain, FIELD_CONFIGS["general"])
+    score_result = scorer.score(
+        task_id="canary",
+        field_config=field_cfg,
+        test_pass_rate=1.0 if correct else 0.0,
+        human_baseline_score=0.65,
+        contradiction_penalty=float(n_contra) * field_cfg.penalty_multiplier * 0.05,
+        problem_novelty=0.1,
     )
-    return u, conf
+    return score_result.utility, conf
 
 
 # ── Main canary loop ──────────────────────────────────────────────────────────

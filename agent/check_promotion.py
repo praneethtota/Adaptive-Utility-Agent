@@ -240,12 +240,20 @@ def score(response: str, prompt: str, correct: bool, domain: str) -> tuple[float
     updater  = ConfidenceUpdater()
     scorer   = UtilityScorer()
     cr = detector.check(problem=prompt, solution=response)
+    n_contra = len(cr.contradictions)
     base_conf = 0.75 if correct else 0.45
     conf = updater.update(prior=base_conf, test_signal=base_conf,
                           contradiction_result=cr, field=domain)
-    u = scorer.score(efficacy=0.60 if correct else 0.35,
-                     confidence=conf, curiosity=0.05, field=domain)
-    return u, conf
+    field_cfg = FIELD_CONFIGS.get(domain, FIELD_CONFIGS["general"])
+    score_result = scorer.score(
+        task_id="promotion_check",
+        field_config=field_cfg,
+        test_pass_rate=1.0 if correct else 0.0,
+        human_baseline_score=0.65,
+        contradiction_penalty=float(n_contra) * field_cfg.penalty_multiplier * 0.05,
+        problem_novelty=0.1,
+    )
+    return score_result.utility, conf
 
 
 DEFAULT_QUERIES = [

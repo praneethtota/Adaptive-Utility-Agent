@@ -60,10 +60,11 @@ check_deps()
 
 import torch
 from datasets import Dataset
-from peft import LoraConfig, TaskType, get_peft_model, PeftModel
+from peft import LoraConfig, TaskType, get_peft_model, PeftModel, prepare_model_for_kbit_training
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    AutoConfig,
     TrainingArguments,
     BitsAndBytesConfig,
 )
@@ -227,31 +228,59 @@ def train(args):
     # ── Load model ────────────────────────────────────────────────────────────
     log.info(f"Loading model from {args.base_model}")
 
-    # For AWQ models, use standard loading (AWQ is already quantized)
-    # BitsAndBytes 4-bit is an alternative if loading non-quantized weights
+    # AWQ checkpoints store weights as packed int4 (qweight/qzeros/scales) — no fp16
+    # tensors exist. Load via autoawq which understands the format, then dequantize
+    # each WQLinear layer to a standard fp16 nn.Linear so PEFT can wrap it.
     try:
-        model = AutoModelForCausalLM.from_pretrained(
+        import torch.nn as nn
+        from awq import AutoAWQForCausalLM
+
+        log.info("Loading AWQ model via autoawq for per-layer dequantization...")
+        awq_model = AutoAWQForCausalLM.from_quantized(
             args.base_model,
+            fuse_layers=False,
             trust_remote_code=True,
-            torch_dtype=torch.float16,
-            device_map="auto",
+            safetensors=True,
+            device_map="cuda:0",
         )
-        log.info("Model loaded (AWQ or fp16)")
+        hf_model = awq_model.model
+
+        # Replace every WQLinear with a standard fp16 Linear
+        replaced = 0
+        for parent_name, parent_module in list(hf_model.named_modules()):
+            for child_name, child_module in list(parent_module.named_children()):
+                cls_name = type(child_module).__name__
+                if "WQLinear" in cls_name:
+                    w = child_module.dequantize()   # returns fp16 weight tensor
+                    new_lin = nn.Linear(
+                        child_module.in_features,
+                        child_module.out_features,
+                        bias=child_module.bias is not None,
+                        dtype=torch.float16,
+                        device="cuda:0",
+                    )
+                    new_lin.weight = nn.Parameter(w.to("cuda:0"))
+                    if child_module.bias is not None:
+                        new_lin.bias = nn.Parameter(child_module.bias.to("cuda:0"))
+                    setattr(parent_module, child_name, new_lin)
+                    replaced += 1
+        log.info(f"Dequantized {replaced} WQLinear → fp16 Linear layers")
+        model = hf_model
     except Exception as e:
-        log.warning(f"Standard load failed ({e}), trying with BitsAndBytes 4-bit")
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16,
-            bnb_4bit_use_double_quant=True,
-        )
+        log.warning(f"AWQ dequantize failed ({e}); loading fp16 with stripped config (fallback)")
+        model_config = AutoConfig.from_pretrained(args.base_model, trust_remote_code=True)
+        if hasattr(model_config, "quantization_config"):
+            del model_config.quantization_config
         model = AutoModelForCausalLM.from_pretrained(
             args.base_model,
+            config=model_config,
             trust_remote_code=True,
-            quantization_config=bnb_config,
+            dtype=torch.float16,
             device_map="auto",
+            ignore_mismatched_sizes=True,
         )
-        log.info("Model loaded with BitsAndBytes 4-bit quantization")
+        log.info("Fallback fp16 load (weights may be random — use only if checkpoint is not AWQ)")
+    log.info("Model ready for LoRA training")
 
     model.config.use_cache = False
 
@@ -269,7 +298,8 @@ def train(args):
         gradient_accumulation_steps=max(1, 8 // args.batch_size),
         learning_rate=args.lr,
         fp16=True,
-        logging_steps=1,
+        gradient_checkpointing=True,
+        logging_steps=10,
         save_steps=50,
         save_total_limit=2,
         warmup_ratio=0.1,
@@ -279,8 +309,7 @@ def train(args):
         report_to="none",
         # DPO-specific
         beta=0.1,            # KL penalty — lower = more aggressive updates
-        max_length=1024,
-        max_prompt_length=512,
+        max_length=512,
     )
 
     # ── Trainer ───────────────────────────────────────────────────────────────
@@ -288,7 +317,7 @@ def train(args):
         model=model,
         args=dpo_config,
         train_dataset=dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         ref_model=None,       # None = use frozen copy of model as reference
     )
 
