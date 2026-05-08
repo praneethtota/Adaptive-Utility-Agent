@@ -92,17 +92,30 @@ def is_correct(response: str, expected: Optional[str]) -> bool:
     return any(v in resp_lower for v in variants)
 
 
+_MODEL_NAME_CACHE: dict = {}
+
+async def _get_model_name(client: httpx.AsyncClient, endpoint: str) -> str:
+    if endpoint not in _MODEL_NAME_CACHE:
+        try:
+            r = await client.get(endpoint + "/v1/models", timeout=5.0)
+            _MODEL_NAME_CACHE[endpoint] = r.json()["data"][0]["id"]
+        except Exception:
+            _MODEL_NAME_CACHE[endpoint] = "swe"
+    return _MODEL_NAME_CACHE[endpoint]
+
+
 async def call(
     client: httpx.AsyncClient,
     endpoint: str,
     prompt: str,
 ) -> tuple[str, float]:
     """Returns (response_text, latency_ms)."""
+    model_name = await _get_model_name(client, endpoint)
     t0 = time.time()
     resp = await client.post(
         endpoint + "/v1/chat/completions",
         json={
-            "model": "swe",
+            "model": model_name,
             "messages": [
                 {"role": "system", "content": "You are a specialist software engineering assistant."},
                 {"role": "user",   "content": prompt},

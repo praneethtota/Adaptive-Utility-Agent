@@ -1,0 +1,2401 @@
+{
+  "experiment_config": {
+    "n_per_arm": 20,
+    "n_problems": 25,
+    "seed": 99,
+    "mode": "live_vllm",
+    "elapsed_seconds": 978.8,
+    "endpoints": {
+      "swe": "http://localhost:9001",
+      "math": "http://localhost:9002",
+      "arbiter": "http://localhost:9003"
+    }
+  },
+  "metrics": {
+    "A_no_routing": {
+      "n": 20,
+      "accuracy": 0.55,
+      "mean_conf": 0.6075,
+      "mean_utility": 0.5731,
+      "std_utility": 0.0215,
+      "brier": 0.2601,
+      "pearson_r": 0.1609,
+      "pearson_p": 0.49787,
+      "spearman_rho": 0.2527,
+      "spearman_p": 0.282359,
+      "by_domain": {
+        "software_engineering": {
+          "accuracy": 0.7333,
+          "n": 15
+        },
+        "mathematics": {
+          "accuracy": 0.0,
+          "n": 5
+        }
+      }
+    },
+    "B_matched": {
+      "n": 20,
+      "accuracy": 0.8,
+      "mean_conf": 0.6075,
+      "mean_utility": 0.6057,
+      "std_utility": 0.0392,
+      "brier": 0.1951,
+      "pearson_r": 0.1842,
+      "pearson_p": 0.43704,
+      "spearman_rho": 0.2818,
+      "spearman_p": 0.228693,
+      "by_domain": {
+        "software_engineering": {
+          "accuracy": 0.7333,
+          "n": 15
+        },
+        "mathematics": {
+          "accuracy": 1.0,
+          "n": 5
+        }
+      }
+    },
+    "C_mismatched": {
+      "n": 20,
+      "accuracy": 0.55,
+      "mean_conf": 0.75,
+      "mean_utility": 0.5555,
+      "std_utility": 0.0573,
+      "brier": 0.2875,
+      "pearson_r": 0.6383,
+      "pearson_p": 0.002457,
+      "spearman_rho": 0.671,
+      "spearman_p": 0.0012,
+      "by_domain": {
+        "mathematics": {
+          "accuracy": 0.75,
+          "n": 4
+        },
+        "software_engineering": {
+          "accuracy": 0.5,
+          "n": 16
+        }
+      }
+    },
+    "D_vcg": {
+      "n": 20,
+      "accuracy": 0.9,
+      "mean_conf": 0.582,
+      "mean_utility": 0.6249,
+      "std_utility": 0.0426,
+      "brier": 0.1911,
+      "pearson_r": 0.0064,
+      "pearson_p": 0.978726,
+      "spearman_rho": 0.0867,
+      "spearman_p": 0.716231,
+      "by_domain": {
+        "software_engineering": {
+          "accuracy": 0.9286,
+          "n": 14
+        },
+        "mathematics": {
+          "accuracy": 0.8333,
+          "n": 6
+        }
+      }
+    }
+  },
+  "pairwise": {
+    "B_vs_A": {
+      "mean_diff": 0.25,
+      "t_stat": 1.7071,
+      "p_value": 0.095968,
+      "cohens_d": 0.5538,
+      "sig": false
+    },
+    "C_vs_A": {
+      "mean_diff": 0.0,
+      "t_stat": 0.0,
+      "p_value": 1.0,
+      "cohens_d": 0.0,
+      "sig": false
+    },
+    "D_vs_A": {
+      "mean_diff": 0.35,
+      "t_stat": 2.6261,
+      "p_value": 0.01238,
+      "cohens_d": 0.852,
+      "sig": true
+    },
+    "B_vs_D": {
+      "mean_diff": -0.1,
+      "t_stat": -0.8718,
+      "p_value": 0.388803,
+      "cohens_d": -0.2828,
+      "sig": false
+    },
+    "D_vs_C": {
+      "mean_diff": 0.35,
+      "t_stat": 2.6261,
+      "p_value": 0.01238,
+      "cohens_d": 0.852,
+      "sig": true
+    }
+  },
+  "arms": {
+    "A_no_routing": [
+      {
+        "task_seq": 0,
+        "problem_id": "serialize_tree",
+        "family": "tree",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5146,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 1,
+        "problem_id": "serialize_tree",
+        "family": "tree",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5509,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 2,
+        "problem_id": "is_palindrome",
+        "family": "string",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5766,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 3,
+        "problem_id": "lru_cache",
+        "family": "design",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5999,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 4,
+        "problem_id": "merge_intervals",
+        "family": "array",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 0.3,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.5433,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 5,
+        "problem_id": "count_vowels",
+        "family": "string",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5654,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 6,
+        "problem_id": "count_vowels",
+        "family": "string",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.583,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 7,
+        "problem_id": "max_subarray",
+        "family": "array",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.6008,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 8,
+        "problem_id": "is_prime",
+        "family": "math",
+        "difficulty": "easy",
+        "true_domain": "mathematics",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 0.7,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.5855,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 9,
+        "problem_id": "max_element",
+        "family": "array",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 0.4,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.5406,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 10,
+        "problem_id": "longest_common_prefix",
+        "family": "string",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5676,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 11,
+        "problem_id": "median_two_sorted",
+        "family": "divide_conquer",
+        "difficulty": "hard",
+        "true_domain": "mathematics",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 0.7,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.5661,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 12,
+        "problem_id": "serialize_tree",
+        "family": "tree",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5914,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 13,
+        "problem_id": "coin_change",
+        "family": "dp",
+        "difficulty": "medium",
+        "true_domain": "mathematics",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 0.7,
+        "confidence": 0.75,
+        "is_correct": false,
+        "utility": 0.5824,
+        "brier": 0.5625
+      },
+      {
+        "task_seq": 14,
+        "problem_id": "binary_search",
+        "family": "search",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 0.7,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.5705,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 15,
+        "problem_id": "flatten_nested",
+        "family": "recursion",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5931,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 16,
+        "problem_id": "longest_common_subseq",
+        "family": "dp",
+        "difficulty": "medium",
+        "true_domain": "mathematics",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 0.7,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.5834,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 17,
+        "problem_id": "max_element",
+        "family": "array",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 0.7,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.5713,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 18,
+        "problem_id": "lru_cache",
+        "family": "design",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5955,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 19,
+        "problem_id": "fibonacci",
+        "family": "dp",
+        "difficulty": "easy",
+        "true_domain": "mathematics",
+        "arm": "A_no_routing",
+        "prompt_type": "generic",
+        "pass_rate": 0.7,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.5806,
+        "brier": 0.36
+      }
+    ],
+    "B_matched": [
+      {
+        "task_seq": 0,
+        "problem_id": "max_subarray",
+        "family": "array",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5105,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 1,
+        "problem_id": "word_search",
+        "family": "graph",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5485,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 2,
+        "problem_id": "word_search",
+        "family": "graph",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5785,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 3,
+        "problem_id": "is_prime",
+        "family": "math",
+        "difficulty": "easy",
+        "true_domain": "mathematics",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5951,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 4,
+        "problem_id": "merge_intervals",
+        "family": "array",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 0.3,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.5394,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 5,
+        "problem_id": "flatten_nested",
+        "family": "recursion",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5684,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 6,
+        "problem_id": "serialize_tree",
+        "family": "tree",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.5932,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 7,
+        "problem_id": "median_two_sorted",
+        "family": "divide_conquer",
+        "difficulty": "hard",
+        "true_domain": "mathematics",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.6135,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 8,
+        "problem_id": "valid_bst",
+        "family": "tree",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.6263,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 9,
+        "problem_id": "number_of_islands",
+        "family": "graph",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 0.7,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.6091,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 10,
+        "problem_id": "coin_change",
+        "family": "dp",
+        "difficulty": "medium",
+        "true_domain": "mathematics",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.6236,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 11,
+        "problem_id": "rotate_matrix",
+        "family": "array",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 0.7,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.6086,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 12,
+        "problem_id": "longest_common_subseq",
+        "family": "dp",
+        "difficulty": "medium",
+        "true_domain": "mathematics",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.6228,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 13,
+        "problem_id": "rotate_matrix",
+        "family": "array",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 0.7,
+        "confidence": 0.6,
+        "is_correct": false,
+        "utility": 0.608,
+        "brier": 0.36
+      },
+      {
+        "task_seq": 14,
+        "problem_id": "max_element",
+        "family": "array",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.618,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 15,
+        "problem_id": "median_two_sorted",
+        "family": "divide_conquer",
+        "difficulty": "hard",
+        "true_domain": "mathematics",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.6333,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 16,
+        "problem_id": "word_search",
+        "family": "graph",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.6469,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 17,
+        "problem_id": "longest_common_prefix",
+        "family": "string",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.6538,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 18,
+        "problem_id": "remove_duplicates",
+        "family": "array",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.6577,
+        "brier": 0.16
+      },
+      {
+        "task_seq": 19,
+        "problem_id": "binary_search",
+        "family": "search",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "B_matched",
+        "prompt_type": "matched",
+        "pass_rate": 1.0,
+        "confidence": 0.6,
+        "is_correct": true,
+        "utility": 0.659,
+        "brier": 0.16
+      }
+    ],
+    "C_mismatched": [
+      {
+        "task_seq": 0,
+        "problem_id": "word_break",
+        "family": "dp",
+        "difficulty": "hard",
+        "true_domain": "mathematics",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.5138,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 1,
+        "problem_id": "is_palindrome",
+        "family": "string",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.5473,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 2,
+        "problem_id": "longest_common_subseq",
+        "family": "dp",
+        "difficulty": "medium",
+        "true_domain": "mathematics",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.5741,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 3,
+        "problem_id": "valid_bst",
+        "family": "tree",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.595,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 4,
+        "problem_id": "word_search",
+        "family": "graph",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.6154,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 5,
+        "problem_id": "remove_duplicates",
+        "family": "array",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.6259,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 6,
+        "problem_id": "binary_search",
+        "family": "search",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.6325,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 7,
+        "problem_id": "coin_change",
+        "family": "dp",
+        "difficulty": "medium",
+        "true_domain": "mathematics",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.6432,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 8,
+        "problem_id": "is_palindrome",
+        "family": "string",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 0.3,
+        "confidence": 0.75,
+        "is_correct": false,
+        "utility": 0.5724,
+        "brier": 0.5625
+      },
+      {
+        "task_seq": 9,
+        "problem_id": "lru_cache",
+        "family": "design",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.5964,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 10,
+        "problem_id": "count_vowels",
+        "family": "string",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.6078,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 11,
+        "problem_id": "group_anagrams",
+        "family": "string",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 0.7,
+        "confidence": 0.75,
+        "is_correct": false,
+        "utility": 0.5853,
+        "brier": 0.5625
+      },
+      {
+        "task_seq": 12,
+        "problem_id": "fibonacci",
+        "family": "dp",
+        "difficulty": "easy",
+        "true_domain": "mathematics",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 0.7,
+        "confidence": 0.75,
+        "is_correct": false,
+        "utility": 0.5627,
+        "brier": 0.5625
+      },
+      {
+        "task_seq": 13,
+        "problem_id": "flatten_nested",
+        "family": "recursion",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 0.4,
+        "confidence": 0.75,
+        "is_correct": false,
+        "utility": 0.5218,
+        "brier": 0.5625
+      },
+      {
+        "task_seq": 14,
+        "problem_id": "is_palindrome",
+        "family": "string",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 0.3,
+        "confidence": 0.75,
+        "is_correct": false,
+        "utility": 0.4764,
+        "brier": 0.5625
+      },
+      {
+        "task_seq": 15,
+        "problem_id": "level_order_traversal",
+        "family": "tree",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 0.7,
+        "confidence": 0.75,
+        "is_correct": false,
+        "utility": 0.4791,
+        "brier": 0.5625
+      },
+      {
+        "task_seq": 16,
+        "problem_id": "word_search",
+        "family": "graph",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 1.0,
+        "confidence": 0.75,
+        "is_correct": true,
+        "utility": 0.5227,
+        "brier": 0.0625
+      },
+      {
+        "task_seq": 17,
+        "problem_id": "max_element",
+        "family": "array",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 0.7,
+        "confidence": 0.75,
+        "is_correct": false,
+        "utility": 0.513,
+        "brier": 0.5625
+      },
+      {
+        "task_seq": 18,
+        "problem_id": "longest_common_prefix",
+        "family": "string",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 0.4,
+        "confidence": 0.75,
+        "is_correct": false,
+        "utility": 0.4806,
+        "brier": 0.5625
+      },
+      {
+        "task_seq": 19,
+        "problem_id": "is_palindrome",
+        "family": "string",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "C_mismatched",
+        "prompt_type": "mismatched",
+        "pass_rate": 0.3,
+        "confidence": 0.75,
+        "is_correct": false,
+        "utility": 0.4436,
+        "brier": 0.5625
+      }
+    ],
+    "D_vcg": [
+      {
+        "task_seq": 0,
+        "problem_id": "max_subarray",
+        "family": "array",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.5105,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 1,
+        "problem_id": "binary_search",
+        "family": "search",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.5408,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 2,
+        "problem_id": "lru_cache",
+        "family": "design",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.5715,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 3,
+        "problem_id": "valid_bst",
+        "family": "tree",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.5929,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 4,
+        "problem_id": "merge_intervals",
+        "family": "array",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6107,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 5,
+        "problem_id": "longest_common_subseq",
+        "family": "dp",
+        "difficulty": "medium",
+        "true_domain": "mathematics",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6246,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 6,
+        "problem_id": "flatten_nested",
+        "family": "recursion",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6364,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 7,
+        "problem_id": "binary_search",
+        "family": "search",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6418,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 8,
+        "problem_id": "lru_cache",
+        "family": "design",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.653,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 9,
+        "problem_id": "merge_intervals",
+        "family": "array",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6599,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 10,
+        "problem_id": "serialize_tree",
+        "family": "tree",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6675,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 11,
+        "problem_id": "group_anagrams",
+        "family": "string",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6711,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 12,
+        "problem_id": "lru_cache",
+        "family": "design",
+        "difficulty": "hard",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6765,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 13,
+        "problem_id": "number_of_islands",
+        "family": "graph",
+        "difficulty": "medium",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 0.7,
+        "confidence": 0.582,
+        "is_correct": false,
+        "utility": 0.6468,
+        "brier": 0.3387
+      },
+      {
+        "task_seq": 14,
+        "problem_id": "word_break",
+        "family": "dp",
+        "difficulty": "hard",
+        "true_domain": "mathematics",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6562,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 15,
+        "problem_id": "word_break",
+        "family": "dp",
+        "difficulty": "hard",
+        "true_domain": "mathematics",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 0.4,
+        "confidence": 0.582,
+        "is_correct": false,
+        "utility": 0.6014,
+        "brier": 0.3387
+      },
+      {
+        "task_seq": 16,
+        "problem_id": "remove_duplicates",
+        "family": "array",
+        "difficulty": "easy",
+        "true_domain": "software_engineering",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6146,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 17,
+        "problem_id": "median_two_sorted",
+        "family": "divide_conquer",
+        "difficulty": "hard",
+        "true_domain": "mathematics",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6305,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 18,
+        "problem_id": "coin_change",
+        "family": "dp",
+        "difficulty": "medium",
+        "true_domain": "mathematics",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6414,
+        "brier": 0.1747
+      },
+      {
+        "task_seq": 19,
+        "problem_id": "longest_common_subseq",
+        "family": "dp",
+        "difficulty": "medium",
+        "true_domain": "mathematics",
+        "arm": "D_vcg",
+        "prompt_type": "vcg",
+        "pass_rate": 1.0,
+        "confidence": 0.582,
+        "is_correct": true,
+        "utility": 0.6502,
+        "brier": 0.1747
+      }
+    ]
+  },
+  "live_metas": {
+    "A_no_routing": [
+      {
+        "seq": 0,
+        "problem_id": "serialize_tree",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9289,
+        "n_contradictions": 0,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 42,
+          "completion": 512
+        },
+        "response_chars": 2412
+      },
+      {
+        "seq": 1,
+        "problem_id": "serialize_tree",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9191,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 42,
+          "completion": 512
+        },
+        "response_chars": 2162
+      },
+      {
+        "seq": 2,
+        "problem_id": "is_palindrome",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 5646,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 43,
+          "completion": 314
+        },
+        "response_chars": 1295
+      },
+      {
+        "seq": 3,
+        "problem_id": "lru_cache",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9206,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 43,
+          "completion": 512
+        },
+        "response_chars": 2193
+      },
+      {
+        "seq": 4,
+        "problem_id": "merge_intervals",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9223,
+        "n_contradictions": 4,
+        "complexity_claim": "O(n \\log n)",
+        "tokens": {
+          "prompt": 42,
+          "completion": 512
+        },
+        "response_chars": 1983
+      },
+      {
+        "seq": 5,
+        "problem_id": "count_vowels",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9223,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 44,
+          "completion": 512
+        },
+        "response_chars": 2054
+      },
+      {
+        "seq": 6,
+        "problem_id": "count_vowels",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 8560,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 44,
+          "completion": 475
+        },
+        "response_chars": 1790
+      },
+      {
+        "seq": 7,
+        "problem_id": "max_subarray",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9228,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 43,
+          "completion": 512
+        },
+        "response_chars": 1745
+      },
+      {
+        "seq": 8,
+        "problem_id": "is_prime",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9224,
+        "n_contradictions": 1,
+        "complexity_claim": "O(\u221an)",
+        "tokens": {
+          "prompt": 42,
+          "completion": 512
+        },
+        "response_chars": 1754
+      },
+      {
+        "seq": 9,
+        "problem_id": "max_element",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9232,
+        "n_contradictions": 2,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 42,
+          "completion": 512
+        },
+        "response_chars": 1975
+      },
+      {
+        "seq": 10,
+        "problem_id": "longest_common_prefix",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9252,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n * m)",
+        "tokens": {
+          "prompt": 43,
+          "completion": 512
+        },
+        "response_chars": 2333
+      },
+      {
+        "seq": 11,
+        "problem_id": "median_two_sorted",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9242,
+        "n_contradictions": 1,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 43,
+          "completion": 512
+        },
+        "response_chars": 1969
+      },
+      {
+        "seq": 12,
+        "problem_id": "serialize_tree",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9243,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 42,
+          "completion": 512
+        },
+        "response_chars": 2188
+      },
+      {
+        "seq": 13,
+        "problem_id": "coin_change",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9242,
+        "n_contradictions": 1,
+        "complexity_claim": "O(n * m)",
+        "tokens": {
+          "prompt": 42,
+          "completion": 512
+        },
+        "response_chars": 2049
+      },
+      {
+        "seq": 14,
+        "problem_id": "binary_search",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9245,
+        "n_contradictions": 1,
+        "complexity_claim": "O(\\log n)",
+        "tokens": {
+          "prompt": 42,
+          "completion": 512
+        },
+        "response_chars": 2140
+      },
+      {
+        "seq": 15,
+        "problem_id": "flatten_nested",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9241,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 42,
+          "completion": 512
+        },
+        "response_chars": 2151
+      },
+      {
+        "seq": 16,
+        "problem_id": "longest_common_subseq",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9241,
+        "n_contradictions": 1,
+        "complexity_claim": "O(m \\times n)",
+        "tokens": {
+          "prompt": 44,
+          "completion": 512
+        },
+        "response_chars": 1722
+      },
+      {
+        "seq": 17,
+        "problem_id": "max_element",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9206,
+        "n_contradictions": 1,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 42,
+          "completion": 510
+        },
+        "response_chars": 2063
+      },
+      {
+        "seq": 18,
+        "problem_id": "lru_cache",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 8933,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 43,
+          "completion": 495
+        },
+        "response_chars": 1995
+      },
+      {
+        "seq": 19,
+        "problem_id": "fibonacci",
+        "arm": "A_no_routing",
+        "specialist": "arbiter",
+        "latency_ms": 9204,
+        "n_contradictions": 1,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 41,
+          "completion": 510
+        },
+        "response_chars": 1841
+      }
+    ],
+    "B_matched": [
+      {
+        "seq": 0,
+        "problem_id": "max_subarray",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 4254,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 59,
+          "completion": 503
+        },
+        "response_chars": 2096
+      },
+      {
+        "seq": 1,
+        "problem_id": "word_search",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 3054,
+        "n_contradictions": 0,
+        "complexity_claim": "O(R * C * W)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 512
+        },
+        "response_chars": 1838
+      },
+      {
+        "seq": 2,
+        "problem_id": "word_search",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 3057,
+        "n_contradictions": 0,
+        "complexity_claim": "O(R * C * W)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 512
+        },
+        "response_chars": 1871
+      },
+      {
+        "seq": 3,
+        "problem_id": "is_prime",
+        "arm": "B_matched",
+        "specialist": "math",
+        "latency_ms": 26130,
+        "n_contradictions": 0,
+        "complexity_claim": "O(\\sqrt{n})",
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 1988
+      },
+      {
+        "seq": 4,
+        "problem_id": "merge_intervals",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 3058,
+        "n_contradictions": 5,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 58,
+          "completion": 512
+        },
+        "response_chars": 1919
+      },
+      {
+        "seq": 5,
+        "problem_id": "flatten_nested",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 2340,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 391
+        },
+        "response_chars": 1547
+      },
+      {
+        "seq": 6,
+        "problem_id": "serialize_tree",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 2853,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 478
+        },
+        "response_chars": 2111
+      },
+      {
+        "seq": 7,
+        "problem_id": "median_two_sorted",
+        "arm": "B_matched",
+        "specialist": "math",
+        "latency_ms": 26071,
+        "n_contradictions": 0,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 2017
+      },
+      {
+        "seq": 8,
+        "problem_id": "valid_bst",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 3064,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 59,
+          "completion": 512
+        },
+        "response_chars": 2163
+      },
+      {
+        "seq": 9,
+        "problem_id": "number_of_islands",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 3056,
+        "n_contradictions": 1,
+        "complexity_claim": "O(M * N)",
+        "tokens": {
+          "prompt": 60,
+          "completion": 512
+        },
+        "response_chars": 1897
+      },
+      {
+        "seq": 10,
+        "problem_id": "coin_change",
+        "arm": "B_matched",
+        "specialist": "math",
+        "latency_ms": 26061,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n \\cdot m)",
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 1856
+      },
+      {
+        "seq": 11,
+        "problem_id": "rotate_matrix",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 2839,
+        "n_contradictions": 1,
+        "complexity_claim": "O(N^2)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 475
+        },
+        "response_chars": 1819
+      },
+      {
+        "seq": 12,
+        "problem_id": "longest_common_subseq",
+        "arm": "B_matched",
+        "specialist": "math",
+        "latency_ms": 26059,
+        "n_contradictions": 0,
+        "complexity_claim": "O(m \\times n)",
+        "tokens": {
+          "prompt": 47,
+          "completion": 512
+        },
+        "response_chars": 1624
+      },
+      {
+        "seq": 13,
+        "problem_id": "rotate_matrix",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 2879,
+        "n_contradictions": 1,
+        "complexity_claim": "O(n^2)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 482
+        },
+        "response_chars": 1801
+      },
+      {
+        "seq": 14,
+        "problem_id": "max_element",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 1522,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 253
+        },
+        "response_chars": 1031
+      },
+      {
+        "seq": 15,
+        "problem_id": "median_two_sorted",
+        "arm": "B_matched",
+        "specialist": "math",
+        "latency_ms": 26061,
+        "n_contradictions": 0,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 2019
+      },
+      {
+        "seq": 16,
+        "problem_id": "word_search",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 3056,
+        "n_contradictions": 0,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 58,
+          "completion": 512
+        },
+        "response_chars": 2054
+      },
+      {
+        "seq": 17,
+        "problem_id": "longest_common_prefix",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 3061,
+        "n_contradictions": 0,
+        "complexity_claim": "O(S)",
+        "tokens": {
+          "prompt": 59,
+          "completion": 512
+        },
+        "response_chars": 2332
+      },
+      {
+        "seq": 18,
+        "problem_id": "remove_duplicates",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 1947,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 325
+        },
+        "response_chars": 1303
+      },
+      {
+        "seq": 19,
+        "problem_id": "binary_search",
+        "arm": "B_matched",
+        "specialist": "swe",
+        "latency_ms": 3056,
+        "n_contradictions": 0,
+        "complexity_claim": "O(\\log n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 512
+        },
+        "response_chars": 2014
+      }
+    ],
+    "C_mismatched": [
+      {
+        "seq": 0,
+        "problem_id": "word_break",
+        "arm": "C_mismatched",
+        "specialist": "swe",
+        "latency_ms": 2464,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n^2)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 412
+        },
+        "response_chars": 1617
+      },
+      {
+        "seq": 1,
+        "problem_id": "is_palindrome",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26061,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 2370
+      },
+      {
+        "seq": 2,
+        "problem_id": "longest_common_subseq",
+        "arm": "C_mismatched",
+        "specialist": "swe",
+        "latency_ms": 3059,
+        "n_contradictions": 0,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 60,
+          "completion": 512
+        },
+        "response_chars": 1606
+      },
+      {
+        "seq": 3,
+        "problem_id": "valid_bst",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26062,
+        "n_contradictions": 0,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 2287
+      },
+      {
+        "seq": 4,
+        "problem_id": "word_search",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26070,
+        "n_contradictions": 0,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 1819
+      },
+      {
+        "seq": 5,
+        "problem_id": "remove_duplicates",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26062,
+        "n_contradictions": 0,
+        "complexity_claim": "O(1)",
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 2152
+      },
+      {
+        "seq": 6,
+        "problem_id": "binary_search",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26059,
+        "n_contradictions": 0,
+        "complexity_claim": "O(\\log n)",
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 2023
+      },
+      {
+        "seq": 7,
+        "problem_id": "coin_change",
+        "arm": "C_mismatched",
+        "specialist": "swe",
+        "latency_ms": 3057,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n \\times m)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 512
+        },
+        "response_chars": 1954
+      },
+      {
+        "seq": 8,
+        "problem_id": "is_palindrome",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26063,
+        "n_contradictions": 3,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 2282
+      },
+      {
+        "seq": 9,
+        "problem_id": "lru_cache",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26061,
+        "n_contradictions": 0,
+        "complexity_claim": "O(2^n)",
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 2194
+      },
+      {
+        "seq": 10,
+        "problem_id": "count_vowels",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26063,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 47,
+          "completion": 512
+        },
+        "response_chars": 2110
+      },
+      {
+        "seq": 11,
+        "problem_id": "group_anagrams",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26062,
+        "n_contradictions": 1,
+        "complexity_claim": "O(n \\log n)",
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 2223
+      },
+      {
+        "seq": 12,
+        "problem_id": "fibonacci",
+        "arm": "C_mismatched",
+        "specialist": "swe",
+        "latency_ms": 3057,
+        "n_contradictions": 1,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 57,
+          "completion": 512
+        },
+        "response_chars": 1629
+      },
+      {
+        "seq": 13,
+        "problem_id": "flatten_nested",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26062,
+        "n_contradictions": 2,
+        "complexity_claim": "O(n^2)",
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 2129
+      },
+      {
+        "seq": 14,
+        "problem_id": "is_palindrome",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26064,
+        "n_contradictions": 3,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 2270
+      },
+      {
+        "seq": 15,
+        "problem_id": "level_order_traversal",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26062,
+        "n_contradictions": 1,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 47,
+          "completion": 512
+        },
+        "response_chars": 2131
+      },
+      {
+        "seq": 16,
+        "problem_id": "word_search",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26064,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n * m * 4^w)",
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 2121
+      },
+      {
+        "seq": 17,
+        "problem_id": "max_element",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26063,
+        "n_contradictions": 1,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 2028
+      },
+      {
+        "seq": 18,
+        "problem_id": "longest_common_prefix",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26061,
+        "n_contradictions": 2,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 2264
+      },
+      {
+        "seq": 19,
+        "problem_id": "is_palindrome",
+        "arm": "C_mismatched",
+        "specialist": "math",
+        "latency_ms": 26064,
+        "n_contradictions": 3,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 2273
+      }
+    ],
+    "D_vcg": [
+      {
+        "seq": 0,
+        "problem_id": "max_subarray",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 2541,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 59,
+          "completion": 425
+        },
+        "response_chars": 1736
+      },
+      {
+        "seq": 1,
+        "problem_id": "binary_search",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 3056,
+        "n_contradictions": 0,
+        "complexity_claim": "O(\\log n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 512
+        },
+        "response_chars": 2072
+      },
+      {
+        "seq": 2,
+        "problem_id": "lru_cache",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 2503,
+        "n_contradictions": 0,
+        "complexity_claim": "O(2^n)",
+        "tokens": {
+          "prompt": 59,
+          "completion": 419
+        },
+        "response_chars": 1698
+      },
+      {
+        "seq": 3,
+        "problem_id": "valid_bst",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 3056,
+        "n_contradictions": 0,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 59,
+          "completion": 512
+        },
+        "response_chars": 2142
+      },
+      {
+        "seq": 4,
+        "problem_id": "merge_intervals",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 3055,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n \\log n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 512
+        },
+        "response_chars": 2255
+      },
+      {
+        "seq": 5,
+        "problem_id": "longest_common_subseq",
+        "arm": "D_vcg",
+        "specialist": "math",
+        "latency_ms": 26061,
+        "n_contradictions": 0,
+        "complexity_claim": "O(m \\times n)",
+        "tokens": {
+          "prompt": 47,
+          "completion": 512
+        },
+        "response_chars": 1648
+      },
+      {
+        "seq": 6,
+        "problem_id": "flatten_nested",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 3057,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 512
+        },
+        "response_chars": 2116
+      },
+      {
+        "seq": 7,
+        "problem_id": "binary_search",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 3039,
+        "n_contradictions": 0,
+        "complexity_claim": "O(\\log n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 509
+        },
+        "response_chars": 2042
+      },
+      {
+        "seq": 8,
+        "problem_id": "lru_cache",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 2380,
+        "n_contradictions": 0,
+        "complexity_claim": "O(2^n)",
+        "tokens": {
+          "prompt": 59,
+          "completion": 398
+        },
+        "response_chars": 1713
+      },
+      {
+        "seq": 9,
+        "problem_id": "merge_intervals",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 3055,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n \\log n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 512
+        },
+        "response_chars": 2073
+      },
+      {
+        "seq": 10,
+        "problem_id": "serialize_tree",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 2639,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 442
+        },
+        "response_chars": 1877
+      },
+      {
+        "seq": 11,
+        "problem_id": "group_anagrams",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 2600,
+        "n_contradictions": 0,
+        "complexity_claim": "O(k \\log k)",
+        "tokens": {
+          "prompt": 59,
+          "completion": 435
+        },
+        "response_chars": 1783
+      },
+      {
+        "seq": 12,
+        "problem_id": "lru_cache",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 2890,
+        "n_contradictions": 0,
+        "complexity_claim": "O(1)",
+        "tokens": {
+          "prompt": 59,
+          "completion": 484
+        },
+        "response_chars": 1957
+      },
+      {
+        "seq": 13,
+        "problem_id": "number_of_islands",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 3057,
+        "n_contradictions": 1,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 60,
+          "completion": 512
+        },
+        "response_chars": 1820
+      },
+      {
+        "seq": 14,
+        "problem_id": "word_break",
+        "arm": "D_vcg",
+        "specialist": "math",
+        "latency_ms": 26060,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n^2 \\cdot m)",
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 1942
+      },
+      {
+        "seq": 15,
+        "problem_id": "word_break",
+        "arm": "D_vcg",
+        "specialist": "math",
+        "latency_ms": 26064,
+        "n_contradictions": 2,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 1921
+      },
+      {
+        "seq": 16,
+        "problem_id": "remove_duplicates",
+        "arm": "D_vcg",
+        "specialist": "swe",
+        "latency_ms": 1942,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n)",
+        "tokens": {
+          "prompt": 58,
+          "completion": 324
+        },
+        "response_chars": 1210
+      },
+      {
+        "seq": 17,
+        "problem_id": "median_two_sorted",
+        "arm": "D_vcg",
+        "specialist": "math",
+        "latency_ms": 26059,
+        "n_contradictions": 0,
+        "complexity_claim": null,
+        "tokens": {
+          "prompt": 46,
+          "completion": 512
+        },
+        "response_chars": 1950
+      },
+      {
+        "seq": 18,
+        "problem_id": "coin_change",
+        "arm": "D_vcg",
+        "specialist": "math",
+        "latency_ms": 26061,
+        "n_contradictions": 0,
+        "complexity_claim": "O(n \\cdot m)",
+        "tokens": {
+          "prompt": 45,
+          "completion": 512
+        },
+        "response_chars": 1830
+      },
+      {
+        "seq": 19,
+        "problem_id": "longest_common_subseq",
+        "arm": "D_vcg",
+        "specialist": "math",
+        "latency_ms": 26065,
+        "n_contradictions": 0,
+        "complexity_claim": "O(m \\times n)",
+        "tokens": {
+          "prompt": 47,
+          "completion": 512
+        },
+        "response_chars": 1642
+      }
+    ]
+  }
+}
