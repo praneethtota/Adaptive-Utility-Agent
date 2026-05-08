@@ -109,6 +109,10 @@ class ContradictionDetector:
         """
         Simple heuristic checks for obvious complexity mismatches.
         E.g., claimed O(n log n) but has nested loops suggesting O(n²).
+
+        Normalises the claim string before substring matching so that
+        LaTeX-formatted (O(n \log n)), backticked (`O(n)`), and
+        whitespace-variant claims all hit the same heuristics.
         """
         code = self._extract_code(solution)
         if not code:
@@ -116,7 +120,16 @@ class ContradictionDetector:
 
         nested_loop_count = self._count_nested_loops(code)
 
-        if "o(n)" in claimed_complexity.lower() or "o(1)" in claimed_complexity.lower():
+        # Normalise: lower-case, strip LaTeX escapes, $ delimiters, braces,
+        # backticks, asterisks (markdown bold), commas (LaTeX thin-space \,),
+        # and all whitespace.
+        norm = claimed_complexity.lower()
+        for ch in ("\\", "$", "{", "}", "`", "*", ","):
+            norm = norm.replace(ch, "")
+        norm = "".join(norm.split())   # remove all whitespace
+
+        # O(n) and O(1) — fire on >=2 nested loops
+        if "o(n)" in norm or "o(1)" in norm:
             if nested_loop_count >= 2:
                 result.contradictions.append(Contradiction(
                     type="mathematical",
@@ -124,7 +137,8 @@ class ContradictionDetector:
                     severity=0.7
                 ))
 
-        if "o(n log n)" in claimed_complexity.lower():
+        # O(n log n) — fire on >=3 nested loops (search the no-whitespace form)
+        if "o(nlogn)" in norm:
             if nested_loop_count >= 3:
                 result.contradictions.append(Contradiction(
                     type="mathematical",

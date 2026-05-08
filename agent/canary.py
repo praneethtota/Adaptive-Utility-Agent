@@ -102,7 +102,7 @@ async def call(
     resp = await client.post(
         endpoint + "/v1/chat/completions",
         json={
-            "model":       "default_model",
+            "model": "swe",
             "messages": [
                 {"role": "system", "content": "You are a specialist software engineering assistant."},
                 {"role": "user",   "content": prompt},

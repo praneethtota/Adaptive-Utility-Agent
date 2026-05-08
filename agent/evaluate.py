@@ -198,7 +198,7 @@ async def call_endpoint(
     resp = await client.post(
         endpoint,
         json={
-            "model":       "default_model",
+            "model": "swe",
             "messages":    messages,
             "max_tokens":  max_tokens,
             "temperature": temperature,
@@ -289,12 +289,15 @@ async def run_evaluation(args) -> dict:
 
             # U score
             field_cfg = FIELD_CONFIGS.get(domain, FIELD_CONFIGS["general"])
-            u_score = scorer.score(
-                efficacy=0.60 if correct else 0.35,
-                confidence=updated_conf,
-                curiosity=0.05,
-                field=domain,
+            score_result = scorer.score(
+                task_id=qid,
+                field_config=field_cfg,
+                test_pass_rate=1.0 if correct else 0.0,
+                human_baseline_score=0.65,
+                contradiction_penalty=float(n_contra) * field_cfg.penalty_multiplier * 0.05,
+                problem_novelty=0.1,
             )
+            u_score = score_result.utility
 
             confidences.append(updated_conf)
             corrects.append(correct)

@@ -1,0 +1,845 @@
+
+============================================================
+Adaptive Utility Agent Harness v0.4-cloud
+  Backend: vLLM (http://localhost:9001, model=swe, temp=0.4)
+  Field:   software_engineering
+  Cycles:  3
+  Queries: 100  (from seeded_contradictions.json)
+============================================================
+
+
+── Cycle 1 ─────────────────────────────────────────────
+   Domain confidence: 0.500 → routing to 'easy' problems
+
+  Calling LLM for typeA_01... done
+   typeA_01                     U=0.4916 E_ema=0.5133 C=0.5224 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeA_02... done
+   typeA_02                     U=0.5046 E_ema=0.5279 C=0.5403 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeA_03... done
+   typeA_03                     U=0.5375 E_ema=0.5458 C=0.6323 🔴 ABSTAIN
+  Calling LLM for typeA_04... done
+   typeA_04                     U=0.5374 E_ema=0.5477 C=0.6282 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeA_05... done
+   typeA_05                     U=0.5409 E_ema=0.5508 C=0.6250 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeA_06... done
+   typeA_06                     U=0.5684 E_ema=0.5626 C=0.7000 🔴 ABSTAIN
+  Calling LLM for typeA_07... done
+   typeA_07                     U=0.5845 E_ema=0.5663 C=0.7600 🔴 ABSTAIN
+  Calling LLM for typeA_08... done
+   typeA_08                     U=0.5759 E_ema=0.5627 C=0.7304 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeA_09... done
+   typeA_09                     U=0.5491 E_ema=0.5579 C=0.6403 ⚠ x2 🔴 ABSTAIN
+  Calling LLM for typeA_10... done
+   typeA_10                     U=0.5746 E_ema=0.5675 C=0.7122 🔴 ABSTAIN
+  Calling LLM for typeA_11... done
+   typeA_11                     U=0.5465 E_ema=0.5634 C=0.6202 ⚠ x2 🔴 ABSTAIN
+  Calling LLM for typeA_12... done
+   typeA_12                     U=0.5737 E_ema=0.5742 C=0.6962 🔴 ABSTAIN
+  Calling LLM for typeA_13... done
+   typeA_13                     U=0.5722 E_ema=0.5766 C=0.6861 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeA_14... done
+   typeA_14                     U=0.5974 E_ema=0.5903 C=0.7489 🔴 ABSTAIN
+  Calling LLM for typeA_15... done
+   typeA_15                     U=0.6142 E_ema=0.5972 C=0.7991 🔴 ABSTAIN
+  Calling LLM for typeB_01... done
+   typeB_01                     U=0.6027 E_ema=0.5934 C=0.7617 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeB_02... done
+   typeB_02                     U=0.5888 E_ema=0.5904 C=0.7182 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeB_03... done
+   typeB_03                     U=0.6063 E_ema=0.5935 C=0.7745 🔴 ABSTAIN
+  Calling LLM for typeB_04... done
+   typeB_04                     U=0.5966 E_ema=0.5963 C=0.7284 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeB_05... done
+   typeB_05                     U=0.6108 E_ema=0.5975 C=0.7827 🔴 ABSTAIN
+  Calling LLM for typeB_06... done
+   typeB_06                     U=0.6268 E_ema=0.6046 C=0.8262 🔴 ABSTAIN
+  Calling LLM for typeB_07... done
+   typeB_07                     U=0.6414 E_ema=0.6127 C=0.8610 🔴 ABSTAIN
+  Calling LLM for typeB_08... done
+   typeB_08                     U=0.6480 E_ema=0.6114 C=0.8888 🔴 ABSTAIN
+  Calling LLM for typeB_09... done
+   typeB_09                     U=0.6558 E_ema=0.6125 C=0.9110 🔴 ABSTAIN
+  Calling LLM for typeB_10... done
+   typeB_10                     U=0.6338 E_ema=0.6115 C=0.8376 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeB_11... done
+   typeB_11                     U=0.5921 E_ema=0.5952 C=0.7205 ⚠ x2 🔴 ABSTAIN
+  Calling LLM for typeB_12... done
+   typeB_12                     U=0.6061 E_ema=0.5967 C=0.7764 🔴 ABSTAIN
+  Calling LLM for typeB_13... done
+   typeB_13                     U=0.5737 E_ema=0.5850 C=0.6715 ⚠ x2 🔴 ABSTAIN
+  Calling LLM for typeB_14... done
+   typeB_14                     U=0.4870 E_ema=0.4974 C=0.5372 ⚠ x6 🔴 ABSTAIN
+  Calling LLM for typeB_15... done
+   typeB_15                     U=0.5270 E_ema=0.5229 C=0.6298 🔴 ABSTAIN
+  Calling LLM for typeC_01... done
+   typeC_01                     U=0.5592 E_ema=0.5474 C=0.7038 🔴 ABSTAIN
+  Calling LLM for typeC_02... done
+   typeC_02                     U=0.5320 E_ema=0.5456 C=0.6135 ⚠ x2 🔴 ABSTAIN
+  Calling LLM for typeC_03... done
+   typeC_03                     U=0.5674 E_ema=0.5655 C=0.6908 🔴 ABSTAIN
+  Calling LLM for typeC_04... done
+   typeC_04                     U=0.5898 E_ema=0.5774 C=0.7526 🔴 ABSTAIN
+  Calling LLM for typeC_05... done
+   typeC_05                     U=0.6076 E_ema=0.5854 C=0.8021 🔴 ABSTAIN
+  Calling LLM for typeC_06... done
+   typeC_06                     U=0.5990 E_ema=0.5872 C=0.7641 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeC_07... done
+   typeC_07                     U=0.6146 E_ema=0.5932 C=0.8113 🔴 ABSTAIN
+  Calling LLM for typeC_08... done
+   typeC_08                     U=0.6324 E_ema=0.6036 C=0.8490 🔴 ABSTAIN
+  Calling LLM for typeC_09... done
+   typeC_09                     U=0.6410 E_ema=0.6041 C=0.8792 🔴 ABSTAIN
+  Calling LLM for typeC_10... done
+   typeC_10                     U=0.6516 E_ema=0.6099 C=0.9034 🔴 ABSTAIN
+  Calling LLM for typeC_11... done
+   typeC_11                     U=0.6303 E_ema=0.6093 C=0.8315 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeC_12... done
+   typeC_12                     U=0.6443 E_ema=0.6165 C=0.8652 🔴 ABSTAIN
+  Calling LLM for typeC_13... done
+   typeC_13                     U=0.6526 E_ema=0.6182 C=0.8922 🔴 ABSTAIN
+  Calling LLM for typeC_14... done
+   typeC_14                     U=0.6614 E_ema=0.6211 C=0.9137 🔴 ABSTAIN
+  Calling LLM for typeC_15... done
+   typeC_15                     U=0.6701 E_ema=0.6259 C=0.9310 🔴 ABSTAIN
+  Calling LLM for typeD_01... done
+   typeD_01                     U=0.6728 E_ema=0.6220 C=0.9448 🔴 ABSTAIN
+  Calling LLM for typeD_02... done
+   typeD_02                     U=0.6749 E_ema=0.6188 C=0.9558 🔴 ABSTAIN
+  Calling LLM for typeD_03... done
+   typeD_03                     U=0.6778 E_ema=0.6185 C=0.9647 🔴 ABSTAIN
+  Calling LLM for typeD_04... done
+   typeD_04                     U=0.6810 E_ema=0.6198 C=0.9717 🔴 ABSTAIN
+  Calling LLM for typeD_05... done
+   typeD_05                     U=0.6858 E_ema=0.6249 C=0.9774 🔴 ABSTAIN
+  Calling LLM for typeD_06... done
+   typeD_06                     U=0.6896 E_ema=0.6289 C=0.9819 🔴 ABSTAIN
+  Calling LLM for typeD_07... done
+   typeD_07                     U=0.6883 E_ema=0.6243 C=0.9855 🔴 ABSTAIN
+  Calling LLM for typeD_08... done
+   typeD_08                     U=0.6886 E_ema=0.6229 C=0.9884 🔴 ABSTAIN
+  Calling LLM for typeD_09... done
+   typeD_09                     U=0.6967 E_ema=0.6363 C=0.9907 🔴 ABSTAIN
+  Calling LLM for typeD_10... done
+   typeD_10                     U=0.6983 E_ema=0.6381 C=0.9926 🔴 ABSTAIN
+  Calling LLM for typeD_11... done
+   typeD_11                     U=0.6996 E_ema=0.6395 C=0.9941 🔴 ABSTAIN
+  Calling LLM for typeD_12... done
+   typeD_12                     U=0.7007 E_ema=0.6406 C=0.9953 🔴 ABSTAIN
+  Calling LLM for typeD_13... done
+   typeD_13                     U=0.7015 E_ema=0.6415 C=0.9962 🔴 ABSTAIN
+  Calling LLM for typeD_14... done
+   typeD_14                     U=0.6991 E_ema=0.6367 C=0.9970 🔴 ABSTAIN
+  Calling LLM for typeD_15... done
+   typeD_15                     U=0.6980 E_ema=0.6343 C=0.9976 🔴 ABSTAIN
+  Calling LLM for typeE_01... done
+   typeE_01                     U=0.6951 E_ema=0.6287 C=0.9981 🔴 ABSTAIN
+  Calling LLM for typeE_02... done
+   typeE_02                     U=0.6927 E_ema=0.6242 C=0.9984 🔴 ABSTAIN
+  Calling LLM for typeE_03... done
+   typeE_03                     U=0.6594 E_ema=0.6127 C=0.9212 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeE_04... done
+   typeE_04                     U=0.6685 E_ema=0.6192 C=0.9369 🔴 ABSTAIN
+  Calling LLM for typeE_05... done
+   typeE_05                     U=0.6757 E_ema=0.6244 C=0.9495 🔴 ABSTAIN
+  Calling LLM for typeE_06... done
+   typeE_06                     U=0.6816 E_ema=0.6285 C=0.9596 🔴 ABSTAIN
+  Calling LLM for typeE_07... done
+   typeE_07                     U=0.6862 E_ema=0.6318 C=0.9677 🔴 ABSTAIN
+  Calling LLM for typeE_08... done
+   typeE_08                     U=0.6899 E_ema=0.6345 C=0.9742 🔴 ABSTAIN
+  Calling LLM for typeE_09... done
+   typeE_09                     U=0.6978 E_ema=0.6455 C=0.9793 🔴 ABSTAIN
+  Calling LLM for typeE_10... done
+   typeE_10                     U=0.6661 E_ema=0.6424 C=0.8923 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeE_11... done
+   typeE_11                     U=0.6452 E_ema=0.6398 C=0.8226 ⚠ x1 🔴 ABSTAIN
+  Calling LLM for typeE_12... done
+   typeE_12                     U=0.6585 E_ema=0.6452 C=0.8581 🔴 ABSTAIN
+  Calling LLM for typeE_13... done
+   typeE_13                     U=0.6711 E_ema=0.6541 C=0.8865
+  Calling LLM for typeE_14... done
+   typeE_14                     U=0.6846 E_ema=0.6661 C=0.9092
+  Calling LLM for typeE_15... done
+   typeE_15                     U=0.6910 E_ema=0.6662 C=0.9273
+  Calling LLM for typeF_01... done
+   typeF_01                     U=0.6938 E_ema=0.6620 C=0.9419
+  Calling LLM for typeF_02... done
+   typeF_02                     U=0.6960 E_ema=0.6586 C=0.9535
+  Calling LLM for typeF_03... done
+   typeF_03                     U=0.6978 E_ema=0.6559 C=0.9628
+  Calling LLM for typeF_04... done
+   typeF_04                     U=0.7015 E_ema=0.6581 C=0.9702
+  Calling LLM for typeF_05... done
+   typeF_05                     U=0.7046 E_ema=0.6598 C=0.9762
+  Calling LLM for typeF_06... done
+   typeF_06                     U=0.7070 E_ema=0.6612 C=0.9810
+  Calling LLM for typeF_07... done
+   typeF_07                     U=0.7089 E_ema=0.6623 C=0.9848
+  Calling LLM for typeF_08... done
+   typeF_08                     U=0.7081 E_ema=0.6589 C=0.9878
+  Calling LLM for typeF_09... done
+   typeF_09                     U=0.7123 E_ema=0.6650 C=0.9902
+  Calling LLM for typeF_10... done
+   typeF_10                     U=0.7108 E_ema=0.6610 C=0.9922
+  Calling LLM for typeF_11... done
+   typeF_11                     U=0.7145 E_ema=0.6668 C=0.9938
+  Calling LLM for typeF_12... done
+   typeF_12                     U=0.7126 E_ema=0.6624 C=0.9950
+  Calling LLM for typeF_13... done
+   typeF_13                     U=0.7134 E_ema=0.6633 C=0.9960
+  Calling LLM for typeF_14... done
+   typeF_14                     U=0.7193 E_ema=0.6735 C=0.9968
+  Calling LLM for typeF_15... done
+   typeF_15                     U=0.7213 E_ema=0.6767 C=0.9974
+  Calling LLM for typeG_01... done
+   typeG_01                     U=0.7180 E_ema=0.6704 C=0.9980
+  Calling LLM for typeG_02... done
+   typeG_02                     U=0.7154 E_ema=0.6654 C=0.9984
+  Calling LLM for typeG_03... done
+   typeG_03                     U=0.7133 E_ema=0.6613 C=0.9987
+  Calling LLM for typeG_04... done
+   typeG_04                     U=0.7085 E_ema=0.6525 C=0.9990
+  Calling LLM for typeG_05... done
+   typeG_05                     U=0.7047 E_ema=0.6455 C=0.9992 🔴 ABSTAIN
+  Calling LLM for typeG_06... done
+   typeG_06                     U=0.7047 E_ema=0.6454 C=0.9993 🔴 ABSTAIN
+  Calling LLM for typeG_07... done
+   typeG_07                     U=0.7071 E_ema=0.6497 C=0.9995 🔴 ABSTAIN
+  Calling LLM for typeG_08... done
+   typeG_08                     U=0.7090 E_ema=0.6531 C=0.9996
+  Calling LLM for typeG_09... done
+   typeG_09                     U=0.7082 E_ema=0.6515 C=0.9997
+  Calling LLM for typeG_10... done
+   typeG_10                     U=0.7075 E_ema=0.6502 C=0.9997
+
+   Cycle 1: avg U=0.6485 | E_ema=0.6164 | C=0.8710 | contradictions=31
+   Personality: curiosity=0.63 caution=0.50 analytical_rigor=0.60
+
+── Cycle 2 ─────────────────────────────────────────────
+   Domain confidence: 1.000 → routing to 'hard' problems
+
+  Calling LLM for typeA_01... done
+    ❓ Arbiter inconclusive for 'typeA_01'
+   typeA_01                     U=0.7027 E_ema=0.6414 C=0.9998 🔴 ABSTAIN
+  Calling LLM for typeA_02... done
+    ❓ Arbiter inconclusive for 'typeA_02'
+   typeA_02                     U=0.7009 E_ema=0.6381 C=0.9998 🔴 ABSTAIN
+  Calling LLM for typeA_03... done
+    ❓ Arbiter inconclusive for 'typeA_03'
+   typeA_03                     U=0.6986 E_ema=0.6339 C=0.9999 🔴 ABSTAIN
+  Calling LLM for typeA_04... done
+    ❓ Arbiter inconclusive for 'typeA_04'
+   typeA_04                     U=0.6944 E_ema=0.6262 C=0.9999 🔴 ABSTAIN
+  Calling LLM for typeA_05... done
+    ❓ Arbiter inconclusive for 'typeA_05'
+   typeA_05                     U=0.6918 E_ema=0.6214 C=0.9999 🔴 ABSTAIN
+  Calling LLM for typeA_06... done
+    ❓ Arbiter inconclusive for 'typeA_06'
+   typeA_06                     U=0.6905 E_ema=0.6191 C=0.9999 🔴 ABSTAIN
+  Calling LLM for typeA_07... done
+    ❓ Arbiter inconclusive for 'typeA_07'
+   typeA_07                     U=0.6863 E_ema=0.6116 C=0.9999 🔴 ABSTAIN
+  Calling LLM for typeA_08... done
+    ❓ Arbiter inconclusive for 'typeA_08'
+   typeA_08                     U=0.6838 E_ema=0.6069 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_09... done
+    ❓ Arbiter inconclusive for 'typeA_09'
+   typeA_09                     U=0.6858 E_ema=0.6105 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_10... done
+    ❓ Arbiter inconclusive for 'typeA_10'
+   typeA_10                     U=0.6853 E_ema=0.6096 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_11... done
+    ❓ Arbiter inconclusive for 'typeA_11'
+   typeA_11                     U=0.6878 E_ema=0.6143 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_12... done
+    ❓ Arbiter inconclusive for 'typeA_12'
+   typeA_12                     U=0.6882 E_ema=0.6149 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_13... done
+    ❓ Arbiter inconclusive for 'typeA_13'
+   typeA_13                     U=0.6893 E_ema=0.6169 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_14... done
+    ❓ Arbiter inconclusive for 'typeA_14'
+   typeA_14                     U=0.6924 E_ema=0.6226 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_15... done
+    ❓ Arbiter inconclusive for 'typeA_15'
+   typeA_15                     U=0.6927 E_ema=0.6230 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_01... done
+    ❓ Arbiter inconclusive for 'typeB_01'
+   typeB_01                     U=0.6920 E_ema=0.6219 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_02... done
+    ❓ Arbiter inconclusive for 'typeB_02'
+   typeB_02                     U=0.6915 E_ema=0.6210 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_03... done
+    ❓ Arbiter inconclusive for 'typeB_03'
+   typeB_03                     U=0.6899 E_ema=0.6180 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_04... done
+    ❓ Arbiter inconclusive for 'typeB_04'
+   typeB_04                     U=0.6929 E_ema=0.6234 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_05... done
+    ❓ Arbiter inconclusive for 'typeB_05'
+   typeB_05                     U=0.6906 E_ema=0.6192 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_06... done
+    ❓ Arbiter inconclusive for 'typeB_06'
+   typeB_06                     U=0.6921 E_ema=0.6220 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_07... done
+    ❓ Arbiter inconclusive for 'typeB_07'
+   typeB_07                     U=0.6946 E_ema=0.6266 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_08... done
+    ❓ Arbiter inconclusive for 'typeB_08'
+   typeB_08                     U=0.6924 E_ema=0.6225 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_09... done
+    ❓ Arbiter inconclusive for 'typeB_09'
+   typeB_09                     U=0.6918 E_ema=0.6215 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_10... done
+    ❓ Arbiter inconclusive for 'typeB_10'
+   typeB_10                     U=0.6944 E_ema=0.6262 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_11... done
+    ❓ Arbiter inconclusive for 'typeB_11'
+   typeB_11                     U=0.6934 E_ema=0.6244 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_12... done
+    ❓ Arbiter inconclusive for 'typeB_12'
+   typeB_12                     U=0.6910 E_ema=0.6200 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_13... done
+    ❓ Arbiter inconclusive for 'typeB_13'
+   typeB_13                     U=0.6916 E_ema=0.6210 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_14... done
+    ❓ Arbiter inconclusive for 'typeB_14'
+   typeB_14                     U=0.6929 E_ema=0.6234 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_15... done
+    ❓ Arbiter inconclusive for 'typeB_15'
+   typeB_15                     U=0.6930 E_ema=0.6237 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_01... done
+    ❓ Arbiter inconclusive for 'typeC_01'
+   typeC_01                     U=0.6954 E_ema=0.6280 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_02... done
+    ❓ Arbiter inconclusive for 'typeC_02'
+   typeC_02                     U=0.6951 E_ema=0.6274 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_03... done
+    ❓ Arbiter inconclusive for 'typeC_03'
+   typeC_03                     U=0.6970 E_ema=0.6310 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_04... done
+    ❓ Arbiter inconclusive for 'typeC_04'
+   typeC_04                     U=0.6964 E_ema=0.6298 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_05... done
+    ❓ Arbiter inconclusive for 'typeC_05'
+   typeC_05                     U=0.6950 E_ema=0.6273 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_06... done
+    ❓ Arbiter inconclusive for 'typeC_06'
+   typeC_06                     U=0.6956 E_ema=0.6284 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_07... done
+    ❓ Arbiter inconclusive for 'typeC_07'
+   typeC_07                     U=0.6944 E_ema=0.6262 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_08... done
+    ❓ Arbiter inconclusive for 'typeC_08'
+   typeC_08                     U=0.6965 E_ema=0.6300 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_09... done
+    ❓ Arbiter inconclusive for 'typeC_09'
+   typeC_09                     U=0.6939 E_ema=0.6252 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_10... done
+    ❓ Arbiter inconclusive for 'typeC_10'
+   typeC_10                     U=0.6947 E_ema=0.6267 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_11... done
+    ❓ Arbiter inconclusive for 'typeC_11'
+   typeC_11                     U=0.6967 E_ema=0.6304 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_12... done
+    ❓ Arbiter inconclusive for 'typeC_12'
+   typeC_12                     U=0.6984 E_ema=0.6334 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_13... done
+    ❓ Arbiter inconclusive for 'typeC_13'
+   typeC_13                     U=0.6974 E_ema=0.6317 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_14... done
+    ❓ Arbiter inconclusive for 'typeC_14'
+   typeC_14                     U=0.6976 E_ema=0.6319 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_15... done
+    ❓ Arbiter inconclusive for 'typeC_15'
+   typeC_15                     U=0.6990 E_ema=0.6346 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_01... done
+    ❓ Arbiter inconclusive for 'typeD_01'
+   typeD_01                     U=0.6959 E_ema=0.6289 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_02... done
+    ❓ Arbiter inconclusive for 'typeD_02'
+   typeD_02                     U=0.6934 E_ema=0.6243 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_03... done
+    ❓ Arbiter inconclusive for 'typeD_03'
+   typeD_03                     U=0.6926 E_ema=0.6229 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_04... done
+    ❓ Arbiter inconclusive for 'typeD_04'
+   typeD_04                     U=0.6928 E_ema=0.6233 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_05... done
+    ❓ Arbiter inconclusive for 'typeD_05'
+   typeD_05                     U=0.6952 E_ema=0.6277 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_06... done
+    ❓ Arbiter inconclusive for 'typeD_06'
+   typeD_06                     U=0.6972 E_ema=0.6312 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_07... done
+    ❓ Arbiter inconclusive for 'typeD_07'
+   typeD_07                     U=0.6944 E_ema=0.6262 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_08... done
+    ❓ Arbiter inconclusive for 'typeD_08'
+   typeD_08                     U=0.6934 E_ema=0.6244 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_09... done
+    ❓ Arbiter inconclusive for 'typeD_09'
+   typeD_09                     U=0.7006 E_ema=0.6374 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_10... done
+    ❓ Arbiter inconclusive for 'typeD_10'
+   typeD_10                     U=0.7014 E_ema=0.6390 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_11... done
+    ❓ Arbiter inconclusive for 'typeD_11'
+   typeD_11                     U=0.7021 E_ema=0.6402 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_12... done
+    ❓ Arbiter inconclusive for 'typeD_12'
+   typeD_12                     U=0.7027 E_ema=0.6412 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_13... done
+    ❓ Arbiter inconclusive for 'typeD_13'
+   typeD_13                     U=0.7031 E_ema=0.6420 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_14... done
+    ❓ Arbiter inconclusive for 'typeD_14'
+   typeD_14                     U=0.7004 E_ema=0.6371 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_15... done
+    ❓ Arbiter inconclusive for 'typeD_15'
+   typeD_15                     U=0.6991 E_ema=0.6346 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_01... done
+    ❓ Arbiter inconclusive for 'typeE_01'
+   typeE_01                     U=0.6959 E_ema=0.6289 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_02... done
+    ❓ Arbiter inconclusive for 'typeE_02'
+   typeE_02                     U=0.6934 E_ema=0.6244 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_03... done
+    ❓ Arbiter inconclusive for 'typeE_03'
+   typeE_03                     U=0.6914 E_ema=0.6207 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_04... done
+    ❓ Arbiter inconclusive for 'typeE_04'
+   typeE_04                     U=0.6941 E_ema=0.6256 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_05... done
+    ❓ Arbiter inconclusive for 'typeE_05'
+   typeE_05                     U=0.6962 E_ema=0.6295 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_06... done
+    ❓ Arbiter inconclusive for 'typeE_06'
+   typeE_06                     U=0.6979 E_ema=0.6326 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_07... done
+    ❓ Arbiter inconclusive for 'typeE_07'
+   typeE_07                     U=0.6993 E_ema=0.6351 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_08... done
+    ❓ Arbiter inconclusive for 'typeE_08'
+   typeE_08                     U=0.7004 E_ema=0.6371 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_09... done
+    ❓ Arbiter inconclusive for 'typeE_09'
+   typeE_09                     U=0.7062 E_ema=0.6476 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_10... done
+    ❓ Arbiter inconclusive for 'typeE_10'
+   typeE_10                     U=0.7083 E_ema=0.6515 C=1.0000
+  Calling LLM for typeE_11... done
+    ❓ Arbiter inconclusive for 'typeE_11'
+   typeE_11                     U=0.7100 E_ema=0.6545 C=1.0000
+  Calling LLM for typeE_12... done
+    ❓ Arbiter inconclusive for 'typeE_12'
+   typeE_12                     U=0.7113 E_ema=0.6569 C=1.0000
+  Calling LLM for typeE_13... done
+    ❓ Arbiter inconclusive for 'typeE_13'
+   typeE_13                     U=0.7149 E_ema=0.6635 C=1.0000
+  Calling LLM for typeE_14... done
+    ❓ Arbiter inconclusive for 'typeE_14'
+   typeE_14                     U=0.7205 E_ema=0.6736 C=1.0000
+  Calling LLM for typeE_15... done
+    ❓ Arbiter inconclusive for 'typeE_15'
+   typeE_15                     U=0.7197 E_ema=0.6722 C=1.0000
+  Calling LLM for typeF_01... done
+    ❓ Arbiter inconclusive for 'typeF_01'
+   typeF_01                     U=0.7168 E_ema=0.6668 C=1.0000
+  Calling LLM for typeF_02... done
+    ❓ Arbiter inconclusive for 'typeF_02'
+   typeF_02                     U=0.7144 E_ema=0.6625 C=1.0000
+  Calling LLM for typeF_03... done
+    ❓ Arbiter inconclusive for 'typeF_03'
+   typeF_03                     U=0.7125 E_ema=0.6590 C=1.0000
+  Calling LLM for typeF_04... done
+    ❓ Arbiter inconclusive for 'typeF_04'
+   typeF_04                     U=0.7133 E_ema=0.6606 C=1.0000
+  Calling LLM for typeF_05... done
+    ❓ Arbiter inconclusive for 'typeF_05'
+   typeF_05                     U=0.7140 E_ema=0.6618 C=1.0000
+  Calling LLM for typeF_06... done
+    ❓ Arbiter inconclusive for 'typeF_06'
+   typeF_06                     U=0.7145 E_ema=0.6628 C=1.0000
+  Calling LLM for typeF_07... done
+    ❓ Arbiter inconclusive for 'typeF_07'
+   typeF_07                     U=0.7149 E_ema=0.6635 C=1.0000
+  Calling LLM for typeF_08... done
+    ❓ Arbiter inconclusive for 'typeF_08'
+   typeF_08                     U=0.7129 E_ema=0.6599 C=1.0000
+  Calling LLM for typeF_09... done
+    ❓ Arbiter inconclusive for 'typeF_09'
+   typeF_09                     U=0.7162 E_ema=0.6658 C=1.0000
+  Calling LLM for typeF_10... done
+    ❓ Arbiter inconclusive for 'typeF_10'
+   typeF_10                     U=0.7139 E_ema=0.6617 C=1.0000
+  Calling LLM for typeF_11... done
+    ❓ Arbiter inconclusive for 'typeF_11'
+   typeF_11                     U=0.7170 E_ema=0.6673 C=1.0000
+  Calling LLM for typeF_12... done
+    ❓ Arbiter inconclusive for 'typeF_12'
+   typeF_12                     U=0.7146 E_ema=0.6629 C=1.0000
+  Calling LLM for typeF_13... done
+    ❓ Arbiter inconclusive for 'typeF_13'
+   typeF_13                     U=0.7150 E_ema=0.6636 C=1.0000
+  Calling LLM for typeF_14... done
+    ❓ Arbiter inconclusive for 'typeF_14'
+   typeF_14                     U=0.7206 E_ema=0.6738 C=1.0000
+  Calling LLM for typeF_15... done
+    ❓ Arbiter inconclusive for 'typeF_15'
+   typeF_15                     U=0.7223 E_ema=0.6769 C=1.0000
+  Calling LLM for typeG_01... done
+    ❓ Arbiter inconclusive for 'typeG_01'
+   typeG_01                     U=0.7188 E_ema=0.6706 C=1.0000
+  Calling LLM for typeG_02... done
+    ❓ Arbiter inconclusive for 'typeG_02'
+   typeG_02                     U=0.7160 E_ema=0.6655 C=1.0000
+  Calling LLM for typeG_03... done
+    ❓ Arbiter inconclusive for 'typeG_03'
+   typeG_03                     U=0.7138 E_ema=0.6614 C=1.0000
+  Calling LLM for typeG_04... done
+    ❓ Arbiter inconclusive for 'typeG_04'
+   typeG_04                     U=0.7089 E_ema=0.6526 C=1.0000
+  Calling LLM for typeG_05... done
+    ❓ Arbiter inconclusive for 'typeG_05'
+   typeG_05                     U=0.7050 E_ema=0.6455 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeG_06... done
+    ❓ Arbiter inconclusive for 'typeG_06'
+   typeG_06                     U=0.7050 E_ema=0.6455 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeG_07... done
+    ❓ Arbiter inconclusive for 'typeG_07'
+   typeG_07                     U=0.7073 E_ema=0.6497 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeG_08... done
+    ❓ Arbiter inconclusive for 'typeG_08'
+   typeG_08                     U=0.7092 E_ema=0.6531 C=1.0000
+  Calling LLM for typeG_09... done
+    ❓ Arbiter inconclusive for 'typeG_09'
+   typeG_09                     U=0.7083 E_ema=0.6515 C=1.0000
+  Calling LLM for typeG_10... done
+    ❓ Arbiter inconclusive for 'typeG_10'
+   typeG_10                     U=0.7076 E_ema=0.6502 C=1.0000
+
+   Cycle 2: avg U=0.7005 | E_ema=0.6374 | C=1.0000 | contradictions=0
+   Personality: curiosity=0.66 caution=0.50 analytical_rigor=0.60
+
+── Cycle 3 ─────────────────────────────────────────────
+   Domain confidence: 1.000 → routing to 'hard' problems
+
+  Calling LLM for typeA_01... done
+    ❓ Arbiter inconclusive for 'typeA_01'
+   typeA_01                     U=0.7028 E_ema=0.6414 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_02... done
+    ❓ Arbiter inconclusive for 'typeA_02'
+   typeA_02                     U=0.7010 E_ema=0.6381 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_03... done
+    ❓ Arbiter inconclusive for 'typeA_03'
+   typeA_03                     U=0.6987 E_ema=0.6340 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_04... done
+    ❓ Arbiter inconclusive for 'typeA_04'
+   typeA_04                     U=0.6944 E_ema=0.6262 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_05... done
+    ❓ Arbiter inconclusive for 'typeA_05'
+   typeA_05                     U=0.6918 E_ema=0.6215 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_06... done
+    ❓ Arbiter inconclusive for 'typeA_06'
+   typeA_06                     U=0.6905 E_ema=0.6191 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_07... done
+    ❓ Arbiter inconclusive for 'typeA_07'
+   typeA_07                     U=0.6864 E_ema=0.6116 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_08... done
+    ❓ Arbiter inconclusive for 'typeA_08'
+   typeA_08                     U=0.6838 E_ema=0.6069 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_09... done
+    ❓ Arbiter inconclusive for 'typeA_09'
+   typeA_09                     U=0.6858 E_ema=0.6105 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_10... done
+    ❓ Arbiter inconclusive for 'typeA_10'
+   typeA_10                     U=0.6853 E_ema=0.6096 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_11... done
+    ❓ Arbiter inconclusive for 'typeA_11'
+   typeA_11                     U=0.6879 E_ema=0.6143 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_12... done
+    ❓ Arbiter inconclusive for 'typeA_12'
+   typeA_12                     U=0.6882 E_ema=0.6149 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_13... done
+    ❓ Arbiter inconclusive for 'typeA_13'
+   typeA_13                     U=0.6893 E_ema=0.6169 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_14... done
+    ❓ Arbiter inconclusive for 'typeA_14'
+   typeA_14                     U=0.6924 E_ema=0.6226 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeA_15... done
+    ❓ Arbiter inconclusive for 'typeA_15'
+   typeA_15                     U=0.6927 E_ema=0.6230 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_01... done
+    ❓ Arbiter inconclusive for 'typeB_01'
+   typeB_01                     U=0.6920 E_ema=0.6219 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_02... done
+    ❓ Arbiter inconclusive for 'typeB_02'
+   typeB_02                     U=0.6915 E_ema=0.6210 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_03... done
+    ❓ Arbiter inconclusive for 'typeB_03'
+   typeB_03                     U=0.6899 E_ema=0.6180 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_04... done
+    ❓ Arbiter inconclusive for 'typeB_04'
+   typeB_04                     U=0.6929 E_ema=0.6234 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_05... done
+    ❓ Arbiter inconclusive for 'typeB_05'
+   typeB_05                     U=0.6906 E_ema=0.6192 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_06... done
+    ❓ Arbiter inconclusive for 'typeB_06'
+   typeB_06                     U=0.6921 E_ema=0.6220 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_07... done
+    ❓ Arbiter inconclusive for 'typeB_07'
+   typeB_07                     U=0.6946 E_ema=0.6266 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_08... done
+    ❓ Arbiter inconclusive for 'typeB_08'
+   typeB_08                     U=0.6924 E_ema=0.6225 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_09... done
+    ❓ Arbiter inconclusive for 'typeB_09'
+   typeB_09                     U=0.6918 E_ema=0.6215 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_10... done
+    ❓ Arbiter inconclusive for 'typeB_10'
+   typeB_10                     U=0.6944 E_ema=0.6262 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_11... done
+    ❓ Arbiter inconclusive for 'typeB_11'
+   typeB_11                     U=0.6934 E_ema=0.6244 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_12... done
+    ❓ Arbiter inconclusive for 'typeB_12'
+   typeB_12                     U=0.6910 E_ema=0.6200 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_13... done
+    ❓ Arbiter inconclusive for 'typeB_13'
+   typeB_13                     U=0.6916 E_ema=0.6210 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_14... done
+    ❓ Arbiter inconclusive for 'typeB_14'
+   typeB_14                     U=0.6929 E_ema=0.6234 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeB_15... done
+    ❓ Arbiter inconclusive for 'typeB_15'
+   typeB_15                     U=0.6930 E_ema=0.6237 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_01... done
+    ❓ Arbiter inconclusive for 'typeC_01'
+   typeC_01                     U=0.6954 E_ema=0.6280 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_02... done
+    ❓ Arbiter inconclusive for 'typeC_02'
+   typeC_02                     U=0.6951 E_ema=0.6274 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_03... done
+    ❓ Arbiter inconclusive for 'typeC_03'
+   typeC_03                     U=0.6970 E_ema=0.6310 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_04... done
+    ❓ Arbiter inconclusive for 'typeC_04'
+   typeC_04                     U=0.6964 E_ema=0.6298 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_05... done
+    ❓ Arbiter inconclusive for 'typeC_05'
+   typeC_05                     U=0.6950 E_ema=0.6273 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_06... done
+    ❓ Arbiter inconclusive for 'typeC_06'
+   typeC_06                     U=0.6956 E_ema=0.6284 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_07... done
+    ❓ Arbiter inconclusive for 'typeC_07'
+   typeC_07                     U=0.6944 E_ema=0.6262 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_08... done
+    ❓ Arbiter inconclusive for 'typeC_08'
+   typeC_08                     U=0.6965 E_ema=0.6300 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_09... done
+    ❓ Arbiter inconclusive for 'typeC_09'
+   typeC_09                     U=0.6939 E_ema=0.6252 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_10... done
+    ❓ Arbiter inconclusive for 'typeC_10'
+   typeC_10                     U=0.6947 E_ema=0.6267 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_11... done
+    ❓ Arbiter inconclusive for 'typeC_11'
+   typeC_11                     U=0.6967 E_ema=0.6304 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_12... done
+    ❓ Arbiter inconclusive for 'typeC_12'
+   typeC_12                     U=0.6984 E_ema=0.6334 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_13... done
+    ❓ Arbiter inconclusive for 'typeC_13'
+   typeC_13                     U=0.6974 E_ema=0.6317 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_14... done
+    ❓ Arbiter inconclusive for 'typeC_14'
+   typeC_14                     U=0.6976 E_ema=0.6319 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeC_15... done
+    ❓ Arbiter inconclusive for 'typeC_15'
+   typeC_15                     U=0.6990 E_ema=0.6346 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_01... done
+    ❓ Arbiter inconclusive for 'typeD_01'
+   typeD_01                     U=0.6959 E_ema=0.6289 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_02... done
+    ❓ Arbiter inconclusive for 'typeD_02'
+   typeD_02                     U=0.6934 E_ema=0.6243 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_03... done
+    ❓ Arbiter inconclusive for 'typeD_03'
+   typeD_03                     U=0.6926 E_ema=0.6229 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_04... done
+    ❓ Arbiter inconclusive for 'typeD_04'
+   typeD_04                     U=0.6928 E_ema=0.6233 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_05... done
+    ❓ Arbiter inconclusive for 'typeD_05'
+   typeD_05                     U=0.6952 E_ema=0.6277 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_06... done
+    ❓ Arbiter inconclusive for 'typeD_06'
+   typeD_06                     U=0.6972 E_ema=0.6312 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_07... done
+    ❓ Arbiter inconclusive for 'typeD_07'
+   typeD_07                     U=0.6944 E_ema=0.6262 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_08... done
+    ❓ Arbiter inconclusive for 'typeD_08'
+   typeD_08                     U=0.6934 E_ema=0.6244 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_09... done
+    ❓ Arbiter inconclusive for 'typeD_09'
+   typeD_09                     U=0.7006 E_ema=0.6374 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_10... done
+    ❓ Arbiter inconclusive for 'typeD_10'
+   typeD_10                     U=0.7014 E_ema=0.6390 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_11... done
+    ❓ Arbiter inconclusive for 'typeD_11'
+   typeD_11                     U=0.7021 E_ema=0.6402 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_12... done
+    ❓ Arbiter inconclusive for 'typeD_12'
+   typeD_12                     U=0.7027 E_ema=0.6412 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_13... done
+    ❓ Arbiter inconclusive for 'typeD_13'
+   typeD_13                     U=0.7031 E_ema=0.6420 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_14... done
+    ❓ Arbiter inconclusive for 'typeD_14'
+   typeD_14                     U=0.7004 E_ema=0.6371 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeD_15... done
+    ❓ Arbiter inconclusive for 'typeD_15'
+   typeD_15                     U=0.6991 E_ema=0.6346 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_01... done
+    ❓ Arbiter inconclusive for 'typeE_01'
+   typeE_01                     U=0.6959 E_ema=0.6289 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_02... done
+    ❓ Arbiter inconclusive for 'typeE_02'
+   typeE_02                     U=0.6934 E_ema=0.6244 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_03... done
+    ❓ Arbiter inconclusive for 'typeE_03'
+   typeE_03                     U=0.6914 E_ema=0.6207 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_04... done
+    ❓ Arbiter inconclusive for 'typeE_04'
+   typeE_04                     U=0.6941 E_ema=0.6256 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_05... done
+    ❓ Arbiter inconclusive for 'typeE_05'
+   typeE_05                     U=0.6962 E_ema=0.6295 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_06... done
+    ❓ Arbiter inconclusive for 'typeE_06'
+   typeE_06                     U=0.6979 E_ema=0.6326 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_07... done
+    ❓ Arbiter inconclusive for 'typeE_07'
+   typeE_07                     U=0.6993 E_ema=0.6351 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_08... done
+    ❓ Arbiter inconclusive for 'typeE_08'
+   typeE_08                     U=0.7004 E_ema=0.6371 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_09... done
+    ❓ Arbiter inconclusive for 'typeE_09'
+   typeE_09                     U=0.7062 E_ema=0.6476 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeE_10... done
+    ❓ Arbiter inconclusive for 'typeE_10'
+   typeE_10                     U=0.7083 E_ema=0.6515 C=1.0000
+  Calling LLM for typeE_11... done
+    ❓ Arbiter inconclusive for 'typeE_11'
+   typeE_11                     U=0.7100 E_ema=0.6545 C=1.0000
+  Calling LLM for typeE_12... done
+    ❓ Arbiter inconclusive for 'typeE_12'
+   typeE_12                     U=0.7113 E_ema=0.6569 C=1.0000
+  Calling LLM for typeE_13... done
+    ❓ Arbiter inconclusive for 'typeE_13'
+   typeE_13                     U=0.7149 E_ema=0.6635 C=1.0000
+  Calling LLM for typeE_14... done
+    ❓ Arbiter inconclusive for 'typeE_14'
+   typeE_14                     U=0.7205 E_ema=0.6736 C=1.0000
+  Calling LLM for typeE_15... done
+    ❓ Arbiter inconclusive for 'typeE_15'
+   typeE_15                     U=0.7197 E_ema=0.6722 C=1.0000
+  Calling LLM for typeF_01... done
+    ❓ Arbiter inconclusive for 'typeF_01'
+   typeF_01                     U=0.7168 E_ema=0.6668 C=1.0000
+  Calling LLM for typeF_02... done
+    ❓ Arbiter inconclusive for 'typeF_02'
+   typeF_02                     U=0.7144 E_ema=0.6625 C=1.0000
+  Calling LLM for typeF_03... done
+    ❓ Arbiter inconclusive for 'typeF_03'
+   typeF_03                     U=0.7125 E_ema=0.6590 C=1.0000
+  Calling LLM for typeF_04... done
+    ❓ Arbiter inconclusive for 'typeF_04'
+   typeF_04                     U=0.7133 E_ema=0.6606 C=1.0000
+  Calling LLM for typeF_05... done
+    ❓ Arbiter inconclusive for 'typeF_05'
+   typeF_05                     U=0.7140 E_ema=0.6618 C=1.0000
+  Calling LLM for typeF_06... done
+    ❓ Arbiter inconclusive for 'typeF_06'
+   typeF_06                     U=0.7145 E_ema=0.6628 C=1.0000
+  Calling LLM for typeF_07... done
+    ❓ Arbiter inconclusive for 'typeF_07'
+   typeF_07                     U=0.7149 E_ema=0.6635 C=1.0000
+  Calling LLM for typeF_08... done
+    ❓ Arbiter inconclusive for 'typeF_08'
+   typeF_08                     U=0.7129 E_ema=0.6599 C=1.0000
+  Calling LLM for typeF_09... done
+    ❓ Arbiter inconclusive for 'typeF_09'
+   typeF_09                     U=0.7162 E_ema=0.6658 C=1.0000
+  Calling LLM for typeF_10... done
+    ❓ Arbiter inconclusive for 'typeF_10'
+   typeF_10                     U=0.7139 E_ema=0.6617 C=1.0000
+  Calling LLM for typeF_11... done
+    ❓ Arbiter inconclusive for 'typeF_11'
+   typeF_11                     U=0.7170 E_ema=0.6673 C=1.0000
+  Calling LLM for typeF_12... done
+    ❓ Arbiter inconclusive for 'typeF_12'
+   typeF_12                     U=0.7146 E_ema=0.6629 C=1.0000
+  Calling LLM for typeF_13... done
+    ❓ Arbiter inconclusive for 'typeF_13'
+   typeF_13                     U=0.7150 E_ema=0.6636 C=1.0000
+  Calling LLM for typeF_14... done
+    ❓ Arbiter inconclusive for 'typeF_14'
+   typeF_14                     U=0.7206 E_ema=0.6738 C=1.0000
+  Calling LLM for typeF_15... done
+    ❓ Arbiter inconclusive for 'typeF_15'
+   typeF_15                     U=0.7223 E_ema=0.6769 C=1.0000
+  Calling LLM for typeG_01... done
+    ❓ Arbiter inconclusive for 'typeG_01'
+   typeG_01                     U=0.7188 E_ema=0.6706 C=1.0000
+  Calling LLM for typeG_02... done
+    ❓ Arbiter inconclusive for 'typeG_02'
+   typeG_02                     U=0.7160 E_ema=0.6655 C=1.0000
+  Calling LLM for typeG_03... done
+    ❓ Arbiter inconclusive for 'typeG_03'
+   typeG_03                     U=0.7138 E_ema=0.6614 C=1.0000
+  Calling LLM for typeG_04... done
+    ❓ Arbiter inconclusive for 'typeG_04'
+   typeG_04                     U=0.7089 E_ema=0.6526 C=1.0000
+  Calling LLM for typeG_05... done
+    ❓ Arbiter inconclusive for 'typeG_05'
+   typeG_05                     U=0.7050 E_ema=0.6455 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeG_06... done
+    ❓ Arbiter inconclusive for 'typeG_06'
+   typeG_06                     U=0.7050 E_ema=0.6455 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeG_07... done
+    ❓ Arbiter inconclusive for 'typeG_07'
+   typeG_07                     U=0.7073 E_ema=0.6497 C=1.0000 🔴 ABSTAIN
+  Calling LLM for typeG_08... done
+    ❓ Arbiter inconclusive for 'typeG_08'
+   typeG_08                     U=0.7092 E_ema=0.6531 C=1.0000
+  Calling LLM for typeG_09... done
+    ❓ Arbiter inconclusive for 'typeG_09'
+   typeG_09                     U=0.7083 E_ema=0.6515 C=1.0000
+  Calling LLM for typeG_10... done
+    ❓ Arbiter inconclusive for 'typeG_10'
+   typeG_10                     U=0.7076 E_ema=0.6502 C=1.0000
+
+   Cycle 3: avg U=0.7005 | E_ema=0.6374 | C=1.0000 | contradictions=0
+   Personality: curiosity=0.69 caution=0.50 analytical_rigor=0.60
+
+============================================================
+HARNESS COMPLETE
+============================================================
+  Arbiter verdicts:        200
+  Arbiter corrections:     0
+  Correction rate:         0.0%
+  DPO pairs (total):       21
+    paired chosen+rejected: 21
+    rejected-only:          0
+  Assertions stored:       0
+  Active corrections:      31
+
+  Full results: harness_results_swe_run2.json
+  DPO pairs:    dpo_pairs/swe_accumulation.json  (appended; total 36, paired 36)

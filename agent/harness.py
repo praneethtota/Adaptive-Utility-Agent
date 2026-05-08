@@ -116,6 +116,7 @@ async def call_vllm(
     model: str = "swe",
     timeout: float = 120.0,
     max_tokens: int = 1024,
+    temperature: float = 0.2,
 ) -> str:
     """Call a vLLM OpenAI-compatible /v1/chat/completions endpoint."""
     url = endpoint.rstrip("/") + "/v1/chat/completions"
@@ -123,7 +124,7 @@ async def call_vllm(
         resp = await client.post(url, json={
             "model": model,
             "max_tokens": max_tokens,
-            "temperature": 0.2,
+            "temperature": temperature,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": prompt},
@@ -190,7 +191,7 @@ async def run_problem(
     traits = personality.get_active_weights(field)
     corrections_block = ""
     if active_corrections:
-        corrections_str = "\n".join(f"  - {c}" for c in active_corrections[-5:])
+        corrections_str = "\n".join(f"  - {c}" for c in active_corrections[-20:])
         corrections_block = f"\nACTIVE CORRECTIONS (verified — do not repeat these errors):\n{corrections_str}\n"
 
     system_prompt = f"""You are a software engineering assistant.
@@ -236,11 +237,17 @@ Always include: working code, time complexity claim, at least one assert stateme
         elif arbiter_verdict.case == VerdictCase.CASE_4:
             print(f"    ❓ Arbiter inconclusive for '{problem['id']}'")
 
-    # Score interaction
+    # Score interaction.
+    # test_pass_rate is now derived from contradiction count rather than a
+    # hardcoded floor that climbed with cycle index. Each contradiction docks
+    # the pass rate by 0.15 (capped at 0.1 floor); zero contradictions = 1.0.
+    n_contra = len(cd_result.contradictions)
+    test_pass_rate = 1.0 if n_contra == 0 else max(0.1, 1.0 - n_contra * 0.15)
+
     task_score = scorer.score(
         task_id=problem["id"],
         field_config=field_config,
-        test_pass_rate=0.85 + (cycle * 0.03),   # improves per cycle in live system
+        test_pass_rate=test_pass_rate,
         human_baseline_score=problem["baseline"],
         contradiction_penalty=cd_result.confidence_penalty,
         problem_novelty=problem["novelty"],
@@ -359,6 +366,10 @@ async def main():
                         help="Field name (must exist in FIELD_CONFIGS). Default: %(default)s")
     parser.add_argument("--out", default=None,
                         help="Path for full harness results JSON (default: harness_results_<timestamp>.json)")
+    parser.add_argument("--temperature", type=float, default=0.2,
+                        help="Sampling temperature passed to vLLM (default: %(default)s)")
+    parser.add_argument("--append", action="store_true",
+                        help="Append new DPO pairs to existing --export-dpo file rather than overwriting")
     args = parser.parse_args()
 
     field = args.field
@@ -377,8 +388,9 @@ async def main():
         backend_label = f"Anthropic ({args.model})"
     else:
         async def call_fn(prompt, sys_p):
-            return await call_vllm(prompt, sys_p, args.endpoint, model=args.model)
-        backend_label = f"vLLM ({args.endpoint}, model={args.model})"
+            return await call_vllm(prompt, sys_p, args.endpoint, model=args.model,
+                                   temperature=args.temperature)
+        backend_label = f"vLLM ({args.endpoint}, model={args.model}, temp={args.temperature})"
 
     # Components ─────────────────────────────────────────────────────────────
     assertions_store = AssertionsStore(confidence_threshold=0.5)
@@ -509,19 +521,32 @@ async def main():
 
     dpo_path = args.export_dpo or f"dpo_pairs/cycle1_{timestamp}.json"
     os.makedirs(os.path.dirname(dpo_path) or ".", exist_ok=True)
-    with open(dpo_path, "w") as f:
-        json.dump({
-            "timestamp": timestamp,
-            "field":     field,
-            "cycles":    num_cycles,
-            "endpoint":  args.endpoint,
-            "model":     args.model,
-            "n_pairs":   len(dpo_pairs),
-            "n_paired":  n_paired,
-            "n_rejected_only": n_unpaired,
-            "pairs":     dpo_pairs,
-        }, f, indent=2)
-    print(f"  DPO pairs:    {dpo_path}")
+
+    if args.append and os.path.exists(dpo_path):
+        with open(dpo_path) as f:
+            prior = json.load(f)
+        prior_pairs = prior if isinstance(prior, list) else prior.get("pairs", prior.get("entries", []))
+        combined = prior_pairs + dpo_pairs
+        with open(dpo_path, "w") as f:
+            json.dump(combined, f, indent=2)
+        n_total  = len(combined)
+        n_paired_total = sum(1 for p in combined if p.get("chosen") is not None)
+        print(f"  DPO pairs:    {dpo_path}  (appended; total {n_total}, paired {n_paired_total})")
+    else:
+        with open(dpo_path, "w") as f:
+            json.dump({
+                "timestamp": timestamp,
+                "field":     field,
+                "cycles":    num_cycles,
+                "endpoint":  args.endpoint,
+                "model":     args.model,
+                "temperature": args.temperature,
+                "n_pairs":   len(dpo_pairs),
+                "n_paired":  n_paired,
+                "n_rejected_only": n_unpaired,
+                "pairs":     dpo_pairs,
+            }, f, indent=2)
+        print(f"  DPO pairs:    {dpo_path}")
 
 
 if __name__ == "__main__":

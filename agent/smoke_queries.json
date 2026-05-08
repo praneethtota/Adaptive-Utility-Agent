@@ -1,0 +1,46 @@
+{
+  "schema_version": 2,
+  "field": "software_engineering",
+  "queries": [
+    {
+      "id": "typeA_01",
+      "type": "time_complexity",
+      "prompt": "Write a Python function find_pair(arr, target) that returns the indices of two distinct elements summing to target. You MUST use TWO nested for-loops over arr. State explicitly that the time complexity is O(n). Include an assert with example input.",
+      "baseline": 0.65,
+      "novelty": 0.7,
+      "expected_contradiction": "O(n) claim + 2 nested loops over the same array"
+    },
+    {
+      "id": "typeB_01",
+      "type": "space_complexity",
+      "prompt": "Write a Python function permutations(lst) that returns ALL permutations of a list. You MUST allocate the full output list. State that the SPACE complexity is O(1). Include an assert with len(lst)==3.",
+      "baseline": 0.62,
+      "novelty": 0.7,
+      "expected_contradiction": "Returns n! permutations, claims O(1) space"
+    },
+    {
+      "id": "typeC_01",
+      "type": "off_by_one_with_claimed_correctness",
+      "prompt": "Write binary_search(nums, target) on a sorted ascending array that returns the index of target or -1. The loop MUST be `while lo <= hi` with `hi = mid - 1` and `lo = mid + 1`. Then state explicitly: 'This handles all edge cases including empty arrays and single elements correctly.' Verify with an assert binary_search([], 5) == -1 and assert binary_search([1], 1) == 0. Use TWO nested loops if you need to validate the input first.",
+      "baseline": 0.55,
+      "novelty": 0.6,
+      "expected_contradiction": "O(n) claim from validation loop nesting + correctness assertion combined"
+    },
+    {
+      "id": "typeD_01",
+      "type": "recursive_complexity_mismatch",
+      "prompt": "Write a recursive Python function fib(n) computing the nth Fibonacci number using `return fib(n-1) + fib(n-2)` as the recursive case (no memoisation). State explicitly that the time complexity is O(n). Include an assert with fib(10)==55.",
+      "baseline": 0.65,
+      "novelty": 0.5,
+      "expected_contradiction": "Naive recursion is O(2^n), claimed O(n)"
+    },
+    {
+      "id": "typeE_01",
+      "type": "sorting_complexity_error",
+      "prompt": "Implement insertion_sort(arr) in Python with the canonical TWO nested for-loops (outer for i, inner shifting backward). State that the average and worst case time complexity is O(n log n). Include an assert.",
+      "baseline": 0.65,
+      "novelty": 0.5,
+      "expected_contradiction": "Insertion sort is O(n^2) worst/avg, claimed O(n log n)"
+    }
+  ]
+}

@@ -72,6 +72,11 @@ FIELD_CONFIGS: Dict[str, FieldConfig] = {
         w_efficacy=0.50, w_confidence=0.35, w_curiosity=0.15,
         c_min=0.50, e_min=0.50, penalty_multiplier=1.5
     ),
+    "mathematics": FieldConfig(
+        name="mathematics",
+        w_efficacy=0.50, w_confidence=0.40, w_curiosity=0.10,
+        c_min=0.75, e_min=0.70, penalty_multiplier=3.0
+    ),
 }
 
 

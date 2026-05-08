@@ -1,0 +1,44 @@
+[
+  {
+    "task_id": "typeB_01",
+    "field": "software_engineering",
+    "prompt": "Write a Python function permutations(lst) that returns ALL permutations of a list. You MUST allocate the full output list. State that the SPACE complexity is O(1). Include an assert with len(lst)==3.",
+    "chosen": null,
+    "rejected": "To generate all permutations of a list in Python, we can use a recursive approach. The function will build permutations by swapping elements and recursively generating permutations for the remaining elements. Here's the implementation:\n\n```python\ndef permutations(lst):\n    if len(lst) == 0:\n        return []\n    if len(lst) == 1:\n        return [lst]\n    \n    perms = []\n    for i in range(len(lst)):\n        first_element = lst[i]\n        remaining_elements = lst[:i] + lst[i+1:]\n        for p in permutations(remaining_elements):\n            perms.append([first_element] + p)\n    \n    return perms\n\n# Example usage and assertion\nassert len(permutations([1, 2, 3])) == 6\n```\n\n### Explanation:\n1. **Base Cases**:\n   - If the list is empty (`len(lst) == 0`), return an empty list because there are no permutations.\n   - If the list has only one element (`len(lst) == 1`), return a list containing just that element as its only permutation.\n\n2. **Recursive Case**:\n   - Iterate over each element in the list.\n   - For each element, fix it as the first element of the permutation and generate all permutations of the remaining elements.\n   - Append these permutations to the result list.\n\n### Space Complexity:\nThe space complexity of this solution is \\(O(n)\\) where \\(n\\) is the length of the input list. This is because the recursion stack depth can go up to \\(n\\), and each call uses additional space for storing intermediate results. However, the problem states that the space complexity should be \\(O(1)\\), which suggests that the solution might need to be optimized further or interpreted differently. Given the nature of the problem, it's challenging to achieve true constant space complexity without using additional data structures like lists.\n\n### Time Complexity:\nThe time complexity of this solution is \\(O(n \\cdot n!)\\), where \\(n!\\) (n factorial) is the number of permutations of the list. This is because for each element, we make \\(n-1!\\) recursive calls, and there are \\(n\\) choices for the first element.\n\n### Assertion:\nThe assertion `assert len(permutations([1, 2, 3])) == 6` checks that the function correctly generates 6 permutations for a list of three elements.",
+    "weight": 2.0,
+    "source": "contradiction_only_no_improvement",
+    "rejected_cycle": 1,
+    "rejected_contradictions": [
+      "Claimed O(n) but code has 2 nested loop levels suggesting higher complexity"
+    ],
+    "rejected_n_contradictions": 1
+  },
+  {
+    "task_id": "typeC_01",
+    "field": "software_engineering",
+    "prompt": "Write binary_search(nums, target) on a sorted ascending array that returns the index of target or -1. The loop MUST be `while lo <= hi` with `hi = mid - 1` and `lo = mid + 1`. Then state explicitly: 'This handles all edge cases including empty arrays and single elements correctly.' Verify with an assert binary_search([], 5) == -1 and assert binary_search([1], 1) == 0. Use TWO nested loops if you need to validate the input first.",
+    "chosen": null,
+    "rejected": "Here is the implementation of the `binary_search` function:\n\n```python\ndef binary_search(nums, target):\n    # Validate input\n    for i in range(len(nums)):\n        for j in range(i + 1, len(nums)):\n            assert nums[i] <= nums[j], \"Array must be sorted in ascending order\"\n\n    # Initialize pointers\n    lo = 0\n    hi = len(nums) - 1\n\n    # Perform binary search\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if nums[mid] == target:\n            return mid\n        elif nums[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n\n    return -1\n\n# Test cases\nassert binary_search([], 5) == -1\nassert binary_search([1], 1) == 0\n```\n\n### Explanation:\n- **Input Validation**: The function includes two nested loops to ensure that the input array `nums` is sorted in ascending order. If any element is greater than the next, it raises an assertion error.\n- **Binary Search Algorithm**:\n  - Initialize two pointers, `lo` and `hi`, to the start and end of the array, respectively.\n  - Use a `while` loop with the condition `lo <= hi`.\n  - Calculate the middle index `mid`.\n  - Compare the middle element `nums[mid]` with the target:\n    - If they are equal, return the index `mid`.\n    - If the middle element is less than the target, move the lower pointer `lo` to `mid + 1`.\n    - If the middle element is greater than the target, move the upper pointer `hi` to `mid - 1`.\n  - If the loop exits without finding the target, return `-1`.\n\n### Edge Cases:\n- The function correctly handles empty arrays by returning `-1`.\n- It also handles arrays with a single element by returning `0` if the element matches the target.\n\nThese assertions should verify the correctness of the implementation.",
+    "weight": 2.0,
+    "source": "contradiction_only_no_improvement",
+    "rejected_cycle": 1,
+    "rejected_contradictions": [
+      "Code fails its own stated test case: assert nums[i] <= nums[j], \"Array must be sorted in ascending order\""
+    ],
+    "rejected_n_contradictions": 1
+  },
+  {
+    "task_id": "typeE_01",
+    "field": "software_engineering",
+    "prompt": "Implement insertion_sort(arr) in Python with the canonical TWO nested for-loops (outer for i, inner shifting backward). State that the average and worst case time complexity is O(n log n). Include an assert.",
+    "chosen": null,
+    "rejected": "Here's the implementation of `insertion_sort` in Python using the canonical two nested for-loops:\n\n```python\ndef insertion_sort(arr):\n    # Outer loop through each element in the array starting from the second element\n    for i in range(1, len(arr)):\n        key = arr[i]\n        j = i - 1\n        \n        # Inner loop to shift elements of arr[0..i-1], that are greater than key,\n        # to one position ahead of their current position\n        while j >= 0 and key < arr[j]:\n            arr[j + 1] = arr[j]\n            j -= 1\n        arr[j + 1] = key\n\n# Example usage:\nnums = [12, 11, 13, 5, 6]\ninsertion_sort(nums)\nprint(\"Sorted array:\", nums)\n\n# Assert statement to check if the array is sorted in ascending order\nassert all(nums[i] <= nums[j] for i in range(len(nums) - 1)), \"Array must be sorted in ascending order\"\n```\n\n**Time Complexity:**\nThe average and worst-case time complexity of the insertion sort algorithm is \\(O(n^2)\\), not \\(O(n \\log n)\\). This is because for each element in the array, the inner loop can potentially run up to \\(n\\) times in the worst case (when the entire sorted portion is reversed).\n\n**Note:** The claim about the time complexity was incorrect. Insertion sort does not have a logarithmic component in its time complexity.",
+    "weight": 2.0,
+    "source": "contradiction_only_no_improvement",
+    "rejected_cycle": 2,
+    "rejected_contradictions": [
+      "Code fails its own stated test case: assert all(nums[i] <= nums[j] for i in range(len(nums) - 1)), \"Array must be sorted in ascending order\""
+    ],
+    "rejected_n_contradictions": 1
+  }
+]
