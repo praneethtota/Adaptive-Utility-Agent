@@ -1,0 +1,17 @@
+{
+  "phase": "canary",
+  "blue_endpoint": "http://localhost:9002",
+  "green_endpoint": "http://localhost:9012",
+  "traffic_green": 0.05,
+  "n_queries": 50,
+  "n_green_calls": 0,
+  "n_blue_calls": 0,
+  "blue_mean_u": 0,
+  "green_mean_u": null,
+  "u_delta": null,
+  "blue_brier": null,
+  "green_brier": null,
+  "canary_passed": false,
+  "timestamp": "2026-05-08 13:40:45",
+  "records": []
+}

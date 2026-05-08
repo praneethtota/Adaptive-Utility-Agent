@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/workspace/Adaptive-Utility-Agent/agent/evaluate.py", line 451, in <module>
+    compare_results(args.baseline, args.candidate)
+  File "/workspace/Adaptive-Utility-Agent/agent/evaluate.py", line 381, in compare_results
+    with open(baseline_path) as f:
+         ^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'results/math_blue_baseline.json'

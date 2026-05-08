@@ -1,0 +1,36 @@
+Math Cycle 1 NOT promoted
+2026-05-08 13:40:46,671 [INFO] check_promotion: === GRADUAL SHIFT ===
+2026-05-08 13:40:46,671 [INFO] check_promotion: BLUE:     http://localhost:9002
+2026-05-08 13:40:46,671 [INFO] check_promotion: GREEN:    http://localhost:9012
+2026-05-08 13:40:46,671 [INFO] check_promotion: Field:    mathematics | δ=0.033 | T≥6 | τ=0.3
+2026-05-08 13:40:46,671 [INFO] check_promotion: Queries:  100
+2026-05-08 13:40:46,671 [INFO] check_promotion: 
+2026-05-08 13:40:46,696 [INFO] httpx: HTTP Request: POST http://localhost:9002/v1/chat/completions "HTTP/1.1 404 Not Found"
+Traceback (most recent call last):
+  File "/workspace/Adaptive-Utility-Agent/agent/check_promotion.py", line 484, in <module>
+    asyncio.run(run_shift(args))
+  File "/usr/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/workspace/Adaptive-Utility-Agent/agent/check_promotion.py", line 323, in run_shift
+    blue_resp, blue_lat = await call_model(client, args.blue, prompt)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Adaptive-Utility-Agent/agent/check_promotion.py", line 233, in call_model
+    resp.raise_for_status()
+  File "/usr/local/lib/python3.11/dist-packages/httpx/_models.py", line 763, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Client error '404 Not Found' for url 'http://localhost:9002/v1/chat/completions'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Traceback (most recent call last):
+  File "/workspace/Adaptive-Utility-Agent/agent/check_promotion.py", line 482, in <module>
+    check_promotion(args.results, args.field)
+  File "/workspace/Adaptive-Utility-Agent/agent/check_promotion.py", line 123, in check_promotion
+    with open(results_path) as f:
+         ^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'results/math_shift_cycle1.json'

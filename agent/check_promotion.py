@@ -414,8 +414,8 @@ async def run_shift(args) -> dict:
     log.info("")
     log.info("=== GRADUAL SHIFT SUMMARY ===")
     log.info(f"BLUE  mean U:   {final_blue_u:.4f}")
-    log.info(f"GREEN mean U:   {final_green_u:.4f if final_green_u else 'N/A'}")
-    log.info(f"U delta:        {u_delta:+.4f if u_delta is not None else 'N/A'}")
+    log.info(f"GREEN mean U:   {f'{final_green_u:.4f}' if final_green_u is not None else 'N/A'}")
+    log.info(f"U delta:        {f'{u_delta:+.4f}' if u_delta is not None else 'N/A'}")
     log.info(f"T sustained:    {t_sustained} / {T_min} required")
     log.info(f"Promote:        {'YES ✓' if promotion_triggered else 'NO ✗'}")
 
