@@ -322,9 +322,9 @@ run_bg_cycle() {
   }
   log "  VRAM after blue start: $(vram_used)"
 
-  # Green: fp16 at 0.65 reserves 15290 MiB (model ~13.25GiB + CUDA graphs 0.55GiB, KV ~1.49GiB)
-  # Combined with blue 0.30: 0.95 → 22759 MiB = 92.7% — fits within 24564 MiB (15.46 GiB free after blue)
-  start_fp16_server "$green_port" "$green_model" "${domain}_green_v1" 0.65 || {
+  # Green: fp16 at 0.60 reserves ~14100 MiB — leaves headroom for CUDA graph warmup (20 MiB)
+  # Combined with blue 0.30: ~0.90 → ~21960 MiB = 89.4% — fits within 24564 MiB with headroom
+  start_fp16_server "$green_port" "$green_model" "${domain}_green_v1" 0.60 || {
     warn "GREEN server :${green_port} failed to start — aborting ${domain} cycle"
     kill_port "$blue_port"
     return 1
