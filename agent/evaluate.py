@@ -217,13 +217,62 @@ async def call_endpoint(
 
 async def run_evaluation(args) -> dict:
     # Load queries
+    # ── Load clean benchmark queries ──────────────────────────────────────
     if args.queries and Path(args.queries).exists():
         with open(args.queries) as f:
             queries = json.load(f)
-        log.info(f"Loaded {len(queries)} queries from {args.queries}")
+        log.info(f"Loaded {len(queries)} clean queries from {args.queries}")
     else:
         queries = DEFAULT_BENCHMARK
-        log.info(f"Using default benchmark ({len(queries)} queries)")
+        log.info(f"Using default benchmark ({len(queries)} clean queries)")
+
+    # ── Mix in adversarial queries if requested ────────────────────────────
+    # GREEN is trained on DPO pairs from seeded_contradictions.json.
+    # A clean-only eval won't show GREEN's improvement because both models
+    # score nearly identically on well-formed questions. Mixing in adversarial
+    # queries — where GREEN was specifically trained to avoid wrong complexity
+    # claims — produces a meaningful U delta for promotion decisions.
+    adv_path = getattr(args, 'include_adversarial', None)
+    if adv_path and Path(adv_path).exists():
+        import random
+        with open(adv_path) as f:
+            adv_data = json.load(f)
+        adv_pool = adv_data.get("queries", adv_data) if isinstance(adv_data, dict) else adv_data
+
+        # Normalise adversarial entries to match benchmark format
+        adv_normalised = []
+        for q in adv_pool:
+            adv_normalised.append({
+                "id":    q.get("id", "adv"),
+                "prompt": q.get("prompt", ""),
+                "domain": q.get("domain", "software_engineering"),
+                # No expected_complexity — correctness judged by contradiction count
+                "expected_complexity": None,
+                "is_adversarial": True,
+                "expected_contradiction": q.get("expected_contradiction", ""),
+            })
+
+        n_adv = getattr(args, 'adversarial_n', 10)
+        ratio = getattr(args, 'adversarial_ratio', 0.5)
+        n_adv = min(n_adv, len(adv_normalised))
+        sampled_adv = random.sample(adv_normalised, n_adv)
+
+        # Keep only the clean fraction that balances the ratio
+        if ratio > 0:
+            n_clean_keep = int(n_adv * (1.0 - ratio) / max(ratio, 1e-6))
+            clean_queries = queries[:n_clean_keep] if n_clean_keep < len(queries) else queries
+        else:
+            clean_queries = queries
+            sampled_adv = []
+
+        queries = clean_queries + sampled_adv
+        log.info(
+            f"Mixed eval: {len(clean_queries)} clean + {len(sampled_adv)} adversarial "
+            f"= {len(queries)} total (ratio={ratio:.0%} adversarial)"
+        )
+    else:
+        if adv_path:
+            log.warning(f"--include-adversarial path not found: {adv_path} — using clean only")
 
     # Init scorers
     store    = AssertionsStore()
@@ -269,13 +318,28 @@ async def run_evaluation(args) -> dict:
                 continue
 
             # Correctness
-            correct = is_correct(response, expected)
+            # For adversarial queries: correct = zero contradictions detected
+            # (GREEN should resist the wrong complexity claim in the prompt)
+            # For clean queries: correct = expected complexity appears in response
+            is_adv = q.get("is_adversarial", False)
+            if is_adv:
+                # Run detection first, then judge correctness
+                contradiction_result_pre = detector.check(
+                    problem=prompt, solution=response
+                )
+                correct = len(contradiction_result_pre.contradictions) == 0
+                # Re-use this result below so we don't double-call
+            else:
+                correct = is_correct(response, expected)
 
             # Contradiction detection
-            contradiction_result = detector.check(
-                problem=prompt,
-                solution=response,
-            )
+            if is_adv:
+                contradiction_result = contradiction_result_pre  # already computed above
+            else:
+                contradiction_result = detector.check(
+                    problem=prompt,
+                    solution=response,
+                )
             n_contra = len(contradiction_result.contradictions)
 
             # Confidence update
@@ -308,6 +372,7 @@ async def run_evaluation(args) -> dict:
                 "id":               qid,
                 "prompt":           prompt[:120] + "..." if len(prompt) > 120 else prompt,
                 "correct":          correct,
+                "is_adversarial":   is_adv,
                 "expected":         expected,
                 "u_score":          round(u_score, 4),
                 "confidence":       round(updated_conf, 4),
@@ -339,6 +404,20 @@ async def run_evaluation(args) -> dict:
     contradiction_rate = total_contradictions / n
     mean_latency     = total_latency / n
 
+    # ── Adversarial subset stats for summary ─────────────────────────────────
+    adv_results_s = [r for r in results if r.get("is_adversarial") and "error" not in r]
+    adv_summary = {}
+    if adv_results_s:
+        adv_summary = {
+            "n_adversarial": len(adv_results_s),
+            "adversarial_accuracy": round(
+                sum(1 for r in adv_results_s if r["correct"]) / len(adv_results_s), 4),
+            "adversarial_mean_u": round(
+                sum(r["u_score"] for r in adv_results_s) / len(adv_results_s), 4),
+            "adversarial_contradiction_rate": round(
+                sum(r["contradictions"] for r in adv_results_s) / len(adv_results_s), 4),
+        }
+
     summary = {
         "label":              args.label,
         "endpoint":           args.endpoint,
@@ -351,6 +430,7 @@ async def run_evaluation(args) -> dict:
         "total_contradictions": total_contradictions,
         "mean_latency_ms":    round(mean_latency, 1),
         "timestamp":          time.strftime("%Y-%m-%d %H:%M:%S"),
+        "adversarial_subset": adv_summary,
         "per_query":          results,
     }
 
@@ -364,6 +444,27 @@ async def run_evaluation(args) -> dict:
     log.info(f"Brier score:        {brier:.4f}")
     log.info(f"Contradiction rate: {contradiction_rate:.2f} per query")
     log.info(f"Mean latency:       {mean_latency:.0f}ms")
+
+    # ── Adversarial-subset breakdown ──────────────────────────────────────────
+    adv_results = [r for r in results if r.get("is_adversarial") and "error" not in r]
+    clean_results = [r for r in results if not r.get("is_adversarial") and "error" not in r]
+    if adv_results:
+        adv_acc = sum(1 for r in adv_results if r["correct"]) / len(adv_results)
+        adv_u   = sum(r["u_score"] for r in adv_results) / len(adv_results)
+        adv_contra = sum(r["contradictions"] for r in adv_results) / len(adv_results)
+        log.info(f"")
+        log.info(f"=== ADVERSARIAL SUBSET ({len(adv_results)} queries) ===")
+        log.info(f"  Accuracy (no-contradiction rate): {adv_acc:.1%}")
+        log.info(f"  Mean U:                           {adv_u:.4f}")
+        log.info(f"  Mean contradictions per query:    {adv_contra:.2f}")
+        log.info(f"  (GREEN trained on these — this is the signal that drives U delta)")
+    if clean_results:
+        clean_acc = sum(1 for r in clean_results if r["correct"]) / len(clean_results)
+        clean_u   = sum(r["u_score"] for r in clean_results) / len(clean_results)
+        log.info(f"")
+        log.info(f"=== CLEAN SUBSET ({len(clean_results)} queries) ===")
+        log.info(f"  Accuracy:  {clean_acc:.1%}")
+        log.info(f"  Mean U:    {clean_u:.4f}")
 
     # Save output
     if args.output:
@@ -418,6 +519,30 @@ def compare_results(baseline_path: str, candidate_path: str):
     else:
         print("PROMOTION RECOMMENDATION: DO NOT PROMOTE — GREEN is not better ✗")
 
+    # Adversarial subset comparison
+    b_adv = blue.get("adversarial_subset", {})
+    g_adv = green.get("adversarial_subset", {})
+    if b_adv and g_adv:
+        print()
+        print("=== ADVERSARIAL SUBSET COMPARISON (where GREEN was trained) ===")
+        adv_keys = [
+            ("adversarial_accuracy",           "Adv accuracy",     "{:.1%}"),
+            ("adversarial_mean_u",              "Adv mean U",        "{:.4f}"),
+            ("adversarial_contradiction_rate",  "Adv contra rate",   "{:.3f}"),
+        ]
+        for key, label, fmt in adv_keys:
+            bv = b_adv.get(key, 0)
+            gv = g_adv.get(key, 0)
+            delta = gv - bv
+            better = delta > 0 if key != "adversarial_contradiction_rate" else delta < 0
+            marker = " ✓" if better else " ✗"
+            delta_str = f"+{delta:.4f}" if delta > 0 else f"{delta:.4f}"
+            print(f"{label:<30} BLUE={fmt.format(bv):<12} GREEN={fmt.format(gv):<12} Δ={delta_str}{marker}")
+        adv_u_delta = g_adv.get("adversarial_mean_u", 0) - b_adv.get("adversarial_mean_u", 0)
+        print(f"\nAdversarial U delta: {adv_u_delta:+.4f}")
+        if adv_u_delta >= 0.025:
+            print("ADVERSARIAL PROMOTION: PROMOTE GREEN ✓ (adversarial subset passes threshold)")
+
 
 def parse_args():
     p = argparse.ArgumentParser(description="AUA specialist endpoint evaluator")
@@ -431,6 +556,16 @@ def parse_args():
                    help="Path to save results JSON")
     p.add_argument("--n",         type=int, default=None,
                    help="Number of queries to run (default: all)")
+    p.add_argument("--include-adversarial", default=None, metavar="PATH",
+                   help="Path to seeded_contradictions.json — mixes adversarial "
+                        "queries with the clean benchmark so GREEN's DPO "
+                        "training signal shows up in the U delta. "
+                        "Use --adversarial-ratio to control the mix (default 0.5).")
+    p.add_argument("--adversarial-ratio", type=float, default=0.5,
+                   help="Fraction of eval queries that are adversarial (default 0.5). "
+                        "0.0 = clean only, 1.0 = adversarial only.")
+    p.add_argument("--adversarial-n", type=int, default=10,
+                   help="Number of adversarial queries to sample (default 10).")
     # Comparison mode
     p.add_argument("--compare",   action="store_true",
                    help="Compare two result files instead of running evaluation")
