@@ -108,7 +108,7 @@ start_fp16_server() {
 
 merge_lora() {
   local base=$1 adapter=$2 output=$3
-  if [ -f "${output}/config.json" ]; then log "  ${output} already merged — skipping"; return 0; fi
+  if [ -f "${output}/config.json" ] && [ -f "${output}/model.safetensors" ]; then log "  ${output} already merged — skipping"; return 0; fi
   log "  Merging LoRA: $base + $adapter → $output | VRAM used: $(vram_used)"
   python3 - "$base" "$adapter" "$output" <<'PYEOF' 2>&1 | tee -a "$LOG"
 import sys, torch, torch.nn as nn
@@ -193,7 +193,7 @@ PYEOF
 
 train_lora() {
   local base=$1 pairs=$2 output=$3 field=$4
-  if [ -f "${output}/training_log.json" ]; then log "  ${output} already trained — skipping"; return 0; fi
+  if [ -f "${output}/training_log.json" ] && [ -f "${output}/adapter_model.safetensors" ]; then log "  ${output} already trained — skipping"; return 0; fi
   log "  Training LoRA: base=$base field=$field output=$output | VRAM used: $(vram_used)"
   PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   python train_lora.py \
@@ -205,6 +205,10 @@ train_lora() {
     --batch-size 1 \
     --apply-field-weights \
     2>&1 | tee -a "$LOG" || warn "train_lora.py exited non-zero"
+  # Remove intermediate checkpoints and ref model — only final adapter weights needed.
+  rm -rf "${output}"/checkpoint-* "${output}/ref" 2>/dev/null || true
+  local freed; freed=$(du -sh "${output}" 2>/dev/null | cut -f1)
+  log "  Checkpoints/ref purged from ${output} (kept: ${freed})"
 }
 
 # ── DPO pair counter ──────────────────────────────────────────────────────────
@@ -310,16 +314,17 @@ run_bg_cycle() {
   log "──────────────────────────────────────────────"
 
   # ── Start servers (sequential — green only after blue is healthy) ──────────
-  # Blue: AWQ at 0.20 reserves 4913 MiB (model ~3338 MiB, KV ~1575 MiB)
-  start_awq_server "$blue_port" "$blue_model" "$domain" 0.20 || {
+  # Blue: AWQ at 0.30 reserves 7369 MiB (model 5.2GiB + CUDA graphs 0.79GiB = 5.99GiB actual,
+  #   KV ~1.34GiB). vLLM v0.20.1 CUDA-graph profiling adds ~0.79GiB overhead vs earlier estimates.
+  start_awq_server "$blue_port" "$blue_model" "$domain" 0.30 || {
     warn "BLUE server :${blue_port} failed to start — aborting ${domain} cycle"
     return 1
   }
   log "  VRAM after blue start: $(vram_used)"
 
-  # Green: fp16 at 0.70 reserves 17195 MiB (model ~13351 MiB, KV ~3843 MiB)
-  # Combined with blue: ~22108 MiB = 90.1%
-  start_fp16_server "$green_port" "$green_model" "${domain}_green_v1" 0.70 || {
+  # Green: fp16 at 0.65 reserves 15290 MiB (model ~13.25GiB + CUDA graphs 0.55GiB, KV ~1.49GiB)
+  # Combined with blue 0.30: 0.95 → 22759 MiB = 92.7% — fits within 24564 MiB (15.46 GiB free after blue)
+  start_fp16_server "$green_port" "$green_model" "${domain}_green_v1" 0.65 || {
     warn "GREEN server :${green_port} failed to start — aborting ${domain} cycle"
     kill_port "$blue_port"
     return 1
@@ -496,7 +501,11 @@ log "  SWE merge done. VRAM free: $(vram_free)"
 # Run harness in --append loop until 250 organic DPO pairs are in the file.
 # seeded_contradictions.json: 100 adversarial complexity questions (Type A + B).
 log "STEP 3b — SWE organic DPO accumulation (target: 250 pairs)"
-if [ -f ./models/swe_green_v1_merged/config.json ]; then
+_SWE_PRE=$(_count_dpo_pairs dpo_pairs/swe_organic.json)
+if [ "$_SWE_PRE" -ge 250 ]; then
+  log "  swe organic DPO: $_SWE_PRE/250 pairs already present — skipping server start"
+  SWE_ORGANIC_SKIP=yes
+elif [ -f ./models/swe_green_v1_merged/config.json ] && [ -f ./models/swe_green_v1_merged/model.safetensors ]; then
   start_fp16_server 9011 ./models/swe_green_v1_merged swe 0.80 4096 || {
     warn "STEP 3b — seed GREEN :9011 failed to start — skipping organic accumulation"
     SWE_ORGANIC_SKIP=yes
@@ -511,7 +520,7 @@ if [ -f ./models/swe_green_v1_merged/config.json ]; then
     log "  VRAM free after :9011 shutdown: $(vram_free)"
   fi
 else
-  warn "STEP 3b — swe_green_v1_merged missing, skipping SWE organic accumulation"
+  warn "STEP 3b — swe_green_v1_merged missing or incomplete, skipping SWE organic accumulation"
   SWE_ORGANIC_SKIP=yes
 fi
 
@@ -522,7 +531,7 @@ fi
 log "STEP 3c — Retrain SWE GREEN v2 on organic pairs + merge"
 SWE_ORGANIC_COUNT=$(_count_dpo_pairs dpo_pairs/swe_organic.json)
 log "  Organic pairs available: $SWE_ORGANIC_COUNT"
-if [ "$SWE_ORGANIC_SKIP" != "yes" ] && [ "$SWE_ORGANIC_COUNT" -ge 10 ]; then
+if [ "$SWE_ORGANIC_COUNT" -ge 10 ]; then
   train_lora ./models/swe_green_v1_merged \
              dpo_pairs/swe_organic.json \
              ./models/swe_green_v2 \

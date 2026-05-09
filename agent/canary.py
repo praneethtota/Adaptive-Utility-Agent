@@ -266,7 +266,7 @@ async def run_canary(args) -> dict:
         "n_green_calls":    len(green_u_scores),
         "n_blue_calls":     len(blue_u_scores),
         "blue_mean_u":      round(blue_mean_u, 4),
-        "green_mean_u":     round(green_mean_u, 4) if green_mean_u else None,
+        "green_mean_u":     round(green_mean_u, 4) if green_mean_u is not None else None,
         "u_delta":          round(u_delta, 4) if u_delta is not None else None,
         "blue_brier":       round(blue_brier, 4) if blue_brier else None,
         "green_brier":      round(green_brier, 4) if green_brier else None,

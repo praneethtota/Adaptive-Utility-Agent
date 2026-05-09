@@ -385,8 +385,8 @@ async def run_shift(args) -> dict:
                 "blue_u":         round(blue_u, 4),
                 "blue_conf":      round(blue_conf, 4),
                 "blue_correct":   blue_correct,
-                "green_u":        round(green_u, 4) if green_u else None,
-                "green_conf":     round(green_conf, 4) if green_conf else None,
+                "green_u":        round(green_u, 4) if green_u is not None else None,
+                "green_conf":     round(green_conf, 4) if green_conf is not None else None,
                 "green_correct":  green_correct,
                 "t_sustained":    t_sustained,
             })
