@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Project Roadmap</title>
+<meta name="description" content="AUA framework mid-term project roadmap. Staged build plan from package foundation to frontier-scale deployment.">
+<meta name="author" content="Praneeth Tota">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f6f2; --paper: #ffffff; --ink: #18181b;
+  --muted: #6b7280; --line: #e4e1da; --accent: #4338ca;
+  --accent2: #0f766e; --accent3: #c2410c; --accent4: #7c3aed;
+  --accent5: #0369a1;
+  --soft: #f0ede6; --soft2: #ecfdf5; --soft3: #fff7ed;
+  --soft4: #f5f3ff; --soft5: #e0f2fe;
+  --code-bg: #f2f0eb; --tag-bg: #eef2ff; --tag-text: #4338ca;
+  --s1: #4338ca; --s2: #0f766e; --s3: #c2410c;
+  --s4: #7c3aed; --s5: #0369a1;
+  --s1-soft: #eef2ff; --s2-soft: #ecfdf5; --s3-soft: #fff7ed;
+  --s4-soft: #f5f3ff; --s5-soft: #e0f2fe;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { font-family: 'DM Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.75; color: var(--ink); background: var(--bg); margin: 0; padding: 0; }
+.page { max-width: 1040px; margin: 0 auto; padding: 0 0 5rem; background: var(--paper); border-left: 1px solid var(--line); border-right: 1px solid var(--line); min-height: 100vh; }
+
+/* NAV */
+nav { display: flex; flex-wrap: wrap; gap: .6rem .9rem; padding: 1rem 2rem; border-bottom: 1px solid var(--line); background: #fafaf8; font-size: .88rem; position: sticky; top: 0; z-index: 10; }
+nav a { color: var(--accent); text-decoration: none; font-weight: 500; }
+nav a:hover { text-decoration: underline; }
+nav a.active { color: var(--ink); font-weight: 600; }
+
+/* HERO */
+.hero { padding: 3rem 2.5rem 2.5rem; border-bottom: 1px solid var(--line); background: linear-gradient(160deg, #f0ede6 0%, #fff 60%); }
+.hero-tag { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: .72rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; background: var(--tag-bg); color: var(--tag-text); padding: .25rem .7rem; border-radius: 999px; margin-bottom: 1.2rem; }
+.hero h1 { font-family: 'DM Serif Display', Georgia, serif; font-size: 2.4rem; line-height: 1.2; margin: 0 0 .75rem; color: var(--ink); }
+.hero .subtitle { font-size: 1.05rem; color: #444; max-width: 760px; margin-bottom: 1.25rem; line-height: 1.65; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: .88rem; color: var(--muted); }
+.hero-meta span strong { color: var(--ink); }
+
+/* BODY */
+.body { padding: 2rem 2.5rem 0; }
+h2 { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.5rem; line-height: 1.3; margin: 3rem 0 .75rem; padding-bottom: .5rem; border-bottom: 2px solid var(--line); color: var(--ink); scroll-margin-top: 60px; }
+h3 { font-size: 1.05rem; font-weight: 600; margin: 1.8rem 0 .5rem; color: #222; }
+p { margin: 0 0 1rem; }
+a { color: var(--accent); }
+ul, ol { margin: .3rem 0 1rem; padding-left: 1.3rem; }
+li { margin: .3rem 0; }
+code { font-family: 'JetBrains Mono', monospace; font-size: .82rem; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: #333; }
+pre { background: var(--code-bg); border: 1px solid #e0dbd4; border-radius: 8px; padding: 1.1rem 1.25rem; overflow-x: auto; margin: .75rem 0 1.5rem; font-size: .79rem; line-height: 1.7; font-family: 'JetBrains Mono', monospace; color: #222; }
+
+/* STAGE CARDS */
+.stage { border-radius: 12px; border: 1.5px solid var(--line); margin: 2rem 0; overflow: hidden; }
+.stage-header { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--line); }
+.stage-num { font-family: 'JetBrains Mono', monospace; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; padding: .3rem .8rem; border-radius: 999px; color: #fff; flex-shrink: 0; }
+.stage-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 1.2rem; margin: 0; color: var(--ink); }
+.stage-subtitle { font-size: .88rem; color: var(--muted); margin: 0; }
+.stage-meta { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: .2rem; flex-shrink: 0; }
+.stage-timeline { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--muted); }
+.stage-body { padding: 1.25rem 1.5rem; }
+
+/* STAGE COLORS */
+.stage-1 .stage-header { background: var(--s1-soft); }
+.stage-1 .stage-num { background: var(--s1); }
+.stage-2 .stage-header { background: var(--s2-soft); }
+.stage-2 .stage-num { background: var(--s2); }
+.stage-3 .stage-header { background: var(--s3-soft); }
+.stage-3 .stage-num { background: var(--s3); }
+.stage-4 .stage-header { background: var(--s4-soft); }
+.stage-4 .stage-num { background: var(--s4); }
+.stage-5 .stage-header { background: var(--s5-soft); }
+.stage-5 .stage-num { background: var(--s5); }
+
+/* TASK GROUPS */
+.task-group { margin-bottom: 1.5rem; }
+.task-group-label { font-family: 'JetBrains Mono', monospace; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .6rem; display: block; }
+
+/* TASK ITEMS */
+.tasks { display: flex; flex-direction: column; gap: .5rem; }
+.task { display: flex; gap: .75rem; align-items: flex-start; padding: .75rem 1rem; border-radius: 8px; border: 1px solid var(--line); background: #fafaf8; }
+.task-id { font-family: 'JetBrains Mono', monospace; font-size: .7rem; font-weight: 600; color: var(--muted); flex-shrink: 0; min-width: 2.5rem; margin-top: .15rem; }
+.task-body { flex: 1; }
+.task-title { font-weight: 600; font-size: .92rem; color: var(--ink); display: block; margin-bottom: .15rem; }
+.task-desc { font-size: .85rem; color: #555; line-height: 1.6; margin: 0; }
+.task-desc code { font-size: .78rem; }
+.task-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
+.tag { font-family: 'JetBrains Mono', monospace; font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: .1rem .45rem; border-radius: 4px; }
+.tag.new   { background: #dcfce7; color: #166534; }
+.tag.code  { background: #dbeafe; color: #1e40af; }
+.tag.infra { background: #fce7f3; color: #9d174d; }
+.tag.doc   { background: #fef9c3; color: #854d0e; }
+.tag.sec   { background: #fee2e2; color: #991b1b; }
+.tag.ml    { background: #f5f3ff; color: #5b21b6; }
+.tag.ops   { background: #e0f2fe; color: #0369a1; }
+
+/* STATUS BADGE */
+.badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: .68rem; font-weight: 600; padding: .15rem .5rem; border-radius: 4px; text-transform: uppercase; letter-spacing: .05em; vertical-align: middle; }
+.badge.done     { background: #dcfce7; color: #166534; }
+.badge.wip      { background: #fef9c3; color: #854d0e; }
+.badge.planned  { background: #f1f5f9; color: #64748b; }
+.badge.research { background: #f5f3ff; color: #5b21b6; }
+
+/* OVERVIEW TABLE */
+.overview { width: 100%; border-collapse: collapse; font-size: .88rem; margin: 1.5rem 0; }
+.overview th { text-align: left; border-bottom: 2px solid #c0bab2; padding: 8px 12px; font-size: .8rem; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .05em; }
+.overview td { padding: 10px 12px; border-bottom: 1px solid #e8e4de; vertical-align: top; }
+.overview tr:nth-child(even) td { background: #fafaf8; }
+.stage-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: .4rem; vertical-align: middle; }
+
+/* CALLOUT */
+.callout { background: var(--soft); border-left: 4px solid var(--accent); padding: 1rem 1.25rem; margin: 1.25rem 0 1.5rem; border-radius: 0 8px 8px 0; }
+.callout.green { background: var(--soft2); border-left-color: var(--accent2); }
+.callout.orange { background: var(--soft3); border-left-color: var(--accent3); }
+.callout p { margin: 0; }
+
+/* TOC */
+.toc { background: var(--soft); border-radius: 10px; padding: 1.1rem 1.4rem; margin: 1.5rem 0 2rem; }
+.toc p { font-weight: 600; margin-bottom: .5rem; }
+.toc ol { margin: 0; column-count: 2; column-gap: 2rem; }
+.toc li { font-size: .9rem; margin: .2rem 0; break-inside: avoid; }
+.toc a { color: var(--accent); text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
+
+/* PROGRESS BAR */
+.progress-bar { background: var(--line); border-radius: 999px; height: 6px; margin-top: .5rem; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 999px; }
+
+/* STAT GRID */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.stat { border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.1rem; background: #fff; text-align: center; }
+.stat-num { font-family: 'DM Serif Display', Georgia, serif; font-size: 2rem; color: var(--accent); display: block; line-height: 1.1; }
+.stat-label { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+
+@media (max-width: 640px) {
+  .hero h1 { font-size: 1.8rem; }
+  .body { padding: 1.5rem 1.25rem 0; }
+  nav { display: none; }
+  .toc ol { column-count: 1; }
+  .stage-meta { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <a href="whitepaper_v05.html">Home</a>
+  <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+  <a href="tutorial_v0_5.html">Tutorial</a>
+  <a href="productionizing_adaptive_utility_agent_v0_5.html">Production Design</a>
+  <a href="aua_roadmap.html" class="active">Roadmap</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Mid-Term Project &middot; Roadmap</div>
+  <h1>AUA Framework Roadmap</h1>
+  <p class="subtitle">
+    A staged build plan for turning Adaptive Utility Agents from a research POC into a production-grade, installable AI framework. Each stage is independently shippable and builds directly on the previous one.
+  </p>
+  <div class="hero-meta">
+    <span><strong>Author:</strong> Praneeth Tota</span>
+    <span><strong>Started:</strong> 2026</span>
+    <span><strong>Current:</strong> Pre-Stage 1 (POC validated)</span>
+    <span><strong>Total items:</strong> 73</span>
+  </div>
+</div>
+
+<div class="body">
+
+<!-- OVERVIEW STATS -->
+<div class="stat-grid">
+  <div class="stat">
+    <span class="stat-num">5</span>
+    <span class="stat-label">Build stages</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">73</span>
+    <span class="stat-label">Tracked items</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">14</span>
+    <span class="stat-label">Stage 1 items (now)</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">$20</span>
+    <span class="stat-label">POC cost (validated)</span>
+  </div>
+</div>
+
+<!-- OVERVIEW TABLE -->
+<h2 id="overview">Stage overview</h2>
+
+<table class="overview">
+  <thead>
+    <tr>
+      <th>Stage</th>
+      <th>Name</th>
+      <th>Goal</th>
+      <th>Items</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="stage-dot" style="background:var(--s1)"></span><strong>Stage 1</strong></td>
+      <td>Foundation</td>
+      <td>Installable Python package. Import API. YAML config. CLI. Basic endpoints. Docker.</td>
+      <td>14</td>
+      <td><span class="badge wip">In planning</span></td>
+    </tr>
+    <tr>
+      <td><span class="stage-dot" style="background:var(--s2)"></span><strong>Stage 2</strong></td>
+      <td>Security + Observability</td>
+      <td>mTLS, IAM, session IDs, OTEL, Prometheus, Grafana, Splunk, Datadog, audit log.</td>
+      <td>18</td>
+      <td><span class="badge planned">Planned</span></td>
+    </tr>
+    <tr>
+      <td><span class="stage-dot" style="background:var(--s3)"></span><strong>Stage 3</strong></td>
+      <td>High Availability</td>
+      <td>KRaft consensus, Kubernetes mode, Helm, leader election, circuit breakers, failover.</td>
+      <td>14</td>
+      <td><span class="badge planned">Planned</span></td>
+    </tr>
+    <tr>
+      <td><span class="stage-dot" style="background:var(--s4)"></span><strong>Stage 4</strong></td>
+      <td>ML Lifecycle + Extensibility</td>
+      <td>Model registry, experiment tracking, plugin system, shadow mode, multi-tenancy.</td>
+      <td>16</td>
+      <td><span class="badge planned">Planned</span></td>
+    </tr>
+    <tr>
+      <td><span class="stage-dot" style="background:var(--s5)"></span><strong>Stage 5</strong></td>
+      <td>Scale + Frontier</td>
+      <td>Multi-language SDKs, load testing, compatibility matrix, hardware tier templates, tutorial rewrite.</td>
+      <td>11</td>
+      <td><span class="badge research">Research</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout green">
+  <p><strong>POC baseline validated.</strong> Stages 0&ndash;2 of the experiment are complete. VCG arbitration: +43.3pp routing gain (p=0.0003, d=1.02). 502 DPO pairs accumulated. LoRA training and blue-green cycles underway. This roadmap picks up from that foundation and describes what it takes to ship AUA as a real framework.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="stage stage-1" id="stage1">
+  <div class="stage-header">
+    <div>
+      <span class="stage-num">Stage 1</span>
+    </div>
+    <div>
+      <p class="stage-title">Foundation &mdash; Installable Framework</p>
+      <p class="stage-subtitle">Turn the POC scripts into a proper Python package with import API, YAML config, CLI, REST endpoints, and Docker support.</p>
+    </div>
+    <div class="stage-meta">
+      <span class="badge wip">In planning</span>
+      <span class="stage-timeline">14 items</span>
+    </div>
+  </div>
+  <div class="stage-body">
+
+    <div class="task-group">
+      <span class="task-group-label">Package structure</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#01</span>
+          <div class="task-body">
+            <span class="task-title">Create proper Python package structure</span>
+            <p class="task-desc">Restructure the repo so it installs as a proper package via <code>pip install aua</code> or <code>pip install -e .</code>. Add <code>pyproject.toml</code>, <code>setup.py</code>, and a top-level <code>aua/</code> module with <code>__init__.py</code> exposing the public API surface.</p>
+            <pre>aua/
+  __init__.py         # top-level imports
+  router.py
+  arbiter.py
+  utility_scorer.py
+  field_classifier.py
+  correction_loop.py
+  blue_green.py
+  config.py           # YAML loader
+  cli.py              # aua serve / aua init / aua doctor
+pyproject.toml
+README.md</pre>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">foundation</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#02</span>
+          <div class="task-body">
+            <span class="task-title">Top-level Python import API</span>
+            <p class="task-desc">Clean public surface so users import framework components the same way they import FastAPI or LangChain. Every core class exposed at the top level.</p>
+            <pre>from aua import Router, Arbiter, UtilityScorer
+from aua import BlueGreenDeployment, CorrectionLoop
+from aua import FieldClassifier, AssertionsStore
+from aua.config import load_config
+
+config = load_config("aua_config.yaml")
+router = Router.from_config(config)
+result = await router.query("Write binary search. State time complexity.")</pre>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">foundation</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#03</span>
+          <div class="task-body">
+            <span class="task-title">YAML config file &mdash; single source of truth</span>
+            <p class="task-desc">All deployment values (specialist endpoints, GPU assignments, field configs, promotion thresholds, arbiter location) live in one annotated <code>aua_config.yaml</code>. Framework reads it on startup. No hardcoded values anywhere in the codebase.</p>
+            <pre>aua:
+  version: "0.5"
+  mode: local              # local | kubernetes | cluster
+
+specialists:
+  - name: swe
+    model: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
+    port: 9001
+    gpu: 0
+    gpu_memory_utilization: 0.34
+    field: software_engineering
+  - name: math
+    model: Qwen/Qwen2.5-7B-Instruct-AWQ
+    port: 9002
+    gpu: 0
+    gpu_memory_utilization: 0.34
+    field: mathematics
+
+arbiter:
+  model: Qwen/Qwen2.5-3B-Instruct-AWQ
+  port: 9003
+  gpu: 0
+  gpu_memory_utilization: 0.18
+
+router:
+  port: 8000
+  fanout_threshold: 0.30
+  single_domain_threshold: 0.80
+
+blue_green:
+  swe:   { delta: 0.025, T_min: 10, tau: 0.20 }
+  math:  { delta: 0.025, T_min: 10, tau: 0.20 }
+
+fields:
+  software_engineering:
+    w_efficacy: 0.55
+    w_confidence: 0.35
+    w_curiosity: 0.10
+    c_min: 0.70
+    penalty_multiplier: 2.0</pre>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">foundation</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="task-group">
+      <span class="task-group-label">CLI</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#04</span>
+          <div class="task-body">
+            <span class="task-title"><code>aua serve</code> &mdash; single command startup</span>
+            <p class="task-desc">Reads <code>aua_config.yaml</code>, starts all vLLM specialist servers, wires up the router and arbiter, and exposes the FastAPI endpoints. Like <code>uvicorn main:app</code> or <code>flink run</code>. No manual vLLM commands.</p>
+            <pre>aua serve                          # uses aua_config.yaml in cwd
+aua serve --config ./my_config.yaml
+aua serve --tier macbook           # uses built-in MacBook template</pre>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">foundation</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#05</span>
+          <div class="task-body">
+            <span class="task-title"><code>aua init</code> &mdash; scaffolding command</span>
+            <p class="task-desc">Generates a starter <code>aua_config.yaml</code> for the user's chosen hardware tier. Pre-built templates for every scale tier shipped with the package.</p>
+            <pre>aua init --tier macbook        # MacBook Pro / gaming PC
+aua init --tier single-4090   # 1x RTX 4090 (our POC)
+aua init --tier quad-4090     # 4x RTX 4090 small production
+aua init --tier a100-cluster  # 8x A100 large production</pre>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">foundation</span><span class="tag doc">doc</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#06</span>
+          <div class="task-body">
+            <span class="task-title"><code>aua status</code> &mdash; live terminal dashboard</span>
+            <p class="task-desc">Shows all specialists (up/down, VRAM, latency), current U scores, blue-green traffic splits, contradiction rates, and arbiter verdict distribution. Refreshes every 2 seconds.</p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#07</span>
+          <div class="task-body">
+            <span class="task-title"><code>aua doctor</code> &mdash; diagnostics</span>
+            <p class="task-desc">Checks the entire setup: GPU memory available, model files present, ports free, config valid, all specialists reachable, YAML schema valid. Outputs pass/fail per check with fix instructions.</p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#08</span>
+          <div class="task-body">
+            <span class="task-title"><code>aua rollback</code> &mdash; one-command revert</span>
+            <p class="task-desc">Reverts the most recent blue-green promotion. Restores BLUE from the pre-promotion checkpoint and restarts the specialist server. Critical for production safety.</p>
+            <pre>aua rollback --specialist swe   # revert SWE to last stable
+aua rollback --all              # revert all promoted specialists</pre>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="task-group">
+      <span class="task-group-label">REST API endpoints</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#09</span>
+          <div class="task-body">
+            <span class="task-title">Core FastAPI endpoint suite</span>
+            <p class="task-desc">Expose all framework functions as REST endpoints. The framework works both as an importable library AND as a running service. Auto-generated Swagger UI at <code>/docs</code> and ReDoc at <code>/redoc</code>.</p>
+            <pre>POST /query                  # route query through specialist graph
+POST /query/batch            # batch inference (multiple queries)
+GET  /health/live            # liveness probe (Kubernetes-compatible)
+GET  /health/ready           # readiness probe (all specialists up)
+GET  /health/startup         # startup probe (framework initialized)
+POST /corrections            # inject a correction manually
+GET  /config                 # current loaded config (read-only)
+POST /deploy/green           # trigger blue-green promotion check
+GET  /docs                   # Swagger UI (auto-generated)
+GET  /redoc                  # ReDoc (auto-generated)</pre>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">foundation</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#10</span>
+          <div class="task-body">
+            <span class="task-title">Streaming response support</span>
+            <p class="task-desc">Token-by-token streaming like OpenAI's API. Without it, users wait for the full specialist response before seeing anything. Use FastAPI's <code>StreamingResponse</code> with vLLM's streaming output.</p>
+            <pre>POST /query/stream            # server-sent events, token-by-token</pre>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">foundation</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="task-group">
+      <span class="task-group-label">Packaging and deployment</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#11</span>
+          <div class="task-body">
+            <span class="task-title">Official Dockerfile + docker-compose</span>
+            <p class="task-desc">Local dev setup in one command. Every serious framework ships this. <code>docker-compose up</code> starts all specialists, arbiter, router, and the API server.</p>
+            <pre>docker-compose up             # starts everything from config
+docker-compose --profile gpu up   # GPU-enabled variant</pre>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag new">foundation</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#12</span>
+          <div class="task-body">
+            <span class="task-title">Hardware tier config templates</span>
+            <p class="task-desc">Pre-built and shipped with the package. Each template specifies: which specialists to run, GPU assignments, memory splits, arbiter placement, and promotion thresholds tuned for that hardware.</p>
+            <pre>aua/templates/
+  macbook.yaml          # CPU / MPS, 1.5-3B models
+  single_4090.yaml      # 1x RTX 4090, 7B AWQ x3
+  quad_4090.yaml        # 4x RTX 4090, 8 specialists
+  a100_8x.yaml          # 8x A100, 20+ specialists, 13B models
+  h100_cluster.yaml     # multi-node, frontier scale</pre>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag doc">doc</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#13</span>
+          <div class="task-body">
+            <span class="task-title">Hot reload for <code>aua_config.yaml</code></span>
+            <p class="task-desc">Reload config without restarting services. Field weights, promotion thresholds, routing parameters update live. Specialist additions require a partial restart (new server only). Use <code>watchfiles</code> or <code>SIGHUP</code>.</p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#14</span>
+          <div class="task-body">
+            <span class="task-title">Tutorial rewrite &mdash; framework-style, hardware-first</span>
+            <p class="task-desc">Full rewrite of the builder's tutorial to read like FastAPI or PyFlink docs: imperative, "here is what you run," with collapsible sections for provisioning details, cloud-specific gotchas, and hardware-specific notes. Full DPO cycle as canonical walkthrough. Simulations as appendixes.</p>
+            <div class="task-tags"><span class="tag doc">doc</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="stage stage-2" id="stage2">
+  <div class="stage-header">
+    <div>
+      <span class="stage-num">Stage 2</span>
+    </div>
+    <div>
+      <p class="stage-title">Security + Observability</p>
+      <p class="stage-subtitle">mTLS internal encryption, IAM token auth, session tracking, audit logs, and full telemetry stack: OTEL, Prometheus, Grafana, ELK, Splunk, Datadog.</p>
+    </div>
+    <div class="stage-meta">
+      <span class="badge planned">Planned</span>
+      <span class="stage-timeline">18 items</span>
+    </div>
+  </div>
+  <div class="stage-body">
+
+    <div class="task-group">
+      <span class="task-group-label">Security</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#15</span>
+          <div class="task-body">
+            <span class="task-title">Session IDs &mdash; end-to-end query tracking</span>
+            <p class="task-desc">Every query gets a unique UUID session ID generated at the router. Tracked through router &rarr; field classifier &rarr; specialist(s) &rarr; arbiter &rarr; correction loop &rarr; response. Used for audit logging, replay, and distributed tracing correlation.</p>
+            <div class="task-tags"><span class="tag sec">security</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#16</span>
+          <div class="task-body">
+            <span class="task-title">mTLS &mdash; encrypted internal communication</span>
+            <p class="task-desc">All internal component communication (router &harr; specialists, router &harr; arbiter, arbiter &harr; correction loop) encrypted with mutual TLS. Certificates auto-generated on <code>aua init</code>, stored in config-specified path. No plaintext internal traffic.</p>
+            <pre>aua/
+  certs/
+    ca.crt
+    router.crt / router.key
+    swe.crt    / swe.key
+    arbiter.crt / arbiter.key</pre>
+            <div class="task-tags"><span class="tag sec">security</span><span class="tag infra">infra</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#17</span>
+          <div class="task-body">
+            <span class="task-title">IAM and bearer token authentication</span>
+            <p class="task-desc">External API endpoints require signed bearer tokens. Token scopes control access level. Tokens verified on every request before query processing begins.</p>
+            <pre>aua:query   # submit queries (standard users)
+aua:admin   # deploy, config changes, blue-green triggers
+aua:read    # metrics and health endpoints only</pre>
+            <div class="task-tags"><span class="tag sec">security</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#18</span>
+          <div class="task-body">
+            <span class="task-title">Token management CLI</span>
+            <p class="task-desc">Generate, list, and revoke API tokens from the command line. Tokens are signed JWTs. Revocation is immediate via a blocklist checked on every request.</p>
+            <pre>aua token create --scope aua:query --expires 30d
+aua token list
+aua token revoke &lt;token-id&gt;</pre>
+            <div class="task-tags"><span class="tag sec">security</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#19</span>
+          <div class="task-body">
+            <span class="task-title">Secrets management &mdash; no plaintext in config</span>
+            <p class="task-desc"><code>aua_config.yaml</code> references secret names, not values. Secrets loaded from env vars or a secrets manager. Supports: environment variables, HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager. Import existing libraries: <code>hvac</code> (Vault), <code>boto3</code> (AWS), <code>google-cloud-secret-manager</code> (GCP).</p>
+            <div class="task-tags"><span class="tag sec">security</span><span class="tag infra">infra</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#20</span>
+          <div class="task-body">
+            <span class="task-title">Audit log &mdash; append-only, tamper-evident</span>
+            <p class="task-desc">Every API call, routing decision, correction, and blue-green promotion logged with: session ID, token ID, timestamp, specialist, field, utility score, verdict, latency. Append-only. Hash-chained for tamper evidence. Required for DSA compliance.</p>
+            <div class="task-tags"><span class="tag sec">security</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#21</span>
+          <div class="task-body">
+            <span class="task-title">Rate limiting and quota management</span>
+            <p class="task-desc">Per-token rate limits configurable in <code>aua_config.yaml</code>. Hard caps with configurable overage behavior (reject / queue / alert). Import <code>slowapi</code> or <code>limits</code> library — no need to build from scratch.</p>
+            <div class="task-tags"><span class="tag sec">security</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#22</span>
+          <div class="task-body">
+            <span class="task-title">CORS and network policy</span>
+            <p class="task-desc">External endpoints expose only what's declared in config. Internal specialist ports never exposed externally. mTLS enforces this at the network layer. CORS origins configurable per deployment.</p>
+            <div class="task-tags"><span class="tag sec">security</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="task-group">
+      <span class="task-group-label">Telemetry and observability</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#23</span>
+          <div class="task-body">
+            <span class="task-title">OpenTelemetry (OTEL) instrumentation</span>
+            <p class="task-desc">Instrument all framework components with the OTEL SDK. Every query, routing decision, arbitration, correction, and blue-green event emits traces, metrics, and logs through the OTEL collector. One integration routes to any backend. Import <code>opentelemetry-sdk</code>, <code>opentelemetry-instrumentation-fastapi</code>.</p>
+            <div class="task-tags"><span class="tag ops">ops</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#24</span>
+          <div class="task-body">
+            <span class="task-title">Prometheus metrics endpoint</span>
+            <p class="task-desc"><code>GET /metrics</code> exposes Prometheus-format metrics covering every dimension of the framework: queries, latency, utility scores, contradiction rates, routing distribution, specialist confidence, blue-green traffic splits, auth failures.</p>
+            <pre>aua_query_total                  aua_query_latency_seconds
+aua_utility_score                aua_contradiction_rate
+aua_routing_field_distribution   aua_specialist_confidence
+aua_bluegreen_traffic_split      aua_correction_count
+aua_abstention_rate              aua_arbiter_verdict_distribution
+aua_dpo_pairs_accumulated        aua_token_requests_total
+aua_token_requests_rejected      aua_specialist_vram_utilization</pre>
+            <div class="task-tags"><span class="tag ops">ops</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#25</span>
+          <div class="task-body">
+            <span class="task-title">Grafana dashboard &mdash; pre-built, shipped with package</span>
+            <p class="task-desc">Pre-built dashboard JSON shipped with the framework. <code>aua init</code> drops it into the config directory. Import into any Grafana instance and it works out of the box against the Prometheus endpoint. No manual panel setup.</p>
+            <div class="task-tags"><span class="tag ops">ops</span><span class="tag doc">doc</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#26</span>
+          <div class="task-body">
+            <span class="task-title">Structured logging for ELK / Splunk</span>
+            <p class="task-desc">All logs emitted as structured JSON with consistent fields: <code>session_id</code>, <code>token_id</code>, <code>specialist</code>, <code>field</code>, <code>utility_score</code>, <code>confidence</code>, <code>contradiction</code>, <code>verdict</code>, <code>latency_ms</code>. Drop into Logstash, Fluentd, or Splunk forwarder with zero transformation. Import <code>python-json-logger</code>.</p>
+            <div class="task-tags"><span class="tag ops">ops</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#27</span>
+          <div class="task-body">
+            <span class="task-title">Datadog integration</span>
+            <p class="task-desc">OTEL collector config ships with a Datadog exporter preset. Set <code>DD_API_KEY</code> in env, point <code>aua_config.yaml</code> at the Datadog exporter. APM traces, metrics, and logs flow to Datadog automatically. No custom Datadog agent required.</p>
+            <div class="task-tags"><span class="tag ops">ops</span><span class="tag infra">infra</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#28</span>
+          <div class="task-body">
+            <span class="task-title">Distributed tracing</span>
+            <p class="task-desc">Every query gets a trace ID that follows it through router &rarr; field classifier &rarr; specialist(s) &rarr; arbiter &rarr; correction loop &rarr; response. Visible in Jaeger, Zipkin, Datadog APM, or any OTEL-compatible backend. Trace ID included in all API responses.</p>
+            <div class="task-tags"><span class="tag ops">ops</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#29</span>
+          <div class="task-body">
+            <span class="task-title">Pre-built Prometheus alerting rules</span>
+            <p class="task-desc">Alerting rules shipped with the framework, ready to load into Prometheus Alertmanager or Grafana. PagerDuty and Slack webhook integration configurable in <code>aua_config.yaml</code>.</p>
+            <pre>AUA_HighContradictionRate     # &gt;10% over 5min window
+AUA_SpecialistDown            # any specialist unreachable
+AUA_LowUtilityScore           # mean U &lt; 0.45 over 10min
+AUA_BlueGreenStalled          # no decision in 24hr
+AUA_ArbiterCaseFourSpike      # inconclusive verdicts &gt;20%
+AUA_TokenRejectionSpike       # auth failures &gt;5% of requests</pre>
+            <div class="task-tags"><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#30</span>
+          <div class="task-body">
+            <span class="task-title">Webhook events &mdash; external system integration</span>
+            <p class="task-desc"><code>POST</code> to a user-configured URL when: specialist promoted, contradiction detected above threshold, Arbiter Case 4 fired, specialist goes down. Integrates with PagerDuty, Slack, OpsGenie, custom webhooks.</p>
+            <div class="task-tags"><span class="tag ops">ops</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#31</span>
+          <div class="task-body">
+            <span class="task-title">Encrypted internal values at rest and in transit</span>
+            <p class="task-desc">Sensitive values passed between components (correction payloads, DPO pairs, assertion store entries) encrypted at rest and in transit. Key managed per deployment. Use <code>cryptography</code> library &mdash; AES-256-GCM for at-rest, mTLS for in-transit.</p>
+            <div class="task-tags"><span class="tag sec">security</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#32</span>
+          <div class="task-body">
+            <span class="task-title">Cost tracking endpoint</span>
+            <p class="task-desc">GPU hours per query, cost per specialist call, cost per blue-green cycle. Exposed via <code>GET /metrics/cost</code> and visible in Grafana dashboard. Configurable $/GPU-hour rate in <code>aua_config.yaml</code>.</p>
+            <div class="task-tags"><span class="tag ops">ops</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="stage stage-3" id="stage3">
+  <div class="stage-header">
+    <div>
+      <span class="stage-num">Stage 3</span>
+    </div>
+    <div>
+      <p class="stage-title">High Availability</p>
+      <p class="stage-subtitle">KRaft consensus for leader election, Kubernetes mode with Helm, circuit breakers, automatic failover, shared state via etcd.</p>
+    </div>
+    <div class="stage-meta">
+      <span class="badge planned">Planned</span>
+      <span class="stage-timeline">14 items</span>
+    </div>
+  </div>
+  <div class="stage-body">
+
+    <div class="callout orange">
+      <p><strong>Library-first principle.</strong> Nothing in Stage 3 is built from scratch. We import and wire existing production-grade libraries: <code>kafka-python</code> or <code>confluent-kafka</code> for KRaft, <code>etcd3</code> for shared state, <code>python-consul</code> for service discovery, <code>tenacity</code> for retry logic, <code>circuitbreaker</code> for circuit breaking. Our contribution is the AUA-specific wiring and config surface, not the consensus algorithms.</p>
+    </div>
+
+    <div class="task-group">
+      <span class="task-group-label">Consensus and coordination</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#33</span>
+          <div class="task-body">
+            <span class="task-title">KRaft consensus for coordinator election</span>
+            <p class="task-desc">Use Apache Kafka's KRaft mode (via <code>confluent-kafka</code>) as the coordination layer. Router, arbiter, and blue-green controller elect a leader. If leader dies, a follower takes over automatically. No ZooKeeper required. Election completes in under 5 seconds.</p>
+            <pre>ha:
+  mode: kraft
+  kafka:
+    brokers: ["kafka1:9092", "kafka2:9092"]
+  replicas:
+    router: 3
+    arbiter: 2</pre>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#34</span>
+          <div class="task-body">
+            <span class="task-title">Leader election for router and arbiter</span>
+            <p class="task-desc">Multiple router replicas run simultaneously. One is elected leader via etcd or KRaft. Leader handles blue-green promotion decisions and config changes. Follower routers continue serving queries throughout any election. Import <code>etcd3</code> for the lock primitive.</p>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#35</span>
+          <div class="task-body">
+            <span class="task-title">Shared state via etcd</span>
+            <p class="task-desc">Domain confidence EMA, active corrections, blue-green traffic split ratios stored in etcd so all router replicas see the same values. No stale routing decisions from lagging replicas. Import <code>etcd3</code> &mdash; drop-in key-value store with watch support.</p>
+            <pre>ha:
+  etcd:
+    endpoints:
+      - "http://etcd1:2379"
+      - "http://etcd2:2379"
+      - "http://etcd3:2379"</pre>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#36</span>
+          <div class="task-body">
+            <span class="task-title">Service discovery via Consul</span>
+            <p class="task-desc">Specialists register themselves with Consul on startup. Router discovers specialist endpoints dynamically from Consul rather than hardcoded config. New specialists added to the graph without router restart. Import <code>python-consul</code>.</p>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="task-group">
+      <span class="task-group-label">Failure handling</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#37</span>
+          <div class="task-body">
+            <span class="task-title">Circuit breaker per specialist endpoint</span>
+            <p class="task-desc">Prevents cascade failures when a specialist is slow or flapping. After N failures, circuit opens and router stops calling that specialist. After recovery timeout, circuit half-opens and tests with one request. Import <code>circuitbreaker</code> library.</p>
+            <pre>ha:
+  circuit_breaker:
+    failure_threshold: 5
+    recovery_timeout: 30s
+    half_open_max_calls: 1</pre>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#38</span>
+          <div class="task-body">
+            <span class="task-title">Automatic failover with health-based routing</span>
+            <p class="task-desc">Consul health checks detect a dead specialist within 10 seconds. Router automatically stops routing to it. When it recovers, Consul marks it healthy and router resumes. No manual intervention. Dead specialist's load redistributes to the arbiter and general fallback automatically.</p>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#39</span>
+          <div class="task-body">
+            <span class="task-title">Retry logic with exponential backoff</span>
+            <p class="task-desc">All inter-component calls (router &rarr; specialist, router &rarr; arbiter) retried automatically on transient failures. Exponential backoff with jitter prevents thundering herd. Import <code>tenacity</code> &mdash; decorator-based, no boilerplate.</p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag infra">infra</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="task-group">
+      <span class="task-group-label">Kubernetes mode</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#40</span>
+          <div class="task-body">
+            <span class="task-title">Kubernetes manifest generation</span>
+            <p class="task-desc">When <code>mode: kubernetes</code> is set in config, <code>aua serve</code> generates and applies Kubernetes manifests instead of starting local processes. One Deployment per specialist, HorizontalPodAutoscaler per specialist, ClusterIP Services (internal only), LoadBalancer for external API.</p>
+            <div class="task-tags"><span class="tag infra">infra</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#41</span>
+          <div class="task-body">
+            <span class="task-title">Helm charts</span>
+            <p class="task-desc">Parameterized Kubernetes deployment. Without it, Kubernetes mode requires too much manual YAML. Helm chart ships with the package. Values file maps directly to <code>aua_config.yaml</code> structure.</p>
+            <pre>helm install aua ./charts/aua \
+  --values aua_config.yaml \
+  --set ha.replicas.router=3</pre>
+            <div class="task-tags"><span class="tag infra">infra</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#42</span>
+          <div class="task-body">
+            <span class="task-title">Backup and restore</span>
+            <p class="task-desc"><code>aua backup</code> snapshots the assertions store, DPO pairs, model checkpoints, and config to S3 / GCS / Azure Blob. <code>aua restore</code> brings a deployment back from a snapshot. Import <code>boto3</code>, <code>google-cloud-storage</code>, <code>azure-storage-blob</code> depending on provider.</p>
+            <pre>aua backup --dest s3://my-bucket/aua-snapshots/
+aua restore --from s3://my-bucket/aua-snapshots/2026-05-08/</pre>
+            <div class="task-tags"><span class="tag ops">ops</span><span class="tag infra">infra</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#43</span>
+          <div class="task-body">
+            <span class="task-title">HA config section in <code>aua_config.yaml</code></span>
+            <p class="task-desc">Clean, documented config surface for all HA settings. Single section controls: mode (kraft / kubernetes / none), replica counts, etcd endpoints, Kafka brokers, circuit breaker thresholds, health check intervals.</p>
+            <pre>ha:
+  mode: kraft              # kraft | kubernetes | none
+  replicas:
+    router: 3
+    arbiter: 2
+  etcd:
+    endpoints: ["http://etcd1:2379"]
+  kafka:
+    brokers: ["kafka1:9092"]
+  circuit_breaker:
+    failure_threshold: 5
+    recovery_timeout: 30s
+  health_check_interval: 10s</pre>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag doc">doc</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#44</span>
+          <div class="task-body">
+            <span class="task-title">Multi-tenancy &mdash; isolated namespaces per tenant</span>
+            <p class="task-desc">Isolated namespaces per tenant on shared infrastructure. Tenant-specific field configs, correction stores, DPO histories, and U score histories. Tenant ID derived from token scope. Critical for SaaS deployments where multiple orgs share the same specialist graph.</p>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag sec">security</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#45</span>
+          <div class="task-body">
+            <span class="task-title">Semantic caching via Redis</span>
+            <p class="task-desc">Cache responses for semantically similar queries using Redis + embedding similarity. Reduces GPU load significantly at scale. Cache keyed on embedding similarity above a threshold (default 0.95). Import <code>redis</code> and any embedding model already loaded as a specialist.</p>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="stage stage-4" id="stage4">
+  <div class="stage-header">
+    <div>
+      <span class="stage-num">Stage 4</span>
+    </div>
+    <div>
+      <p class="stage-title">ML Lifecycle + Extensibility</p>
+      <p class="stage-subtitle">Model registry, experiment tracking, shadow mode, plugin system, middleware pipeline, regression test suite.</p>
+    </div>
+    <div class="stage-meta">
+      <span class="badge planned">Planned</span>
+      <span class="stage-timeline">16 items</span>
+    </div>
+  </div>
+  <div class="stage-body">
+
+    <div class="task-group">
+      <span class="task-group-label">ML lifecycle</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#46</span>
+          <div class="task-body">
+            <span class="task-title">Model registry integration</span>
+            <p class="task-desc">Track which specialist versions are deployed, when, and what their metrics were at promotion time. Supports HuggingFace Hub and MLflow Model Registry. Every promotion writes a registry entry with: model version, U score delta, DPO pair count, training hyperparams.</p>
+            <div class="task-tags"><span class="tag ml">ml</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#47</span>
+          <div class="task-body">
+            <span class="task-title">Experiment tracking &mdash; MLflow / Weights &amp; Biases</span>
+            <p class="task-desc">Every <code>train_lora.py</code> run automatically logs: hyperparams, loss curves, DPO pair stats, field penalty weights, and promotion outcome. Import <code>mlflow</code> or <code>wandb</code>. Configurable backend in <code>aua_config.yaml</code>.</p>
+            <pre>tracking:
+  backend: mlflow          # mlflow | wandb | none
+  experiment: aua-swe-calibration
+  tracking_uri: http://mlflow:5000</pre>
+            <div class="task-tags"><span class="tag ml">ml</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#48</span>
+          <div class="task-body">
+            <span class="task-title">Shadow mode for blue-green</span>
+            <p class="task-desc">Run GREEN against 100% of real traffic but discard responses before the user sees them. Generates a real production query distribution for evaluation with zero user risk. Standard in mature blue-green systems. Produces richer evaluation data than synthetic benchmarks.</p>
+            <div class="task-tags"><span class="tag ml">ml</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#49</span>
+          <div class="task-body">
+            <span class="task-title">Automated regression test suite</span>
+            <p class="task-desc">Runs automatically before every blue-green promotion. Promotion blocked if regression detected on any of: routing accuracy, contradiction rate, U score distribution, Brier score. Configurable thresholds per field in <code>aua_config.yaml</code>.</p>
+            <pre>aua test                    # run full regression suite
+aua test --specialist swe  # SWE specialist only
+aua test --pre-promote      # run as promotion gate</pre>
+            <div class="task-tags"><span class="tag ml">ml</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#50</span>
+          <div class="task-body">
+            <span class="task-title">Load testing preset</span>
+            <p class="task-desc">Stress test the specialist graph and report latency percentiles and GPU utilization. Reports p50/p90/p99 latency, throughput tokens/sec, GPU saturation point, and routing accuracy under load.</p>
+            <pre>aua loadtest --qps 100 --duration 60s
+aua loadtest --ramp --max-qps 500 --step 50</pre>
+            <div class="task-tags"><span class="tag ml">ml</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="task-group">
+      <span class="task-group-label">Extensibility</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#51</span>
+          <div class="task-body">
+            <span class="task-title">Plugin system &mdash; custom specialists and detectors</span>
+            <p class="task-desc">Users register custom specialists, custom contradiction detectors, and custom utility functions without modifying core framework code. Decorator-based registration, same pattern as FastAPI routers or Flask blueprints.</p>
+            <pre>from aua import specialist, detector
+
+@specialist(field="robotics", port=9008)
+class RoboticsSpecialist:
+    async def generate(self, query: str) -> str: ...
+
+@detector(fields=["robotics"])
+class KinematicsContradictionDetector:
+    def check(self, problem: str, solution: str): ...</pre>
+            <div class="task-tags"><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#52</span>
+          <div class="task-body">
+            <span class="task-title">Middleware pipeline</span>
+            <p class="task-desc">Pre/post processing hooks on every query, like FastAPI's middleware. Users add logging, PII scrubbing, custom auth, query transformation, response filtering without touching framework internals.</p>
+            <pre>from aua import middleware
+
+@middleware("pre_query")
+async def scrub_pii(query: str) -> str:
+    return pii_scrubber.clean(query)
+
+@middleware("post_response")
+async def add_disclaimer(response: dict) -> dict:
+    response["disclaimer"] = "AI-generated content."
+    return response</pre>
+            <div class="task-tags"><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#53</span>
+          <div class="task-body">
+            <span class="task-title">Custom utility function support</span>
+            <p class="task-desc">Users override the default U = w_e·E + w_c·C + w_k·K formula for specific fields by registering a custom scorer. Default scorer still used for unregistered fields. Enables domain-specific utility definitions without forking the framework.</p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag ml">ml</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#54</span>
+          <div class="task-body">
+            <span class="task-title">Built-in test harness &mdash; <code>aua test</code></span>
+            <p class="task-desc">Runs a standard suite against any deployment: routing accuracy on known queries, contradiction detection on adversarial prompts, blue-green mechanics with synthetic U scores, arbiter verdict distribution. Pass/fail with human-readable output and JSON result file.</p>
+            <div class="task-tags"><span class="tag ops">ops</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#55</span>
+          <div class="task-body">
+            <span class="task-title">Compatibility matrix &mdash; models &times; hardware</span>
+            <p class="task-desc">Which models are verified to work on which hardware tier. Shipped as part of the package, checked by <code>aua doctor</code>. Prevents users from attempting to run a 70B fp16 model on a 24GB card.</p>
+            <div class="task-tags"><span class="tag doc">doc</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#56</span>
+          <div class="task-body">
+            <span class="task-title">Batch inference endpoint</span>
+            <p class="task-desc"><code>POST /query/batch</code> processes multiple queries in one call. Queries routed independently through the specialist graph. Responses returned as a list in the same order. Reduces HTTP overhead in pipeline workloads.</p>
+            <div class="task-tags"><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#57</span>
+          <div class="task-body">
+            <span class="task-title">Auto-setup on <code>aua serve</code></span>
+            <p class="task-desc">On first run the framework reads the config and automatically provisions: starts specialist vLLM servers, wires up the arbiter, configures blue-green deployment infrastructure, initializes the assertions store, and runs <code>aua doctor</code>. No manual steps beyond writing the config file.</p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">foundation</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#58</span>
+          <div class="task-body">
+            <span class="task-title">VCG arbitration mechanism &mdash; full implementation</span>
+            <p class="task-desc">Replace hand-weighted arbiter checks with the full Clarke transfer mechanism from whitepaper §10.6. Use Option C (70B arbiter as VCG engine). Truthful reporting as dominant strategy (Theorem S1). Activate when 3+ separately calibrated specialists with different confidence profiles.</p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag ml">ml</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#59</span>
+          <div class="task-body">
+            <span class="task-title">Release-level distillation pipeline</span>
+            <p class="task-desc">Accumulated LoRA adapters merged into a new base fine-tune, evaluated against the full regression suite, and promoted as the new baseline. Field penalty weighting ensures surgery corrections contribute 10&times; more than creative writing corrections to the merged base.</p>
+            <div class="task-tags"><span class="tag ml">ml</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#60</span>
+          <div class="task-body">
+            <span class="task-title">Hardware-adaptive graph decomposition</span>
+            <p class="task-desc">Framework detects available hardware at startup and automatically adjusts: model selection (AWQ vs fp16 vs GGUF), GPU memory splits, specialist count, and fan-out thresholds to maximize specialist quality within available VRAM. No manual tuning required for tier changes.</p>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag ml">ml</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#61</span>
+          <div class="task-body">
+            <span class="task-title">Empirical check &mdash; Arbiter stage 4</span>
+            <p class="task-desc">External escalation to verified domain experts for Case 4 (inconclusive) Arbiter verdicts. Trust threshold &tau;(f) gates which experts can participate. Expert responses re-enter as weighted empirical evidence. Requires expert identity verification and trust manager integration.</p>
+            <div class="task-tags"><span class="tag ml">ml</span><span class="tag sec">security</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="stage stage-5" id="stage5">
+  <div class="stage-header">
+    <div>
+      <span class="stage-num">Stage 5</span>
+    </div>
+    <div>
+      <p class="stage-title">Scale + Frontier</p>
+      <p class="stage-subtitle">Multi-language client SDKs, frontier-scale hardware templates, full tutorial rewrite, community ecosystem.</p>
+    </div>
+    <div class="stage-meta">
+      <span class="badge research">Research</span>
+      <span class="stage-timeline">11 items</span>
+    </div>
+  </div>
+  <div class="stage-body">
+
+    <div class="task-group">
+      <span class="task-group-label">Client SDKs</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#62</span>
+          <div class="task-body">
+            <span class="task-title">JavaScript / TypeScript SDK</span>
+            <p class="task-desc">Official JS/TS client for browser and Node.js. Mirrors the Python import API. Published to npm. Includes streaming support, session ID tracking, and typed response objects.</p>
+            <pre>import { AUAClient } from '@aua/client'
+const client = new AUAClient({ baseUrl: 'http://localhost:8000', token: '...' })
+const result = await client.query("Write binary search. State complexity.")</pre>
+            <div class="task-tags"><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#63</span>
+          <div class="task-body">
+            <span class="task-title">Go SDK</span>
+            <p class="task-desc">Official Go client for high-throughput backend integrations. Published to pkg.go.dev. Idiomatic Go with context support, connection pooling, and structured response types.</p>
+            <div class="task-tags"><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#64</span>
+          <div class="task-body">
+            <span class="task-title">Java SDK</span>
+            <p class="task-desc">Official Java client for enterprise integrations. Published to Maven Central. Supports async (CompletableFuture) and reactive (Project Reactor) patterns.</p>
+            <div class="task-tags"><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="task-group">
+      <span class="task-group-label">Frontier scale</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#65</span>
+          <div class="task-body">
+            <span class="task-title">Multi-node H100 cluster template</span>
+            <p class="task-desc">Pre-built config template for multi-node H100 deployments. 50+ specialists, 34B&ndash;70B model size per specialist, 70B sharded arbiter, tensor-parallel vLLM serving. Verified against frontier benchmark suite before shipping.</p>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag ml">ml</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#66</span>
+          <div class="task-body">
+            <span class="task-title">Tensor parallel specialist serving</span>
+            <p class="task-desc">For 34B+ specialists that exceed single-GPU VRAM, configure vLLM's <code>--tensor-parallel-size</code> automatically from the hardware template. Specialist appears as a single endpoint to the router regardless of how many GPUs back it.</p>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag ml">ml</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#67</span>
+          <div class="task-body">
+            <span class="task-title">MacBook Pro / gaming PC template</span>
+            <p class="task-desc">Verified config for running the framework on consumer hardware with no cloud. Uses <code>mlx-lm</code> on Apple Silicon or <code>llama.cpp</code> GGUF on Windows/Linux gaming PCs. 1.5&ndash;3B models, CPU inference, all framework features intact.</p>
+            <div class="task-tags"><span class="tag infra">infra</span><span class="tag doc">doc</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="task-group">
+      <span class="task-group-label">Documentation and community</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">#68</span>
+          <div class="task-body">
+            <span class="task-title">Full tutorial rewrite &mdash; framework-style, hardware-first</span>
+            <p class="task-desc">Complete tutorial rewrite matching the FastAPI/Flink standard: step-by-step, imperative, "here is what you run." Collapsible provisioning sections. Full DPO cycle as canonical walkthrough. Hardware tier templates linked inline. Simulations as appendixes. This is the definitive getting started guide.</p>
+            <div class="task-tags"><span class="tag doc">doc</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#69</span>
+          <div class="task-body">
+            <span class="task-title">Auto-generated API reference at <code>/docs</code> and <code>/redoc</code></span>
+            <p class="task-desc">FastAPI generates Swagger UI and ReDoc automatically from type annotations. Every endpoint, request body, and response model documented with examples. Shipped and maintained at zero marginal cost.</p>
+            <div class="task-tags"><span class="tag doc">doc</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#70</span>
+          <div class="task-body">
+            <span class="task-title">Domain deep-dive pages &mdash; all 9 domains linked to tutorial</span>
+            <p class="task-desc">Each domain page (SWE, Math, Medicine, Law, Finance, etc.) updated to link to the relevant tutorial sections and config templates. The tutorial links back to each domain page for field-specific configuration guidance.</p>
+            <div class="task-tags"><span class="tag doc">doc</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#71</span>
+          <div class="task-body">
+            <span class="task-title">SSRN paper update &mdash; link to v0.5 site and measured results</span>
+            <p class="task-desc">Update the SSRN abstract to reference the GitHub site and measured POC results. Add: "Version 0.3. Current version: v0.5 — see praneethtota.github.io/Adaptive-Utility-Agent. Measured routing gain +43.3pp (p=0.0003, d=1.02) on RTX 4090."</p>
+            <div class="task-tags"><span class="tag doc">doc</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#72</span>
+          <div class="task-body">
+            <span class="task-title">Example applications repository</span>
+            <p class="task-desc">Separate repo with worked examples: a medical Q&A agent, a code review agent, a legal document analyzer, a math tutor. Each example is a complete <code>aua_config.yaml</code> plus a Python app file showing the import API in action. Equivalent to FastAPI's example apps.</p>
+            <div class="task-tags"><span class="tag doc">doc</span><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">#73</span>
+          <div class="task-body">
+            <span class="task-title">Changelog and versioning policy</span>
+            <p class="task-desc">Semantic versioning. Documented changelog per release. Breaking changes require a major version bump with a migration guide. Matches what developers expect from any production framework.</p>
+            <div class="task-tags"><span class="tag doc">doc</span><span class="tag ops">ops</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<hr>
+
+<div class="callout">
+  <p><strong>Stage 1 starts now.</strong> Items #01&ndash;#14 are all feasible with the existing codebase as a foundation. The POC scripts in <code>agent/</code> become the implementation of the package internals. The public API surface, CLI, and YAML config are the new work. Everything else in Stages 2&ndash;5 is built on top of that foundation incrementally.</p>
+</div>
+
+</div><!-- .body -->
+</div><!-- .page -->
+</body>
+</html>

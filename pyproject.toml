@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aua"
+version = "0.5.0"
+description = "Adaptive Utility Agents — a deployable specialist framework for self-optimizing AI systems"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0" }
+authors = [{ name = "Praneeth Tota" }]
+keywords = ["llm", "agents", "utility", "specialist", "routing", "arbitration", "dpo"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+# Runtime deps — always required
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.30.0",
+    "httpx>=0.27.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "scipy>=1.11.0",
+]
+
+[project.optional-dependencies]
+# pip install aua[train]
+train = [
+    "peft>=0.9.0",
+    "trl>=0.8.0",
+    "transformers>=4.40.0",
+    "torch>=2.1.0",
+    "accelerate>=0.28.0",
+]
+
+[project.scripts]
+aua = "aua.cli:main"
+
+[project.urls]
+Homepage    = "https://praneethtota.github.io/Adaptive-Utility-Agent"
+Repository  = "https://github.com/praneethtota/Adaptive-Utility-Agent"
+Whitepaper  = "https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_v05.html"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aua"]

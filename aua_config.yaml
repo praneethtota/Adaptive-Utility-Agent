@@ -1,0 +1,102 @@
+# aua_config.yaml — Single source of truth for AUA deployment
+#
+# All specialist endpoints, GPU assignments, field configs, routing thresholds,
+# and blue-green promotion parameters live here.
+# No hardcoded values exist anywhere in the aua/ codebase.
+#
+# Usage:
+#   from aua.config import load_config
+#   config = load_config("aua_config.yaml")
+#
+# CLI:
+#   aua serve                         # reads this file from cwd
+#   aua serve --config /path/to/this
+
+# ── Framework version and deployment mode ─────────────────────────────────────
+aua:
+  version: "0.5"
+  mode: local                         # local | kubernetes | cluster
+
+# ── Specialist models ─────────────────────────────────────────────────────────
+# Each entry is an independently deployed vLLM server.
+# The framework routes queries to these based on field classification.
+#
+# Measured on RunPod RTX 4090 (24 GB): all three fit concurrently at 90.4% VRAM.
+# The gpu_memory_utilization values below are the measured-safe allocations.
+specialists:
+  - name: swe
+    model: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ     # SWE specialist
+    port: 9001
+    gpu: 0
+    gpu_memory_utilization: 0.34
+    max_model_len: 2048
+    quantization: awq
+    enforce_eager: true               # prevents CUDA graph profiling conflicts
+    field: software_engineering       # must match a key in FIELD_CONFIGS
+
+  - name: math
+    model: Qwen/Qwen2.5-7B-Instruct-AWQ            # Math specialist (general 7B)
+    port: 9002
+    gpu: 0
+    gpu_memory_utilization: 0.34
+    max_model_len: 2048
+    quantization: awq
+    enforce_eager: true
+    field: mathematics
+
+# ── Arbiter model ─────────────────────────────────────────────────────────────
+# Handles: cross-domain arbitration, low-confidence fallback, empirical checks.
+# Smaller model (3B) — runs within the remaining GPU budget.
+arbiter:
+  model: Qwen/Qwen2.5-3B-Instruct-AWQ
+  port: 9003
+  gpu: 0
+  gpu_memory_utilization: 0.18       # remaining VRAM after 2× 7B specialists
+  max_model_len: 2048
+  quantization: awq
+  enforce_eager: true
+
+# ── Router ────────────────────────────────────────────────────────────────────
+router:
+  port: 8000
+  host: "0.0.0.0"
+  single_domain_threshold: 0.75      # P(top_domain) above this → single specialist
+  fanout_threshold: 0.30             # both domains above this → fan out + arbitrate
+  specialist_timeout: 60.0           # seconds per specialist call
+
+# ── Blue-green promotion thresholds ──────────────────────────────────────────
+# Per-specialist. tau controls how aggressively traffic shifts:
+#   tau(surgery)  = 0.05  → very conservative, needs clear improvement
+#   tau(swe)      = 0.20  → moderate
+#   tau(creative) = 0.50  → aggressive, promotes on small differences
+#
+# Promotion fires when |U_green - U_blue| > delta for T_min interactions.
+# Measured POC: U_delta was +0.0011 < 0.025 threshold → GREEN correctly rejected.
+blue_green:
+  swe:
+    delta: 0.025                      # minimum U improvement to promote
+    T_min: 10                         # minimum canary interactions before decision
+    tau: 0.20                         # softmax temperature for traffic split
+  math:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+logging:
+  level: INFO                         # DEBUG | INFO | WARNING | ERROR
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HARDWARE TIER NOTES
+#
+# This config is tuned for a single RTX 4090 (24 GB) — the minimum viable
+# setup. For other hardware tiers, adjust gpu_memory_utilization:
+#
+#   2× RTX 4090 (48 GB):   move math to gpu: 1, both at 0.90
+#   1× A100 40 GB:         3 specialists at 0.40/0.40/0.15
+#   1× A100 80 GB:         run 7B fp16 (drop quantization: awq), util 0.40 each
+#   4× RTX 4090 (96 GB):   6–8 specialists, 2 per GPU at 0.45 each
+#
+# Hardware tier config templates are roadmap item #12.
+# ─────────────────────────────────────────────────────────────────────────────
