@@ -30,6 +30,7 @@ import time
 from typing import List, Optional
 
 import httpx
+import shutil
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -91,15 +92,20 @@ def serve(
 
     # ── Start specialists ──────────────────────────────────────────────────
     if not router_only:
-        for spec in config.specialists:
-            p = _start_specialist(spec, dry_run, startup_timeout)
+        if config.backend == "ollama":
+            p = _start_ollama(config, dry_run, startup_timeout)
             if p:
                 processes.append(p)
+        else:
+            for spec in config.specialists:
+                p = _start_specialist(spec, dry_run, startup_timeout)
+                if p:
+                    processes.append(p)
 
-        # Arbiter
-        p = _start_arbiter(config.arbiter, dry_run, startup_timeout)
-        if p:
-            processes.append(p)
+            # Arbiter
+            p = _start_arbiter(config.arbiter, dry_run, startup_timeout)
+            if p:
+                processes.append(p)
 
     # ── Start router ───────────────────────────────────────────────────────
     if not no_router:
@@ -140,18 +146,22 @@ def _start_specialist(
     cmd = spec.vllm_command()
     env = _build_env(spec.gpu)
 
+    hw_detail = (
+        f"GPU {spec.gpu} ({spec.gpu_memory_utilization*100:.0f}% VRAM)"
+        if spec.backend == "vllm"
+        else "Ollama"
+    )
     console.print(f"\n[bold]Starting specialist:[/bold] [cyan]{spec.name}[/cyan]  "
-                  f"[dim]{spec.field} · port {spec.port} · "
-                  f"GPU {spec.gpu} ({spec.gpu_memory_utilization*100:.0f}% VRAM)[/dim]")
+                  f"[dim]{spec.field} · port {spec.port} · {hw_detail}[/dim]")
     console.print(f"  [dim]$ {' '.join(cmd)}[/dim]")
 
     if dry_run:
         return None
 
     p = subprocess.Popen(
-        cmd, env=env,
+        cmd, env=_build_env(spec.gpu, spec.backend),
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,   # capture stderr for error reporting
+        stderr=subprocess.PIPE,
     )
     _wait_healthy(spec.name, spec.models_url, p, timeout)
     return p
@@ -165,16 +175,20 @@ def _start_arbiter(
     cmd = arb.vllm_command()
     env = _build_env(arb.gpu)
 
+    hw_detail_arb = (
+        f"GPU {arb.gpu} ({arb.gpu_memory_utilization*100:.0f}% VRAM)"
+        if arb.backend == "vllm"
+        else "Ollama"
+    )
     console.print(f"\n[bold]Starting arbiter:[/bold] [magenta]arbiter[/magenta]  "
-                  f"[dim]port {arb.port} · "
-                  f"GPU {arb.gpu} ({arb.gpu_memory_utilization*100:.0f}% VRAM)[/dim]")
+                  f"[dim]port {arb.port} · {hw_detail_arb}[/dim]")
     console.print(f"  [dim]$ {' '.join(cmd)}[/dim]")
 
     if dry_run:
         return None
 
     p = subprocess.Popen(
-        cmd, env=env,
+        cmd, env=_build_env(arb.gpu, arb.backend),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
     )
@@ -236,10 +250,95 @@ def _wait_healthy(
 
     console.print(
         f"\n[red]✗ {name} did not become healthy within {timeout}s.[/red]\n"
-        f"[dim]Check that the model path is correct and GPU has enough VRAM.[/dim]"
+        f"[dim]Check that the model path is correct and the hardware has enough memory.[/dim]"
     )
     proc.terminate()
     sys.exit(1)
+
+
+
+# ── Ollama startup ────────────────────────────────────────────────────────────
+
+def _start_ollama(
+    config: AUAConfig,
+    dry_run: bool,
+    timeout: int,
+) -> Optional[subprocess.Popen]:
+    """
+    Ensure Ollama is running and all required models are pulled.
+
+    Steps:
+        1. Check `ollama` binary is in PATH
+        2. Start `ollama serve` if not already reachable
+        3. Pull each model that is not yet present
+    """
+    ollama_url = f"http://localhost:{config.arbiter.port}/api/tags"
+
+    console.print(f"\n[bold]Backend: Ollama[/bold]  [dim]port {config.arbiter.port}[/dim]")
+
+    # ── Check binary ──────────────────────────────────────────────────────
+    if not dry_run and shutil.which("ollama") is None:
+        console.print(
+            "\n[red]✗ 'ollama' not found in PATH.[/red]\n"
+            "[dim]Install with: brew install ollama[/dim]\n"
+            "[dim]Then run: ollama serve[/dim]"
+        )
+        sys.exit(1)
+    else:
+        console.print("  [dim]$ ollama serve  (if not already running)[/dim]")
+
+    if dry_run:
+        all_models = [s.model for s in config.specialists] + [config.arbiter.model]
+        for m in all_models:
+            console.print(f"  [dim]$ ollama pull {m}[/dim]")
+        return None
+
+    # ── Start ollama serve if not reachable ───────────────────────────────
+    proc = None
+    try:
+        with httpx.Client(timeout=2.0) as client:
+            r = client.get(ollama_url)
+            if r.status_code == 200:
+                console.print("  [green]✓ Ollama already running[/green]")
+    except Exception:
+        console.print("  Starting ollama serve...")
+        proc = subprocess.Popen(
+            ["ollama", "serve"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        _wait_healthy("ollama", ollama_url, proc, timeout)
+
+    # ── Pull models ───────────────────────────────────────────────────────
+    all_models = list(dict.fromkeys(
+        [s.model for s in config.specialists] + [config.arbiter.model]
+    ))
+    for model in all_models:
+        _ollama_pull(model)
+
+    return proc
+
+
+def _ollama_pull(model: str) -> None:
+    """Pull an Ollama model if not already present."""
+    console.print(f"  Checking model [cyan]{model}[/cyan]...")
+    result = subprocess.run(
+        ["ollama", "list"],
+        capture_output=True, text=True,
+    )
+    if model in result.stdout:
+        console.print(f"  [green]✓ {model} already pulled[/green]")
+        return
+
+    console.print(f"  Pulling [cyan]{model}[/cyan] (this may take a while)...")
+    pull = subprocess.run(
+        ["ollama", "pull", model],
+        capture_output=False,   # show progress to terminal
+    )
+    if pull.returncode != 0:
+        console.print(f"  [red]✗ Failed to pull {model}[/red]")
+        sys.exit(1)
+    console.print(f"  [green]✓ {model} ready[/green]")
 
 
 # ── Router startup ────────────────────────────────────────────────────────────
@@ -283,10 +382,12 @@ def _start_router(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _build_env(gpu_index: int) -> dict:
-    """Build environment with correct CUDA_VISIBLE_DEVICES."""
+def _build_env(gpu_index: int, backend: str = "vllm") -> dict:
+    """Build environment, setting CUDA_VISIBLE_DEVICES for vLLM/ROCm only."""
     env = os.environ.copy()
-    env["CUDA_VISIBLE_DEVICES"] = str(gpu_index)
+    if backend == "vllm":
+        env["CUDA_VISIBLE_DEVICES"] = str(gpu_index)
+    # Ollama / CPU: don't set CUDA_VISIBLE_DEVICES — Ollama manages devices itself
     return env
 
 
@@ -310,7 +411,7 @@ def _print_banner(
     table.add_column("Model", style="white")
     table.add_column("Port", justify="right")
     table.add_column("GPU", justify="right")
-    table.add_column("VRAM", justify="right")
+    table.add_column("Memory", justify="right")
     table.add_column("Field")
 
     for s in config.specialists:
@@ -319,7 +420,7 @@ def _print_banner(
             s.model.split("/")[-1],
             str(s.port),
             str(s.gpu),
-            f"{s.gpu_memory_utilization*100:.0f}%",
+            f"{s.gpu_memory_utilization*100:.0f}%" if s.backend == "vllm" else "—",
             s.field,
         )
     table.add_row(
@@ -327,7 +428,7 @@ def _print_banner(
         config.arbiter.model.split("/")[-1],
         str(config.arbiter.port),
         str(config.arbiter.gpu),
-        f"{config.arbiter.gpu_memory_utilization*100:.0f}%",
+        f"{config.arbiter.gpu_memory_utilization*100:.0f}%" if config.arbiter.backend == "vllm" else "—",
         "general",
     )
     table.add_row(
@@ -342,7 +443,11 @@ def _print_banner(
     console.print(Panel(
         table,
         title=f"[bold]aua serve[/bold]  v{config.version}{mode_str}",
-        subtitle="[dim]Sequential startup · --enforce-eager · Ctrl+C to stop[/dim]",
+        subtitle=(
+            "[dim]Sequential startup · --enforce-eager · Ctrl+C to stop[/dim]"
+            if config.backend == "vllm"
+            else "[dim]Ollama backend · Ctrl+C to stop[/dim]"
+        ),
         border_style="blue",
         padding=(0, 1),
     ))
