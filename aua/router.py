@@ -22,7 +22,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Dict, List, Optional, Tuple
+from collections import defaultdict, deque
+from statistics import median, quantiles
+from typing import Counter as CounterT, Dict, List, Optional, Tuple
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -100,6 +102,20 @@ class Router:
         self._fanout_threshold = config.router.fanout_threshold
         self._timeout = config.router.specialist_timeout
 
+        # ── Telemetry tracking ──────────────────────────────────────────
+        self._start_time: float = time.time()
+        self._queries_by_mode: Dict[str, int] = {"single": 0, "fanout": 0, "arbiter": 0}
+        self._latencies_ms: Dict[str, deque] = defaultdict(lambda: deque(maxlen=200))
+        self._requests_per_spec: Dict[str, int] = {s.name: 0 for s in config.specialists}
+        self._requests_per_spec["arbiter"] = 0
+        self._total_contradictions: int = 0
+        self._total_dpo: int = 0
+        # Arbiter verdict distribution (case_1..case_4) tracked via AssertionsStore
+        # but we also keep a local counter for the /status endpoint
+        self._verdict_counts: Dict[str, int] = {
+            "case_1": 0, "case_2": 0, "case_3": 0, "case_4": 0
+        }
+
         self.app = self._build_app()
         log.info(
             "Router initialised — %d specialist(s), arbiter on port %d",
@@ -164,6 +180,10 @@ class Router:
         async def route(req: QueryRequest):
             return await self._handle(req)
 
+        @app.get("/status")
+        async def full_status():
+            return await self._full_status()
+
         @app.post("/reset")
         async def reset():
             self._classifier.reset_history()
@@ -190,6 +210,109 @@ class Router:
                 except Exception:
                     status[name] = "unreachable"
         return {"specialists": status, "domain_confidence": self._domain_confidence}
+
+
+    async def _full_status(self) -> dict:
+        """Comprehensive status for aua status dashboard."""
+        import os, subprocess
+
+        # Health check
+        health = await self._health()
+
+        # Uptime
+        uptime_s = time.time() - self._start_time
+
+        # Latency percentiles per specialist
+        latency_stats: Dict[str, dict] = {}
+        for name, dq in self._latencies_ms.items():
+            vals = list(dq)
+            if vals:
+                sorted_vals = sorted(vals)
+                n = len(sorted_vals)
+                p50 = sorted_vals[n // 2]
+                p95 = sorted_vals[int(n * 0.95)]
+                latency_stats[name] = {
+                    "p50_ms": round(p50, 1),
+                    "p95_ms": round(p95, 1),
+                    "last_ms": round(vals[-1], 1),
+                    "samples": n,
+                }
+            else:
+                latency_stats[name] = {"p50_ms": None, "p95_ms": None, "last_ms": None, "samples": 0}
+
+        # U score history per domain
+        utility: Dict[str, dict] = {}
+        for domain, state in self._scorer.domain_states.items():
+            history = [s.utility for s in self._scorer.history if s.field == domain]
+            utility[domain] = {
+                "mean_u":     round(sum(history) / len(history), 4) if history else None,
+                "last_u":     round(history[-1], 4) if history else None,
+                "queries":    len(history),
+                "confidence": round(state.confidence, 4),
+            }
+
+        # Routing stats
+        total_q = sum(self._queries_by_mode.values())
+        routing = {
+            "total_queries": total_q,
+            "by_mode": dict(self._queries_by_mode),
+        }
+
+        # Corrections
+        store_summary = self._store.summary()
+        corrections = {
+            "total_contradictions": self._total_contradictions,
+            "dpo_pairs":            self._total_dpo,
+            "assertions_stored":    store_summary.get("total", 0),
+            "contradiction_rate":   round(
+                self._total_contradictions / total_q, 4
+            ) if total_q > 0 else 0.0,
+        }
+
+        # Memory info — hardware-agnostic via _detect_hardware()
+        memory: Dict[str, str] = {}
+        try:
+            from aua.doctor import _detect_hardware
+            hw = _detect_hardware()
+            if hw.kind == "nvidia":
+                result = subprocess.run(
+                    ["nvidia-smi",
+                     "--query-gpu=index,memory.used,memory.total",
+                     "--format=csv,noheader,nounits"],
+                    capture_output=True, text=True, timeout=3
+                )
+                for line in result.stdout.strip().splitlines():
+                    parts = [p.strip() for p in line.split(", ")]
+                    if len(parts) >= 3:
+                        memory[f"gpu{parts[0]}"] = f"{parts[1]} / {parts[2]} MiB"
+            elif hw.kind == "amd_rocm":
+                for dev in hw.devices:
+                    mib = dev.get("vram_mib")
+                    memory[f"gpu{dev['index']}"] = f"{mib} MiB (total)" if mib else "AMD GPU"
+            elif hw.kind == "apple_silicon":
+                for dev in hw.devices:
+                    mib = dev.get("vram_mib")
+                    label = f"{mib} MiB unified" if mib else dev.get("name", "Apple GPU")
+                    memory[f"gpu{dev['index']}"] = label
+            else:
+                # CPU / Ollama — show system RAM
+                ram = hw.system_ram_mib
+                memory["system"] = f"{ram // 1024} GiB RAM" if ram else "CPU / Ollama"
+        except Exception:
+            memory = {"system": "unavailable"}
+
+        return {
+            "version":   self._config.version,
+            "backend":   self._config.backend,
+            "uptime_s":  round(uptime_s, 1),
+            "health":    health["specialists"],
+            "latency":   latency_stats,
+            "utility":   utility,
+            "routing":   routing,
+            "corrections": corrections,
+            "arbiter_verdicts": dict(self._verdict_counts),
+            "memory":    memory,
+        }
 
     def _stats(self) -> dict:
         summary = self._store.summary()
@@ -240,9 +363,19 @@ class Router:
         t0: float,
     ) -> RouterResponse:
         url = self._field_to_url.get(domain, self._arbiter_url)
+        spec = self._config.specialist_for_field(domain)
+        model_name = spec.serve_model_name if spec else "default_model"
         response, base_conf = await self._call(url, req.query, domain,
-                                               req.conversation_history)
+                                               req.conversation_history,
+                                               model_name=model_name)
         u, conf, n_contra, n_dpo = await self._score(req.query, response, domain, base_conf)
+        self._queries_by_mode["single"] = self._queries_by_mode.get("single", 0) + 1
+        self._latencies_ms["router"].append((time.time() - t0) * 1000)
+        spec_obj = self._config.specialist_for_field(domain)
+        if spec_obj:
+            self._requests_per_spec[spec_obj.name] = self._requests_per_spec.get(spec_obj.name, 0) + 1
+        self._total_contradictions += n_contra
+        self._total_dpo += n_dpo
         log.info("single→%s  U=%.3f  C=%.3f  contra=%d  dpo=%d", domain, u, conf, n_contra, n_dpo)
         return RouterResponse(
             query=req.query,
@@ -268,7 +401,8 @@ class Router:
 
         # Call all active specialists in parallel
         calls = [
-            self._call(s.endpoint, req.query, s.field, req.conversation_history)
+            self._call(s.endpoint, req.query, s.field, req.conversation_history,
+                       model_name=s.serve_model_name)
             for s in active_specialists
         ]
         results = await asyncio.gather(*calls, return_exceptions=True)
@@ -323,6 +457,12 @@ class Router:
             final_text = text
             specialist_responses = [{"domain": spec.field, "response": text[:200]}]
 
+        self._queries_by_mode["fanout"] = self._queries_by_mode.get("fanout", 0) + 1
+        self._latencies_ms["router"].append((time.time() - t0) * 1000)
+        for s in active_specialists:
+            self._requests_per_spec[s.name] = self._requests_per_spec.get(s.name, 0) + 1
+        self._total_contradictions += n_contra
+        self._total_dpo += n_dpo
         return RouterResponse(
             query=req.query,
             routing_mode="fanout",
@@ -345,9 +485,15 @@ class Router:
     ) -> RouterResponse:
         log.info("arbiter fallback (low confidence)")
         response, base_conf = await self._call(
-            self._arbiter_url, req.query, "general", req.conversation_history
+            self._arbiter_url, req.query, "general", req.conversation_history,
+            model_name=self._config.arbiter.serve_model_name,
         )
         u, conf, n_contra, n_dpo = await self._score(req.query, response, "general", base_conf)
+        self._queries_by_mode["arbiter"] = self._queries_by_mode.get("arbiter", 0) + 1
+        self._latencies_ms["router"].append((time.time() - t0) * 1000)
+        self._requests_per_spec["arbiter"] = self._requests_per_spec.get("arbiter", 0) + 1
+        self._total_contradictions += n_contra
+        self._total_dpo += n_dpo
         return RouterResponse(
             query=req.query,
             routing_mode="arbiter",
@@ -370,8 +516,9 @@ class Router:
         domain: str,
         history: Optional[List[dict]] = None,
         system_prompt: Optional[str] = None,
+        model_name: str = "default_model",
     ) -> Tuple[str, float]:
-        """Call a vLLM-compatible OpenAI endpoint, return (text, base_confidence)."""
+        """Call a vLLM or Ollama-compatible OpenAI endpoint, return (text, base_confidence)."""
         if system_prompt is None:
             corrections = self._store.query(subject=query[:100], domain=domain)
             injection = ""
@@ -391,7 +538,7 @@ class Router:
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 r = await client.post(url, json={
-                    "model":       "default_model",
+                    "model":       model_name,
                     "messages":    messages,
                     "max_tokens":  1024,
                     "temperature": 0.1,
@@ -471,7 +618,8 @@ class Router:
         )
         verdict_text, _ = await self._call(
             self._arbiter_url, prompt, "arbiter",
-            system_prompt="You are a cross-domain arbitration agent. Be concise and decisive."
+            system_prompt="You are a cross-domain arbitration agent. Be concise and decisive.",
+            model_name=self._config.arbiter.serve_model_name,
         )
         if "VERDICT: B" in verdict_text:
             winner = spec_b.field
