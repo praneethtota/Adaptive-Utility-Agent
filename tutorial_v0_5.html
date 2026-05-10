@@ -3,230 +3,83 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Adaptive Utility Agents — Tutorial v0.5</title>
+<title>Adaptive Utility Agents — Builder's Tutorial v0.5</title>
+<meta name="description" content="How to build a self-optimizing AI agent on real hardware. Adaptive Utility Agents v0.5 by Praneeth Tota.">
+<meta name="author" content="Praneeth Tota">
+<link rel="canonical" href="https://praneethtota.github.io/Adaptive-Utility-Agent/tutorial_v0_5.html">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #f7f6f2;
-  --paper: #ffffff;
-  --ink: #18181b;
-  --muted: #6b7280;
-  --line: #e4e1da;
-  --accent: #4338ca;
-  --accent2: #0f766e;
-  --accent3: #c2410c;
-  --soft: #f0ede6;
-  --soft2: #ecfdf5;
-  --soft3: #fff7ed;
-  --code-bg: #f2f0eb;
-  --tag-bg: #eef2ff;
-  --tag-text: #4338ca;
-}
-*, *::before, *::after { box-sizing: border-box; }
-body {
-  font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 16px;
-  line-height: 1.75;
-  color: var(--ink);
-  background: var(--bg);
-  margin: 0; padding: 0;
-}
-.page {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 0 5rem;
-  background: var(--paper);
-  border-left: 1px solid var(--line);
-  border-right: 1px solid var(--line);
-  min-height: 100vh;
-}
-
-/* NAV */
-nav {
-  display: flex; flex-wrap: wrap; gap: .6rem .9rem;
-  padding: 1rem 2rem; border-bottom: 1px solid var(--line);
-  background: #fafaf8; font-size: .88rem;
-  position: sticky; top: 0; z-index: 10;
-}
-nav a { color: var(--accent); text-decoration: none; font-weight: 500; }
-nav a:hover { text-decoration: underline; }
-nav a.active { color: var(--ink); font-weight: 600; }
-
-/* HERO */
-.hero {
-  padding: 3rem 2.5rem 2.5rem;
-  border-bottom: 1px solid var(--line);
-  background: linear-gradient(160deg, #f0ede6 0%, #fff 60%);
-}
-.hero-tag {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: .72rem; font-weight: 500;
-  letter-spacing: .08em; text-transform: uppercase;
-  background: var(--tag-bg); color: var(--tag-text);
-  padding: .25rem .7rem; border-radius: 999px; margin-bottom: 1.2rem;
-}
-.hero h1 {
-  font-family: 'DM Serif Display', Georgia, serif;
-  font-size: 2.4rem; line-height: 1.2;
-  margin: 0 0 .75rem; color: var(--ink);
-}
-.hero .subtitle {
-  font-size: 1.05rem; color: #444;
-  max-width: 700px; margin-bottom: 1.25rem; line-height: 1.65;
-}
-.hero-pills { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
-.pill {
-  font-size: .82rem; font-weight: 500;
-  padding: .3rem .85rem; border-radius: 999px;
-  border: 1px solid var(--line); color: var(--muted); background: #fff;
-}
-
-/* BODY */
-.body { padding: 2rem 2.5rem 0; }
-
-/* TYPOGRAPHY */
-h2 {
-  font-family: 'DM Serif Display', Georgia, serif;
-  font-size: 1.5rem; line-height: 1.3;
-  margin: 3rem 0 .75rem; padding-bottom: .5rem;
-  border-bottom: 2px solid var(--line); color: var(--ink);
-  scroll-margin-top: 60px;
-}
-h3 { font-size: 1.05rem; font-weight: 600; margin: 1.8rem 0 .5rem; color: #222; }
-h4 { font-size: .95rem; font-weight: 600; margin: 1.3rem 0 .4rem; color: #333; }
-p { margin: 0 0 1rem; }
-a { color: var(--accent); }
-ul, ol { margin: .3rem 0 1rem; padding-left: 1.3rem; }
-li { margin: .3rem 0; }
-
-/* CODE */
-code {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: .82rem; background: var(--code-bg);
-  padding: 2px 6px; border-radius: 4px; color: #333;
-}
-pre {
-  background: var(--code-bg); border: 1px solid #e0dbd4;
-  border-radius: 8px; padding: 1.1rem 1.25rem;
-  overflow-x: auto; margin: .75rem 0 1.5rem;
-  font-size: .79rem; line-height: 1.7;
-  font-family: 'JetBrains Mono', monospace; color: #222;
-}
-.code-block { margin: .75rem 0 1.5rem; }
-.code-header {
-  display: flex; align-items: center; justify-content: space-between;
-  background: #e8e5de; border: 1px solid #d8d4cc;
-  border-bottom: none; border-radius: 8px 8px 0 0;
-  padding: .4rem .9rem; font-size: .78rem;
-  font-family: 'JetBrains Mono', monospace; color: #555;
-}
-.code-header a { color: var(--accent); text-decoration: none; font-size: .75rem; }
-.code-header a:hover { text-decoration: underline; }
-.code-block pre { border-radius: 0 0 8px 8px; margin: 0; }
-
-/* CALLOUTS */
-.callout {
-  background: var(--soft); border-left: 4px solid var(--accent);
-  padding: 1rem 1.25rem; margin: 1.25rem 0 1.5rem;
-  border-radius: 0 8px 8px 0;
-}
-.callout.green  { background: var(--soft2); border-left-color: var(--accent2); }
-.callout.orange { background: var(--soft3); border-left-color: var(--accent3); }
-.callout p { margin: 0; }
-.callout p + p { margin-top: .5rem; }
-
-/* STATUS BADGE */
-.badge {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: .7rem; font-weight: 500;
-  padding: .15rem .5rem; border-radius: 4px;
-  text-transform: uppercase; letter-spacing: .05em;
-  vertical-align: middle; margin-left: .4rem;
-}
-.badge.done    { background: #dcfce7; color: #166534; }
-.badge.partial { background: #fef9c3; color: #854d0e; }
-.badge.future  { background: #f1f5f9; color: #64748b; }
-
-/* PHASE CARDS */
-.cardgrid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem; margin: 1.25rem 0 1.75rem;
-}
-.card {
-  border: 1px solid var(--line); border-radius: 10px;
-  padding: 1.1rem 1.1rem .9rem; background: #fff;
-}
-.card-phase {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: .72rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: .07em; color: var(--accent); margin-bottom: .4rem;
-}
-.card h4 { margin: 0 0 .5rem; font-size: .95rem; }
-.card p { font-size: .88rem; color: #444; margin: 0; }
-
-/* TABLE */
-table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: 1rem 0 1.5rem; }
-th {
-  text-align: left; border-bottom: 2px solid #c0bab2;
-  padding: 8px 12px; font-size: .82rem; font-weight: 600;
-  color: #555; text-transform: uppercase; letter-spacing: .05em;
-}
-td { padding: 8px 12px; border-bottom: 1px solid #e8e4de; vertical-align: top; }
-tr:nth-child(even) td { background: #fafaf8; }
-.caption { font-size: .82rem; color: var(--muted); font-style: italic; margin-top: -.5rem; margin-bottom: 1rem; }
-
-/* STEPS */
-.steps { margin: 1.25rem 0 1.75rem; }
-.step { display: flex; gap: 1.1rem; margin-bottom: 1rem; }
-.step-num {
-  flex-shrink: 0; width: 28px; height: 28px;
-  background: var(--accent); color: #fff; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: .78rem; font-weight: 700; margin-top: 3px;
-}
-.step-body p { margin: 0; }
-.step-body strong { display: block; margin-bottom: .15rem; }
-
-/* TOC */
-.toc {
-  background: var(--soft); border-radius: 10px;
-  padding: 1.1rem 1.4rem; margin: 1.5rem 0 2rem;
-}
-.toc p { font-weight: 600; margin-bottom: .5rem; }
-.toc ol { margin: 0; column-count: 2; column-gap: 2rem; }
-.toc li { font-size: .9rem; margin: .2rem 0; break-inside: avoid; }
-.toc a { color: var(--accent); text-decoration: none; }
-.toc a:hover { text-decoration: underline; }
-
-/* WARN */
-.warn {
-  background: #fff7ed; border-left: 4px solid var(--accent3);
-  padding: 1rem 1.25rem; margin: 1.25rem 0 1.5rem;
-  border-radius: 0 8px 8px 0;
-}
-
-hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
-
-/* READ NEXT */
-.read-next { background: var(--soft); border-radius: 10px; padding: 1.25rem 1.5rem; margin-top: 2.5rem; }
-.read-next h3 { margin-top: 0; }
-.read-next ul { margin: 0; }
-.read-next li { font-size: .92rem; margin: .3rem 0; }
-
-@media (max-width: 640px) {
-  .hero h1 { font-size: 1.8rem; }
-  .body { padding: 1.5rem 1.25rem 0; }
- nav{display:none}
-  .toc ol { column-count: 1; }
-}
+:root{--bg:#f7f6f2;--paper:#ffffff;--ink:#18181b;--muted:#6b7280;--line:#e4e1da;--accent:#4338ca;--accent2:#0f766e;--accent3:#c2410c;--soft:#f0ede6;--soft2:#ecfdf5;--soft3:#fff7ed;--code-bg:#f2f0eb;--tag-bg:#eef2ff;--tag-text:#4338ca}
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:16px;line-height:1.75;color:var(--ink);background:var(--bg);margin:0;padding:0}
+.page{max-width:960px;margin:0 auto;padding:0 0 5rem;background:var(--paper);border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
+nav{display:flex;flex-wrap:wrap;gap:.6rem .9rem;padding:1rem 2rem;border-bottom:1px solid var(--line);background:#fafaf8;font-size:.88rem;position:sticky;top:0;z-index:10}
+nav a{color:var(--accent);text-decoration:none;font-weight:500}
+nav a:hover{text-decoration:underline}
+nav a.active{color:var(--ink);font-weight:600}
+.hero{padding:3rem 2.5rem 2.5rem;border-bottom:1px solid var(--line);background:linear-gradient(160deg,#f0ede6 0%,#fff 60%)}
+.hero-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--tag-bg);color:var(--tag-text);padding:.25rem .7rem;border-radius:999px;margin-bottom:1.2rem}
+.hero h1{font-family:'DM Serif Display',Georgia,serif;font-size:2.4rem;line-height:1.2;margin:0 0 .75rem;color:var(--ink)}
+.hero .subtitle{font-size:1.05rem;color:#444;max-width:700px;margin-bottom:1.25rem;line-height:1.65}
+.hero-pills{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.25rem}
+.pill{font-size:.82rem;font-weight:500;padding:.3rem .85rem;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.body{padding:2rem 2.5rem 0}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.5rem;line-height:1.3;margin:3rem 0 .75rem;padding-bottom:.5rem;border-bottom:2px solid var(--line);color:var(--ink);scroll-margin-top:60px}
+h3{font-size:1.05rem;font-weight:600;margin:1.8rem 0 .5rem;color:#222}
+h4{font-size:.95rem;font-weight:600;margin:1.3rem 0 .4rem;color:#333}
+p{margin:0 0 1rem}
+a{color:var(--accent)}
+ul,ol{margin:.3rem 0 1rem;padding-left:1.3rem}
+li{margin:.3rem 0}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:#333}
+pre{background:var(--code-bg);border:1px solid #e0dbd4;border-radius:8px;padding:1.1rem 1.25rem;overflow-x:auto;margin:.75rem 0 1.5rem;font-size:.79rem;line-height:1.7;font-family:'JetBrains Mono',monospace;color:#222}
+.code-block{margin:.75rem 0 1.5rem}
+.code-header{display:flex;align-items:center;justify-content:space-between;background:#e8e5de;border:1px solid #d8d4cc;border-bottom:none;border-radius:8px 8px 0 0;padding:.4rem .9rem;font-size:.78rem;font-family:'JetBrains Mono',monospace;color:#555}
+.code-block pre{border-radius:0 0 8px 8px;margin:0}
+.callout{background:var(--soft);border-left:4px solid var(--accent);padding:1rem 1.25rem;margin:1.25rem 0 1.5rem;border-radius:0 8px 8px 0}
+.callout.green{background:var(--soft2);border-left-color:var(--accent2)}
+.callout.orange{background:var(--soft3);border-left-color:var(--accent3)}
+.callout p{margin:0}
+.callout p+p{margin-top:.5rem}
+.badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:500;padding:.15rem .5rem;border-radius:4px;text-transform:uppercase;letter-spacing:.05em;vertical-align:middle;margin-left:.4rem}
+.badge.done{background:#dcfce7;color:#166534}
+.badge.partial{background:#fef9c3;color:#854d0e}
+.badge.future{background:#f1f5f9;color:#64748b}
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin:1.25rem 0 1.75rem}
+.card{border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.1rem .9rem;background:#fff}
+.card-phase{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin-bottom:.4rem}
+.card h4{margin:0 0 .5rem;font-size:.95rem}
+.card p{font-size:.88rem;color:#444;margin:0}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:1rem 0 1.5rem}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:8px 12px;font-size:.82rem;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.05em}
+td{padding:8px 12px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#fafaf8}
+.caption{font-size:.82rem;color:var(--muted);font-style:italic;margin-top:-.5rem;margin-bottom:1rem}
+.steps{margin:1.25rem 0 1.75rem}
+.step{display:flex;gap:1.1rem;margin-bottom:1rem}
+.step-num{flex-shrink:0;width:28px;height:28px;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;margin-top:3px}
+.step-body p{margin:0}
+.step-body strong{display:block;margin-bottom:.15rem}
+.toc{background:var(--soft);border-radius:10px;padding:1.1rem 1.4rem;margin:1.5rem 0 2rem}
+.toc p{font-weight:600;margin-bottom:.5rem}
+.toc ol{margin:0;column-count:2;column-gap:2rem}
+.toc li{font-size:.9rem;margin:.2rem 0;break-inside:avoid}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.warn{background:#fff7ed;border-left:4px solid var(--accent3);padding:1rem 1.25rem;margin:1.25rem 0 1.5rem;border-radius:0 8px 8px 0}
+hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
+.read-next{background:var(--soft);border-radius:10px;padding:1.25rem 1.5rem;margin-top:2.5rem}
+.read-next h3{margin-top:0}
+.read-next ul{margin:0}
+.read-next li{font-size:.92rem;margin:.3rem 0}
+.appendix-label{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:.25rem;margin-top:3rem}
+h2.appendix{border-bottom-color:#c0bab2;color:#555}
+@media(max-width:640px){.hero h1{font-size:1.8rem}.body{padding:1.5rem 1.25rem 0}nav{display:none}.toc ol{column-count:1}}
 </style>
 </head>
 <body>
 <div class="page">
 
-<!-- NAV -->
 <nav>
   <a href="whitepaper_v05.html">Home</a>
   <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
@@ -238,1036 +91,646 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
   <a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a>
   <a href="domain_energy_systems_v0_5.html">Energy Systems</a>
   <a href="domain_creative_systems_v0_5.html">Creative Systems</a>
-  <a href="domain_recommendation_engines_v0_5.html" >Recommendation</a>
+  <a href="domain_recommendation_engines_v0_5.html">Recommendation</a>
   <a href="productionizing_adaptive_utility_agent_v0_5.html">Production Design</a>
   <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
 </nav>
 
-<!-- HERO -->
 <div class="hero">
-  <div class="hero-tag">Tutorial · v0.5</div>
+  <div class="hero-tag">Tutorial &middot; v0.5</div>
   <h1>Builder's Tutorial</h1>
-  <p class="subtitle">
-    A ground-up walkthrough of the Adaptive Utility Agent framework — what each component is, why it exists, how the pieces wire together, and where the real code lives. No prior knowledge of the whitepaper required.
-  </p>
+  <p class="subtitle">How to build a self-optimizing AI agent on real hardware. Specialist models running in parallel, a correction loop that fixes errors without retraining, LoRA calibration cycles, and utility-gated blue-green deployment. No prior whitepaper knowledge required.</p>
   <div class="hero-pills">
     <span class="pill">ML engineers</span>
     <span class="pill">Infra architects</span>
     <span class="pill">Agent builders</span>
-    <span class="pill">No whitepaper prereq</span>
+    <span class="pill">Runs on one RTX 4090</span>
   </div>
 </div>
 
 <div class="body">
 
-<!-- TOC -->
 <div class="toc">
   <p>On this page</p>
   <ol>
     <li><a href="#problem">The problem this solves</a></li>
-    <li><a href="#quickstart">Quick start: run the simulation</a></li>
-    <li><a href="#phases">The three phases</a></li>
+    <li><a href="#architecture">Architecture overview</a></li>
+    <li><a href="#hardware">Hardware setup and model selection</a></li>
     <li><a href="#utility">The utility function</a></li>
-    <li><a href="#assertions">The assertions store</a></li>
-    <li><a href="#contradiction">The contradiction detector</a></li>
-    <li><a href="#confidence">The confidence updater</a></li>
-    <li><a href="#agent-run">Putting it together: agent.run()</a></li>
-    <li><a href="#calibration">The calibration pipeline</a></li>
-    <li><a href="#routing">Routing and the field classifier</a></li>
-    <li><a href="#arbiter">The Arbiter Agent</a></li>
-    <li><a href="#bluegreen">Blue-green deployment</a></li>
-    <li><a href="#build-plan">Phased build plan</a></li>
+    <li><a href="#routing">Field classifier and routing</a></li>
+    <li><a href="#correction">The correction loop</a></li>
+    <li><a href="#dpo">DPO pair accumulation</a></li>
+    <li><a href="#calibration">LoRA calibration and blue-green</a></li>
+    <li><a href="#arbiter">The Arbiter and VCG</a></li>
+    <li><a href="#scaling">Scaling the specialist graph</a></li>
+    <li><a href="#frontier">Building toward frontier quality</a></li>
     <li><a href="#dont-build">What not to build first</a></li>
+    <li><a href="#appendix-a">Appendix A &mdash; Local simulation</a></li>
+    <li><a href="#appendix-b">Appendix B &mdash; Measured POC results</a></li>
+    <li><a href="#appendix-c">Appendix C &mdash; Build checklist</a></li>
   </ol>
 </div>
 
-<!-- ─────────────────────────────────────── -->
+<!-- ═══════════════════════════════════════════════════ -->
 <h2 id="problem">1. The problem this solves</h2>
 
-<p>Deployed language models are static. Once released, their behavior is frozen. If a model produces a wrong answer today — a hallucination, a complexity claim that contradicts the code, a medical fact that has since been updated — it will produce the same wrong answer tomorrow, and every day until the next version ships. There is no feedback loop between detected errors and model behavior between releases.</p>
+<p>Deployed language models are static artifacts. Once released, their behavior is frozen. If a model produces a wrong answer today &mdash; a hallucination, a complexity claim that contradicts the code, a medical fact that has since been updated &mdash; it will produce the same wrong answer tomorrow, and every day until the next version ships months later. There is no feedback loop between detected errors and model behavior between releases.</p>
 
-<p>This framework builds that feedback loop. It wraps any LLM with a layer that:</p>
+<p>The cost is asymmetric by domain. A wrong recipe suggestion is inconsequential. A wrong drug dosage, a wrong legal interpretation, a wrong structural calculation &mdash; these have real consequences that accumulate silently until a release cycle closes the gap.</p>
 
+<p>This framework builds the feedback loop. It wraps any LLM or set of LLMs with an adaptive utility layer that:</p>
 <ul>
-  <li><strong>Detects</strong> errors and contradictions in outputs automatically</li>
-  <li><strong>Stores</strong> verified corrections persistently across sessions</li>
-  <li><strong>Injects</strong> those corrections into future responses immediately (no retraining required)</li>
-  <li><strong>Accumulates</strong> DPO training pairs so that calibration cycles actually fix the model weights</li>
-  <li><strong>Gates</strong> responses with a hard abstention rule when confidence falls below a domain-specific floor</li>
+  <li><strong>Routes</strong> queries to the specialist most likely to answer them correctly</li>
+  <li><strong>Detects</strong> contradictions in outputs automatically, without human annotation</li>
+  <li><strong>Injects</strong> corrections into future sessions immediately &mdash; no retraining required for session-level fixes</li>
+  <li><strong>Accumulates</strong> training pairs from detected errors, weighted by domain stakes</li>
+  <li><strong>Calibrates</strong> specialist weights through LoRA fine-tuning cycles with utility-gated promotion</li>
+  <li><strong>Abstains</strong> when confidence falls below a domain-specific floor, rather than producing confident wrong answers</li>
 </ul>
 
-<p>The governing mechanism is a utility function that serves as a control law — not a monitoring metric — over all of these behaviors simultaneously. Here is the full system in one diagram:</p>
+<p>The governing mechanism is a utility function that acts as a control law over all of these behaviors simultaneously. The same function that scores individual responses also drives the training loss weighting, the abstention gate, and the blue-green promotion decision.</p>
 
-<pre>
-User query
-    │
-    ▼
-┌───────────────────────────────────────────────────────────────┐
-│  WRAPPER LAYER                                                │
-│                                                               │
-│  [Field Classifier] → field distribution + blended config    │
-│  [Assertions Store] → inject prior corrections into prompt   │
-│  [Personality Mgr]  → behavioral tilt (interim, monolithic)  │
-│       │                                                       │
-│       ▼                                                       │
-│  [System Prompt Constructor]                                  │
-│   domain context + active corrections + abstention threshold  │
-└───────────────────────────────┬───────────────────────────────┘
-                                │
-                                ▼
-                    ┌───────────────────┐
-                    │  Base LLM         │
-                    │  + LoRA adapter   │
-                    └────────┬──────────┘
-                             │
-                             ▼
-┌───────────────────────────────────────────────────────────────┐
-│  SCORING LAYER                                                │
-│                                                               │
-│  [Contradiction Detector]  → logical, math, cross-session    │
-│  [Utility Scorer]          → E_ema, C, K_effective → U       │
-│  [Abstain Gate]            → C < C_min → refuse + escalate   │
-│  [DPO Pair Collector]      → accumulate for calibration      │
-│  [Assertions Store write]  → persist verified corrections    │
-└───────────────────────────────┬───────────────────────────────┘
-                                │
-                   ┌────────────┴────────────┐
-                   ▼                         ▼
-         Response to user          [Calibration Service]
-                                   several times daily
-                                   LoRA DPO fine-tuning
-                                   benchmark gate → deploy
-</pre>
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="architecture">2. Architecture overview</h2>
 
-<p>Everything in the diagram is governed by the same utility function <code>U = w_e·E + w_c·C + w_k·K</code>. Adding routing, specialists, and arbitration (Phases 2–3) does not change this — it only changes which model produces the output being scored.</p>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="quickstart">2. Quick start: run the simulation today</h2>
-
-<p>The simulation is self-contained — no API key, no GPU, no special setup. It runs the full Phase 1 pipeline on 8 LeetCode-style problems across 3 calibration cycles using synthetic responses that improve each cycle.</p>
-
-<pre>
-# Clone and install (standard scientific Python stack only)
-git clone https://github.com/praneethtota/Adaptive-Utility-Agent.git
-cd Adaptive-Utility-Agent/agent
-pip install numpy scipy matplotlib
-
-# Run the 3-cycle simulation (no API key needed)
-python3 simulate.py
-
-# Run the extended 500-task two-arm study + 10-cycle stability run
-python3 simulate_extended.py
-
-# Run the four-arm routing quality experiment
-python3 routing_experiment.py
-
-# Live harness (requires API key — uses Claude)
-export ANTHROPIC_API_KEY=sk-ant-...
-python3 harness.py
-</pre>
-
-<h3>What the simulation does</h3>
-
-<p>The simulation runs every component from the diagram above except the LoRA training step (which requires a GPU). It seeds a deliberate contradiction on <code>two_sum</code> in cycle 1 — a nested-loop solution that claims O(n) complexity — and shows the detector catch it, the confidence score penalize it, and the DPO pair get collected. By cycle 2, the contradiction is resolved.</p>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/simulate.py — the seeded contradiction</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/simulate.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-CYCLE_RESPONSES = {
-    "two_sum": [
-        # Cycle 1: nested loop claiming O(n) — mathematical contradiction
-        {"pass_rate": 0.60, "complexity": "O(n)", "novelty": 0.8, "has_contradiction": True},
-        # Cycle 2: hash-map solution — O(n) correct, contradiction resolved
-        {"pass_rate": 0.87, "complexity": "O(n)", "novelty": 0.4, "has_contradiction": False},
-        # Cycle 3: further improved
-        {"pass_rate": 0.92, "complexity": "O(n)", "novelty": 0.2, "has_contradiction": False},
-    ],
-    ...
-}
-
-# The actual contradiction: nested loop claiming O(n)
-def make_synthetic_solution(problem_id, cycle, has_contradiction):
-    if problem_id == "two_sum" and has_contradiction:
-        return """```python
-def two_sum(nums, target):
-    # Time complexity: O(n)  &lt;-- WRONG: this is actually O(n^2)
-    result = []
-    for i in range(len(nums)):
-        for j in range(len(nums)):  # nested loop
-            if nums[i] + nums[j] == target and i != j:
-                result.append((i, j))
-    return result
-```
-Time complexity: O(n)
-assert two_sum([2, 7, 11, 15], 9) == [(0, 1)]"""
-</pre>
-</div>
-
-<p>Expected output from a successful run:</p>
-
-<pre>
-── Cycle 1 ─────────────────────────────────────────────────────
-   Domain confidence: 0.500 → routing to 'easy' problems
-   two_sum              U=0.4617 E_ema=0.5012 C=0.5000 ⚠ CONTRADICTION
-   ...
-   Cycle 1 summary:
-     avg U     = 0.5128
-     contradictions = 1
-
-── Cycle 2 ─────────────────────────────────────────────────────
-   Domain confidence: 0.612 → routing to 'easy' problems
-   two_sum              U=0.5669 E_ema=0.5543 C=0.7234
-   ...
-── Cycle 3 ─────────────────────────────────────────────────────
-   Domain confidence: 0.819 → routing to 'medium' problems
-   ...
-   avg U     = 0.6288   (+0.1160 from cycle 1)
-   contradictions = 0
-</pre>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="phases">3. The three phases</h2>
-
-<p>The framework is designed to be built incrementally. Phase 1 is useful on its own. Each phase extends it without breaking what came before.</p>
+<p>The system has six components. Every component is independently deployable and testable. Start with just the correction loop on a single model and add components incrementally.</p>
 
 <div class="cardgrid">
-  <div class="card">
-    <div class="card-phase">Phase 1 <span class="badge done">Simulated ✓</span></div>
-    <h4>Monolithic wrapper</h4>
-    <p>One base model. Utility scoring, contradiction detection, session correction injection, assertions store, calibration-cycle DPO pairs, LoRA fine-tuning pipeline, personality wrapper. No routing. This is what the simulation runs.</p>
-  </div>
-  <div class="card">
-    <div class="card-phase">Phase 2 <span class="badge partial">Designed</span></div>
-    <h4>Routing + specialists</h4>
-    <p>Field classifier routes queries to domain specialist models. Arbiter resolves conflicts between specialists. Blue-green deployment per specialist, independent of each other. Same utility function throughout.</p>
-  </div>
-  <div class="card">
-    <div class="card-phase">Phase 3 <span class="badge future">Future</span></div>
-    <h4>VCG arbitration + hardware graph</h4>
-    <p>Utility-governed arbitration via VCG mechanism (truthful reporting is dominant strategy). Hardware-adaptive graph depth — shallow on high-VRAM, deep specialist graph on consumer GPUs. See <a href="whitepaper_full_v0_5.html#vcg">§10.6</a> for proofs.</p>
-  </div>
+  <div class="card"><div class="card-phase">Component 1</div><h4>Specialist Graph</h4><p>N independently deployed domain models. Each has its own weights, training pipeline, and deployment cycle. Updating one specialist cannot affect another &mdash; no shared parameters.</p></div>
+  <div class="card"><div class="card-phase">Component 2</div><h4>Router</h4><p>FastAPI process that classifies queries and dispatches to the right specialist. Single-domain queries route to one specialist. Ambiguous queries fan out to multiple and go to the Arbiter.</p></div>
+  <div class="card"><div class="card-phase">Component 3</div><h4>Correction Loop</h4><p>Three layers: per-session behavioral injection (seconds), calibration-cycle DPO fine-tuning (hours), release-level distillation (monthly). Contradictions detected automatically at each layer.</p></div>
+  <div class="card"><div class="card-phase">Component 4</div><h4>Arbiter Agent</h4><p>Resolves cross-domain conflicts through four structured checks: logical, mathematical, cross-session, empirical. Verified corrections become DPO training signal.</p></div>
+  <div class="card"><div class="card-phase">Component 5</div><h4>Blue-Green Deployment</h4><p>Utility-deviation-triggered traffic split. GREEN promoted only when U_green exceeds U_blue by &delta;(field) for T(field) consecutive interactions. Self-regulating softmax routing.</p></div>
+  <div class="card"><div class="card-phase">Component 6</div><h4>Utility Function</h4><p>U = w_e&middot;E + w_c&middot;C + w_k&middot;K. The control law governing all component behaviors simultaneously. Field-specific weights derived from societal licensing standards.</p></div>
 </div>
 
-<div class="callout">
-  <p><strong>Build Phase 1 completely before touching Phase 2.</strong> The correction loop must work correctly on a single model before routing adds complexity. Routing cannot improve what the correction loop cannot fix — it will only route bad outputs to different specialists instead of correcting them.</p>
+<p>Data flow through a single query:</p>
+<pre>
+User query
+    |
+    v
+Field Classifier -------- domain distribution {field: probability}
+    |
+    +-- confidence &gt; 0.80 --&gt; Single specialist --&gt; Response
+    |                                                    |
+    +-- ambiguous ----------&gt; Fan-out to top-2 --&gt; Arbiter
+                                                        |
+                                           Contradiction detected?
+                                              |            |
+                                             No           Yes
+                                              |            |
+                                         Return        Store correction
+                                        response       Accumulate DPO pair
+                                              |            |
+                                              +------+-----+
+                                                     |
+                                             Score utility U
+                                                     |
+                                         C &ge; C_min(field)?
+                                              |        |
+                                             Yes       No
+                                              |        |
+                                         Respond    ABSTAIN
+</pre>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="hardware">3. Hardware setup and model selection</h2>
+
+<p>The framework runs on any hardware that can serve multiple vLLM-compatible endpoints. The minimum viable setup is a single RTX 4090 with three AWQ-quantized specialists. The architecture scales linearly &mdash; each new specialist is an independent process on the next available GPU.</p>
+
+<h3>3.1 Hardware tiers</h3>
+<table>
+  <thead><tr><th>Tier</th><th>Hardware</th><th>Specialists</th><th>Model size</th><th>Good for</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Minimum</strong></td><td>1&times; RTX 4090 (24 GB)</td><td>2&ndash;3</td><td>7B AWQ</td><td>Proof of concept, early validation</td></tr>
+    <tr><td><strong>Small prod</strong></td><td>4&times; RTX 4090 (96 GB)</td><td>6&ndash;8</td><td>7B AWQ or 13B Q4</td><td>2&ndash;3 vertical domains at production quality</td></tr>
+    <tr><td><strong>Mid prod</strong></td><td>Mac Studio M2 Ultra (192 GB) or 2&times; A100 80 GB</td><td>10&ndash;15</td><td>7B fp16 or 13B AWQ</td><td>General-purpose agent, 8&ndash;10 domains</td></tr>
+    <tr><td><strong>Large prod</strong></td><td>8&times; A100 80 GB (640 GB)</td><td>20&ndash;30</td><td>13B&ndash;34B fp16</td><td>Frontier-competitive on domain tasks</td></tr>
+    <tr><td><strong>Frontier</strong></td><td>Multi-node H100 cluster</td><td>50+</td><td>34B&ndash;70B</td><td>GPT-4 class on covered domains</td></tr>
+  </tbody>
+</table>
+<p class="caption">Active parameters per query stay bounded at 14&ndash;70B regardless of total graph size &mdash; only 1&ndash;3 specialists activate per query. A graph of 20&times; 7B specialists costs less per query than one 70B dense model.</p>
+
+<h3>3.2 Recommended specialist lineup</h3>
+<table>
+  <thead><tr><th>Priority</th><th>Domain</th><th>Model</th><th>Benchmark</th><th>Why first</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Software Engineering</td><td>Qwen2.5-Coder-7B-Instruct-AWQ</td><td>79% HumanEval</td><td>Binary correctness. Best contradiction detection reliability.</td></tr>
+    <tr><td>2</td><td>Mathematics</td><td>Qwen2.5-Math-7B-Instruct (auto-quantize)</td><td>58% MATH</td><td>SymPy as ground truth. Numerical claims automatically verifiable.</td></tr>
+    <tr><td>3</td><td>Medicine</td><td>Meditron-7B or BioMedLM-2.7B</td><td>73% MedQA</td><td>High stakes &mdash; correction loop value highest here. &mu;(f) = 10&times;.</td></tr>
+    <tr><td>4</td><td>Law</td><td>SaulLM-7B</td><td>LegalBench</td><td>Verifiable against statute text. &mu;(f) = 5&times;.</td></tr>
+    <tr><td>5</td><td>Finance</td><td>FinGPT or Llama-3.1-8B fine-tuned</td><td>FLUE</td><td>Numerical claims verifiable. High business value per correction.</td></tr>
+    <tr><td>6</td><td>General science</td><td>Llama-3.1-8B-Instruct</td><td>MMLU-Science</td><td>Fallback for cross-domain science queries.</td></tr>
+    <tr><td>7</td><td>Arbiter</td><td>Qwen2.5-3B-AWQ (scale to 13B+)</td><td>&mdash;</td><td>Cross-domain conflict resolution. Upgrade before upgrading specialists.</td></tr>
+  </tbody>
+</table>
+
+<h3>3.3 Getting three specialists running in one session</h3>
+<div class="code-block">
+  <div class="code-header">bash &mdash; cloud setup (RunPod or equivalent, RTX 4090)</div>
+<pre>git clone https://github.com/praneethtota/Adaptive-Utility-Agent
+cd Adaptive-Utility-Agent/agent
+pip install vllm fastapi uvicorn httpx aiohttp trl peft \
+            transformers huggingface_hub hf_transfer
+
+# Download models (~14 GB, ~17s at datacenter speeds)
+HF_HUB_ENABLE_HF_TRANSFER=1 python -c "
+from huggingface_hub import snapshot_download
+snapshot_download('Qwen/Qwen2.5-Coder-7B-Instruct-AWQ', local_dir='./models/swe')
+snapshot_download('Qwen/Qwen2.5-7B-Instruct-AWQ',       local_dir='./models/math')
+snapshot_download('Qwen/Qwen2.5-3B-Instruct-AWQ',       local_dir='./models/arbiter')
+"
+
+# NOTE: RunPod nginx claims port 8001 -- use 9001-9003 on RunPod.
+# On bare metal, 8001-8003 is fine.
+python -m vllm.entrypoints.openai.api_server \
+  --model ./models/swe --port 9001 \
+  --quantization awq --max-model-len 2048 \
+  --gpu-memory-utilization 0.34 &
+
+python -m vllm.entrypoints.openai.api_server \
+  --model ./models/math --port 9002 \
+  --quantization awq --max-model-len 2048 \
+  --gpu-memory-utilization 0.34 &
+
+python -m vllm.entrypoints.openai.api_server \
+  --model ./models/arbiter --port 9003 \
+  --quantization awq --max-model-len 2048 \
+  --gpu-memory-utilization 0.18 \
+  --enforce-eager &
+
+# ⚠  Start servers sequentially (one at a time + sleep 90) with --enforce-eager.
+# Parallel startup causes CUDA graph profiling conflicts on single-GPU setups.
+# Measured: sequential with --enforce-eager is reliable on RTX 4090.
+sleep 90  # vLLM startup: 28-48s per server
+
+curl http://localhost:9001/v1/models
+curl http://localhost:9002/v1/models
+curl http://localhost:9003/v1/models
+
+python router.py  # FastAPI on port 8000</pre>
 </div>
 
-<!-- ─────────────────────────────────────── -->
+<div class="callout orange">
+  <p><strong>GPU memory.</strong> At <code>--gpu-memory-utilization 0.30</code>, after AWQ weights (~5.5 GB) and CUDA graphs (~0.8 GB), only ~0.9 GB remains for KV-cache &mdash; insufficient for even one cache block. Use 0.34/0.34/0.18 for SWE/Math/Arbiter. Measured on RTX 4090: 22,206 / 24,564 MiB (90.4%) concurrent.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
 <h2 id="utility">4. The utility function</h2>
 
-<h3>Why it exists</h3>
+<p>Every component in the system is governed by one formula:</p>
+<pre>U = w_e(f) &middot; E  +  w_c(f) &middot; C  +  w_k(f) &middot; K
 
-<p>Most agent frameworks monitor quality after the fact. This framework uses a utility score as a <em>control law</em> that governs every decision the system makes:</p>
+  E -- Efficacy:    how well the output serves the platform's definition
+                   of a good outcome. Domain-defined: in SWE, E measures
+                   test pass rate vs human baseline. Business objectives
+                   are not a separate term -- they shift what E means.
 
-<ul>
-  <li><strong>At inference time</strong> — if U falls below minimum bounds, the agent abstains instead of answering</li>
-  <li><strong>At correction time</strong> — contradictions penalize confidence proportional to the field's error cost</li>
-  <li><strong>At training time</strong> — the field penalty multiplier is the DPO loss weight, so a wrong answer in surgery is trained against 10× harder than one in creative writing</li>
-  <li><strong>At deployment time</strong> — a new LoRA adapter is only promoted if it passes a benchmark gate measured in U</li>
-</ul>
+  C -- Confidence: internal consistency, penalised by contradictions.
+                   Below C_min(field): ABSTAIN.
 
-<h3>The formula</h3>
+  K -- Curiosity:  exploration bonus toward high-upside unexplored domains.
+                   Capped at 50% to prevent gaming.
 
-<pre>
-U = w_e(f) · E_ema  +  w_c(f) · C  +  w_k(f) · K_effective
+  f -- field context, determines weights and bounds.</pre>
 
-E_ema  — Efficacy (EMA-accumulated): performance vs human baseline
-C      — Confidence: internal consistency, penalized by contradictions
-K      — Curiosity: exploration bonus for novel domains (capped at 50% of U)
-f      — field, which determines weights and minimum competence thresholds
+<p>This is not arbitrary. It is the unique additive structure satisfying five behavioral axioms via Debreu's representation theorem. The EMA rate &alpha;=0.2 is Kalman-optimal for this noise model. See <a href="whitepaper_full_v0_5.html#appendix-b">Appendix B</a>.</p>
 
-Decision rule:
-  act    if C ≥ C_min(f) AND E_ema ≥ E_min(f)
-  abstain + escalate  otherwise
-</pre>
-
-<p>The additive weighted structure is not arbitrary — it is the unique functional form satisfying five behavioral axioms (proved from first principles in <a href="whitepaper_full_v0_5.html#appendix-b">Appendix B, Theorem B.1</a>). The weights are set proportional to the cost of each error type in the field, calibrated against professional licensing standards.</p>
-
-<h3>Field configuration in code</h3>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/config.py — FieldConfig and FIELD_CONFIGS</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/config.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-@dataclass
-class FieldConfig:
-    name: str
-    w_efficacy: float       # weight on efficacy term
-    w_confidence: float     # weight on confidence term
-    w_curiosity: float      # weight on curiosity term
-    c_min: float            # minimum confidence to act (hard gate)
-    e_min: float            # minimum efficacy to act (hard gate)
-    penalty_multiplier: float  # contradiction penalty scale → DPO loss weight
-
-    def __post_init__(self):
-        assert abs(self.w_efficacy + self.w_confidence + self.w_curiosity - 1.0) &lt; 1e-6
-
-FIELD_CONFIGS = {
-    "surgery": FieldConfig(
-        w_efficacy=0.20, w_confidence=0.70, w_curiosity=0.10,
-        c_min=0.95, e_min=0.90, penalty_multiplier=10.0
-    ),
-    "aviation": FieldConfig(
-        w_efficacy=0.20, w_confidence=0.70, w_curiosity=0.10,
-        c_min=0.95, e_min=0.90, penalty_multiplier=10.0
-    ),
-    "software_engineering": FieldConfig(
-        w_efficacy=0.55, w_confidence=0.35, w_curiosity=0.10,
-        c_min=0.70, e_min=0.65, penalty_multiplier=2.0
-    ),
-    "creative_writing": FieldConfig(
-        w_efficacy=0.80, w_confidence=0.05, w_curiosity=0.15,
-        c_min=0.05, e_min=0.15, penalty_multiplier=1.0
-    ),
-    ...
-}
-</pre>
-</div>
-
-<p>Read the pattern: surgery and aviation have high confidence weight (w_c=0.70) and tight minimums (c_min=0.95) because a confident wrong answer is dangerous. Creative writing has almost no confidence minimum (c_min=0.05) because hallucination risk is low and exploration is valuable. The penalty multiplier is what makes the utility function an active training signal — it becomes the DPO loss weight at calibration time.</p>
-
-<h3>Full field weight table</h3>
-
+<h3>4.1 Field configs</h3>
 <table>
-  <thead>
-    <tr><th>Field</th><th>w_e</th><th>w_c</th><th>w_k</th><th>C_min</th><th>E_min</th><th>Penalty</th></tr>
-  </thead>
+  <thead><tr><th>Field</th><th>w_e</th><th>w_c</th><th>w_k</th><th>C_min</th><th>&mu;(f)</th></tr></thead>
   <tbody>
-    <tr><td>surgery / aviation</td><td>0.20</td><td>0.70</td><td>0.10</td><td>0.95</td><td>0.90</td><td>10×</td></tr>
-    <tr><td>law</td><td>0.30</td><td>0.60</td><td>0.10</td><td>0.85</td><td>0.80</td><td>5×</td></tr>
-    <tr><td>structural engineering</td><td>0.40</td><td>0.50</td><td>0.10</td><td>0.80</td><td>0.75</td><td>4×</td></tr>
-    <tr><td>software engineering</td><td>0.55</td><td>0.35</td><td>0.10</td><td>0.70</td><td>0.65</td><td>2×</td></tr>
-    <tr><td>STEM research</td><td>0.50</td><td>0.30</td><td>0.20</td><td>0.65</td><td>0.60</td><td>2×</td></tr>
-    <tr><td>education</td><td>0.50</td><td>0.30</td><td>0.20</td><td>0.60</td><td>0.55</td><td>1.5×</td></tr>
-    <tr><td>art / creative writing</td><td>0.80</td><td>0.05–0.10</td><td>0.10–0.15</td><td>0.05–0.10</td><td>0.15–0.20</td><td>1×</td></tr>
+    <tr><td>Surgery / Aviation</td><td>0.20</td><td>0.70</td><td>0.10</td><td>0.95</td><td>10&times;</td></tr>
+    <tr><td>Law</td><td>0.30</td><td>0.60</td><td>0.10</td><td>0.85</td><td>5&times;</td></tr>
+    <tr><td>Structural Engineering</td><td>0.40</td><td>0.50</td><td>0.10</td><td>0.80</td><td>4&times;</td></tr>
+    <tr><td>Mathematics</td><td>0.50</td><td>0.40</td><td>0.10</td><td>0.75</td><td>3&times;</td></tr>
+    <tr><td>Software Engineering</td><td>0.55</td><td>0.35</td><td>0.10</td><td>0.70</td><td>2&times;</td></tr>
+    <tr><td>STEM Research</td><td>0.50</td><td>0.30</td><td>0.20</td><td>0.65</td><td>2&times;</td></tr>
+    <tr><td>Creative Writing</td><td>0.80</td><td>0.05</td><td>0.15</td><td>0.05</td><td>1&times;</td></tr>
   </tbody>
 </table>
-<p class="caption">From <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/config.py" target="_blank">agent/config.py</a>. Derived from societal licensing standards — see <a href="whitepaper_full_v0_5.html#field-bounds">§5.1 of the whitepaper</a> for the derivation.</p>
-
-<h3>Blending configs under ambiguity</h3>
-
-<p>When a query spans multiple fields, <code>get_effective_config()</code> blends configs by probability weight, which naturally makes the system more conservative under ambiguity — the high C_min of any present high-stakes field pulls the blended minimum up.</p>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/config.py — blending under ambiguity</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/config.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-def get_effective_config(field_distribution: Dict[str, float]) -> FieldConfig:
-    """
-    When field is ambiguous, blend configs by probability weight.
-    This makes the agent more conservative under ambiguity.
-    """
-    for field, prob in field_distribution.items():
-        cfg = FIELD_CONFIGS.get(field, FIELD_CONFIGS["general"])
-        blended.w_confidence += prob * cfg.w_confidence
-        blended.c_min        += prob * cfg.c_min
-        blended.penalty_multiplier += prob * cfg.penalty_multiplier
-        ...
-    return blended
-</pre>
-</div>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="assertions">5. The assertions store</h2>
-
-<h3>Why it exists</h3>
-
-<p>Session-level correction injection — adding a note to the system prompt that says "don't claim bubble sort is O(n)" — fixes the current conversation. It does nothing for the next session, or the next user. The assertions store is the cross-session memory layer: a persistent fact store where verified corrections accumulate with field-specific confidence decay.</p>
-
-<p>The critical design choice is the decay model. Not all facts age at the same rate. A mathematical proof (bubble sort is O(n²)) does not decay — it will be true in 100 years. A clinical guideline may be superseded in 18 months. The store encodes this directly:</p>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/assertions_store.py — decay classes</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/assertions_store.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-class DecayClass(str, Enum):
-    A = "A"  # no decay — proven mathematical/logical facts
-    B = "B"  # slow decay — τ = 10 years (mechanical engineering, classical physics)
-    C = "C"  # moderate decay — τ = 3 years (medicine, law, architecture)
-    D = "D"  # fast decay — τ = 6 months (clinical guidelines, ML benchmarks, security)
-
-DECAY_TAU_SECONDS = {
-    DecayClass.A: None,                    # immortal
-    DecayClass.B: 10 * 365.25 * 86400,    # 10 years
-    DecayClass.C: 3  * 365.25 * 86400,    # 3 years
-    DecayClass.D: 0.5 * 365.25 * 86400,   # 6 months
-}
-
-# Default decay class per field — subject overrides take priority
-FIELD_DECAY_CLASS = {
-    "surgery":                DecayClass.C,
-    "structural_engineering": DecayClass.B,   # physics principles very stable
-    "software_engineering":   DecayClass.D,   # best practices change fast
-    "mathematics":            DecayClass.A,   # proofs don't expire
-}
-
-# Subject-level overrides always win over field default
-SUBJECT_DECAY_OVERRIDES = {
-    "time_complexity":    DecayClass.A,   # algorithmic complexity is Class A
-    "algorithm_correctness": DecayClass.A,
-    "clinical_guideline": DecayClass.D,
-    "ml_benchmark":       DecayClass.D,
-    "api_version":        DecayClass.D,
-}
-</pre>
-</div>
-
-<h3>Effective confidence over time</h3>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/assertions_store.py — Assertion.effective_confidence()</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/assertions_store.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-def effective_confidence(self, now=None) -> float:
-    """
-    C_effective = C_at_write × exp(-Δt / τ)
-    Class A: no decay — C_effective = C_at_write always.
-    """
-    if self.decay_class == DecayClass.A:
-        return self.confidence_at_write   # proofs don't age
-
-    tau = DECAY_TAU_SECONDS[self.decay_class]
-    delta_t = (now or time.time()) - self.timestamp
-    return self.confidence_at_write * math.exp(-delta_t / tau)
-</pre>
-</div>
-
-<p>When the store is queried, only assertions whose effective confidence exceeds the threshold are returned. Old clinical guidelines fade out of active use without explicit deletion — the decay handles it automatically. Use <code>store.prune_stale()</code> to garbage collect below a floor (default 0.05).</p>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="contradiction">6. The contradiction detector</h2>
-
-<h3>Why it exists</h3>
-
-<p>The correction loop can only correct what it can detect. The contradiction detector is the layer that turns model outputs into structured error signals. It runs four checks in order of increasing cost, short-circuiting when a contradiction is found:</p>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/contradiction_detector.py — the check pipeline</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/contradiction_detector.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-def check(self, problem, solution, claimed_complexity=None) -> ContradictionResult:
-    result = ContradictionResult()
-
-    self._check_syntax(solution, result)               # 1. Is the code valid Python?
-    self._check_logical_consistency(problem, solution, result)  # 2. Fails own test cases?
-    if claimed_complexity:
-        self._check_complexity_claim(solution, claimed_complexity, result)  # 3. Math wrong?
-    self._check_cross_session(problem, solution, result)  # 4. Contradicts prior solutions?
-
-    # Total penalty: sum of severities × multiplier, capped at 0.5
-    if result.contradictions:
-        total_severity = sum(c.severity for c in result.contradictions)
-        result.confidence_penalty = min(
-            total_severity * self.penalty_multiplier * 0.1,
-            0.5   # never destroy confidence in a single interaction
-        )
-    return result
-</pre>
-</div>
-
-<h3>How it caught the two_sum contradiction</h3>
-
-<p>The mathematical check is what catches the seeded two_sum contradiction. It uses Python's <code>ast</code> module to count nested loop depth, then compares that against the claimed complexity:</p>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/contradiction_detector.py — complexity check via AST</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/contradiction_detector.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-def _check_complexity_claim(self, solution, claimed_complexity, result):
-    code = self._extract_code(solution)
-    nested_loop_count = self._count_nested_loops(code)   # uses ast.parse()
-
-    if "o(n)" in claimed_complexity.lower() or "o(1)" in claimed_complexity.lower():
-        if nested_loop_count >= 2:
-            result.contradictions.append(Contradiction(
-                type="mathematical",
-                description=f"Claimed {claimed_complexity} but code has "
-                            f"{nested_loop_count} nested loop levels",
-                severity=0.7
-            ))
-
-# For two_sum cycle 1:
-# claimed_complexity = "O(n)"  ← from CYCLE_RESPONSES
-# nested_loop_count  = 2       ← two for-loops detected by AST
-# → Contradiction detected, severity=0.7, penalty applied to confidence
-</pre>
-</div>
-
-<div class="callout orange">
-  <p><strong>The penalty flows directly into the utility score.</strong> <code>contradiction_result.confidence_penalty</code> is passed into <code>utility_scorer.score()</code> as an argument. There, it is multiplied by <code>field_config.penalty_multiplier</code> before being applied to the EMA update. For <code>software_engineering</code> (penalty_multiplier=2.0), a severity-0.7 contradiction produces a 14% confidence reduction. For <code>surgery</code> (penalty_multiplier=10.0), the same contradiction produces a 70% reduction.</p>
-</div>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="confidence">7. The confidence updater</h2>
-
-<h3>Why EMA, not a running average</h3>
-
-<p>The confidence signal needs to be responsive to recent performance without being destroyed by a single bad interaction. An exponential moving average (EMA) with α=0.2 is the right tool: it weights recent observations more heavily, forgets old ones gradually, and — as shown in <a href="whitepaper_full_v0_5.html#appendix-b">Appendix B, Theorem B.4</a> — is Kalman-optimal for a noise ratio ρ=0.05. Both efficacy and confidence use the same EMA update rate.</p>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/utility_scorer.py — EMA updates for E and C</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/utility_scorer.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-EFFICACY_ALPHA  = 0.2   # EMA learning rate for efficacy
-CONFIDENCE_ALPHA = 0.2  # EMA learning rate for confidence
-
-def _update_efficacy_ema(self, state: DomainState, efficacy_raw: float) -> float:
-    """EMA-accumulated domain-level efficacy."""
-    state.efficacy_ema = (
-        (1 - self.EFFICACY_ALPHA) * state.efficacy_ema +
-        self.EFFICACY_ALPHA * efficacy_raw
-    )
-    state.efficacy_ema = max(0.0, min(1.0, state.efficacy_ema))
-    return state.efficacy_ema
-
-def _update_confidence(self, state, test_pass_rate, contradiction_penalty, config):
-    # The penalty is scaled by the field's penalty multiplier
-    effective_penalty = contradiction_penalty * config.penalty_multiplier
-    penalized_signal  = test_pass_rate * (1.0 - effective_penalty)
-
-    state.confidence = (
-        (1 - self.CONFIDENCE_ALPHA) * state.confidence +
-        self.CONFIDENCE_ALPHA * penalized_signal
-    )
-    state.confidence = max(0.0, min(1.0, state.confidence))
-    return state.confidence
-</pre>
-</div>
-
-<h3>The hard gate</h3>
-
-<p>When confidence or efficacy fall below the field minimum, the agent does not produce a low-quality answer. It produces no answer and escalates:</p>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/agent.py — the abstain gate</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/agent.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-# Decision rule from whitepaper §3.1:
-#   act    if C ≥ C_min(f) AND E ≥ E_min(f)
-#   abstain otherwise — hedge response, do not return the answer
-should_abstain = task_score.below_minimum
-
-if should_abstain:
-    abstain_answer = (
-        f"I have insufficient confidence to answer in the {primary_field} domain "
-        f"(confidence {task_score.confidence:.2f} &lt; required {field_config.c_min:.2f}). "
-        f"Please consult a qualified professional."
-    )
-</pre>
-</div>
-
-<h3>Dynamic difficulty routing</h3>
-
-<p>As domain confidence rises, the scorer signals that harder problems should be routed in — resetting the novelty counter and re-engaging the curiosity dynamics. This is visible in the simulation output where cycle 3 shifts to "medium" problems:</p>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/utility_scorer.py — difficulty routing</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/utility_scorer.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-DIFFICULTY_THRESHOLDS = {
-    "hard":   0.85,   # route to Hard when C_domain > 0.85
-    "medium": 0.70,   # route to Medium when C_domain > 0.70
-    # below 0.70 → Easy problems
-}
-
-def _recommended_difficulty(self, confidence: float) -> str:
-    if confidence >= DIFFICULTY_THRESHOLDS["hard"]:   return "hard"
-    if confidence >= DIFFICULTY_THRESHOLDS["medium"]: return "medium"
-    return "easy"
-</pre>
-</div>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="agent-run">8. Putting it together: agent.run()</h2>
-
-<p>The <code>UtilityAgent.run()</code> method in <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/agent.py" target="_blank"><code>agent/agent.py</code></a> is where all components wire together. It processes one interaction end-to-end through 8 steps:</p>
-
-<div class="steps">
-  <div class="step">
-    <div class="step-num">1</div>
-    <div class="step-body"><strong>Field classification</strong> — <code>FieldClassifier.classify(problem)</code> returns a probability distribution over fields. <code>get_effective_config()</code> blends the config. High-stakes fields are floored at 15% minimum probability.</div>
-  </div>
-  <div class="step">
-    <div class="step-num">2</div>
-    <div class="step-body"><strong>Contradiction detection</strong> — <code>ContradictionDetector.check()</code> runs logical, mathematical, and cross-session checks on the solution. Returns a <code>ContradictionResult</code> with penalties.</div>
-  </div>
-  <div class="step">
-    <div class="step-num">3</div>
-    <div class="step-body"><strong>Arbiter (if competing solution provided)</strong> — <code>ArbiterAgent.arbitrate()</code> runs the 4-check pipeline, determines the verdict case (1–4), and if Case 3 (both wrong), opens a curiosity gap bonus on the subject.</div>
-  </div>
-  <div class="step">
-    <div class="step-num">4</div>
-    <div class="step-body"><strong>Utility scoring</strong> — <code>UtilityScorer.score()</code> computes E_ema, C (with contradiction penalty), K_effective (with gap bonus), and final U. Sets <code>below_minimum</code> flag.</div>
-  </div>
-  <div class="step">
-    <div class="step-num">5</div>
-    <div class="step-body"><strong>DPO pair collection</strong> — if contradictions were found, <code>_record_dpo_pair()</code> stores a (rejected=solution, weight=penalty_multiplier) pair. The preferred response is filled in later from the Arbiter's verified claim or human review.</div>
-  </div>
-  <div class="step">
-    <div class="step-num">6</div>
-    <div class="step-body"><strong>Abstain gate</strong> — if <code>task_score.below_minimum</code>, the response is replaced with a formal abstention message. The raw answer is not returned. The caller should escalate.</div>
-  </div>
-  <div class="step">
-    <div class="step-num">7</div>
-    <div class="step-body"><strong>Personality evolution</strong> — every 3 interactions (configurable), <code>PersonalityManager.evolve()</code> updates the behavioral wrapper based on the utility trend and contradiction rate in the domain.</div>
-  </div>
-  <div class="step">
-    <div class="step-num">8</div>
-    <div class="step-body"><strong>Build and return AgentResponse</strong> — returns utility score, verdict, personality state, domain summary, active corrections, abstain flag, and recommended difficulty. Everything needed for monitoring and routing decisions.</div>
-  </div>
-</div>
-
-<h3>What gets injected into the system prompt</h3>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/agent.py — get_system_prompt()</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/agent.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-def get_system_prompt(self, field: str) -> str:
-    config = FIELD_CONFIGS.get(field, FIELD_CONFIGS["general"])
-    wrapper_text = self.personality_manager.build_wrapper_prompt(field)
-
-    corrections_block = ""
-    if self.active_corrections:
-        corrections_str = "\n".join(f"  - {c}" for c in self.active_corrections[-10:])
-        corrections_block = f"\nACTIVE CORRECTIONS (verified — do not repeat these errors):\n{corrections_str}\n"
-
-    return (
-        f"You are an AI assistant operating in the {field} domain.\n\n"
-        f"Minimum confidence standard for this field: {config.c_min:.0%}\n"
-        f"If your confidence is below this threshold, you must abstain and recommend "
-        f"consultation with a qualified professional. Do not guess.\n"
-        f"{corrections_block}"      # ← session corrections injected here
-        f"{wrapper_text}"           # ← personality wrapper (only if non-neutral)
-        f"Always: state your reasoning, acknowledge uncertainty, never fabricate facts."
-    )
-</pre>
-</div>
-
-<p>The personality wrapper only injects when a trait deviates more than τ=0.05 from neutral. At the field-neutral point (after reset or on a new model release), the wrapper contributes nothing — it is identity-transparent by design.</p>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="calibration">9. The calibration pipeline</h2>
-
-<h3>Why session-level corrections aren't enough</h3>
-
-<p>Injecting corrections into the system prompt fixes the current session. It doesn't fix the model. Next session, the same problem will resurface and need the same correction again. The calibration pipeline is what actually changes the weights — making the fix permanent and generalizing it to similar problems the model has never seen.</p>
-
-<h3>Why DPO, not RLHF</h3>
-
-<p>Direct Preference Optimization (DPO, Rafailov et al. 2023) is the right choice here for a specific reason: the utility function already generates exactly the data format DPO needs — (preferred, rejected) pairs with implicit reward. RLHF requires a separate reward model trained separately, adding a component that this system doesn't need. Every scored interaction where a contradiction is detected immediately produces a DPO pair.</p>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/agent.py — DPO pair collection</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/agent.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-def _record_dpo_pair(self, task_id, field, preferred, rejected, weight, reason):
-    self.calibration_dpo_pairs.append({
-        "task_id":   task_id,
-        "field":     field,
-        "preferred": preferred,   # correct version (from Arbiter or human review)
-        "rejected":  rejected,    # the contradictory output
-        "weight":    weight,      # = field_config.penalty_multiplier → DPO loss weight
-        "reason":    reason,
-    })
-
-def export_dpo_pairs(self, min_weight: float = 1.0) -> List[dict]:
-    """Return accumulated pairs for the calibration pipeline."""
-    return [p for p in self.calibration_dpo_pairs if p["weight"] >= min_weight]
-</pre>
-</div>
-
-<h3>The full calibration cycle</h3>
-
-<pre>
-1. Collect all interactions since last run
-2. Filter: keep pairs where U_preferred > U_rejected + threshold
-   (avoid training on marginal differences — only clear signal)
-3. Weight each pair by field_penalty_multiplier:
-      DPO loss for surgery contradiction     → 10× weight
-      DPO loss for software contradiction    →  2× weight
-      DPO loss for creative writing mistake  →  1× weight
-4. Mix with replay buffer (prior calibration pairs, weight=0.5)
-   ← DO NOT SKIP THIS STEP (see §14)
-5. Mix with golden examples (agent's own best responses, weight=0.7)
-6. Run LoRA fine-tuning on weighted (preferred, rejected) pairs
-7. Evaluate on held-out benchmark set
-   → if benchmark U regresses, reject adapter and investigate
-8. Deploy updated LoRA adapter if benchmark passes
-</pre>
 
 <div class="callout">
-  <p><strong>What the replay buffer does.</strong> Without it, every calibration run erases what was fixed in the previous run. The model learns to not-do the new contradiction while re-learning how to do the old one. This is catastrophic forgetting at the calibration level — not the training level. The replay buffer mixes prior pairs with a down-weight (0.5) to prevent this. It is the most commonly skipped step and the most reliably regretted one.</p>
+  <p><strong>&mu;(f) is the key parameter.</strong> The field penalty multiplier is the direct DPO loss weighting mechanism. A surgery error contributes 10&times; more gradient than a creative writing error. The utility function governs what the model learns to fix, not just how it is evaluated.</p>
 </div>
 
-<div class="callout orange">
-  <p><strong>Current status.</strong> The LoRA training step itself is not in this codebase — it requires a GPU and a base model checkpoint. The codebase produces the DPO pairs (<code>export_dpo_pairs()</code>) and validates that they accumulate correctly across cycles. The training step connects to standard HuggingFace <code>trl</code> DPO trainer with the pair format above. Full integration is Phase 6 of the <a href="whitepaper_full_v0_5.html#roadmap">roadmap</a>.</p>
-</div>
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="routing">5. Field classifier and routing</h2>
 
-<!-- ─────────────────────────────────────── -->
-<h2 id="routing">10. Routing and the field classifier</h2>
+<p>The field classifier maps a query to a probability distribution over domains. The router uses this to route to one specialist (confident) or fan out to multiple (ambiguous).</p>
 
-<h3>Why routing matters so much</h3>
-
-<p>The routing quality experiment (four-arm controlled study, see <a href="whitepaper_full_v0_5.html#routing-experiment">§10.9.4</a>) shows that routing is not a nice-to-have:</p>
-
-<table>
-  <thead>
-    <tr><th>Arm</th><th>Correctness</th><th>Δ vs baseline</th><th>p-value</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>A — No routing (generic prompt)</td><td>59.0%</td><td>—</td><td>—</td></tr>
-    <tr><td>B — Matched routing (oracle)</td><td>71.5%</td><td style="color:var(--accent2);font-weight:700">+12.5%</td><td>0.009</td></tr>
-    <tr><td><strong>C — Mismatched routing (wrong specialist)</strong></td><td>41.5%</td><td style="color:var(--accent3);font-weight:700">−17.5%</td><td>&lt;0.001</td></tr>
-    <tr><td>D — VCG arbitration</td><td>69.5%</td><td style="color:var(--accent2);font-weight:700">+10.5%</td><td>0.029</td></tr>
-  </tbody>
-</table>
-
-<p>Arm C is the critical result. A specialist fine-tuned on one domain is <em>confidently wrong</em> on out-of-domain queries — not just uncertain, but wrong with high confidence (Brier 0.292 vs 0.160). Misrouting is actively worse than no routing at all. This is the "Regime 2" failure mode, and it is why confidence-gated routing — not just domain classification — is required.</p>
-
-<h3>Why a discriminative model beats an LLM for classification</h3>
-
-<p>The field classifier in Phase 1 uses an LLM with keyword fallback. This is the <em>weakest possible choice</em> for routing, and it is explicitly noted in the codebase. Xu et al. (2024) show LLMs force-select a label even when none applies. Raval et al. (2026) show traditional ML models (fine-tuned DeBERTa, LightGBM) consistently outperform LLMs on structured classification. The planned upgrade (M1 mitigation, <a href="whitepaper_full_v0_5.html#routing-mitigations">§10.4.1</a>) replaces the LLM classifier with a discriminative model and retains the LLM only as a fallback for out-of-distribution queries.</p>
-
-<h3>The three robustness mechanisms</h3>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/field_classifier.py — robustness constants</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/field_classifier.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-# 1. High-stakes floor — dangerous fields can't be diluted below this
-HIGH_STAKES_FIELDS    = {"surgery", "aviation", "law"}
-MIN_HIGH_STAKES_PROB  = 0.15
-# If surgery appears at all in a query, it gets at least 15% weight.
-# Under-weighting a dangerous field is asymmetrically more costly than over-weighting.
-
-# 2. EMA smoothing across conversation turns
-HISTORY_EMA_ALPHA = 0.4   # higher = more weight on recent turns
-
-# 3. Entropy-based conservative fallback
-ENTROPY_CONSERVATIVE_THRESHOLD = 0.7
-# When the distribution entropy is high (classifier is uncertain),
-# bounds shift toward the most conservative present field.
-# High ambiguity → more caution, not averaging toward the middle.
-</pre>
-</div>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="arbiter">11. The Arbiter Agent</h2>
-
-<h3>Why it exists</h3>
-
-<p>In Phase 2, multiple specialist models may produce conflicting outputs on the same query. The Arbiter is the dedicated contradiction resolution agent that runs structured evidence checks — not a heuristic vote — and determines which output is correct, producing a formal verdict and internal evidence chain. Its design ensures that the "loudest" or most recently calibrated specialist cannot simply override others.</p>
-
-<h3>The four checks in order of cost</h3>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/arbiter.py — check weights and confidence threshold</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/arbiter.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-CHECK_WEIGHTS: Dict[str, float] = {
-    "logical":       0.30,   # does output contradict its own premises?
-    "mathematical":  0.40,   # are complexity/numerical claims provably wrong?
-    "cross_session": 0.20,   # contradicts prior verified assertions?
-    "empirical":     0.10,   # contradicts external ground truth? (stub — Phase 1 item)
-}
-
-VERDICT_CONFIDENCE_THRESHOLD = 0.85   # below this → Case 4 (escalate)
-</pre>
-</div>
-
-<p>Checks run in this order because logical and mathematical checks are cheap (AST parsing, pattern matching) while cross-session requires a store lookup and empirical requires an external call. The empirical check is currently a stub — it returns "not converged" to avoid false positives until external knowledge APIs are integrated:</p>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/arbiter.py — empirical check stub</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/arbiter.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-def _check_empirical(self, subject, domain, output_A, output_B) -> CheckResult:
-    """
-    In the MVP this is a stub — the live system calls external APIs.
-    Returns not-converged to avoid false positives.
-    """
-    # TODO Phase 1: integrate external knowledge APIs per field
-    # e.g. PubMed for medicine, arXiv for CS, SymPy for math
-    return CheckResult(
-        "empirical", False, None,
-        "Empirical check not yet implemented (Phase 1 item)", 0.0
-    )
-</pre>
-</div>
-
-<h3>Arbiter confidence and case determination</h3>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/arbiter.py — _compute_confidence() and _determine_case()</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/arbiter.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-def _compute_confidence(self, checks: List[CheckResult]) -> float:
-    """conf_arbiter = Σ(w_i × 1[check_i converges]) / Σ(w_i)"""
-    numerator   = sum(CHECK_WEIGHTS[c.check_type] * (1.0 if c.converged else 0.0)
-                      for c in checks)
-    denominator = sum(CHECK_WEIGHTS[c.check_type] for c in checks)
-    return numerator / denominator
-
-def _determine_case(self, checks, arbiter_conf):
-    if arbiter_conf &lt; VERDICT_CONFIDENCE_THRESHOLD:
-        return VerdictCase.CASE_4, None   # inconclusive → escalate
-
-    converged = [c for c in checks if c.converged]
-    # Weighted majority vote among converged checks
-    vote_A = sum(CHECK_WEIGHTS[c.check_type] for c in converged if c.winner == "A")
-    vote_B = sum(CHECK_WEIGHTS[c.check_type] for c in converged if c.winner == "B")
-    vote_N = sum(CHECK_WEIGHTS[c.check_type] for c in converged if c.winner == "neither")
-
-    if vote_N > vote_A and vote_N > vote_B: return VerdictCase.CASE_3, "neither"
-    if vote_A > vote_B:                     return VerdictCase.CASE_1, "A"
-    if vote_B > vote_A:                     return VerdictCase.CASE_2, "B"
-    return VerdictCase.CASE_4, None
-</pre>
-</div>
-
-<h3>The four verdict cases</h3>
-
-<table>
-  <thead>
-    <tr><th>Case</th><th>Meaning</th><th>Action</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><strong>Case 1</strong></td><td>A correct, B wrong</td><td>Correct B, reinforce A. Store A's claim in assertions store.</td></tr>
-    <tr><td><strong>Case 2</strong></td><td>B correct, A wrong</td><td>Correct A, reinforce B. Store B's claim in assertions store.</td></tr>
-    <tr><td><strong>Case 3</strong></td><td>Both wrong</td><td>Correct both. Open a <em>curiosity gap bonus</em> — raises K for this subject until both specialists reach C_min on it.</td></tr>
-    <tr><td><strong>Case 4</strong></td><td>Inconclusive</td><td>Set <code>needs_escalation=True</code>. External response is a minimal hedge only. Evidence chain stays internal.</td></tr>
-  </tbody>
-</table>
-
-<h3>Minimum disclosure</h3>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/arbiter.py — ArbiterVerdict.external_response</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/arbiter.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-@property
-def external_response(self) -> str:
-    """
-    What the user sees — minimum disclosure.
-    Cases 1/2/3: the verified answer.
-    Case 4: minimal hedge only.
-    The internal evidence chain is never disclosed externally.
-    """
-    if self.case == VerdictCase.CASE_4:
-        return "I have limited confidence in this answer. Please verify with a domain expert."
-    if self.verified_claim:
-        return self.verified_claim
-    return ""
-</pre>
-</div>
-
-<h3>Calibration sampling — adaptive rate</h3>
-
-<div class="code-block">
-  <div class="code-header">
-    <span>agent/arbiter.py — adaptive sampling</span>
-    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/arbiter.py" target="_blank">view on GitHub ↗</a>
-  </div>
-<pre>
-BASE_SAMPLE_RATE  = 0.03    # 3% of verdicts independently verified by default
-SAMPLE_RATE_CEILING = 0.15  # hard cap — never exceeded
-
-ADAPTIVE_SAMPLE_RATES = [
-    (2.0, 0.10),   # correction_rate > 2× baseline → 10%
-    (1.5, 0.08),   # correction_rate > 1.5× baseline → 8%
-    (1.0, BASE_SAMPLE_RATE),
-]
-
-def adaptive_sample_rate(self) -> float:
-    if self.total_verdicts &lt; 20:
-        return BASE_SAMPLE_RATE   # not enough data yet
-    rate_ratio = self.correction_rate() / max(self._baseline_correction_rate, 0.01)
-    for threshold, sample_rate in sorted(ADAPTIVE_SAMPLE_RATES, reverse=True):
-        if rate_ratio >= threshold:
-            return min(sample_rate, SAMPLE_RATE_CEILING)
-    return BASE_SAMPLE_RATE
-</pre>
-</div>
-
-<p>The adaptive sampling rate rises when the Arbiter is issuing many corrections — a signal that the specialists are drifting or the domain is changing. The 15% ceiling prevents runaway expert-sampling costs. For the VCG mechanism that makes this calibration continuous and self-correcting rather than sampled, see <a href="whitepaper_full_v0_5.html#vcg">§10.6 of the whitepaper</a>.</p>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="bluegreen">12. Blue-green deployment</h2>
-
-<h3>Why it exists</h3>
-
-<p>In Phase 2, each specialist has its own independent calibration cycle and its own LoRA adapter. When a new adapter is ready, it cannot be deployed with a hard cutover — a regression in one specialist's new weights could harm thousands of live queries before it's detected. Blue-green deployment solves this by running the old model (BLUE) and the new candidate (GREEN) in parallel, shifting traffic gradually as measured utility confirms the new model is better.</p>
-
-<h3>Trigger condition</h3>
-
-<pre>
-Trigger a deployment cycle when ALL of:
-    |U_current - U_baseline| > δ(field)       ← significant deviation
-    deviation sustained for ≥ T interactions   ← not transient noise
-    held-out benchmark available               ← can evaluate candidate
-
-δ(field) = base_δ / penalty_multiplier(field)    base_δ = 0.05
-
-Surgery:          δ = 0.005   T ≥ 246 interactions  (very sensitive)
-Software Eng:     δ = 0.025   T ≥  10 interactions  (responsive)
-Creative Writing: δ = 0.050   T ≥   2 interactions  (fast)
-</pre>
-
-<p>The T values come from a power analysis on observed utility score variance (σ ≈ 0.04). High-stakes fields require large observation windows before any traffic shifts — a wrong conclusion about a surgery specialist is too costly to risk on thin data.</p>
-
-<h3>Traffic splitting via softmax</h3>
-
-<pre>
-Phase 2 — Canary:  5% GREEN / 95% BLUE (minimum T_min interactions)
-
-Phase 3 — Gradual shift:
-    traffic_green = softmax(U_green, U_blue, τ=τ_field)
-                  = exp(U_green/τ) / (exp(U_green/τ) + exp(U_blue/τ))
-
-    Enforced floor/ceiling: clip(traffic_green, 0.05, 0.95)
-
-    τ(field):
-        Surgery:      τ = 0.05  → slow, winner-takes-all only when clear
-        Software Eng: τ = 0.20  → moderate
-        Creative:     τ = 0.50  → fast, follows any lead
-
-Phase 4 — Promotion:  traffic_green ≥ promotion_threshold → 100%
-Phase 5 — Retirement: GREEN holds through cooldown → BLUE weights freed
-</pre>
-
-<h3>Rollback</h3>
-
-<pre>
-Rollback triggers immediately when:
-    U_green &lt; U_blue - ε  for M interactions
-    OR contradiction_rate_green > contradiction_rate_blue × 1.5
-    OR benchmark regression > field_tolerance
-
-Action: traffic_blue → 100% instantly
-        GREEN failure cases added to replay buffer with negative weight
-        Next candidate is trained against these failure modes
-</pre>
-
-<p>See <a href="whitepaper_full_v0_5.html#bluegreen">§10.7–10.8 of the whitepaper</a> for the full lifecycle specification and traffic split visualization.</p>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="build-plan">13. Phased build plan</h2>
-
-<p>Build in this order. Each phase is independently valuable. Do not start a new phase until the previous one is working correctly under real traffic.</p>
-
-<table>
-  <thead>
-    <tr><th>Component</th><th>Phase</th><th>Status</th><th>Notes</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>Field classifier (keyword fallback)</td><td>1</td><td><span class="badge done">Done</span></td><td><code>field_classifier.py</code></td></tr>
-    <tr><td>Assertions store</td><td>1</td><td><span class="badge done">Done</span></td><td><code>assertions_store.py</code></td></tr>
-    <tr><td>Contradiction detector (stages 1–3)</td><td>1</td><td><span class="badge done">Done</span></td><td><code>contradiction_detector.py</code></td></tr>
-    <tr><td>Utility scorer (E_ema, C, K)</td><td>1</td><td><span class="badge done">Done</span></td><td><code>utility_scorer.py</code></td></tr>
-    <tr><td>Abstain gate</td><td>1</td><td><span class="badge done">Done</span></td><td>In <code>agent.py run()</code></td></tr>
-    <tr><td>DPO pair collector</td><td>1</td><td><span class="badge done">Done</span></td><td><code>agent.py export_dpo_pairs()</code></td></tr>
-    <tr><td>Personality wrapper</td><td>1</td><td><span class="badge done">Done</span></td><td><code>personality_manager.py</code></td></tr>
-    <tr><td>Trust manager</td><td>1</td><td><span class="badge done">Done</span></td><td><code>trust_manager.py</code></td></tr>
-    <tr><td>LoRA calibration pipeline</td><td>1</td><td><span class="badge partial">Partial</span></td><td>Pairs collected; GPU training step external</td></tr>
-    <tr><td>Arbiter Agent (stages 1–3)</td><td>2</td><td><span class="badge done">Done</span></td><td><code>arbiter.py</code></td></tr>
-    <tr><td>Routing with confidence gating</td><td>2</td><td><span class="badge partial">Designed</span></td><td>Classifier done; confidence-gated fan-out planned</td></tr>
-    <tr><td>Blue-green deployment</td><td>2</td><td><span class="badge partial">Designed</span></td><td>Spec complete in §10.7; infra not yet built</td></tr>
-    <tr><td>Empirical check (Arbiter stage 4)</td><td>2</td><td><span class="badge future">Stub</span></td><td>External API integration per field</td></tr>
-    <tr><td>VCG arbitration mechanism</td><td>3</td><td><span class="badge future">Future</span></td><td>Proofs in §10.6; requires submodel value function API</td></tr>
-    <tr><td>Hardware-adaptive graph</td><td>3</td><td><span class="badge future">Future</span></td><td>Analytical model done; physical validation pending</td></tr>
-  </tbody>
-</table>
-
-<div class="callout green">
-  <p><strong>What you can build and run today:</strong> The full Phase 1 simulation (<code>simulate.py</code>, <code>simulate_extended.py</code>), the routing experiment (<code>routing_experiment.py</code>), and the live harness against Claude (<code>harness.py</code>, requires API key). All Phase 1 components are implemented and tested.</p>
-</div>
-
-<!-- ─────────────────────────────────────── -->
-<h2 id="dont-build">14. What not to build first</h2>
-
-<div class="warn">
-  <strong>These are the most common mistakes. All of them make Phase 1 harder without making it better.</strong>
-</div>
-
+<h3>5.1 Three robustness mechanisms</h3>
 <ul>
-  <li>
-    <strong>Do not build a knowledge graph.</strong> The assertions store with embedding-based retrieval is sufficient for cross-session contradiction detection. A knowledge graph adds significant engineering complexity — schema design, graph queries, entity resolution — without improving the correction loop. The framework explicitly does not require one.
-  </li>
-
-  <li>
-    <strong>Do not build routing before the correction loop works.</strong> Routing multiplies whatever behavior the correction loop produces. If the correction loop isn't working correctly on a single model, routing will distribute broken behavior to multiple specialists instead of fixing it.
-  </li>
-
-  <li>
-    <strong>Do not skip the replay buffer.</strong> Every calibration run that omits it will silently erase prior corrections. The first time you see a previously-fixed error reappear, you will add the replay buffer under pressure. Add it at the start. It is one extra parameter in the training batch.
-  </li>
-
-  <li>
-    <strong>Do not lower C_min and E_min to make the system appear more capable.</strong> These are safety properties, not performance parameters. Lowering them means the system will produce confident wrong answers in domains where being wrong is dangerous. The simulation's abstain behavior is the correct behavior — the goal is to expand the domain where the agent can act confidently, not to suppress the abstention signal.
-  </li>
-
-  <li>
-    <strong>Do not build the empirical check (Arbiter stage 4) in Phase 1.</strong> It is expensive, introduces external dependencies, and is the least reliable check type. Logical and mathematical checks catch the most impactful contradictions at near-zero cost. Add empirical checks only after stages 1–3 are working correctly in production.
-  </li>
-
-  <li>
-    <strong>Do not treat the personality wrapper as permanent infrastructure.</strong> It is an interim behavioral mechanism designed to be superseded when fast specialist retraining makes it unnecessary. Do not build deep application logic that depends on specific personality trait values — the wrapper resets on every new model release by design.
-  </li>
+  <li><strong>High-stakes floor:</strong> Surgery, aviation, and law are floored at 15% if they appear at all. A 5% medical signal becomes 15% &mdash; over-caution costs less than under-caution.</li>
+  <li><strong>EMA history:</strong> Field drift across a conversation is tracked at &alpha;=0.4. A conversation drifting from SWE into medicine shows tightening bounds over turns.</li>
+  <li><strong>Entropy fallback:</strong> High entropy shifts mass toward the most conservative field present. Ambiguity increases caution, not averaging.</li>
 </ul>
 
-<!-- READ NEXT -->
+<h3>5.2 Regime 2 &mdash; the failure mode to monitor</h3>
+<p>Regime 2 is when a query routes to the wrong specialist with high confidence. Measured signature on RTX 4090: mismatched routing showed mean confidence 0.750 vs ~0.60 for correctly-routed arms. Brier score tied with no-routing (0.279 vs 0.280) despite higher raw pass rate. The wrong-domain specialist is <em>more</em> confident outside its domain &mdash; calibration failure, not accuracy collapse. Monitor routing accuracy continuously in production.</p>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="correction">6. The correction loop</h2>
+
+<p>Three layers operating at different timescales, all active simultaneously in a deployed system.</p>
+
+<h3>6.1 Layer 1 &mdash; Per-session injection (seconds)</h3>
+<p>When a contradiction is detected, a corrective assertion is injected into the system prompt for the remainder of the session. No weight changes. Cost: ~100ms. Prevents a user from receiving the same wrong answer twice in the same conversation.</p>
+
+<h3>6.2 Signal decay classes</h3>
+<table>
+  <thead><tr><th>Class</th><th>Signal</th><th>Decay</th><th>Rationale</th></tr></thead>
+  <tbody>
+    <tr><td>A</td><td>Explicit rejection, verified contradiction</td><td>Never</td><td>A verified error doesn't become less wrong over time.</td></tr>
+    <tr><td>B</td><td>Strong positive (saves, verified correct)</td><td>&tau; = 10yr</td><td>Stable knowledge.</td></tr>
+    <tr><td>C</td><td>Moderate engagement (completions, ratings)</td><td>&tau; = 3yr</td><td>Subject to domain evolution.</td></tr>
+    <tr><td>D</td><td>Weak signal (clicks, views)</td><td>&tau; = 6mo</td><td>Noisy &mdash; fast decay prevents stale influence.</td></tr>
+  </tbody>
+</table>
+
+<h3>6.3 Layer 2 &mdash; Calibration-cycle DPO (hours)</h3>
+<p>Each contradiction generates a (prompt, chosen, rejected) DPO pair. Training loss weight = &mu;(f). A surgery correction contributes 10&times; more gradient than a creative writing correction. The utility function is the training loss, not just a metric.</p>
+
+<h3>6.4 Contradiction detection</h3>
+<div class="code-block">
+  <div class="code-header">python &mdash; key heuristics (contradiction_detector.py)</div>
+<pre># Two reliable patterns:
+# 1. O(n) or O(1) claimed + >= 2 nested loops
+# 2. O(n log n) claimed + >= 3 nested loops
+
+# Critical: normalise before matching
+solution_norm = (solution.lower()
+                 .replace('\\', '').replace('$', '')
+                 .replace('{', '').replace('}', '')
+                 .replace(' ', ''))
+# O(n \log n), O(n log n), O(nlogn) all now match the same pattern</pre>
+</div>
+
+<h3>6.5 Layer 3 &mdash; Release-level distillation (monthly)</h3>
+<p>Accumulated LoRA adapters merge into a new base fine-tune. Field penalty weighting ensures surgery corrections contribute 10&times; more than creative writing corrections to the merged base. Categorically different from existing continual learning approaches that treat all corrections equally.</p>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="dpo">7. DPO pair accumulation</h2>
+
+<p>DPO pairs accumulate automatically from the harness &mdash; no human annotation. A pair is created when cycle N produces a contradiction and cycle N+1 produces fewer after correction injection.</p>
+
+<div class="code-block">
+  <div class="code-header">bash &mdash; harness accumulation</div>
+<pre>python harness.py \
+  --endpoint http://localhost:9001 --model swe \
+  --cycles 3 --queries seeded_contradictions.json \
+  --export-dpo dpo_pairs/swe_accumulation.json \
+  --field software_engineering --temperature 0.2 --append \
+  --out harness_results.json
+
+# Check progress
+python -c "
+import json
+d = json.load(open('dpo_pairs/swe_accumulation.json'))
+entries = d if isinstance(d, list) else d.get('entries', [])
+paired = [e for e in entries if e.get('chosen') and e.get('rejected')]
+print(f'Paired: {len(paired)} / {len(entries)} ({len(paired)/max(len(entries),1)*100:.0f}% yield)')
+"</pre>
+</div>
+
+<p><strong>Seed query design.</strong> Two reliable patterns that fire the current detector: (A) claim O(n) or O(1) time but require nested loops, (G) claim O(n) but require string += in a loop. Queries around recursive algorithms, graph complexity, or off-by-one correctness will not fire. Design around the two patterns above, or extend the detector before designing around new patterns.</p>
+
+<p><strong>Target dataset size.</strong> POC minimum: 50 paired entries. Production quality: 500+ across temperature runs 0.2 &rarr; 0.4 &rarr; 0.6 &rarr; 0.8. Run parallel sessions against <em>different</em> specialists &mdash; two sessions against the same specialist compete for KV cache and slow each other 2&ndash;3&times;.</p>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="calibration">8. LoRA calibration and blue-green deployment</h2>
+
+<h3>8.1 Record the BLUE baseline first</h3>
+<div class="code-block">
+  <div class="code-header">bash &mdash; baseline before any training</div>
+<pre>python evaluate.py \
+  --endpoint http://localhost:9001 \
+  --label blue_baseline \
+  --output results/blue_baseline.json
+
+git add results/blue_baseline.json
+git commit -m "BLUE baseline pre-training -- do not overwrite"
+git push</pre>
+</div>
+
+<h3>8.2 Train the LoRA adapter</h3>
+<div class="code-block">
+  <div class="code-header">bash &mdash; train_lora.py (~12 min on RTX 4090 via AWQ dequantize path, run in tmux)</div>
+<pre>python train_lora.py \
+  --base-model ./models/swe \
+  --dpo-pairs dpo_pairs/accumulation_final.json \
+  --output ./models/swe_green_v1 \
+  --lora-r 16 --lora-alpha 32 --epochs 3 --batch-size 2 \
+  --field swe --apply-field-weights
+
+# --apply-field-weights applies mu(f)=2.0 as DPO loss weight per pair
+# Utility function as training loss, not just a monitoring metric
+
+# ⚠  Measured POC (RTX 4090): r=16, 502 pairs, 3 epochs overfit to training
+# contradictions. GREEN adversarial U_delta = −0.097 (worse than BLUE).
+# Promotion gate correctly rejected it. If you see the same pattern:
+
+# Low-rank alternative (try first if GREEN is rejected):
+# python train_lora.py \
+#   --base-model ./models/swe \
+#   --dpo-pairs dpo_pairs/accumulation_final.json \
+#   --output ./models/swe_green_v1b \
+#   --lora-r 4 --lora-alpha 8 --epochs 1 --batch-size 2 \
+#   --field swe --apply-field-weights</pre>
+</div>
+
+<h3>8.3 Canary, gradual shift, and promotion</h3>
+<div class="code-block">
+  <div class="code-header">bash &mdash; full blue-green cycle</div>
+<pre># Start GREEN alongside BLUE
+python -m vllm.entrypoints.openai.api_server \
+  --model ./models/swe_green_v1 --port 9011 \
+  --max-model-len 2048 --gpu-memory-utilization 0.20 &
+sleep 90
+
+# Canary: 5% traffic to GREEN
+python canary.py \
+  --blue http://localhost:9001 --green http://localhost:9011 \
+  --traffic-green 0.05 --n 50 --output results/canary_cycle1.json
+
+# Gradual shift + auto-promotion decision
+python check_promotion.py --shift \
+  --blue http://localhost:9001 --green http://localhost:9011 \
+  --field swe --n 100 --output results/shift_cycle1.json
+
+# If promoted:
+cp -r ./models/swe_green_v1 ./models/swe_v2
+lsof -i :9001 | grep python | awk '{print $2}' | xargs kill
+python -m vllm.entrypoints.openai.api_server \
+  --model ./models/swe_v2 --port 9001 \
+  --quantization awq --max-model-len 2048 \
+  --gpu-memory-utilization 0.34 &</pre>
+</div>
+
+# If NOT promoted (U_delta &lt; &delta; threshold):
+# The promotion gate worked. Measured POC: U_delta = +0.0011 &lt; 0.025 threshold.
+# Adversarial subset U_delta was &minus;0.097 &mdash; adapter overfit.
+# Next steps: (a) accumulate more/better DPO pairs, (b) retrain with --lora-r 4
+# --epochs 1 (see §8.2 note), (c) keep BLUE running and continue accumulating.
+# Never overwrite results/blue_baseline.json.
+
+<h3>8.4 The promotion formula (from whitepaper &sect;6.4)</h3>
+<pre>traffic_green = clip(exp(U_green/&tau;) / (exp(U_green/&tau;) + exp(U_blue/&tau;)), 0.05, 0.95)
+
+  &tau;(surgery) = 0.05  -- very conservative
+  &tau;(swe)     = 0.20  -- moderate
+  &tau;(creative)= 0.50  -- aggressive
+
+Promotion when: |U_green - U_blue| > &delta;(field) for T(field) interactions
+  SWE:     &delta; = 0.025, T &ge; 10
+  Surgery: &delta; = 0.005, T &ge; 246  (power analysis on &sigma;&circ; = 0.04)</pre>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="arbiter">9. The Arbiter and VCG arbitration</h2>
+
+<p>The Arbiter resolves conflicts when multiple specialists produce different outputs for the same query. In the minimal setup it is a 3B generalist model. At scale it implements the VCG mechanism for incentive-aligned verdicts.</p>
+
+<h3>9.1 Four verdict cases</h3>
+<ul>
+  <li><strong>Case 1/2 &mdash; One model wrong:</strong> Correction issued to losing model. DPO pair added with weight &mu;(f).</li>
+  <li><strong>Case 3 &mdash; Both wrong:</strong> Corrections to both. Curiosity gap bonus K_gap = K_eff &times; (1 + &mu;(f)/10) preferentially routes queries on the contested subject until both models achieve C(S) &ge; C_min(f) with no new contradictions over T(f) interactions.</li>
+  <li><strong>Case 4 &mdash; Inconclusive:</strong> Controlled external escalation to verified domain experts, gated by trust threshold &tau;(f) &isin; {0.90, 0.80, 0.70, 0.65}. Expert responses re-enter as weighted empirical evidence.</li>
+</ul>
+
+<h3>9.2 VCG at scale</h3>
+<p>VCG replaces fixed arbiter weights with endogenous Clarke transfers. Each specialist's report determines its own DPO penalty weight. Truthful reporting is the dominant strategy (Theorem S1, <a href="whitepaper_full_v0_5.html#vcg">&sect;10.6</a>). Implement when: 3+ separately calibrated specialists with different confidence profiles, and arbitration volume makes periodic human sampling a real cost. Use a 70B arbiter model as the VCG engine for the initial implementation &mdash; one inference call instead of N&times;M cross-scoring calls.</p>
+
+<div class="callout orange">
+  <p><strong>Upgrade the Arbiter before upgrading specialists.</strong> A 3B arbiter making Case 4 decisions on conflicts between 13B specialists will misfire systematically. Arbiter quality determines correction loop quality. Go 3B &rarr; 7B &rarr; 13B Arbiter before scaling specialist model size.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="scaling">10. Scaling the specialist graph</h2>
+
+<p>Each new specialist is an independent process &mdash; a new model file, a new vLLM server, a new port, a new entry in the router's dispatch table, a new field config entry. Nothing else changes.</p>
+
+<div class="code-block">
+  <div class="code-header">bash &mdash; 4&times; RTX 4090, 7 specialists</div>
+<pre># GPU 0: SWE + Math
+CUDA_VISIBLE_DEVICES=0 python -m vllm.entrypoints.openai.api_server \
+  --model ./models/swe --port 9001 --quantization awq \
+  --max-model-len 2048 --gpu-memory-utilization 0.48 &
+CUDA_VISIBLE_DEVICES=0 python -m vllm.entrypoints.openai.api_server \
+  --model ./models/math --port 9002 --quantization awq \
+  --max-model-len 2048 --gpu-memory-utilization 0.48 &
+
+# GPU 1: Medicine + Law
+CUDA_VISIBLE_DEVICES=1 python -m vllm.entrypoints.openai.api_server \
+  --model ./models/medicine --port 9003 --quantization awq \
+  --max-model-len 2048 --gpu-memory-utilization 0.48 &
+CUDA_VISIBLE_DEVICES=1 python -m vllm.entrypoints.openai.api_server \
+  --model ./models/law --port 9004 --quantization awq \
+  --max-model-len 2048 --gpu-memory-utilization 0.48 &
+
+# GPU 2: Finance + Science
+CUDA_VISIBLE_DEVICES=2 python -m vllm.entrypoints.openai.api_server \
+  --model ./models/finance --port 9005 --quantization awq \
+  --max-model-len 2048 --gpu-memory-utilization 0.48 &
+CUDA_VISIBLE_DEVICES=2 python -m vllm.entrypoints.openai.api_server \
+  --model ./models/science --port 9006 --quantization awq \
+  --max-model-len 2048 --gpu-memory-utilization 0.48 &
+
+# GPU 3: 13B Arbiter (full GPU)
+CUDA_VISIBLE_DEVICES=3 python -m vllm.entrypoints.openai.api_server \
+  --model ./models/arbiter_13b --port 9010 --quantization awq \
+  --max-model-len 4096 --gpu-memory-utilization 0.90 &</pre>
+</div>
+
+<div class="callout green">
+  <p><strong>Catastrophic forgetting is structurally resolved.</strong> Fine-tuning the SWE specialist is physically incapable of affecting the medicine specialist &mdash; separate files, separate processes. The correction loop runs on all specialists simultaneously with zero cross-contamination. This is a categorical difference from MoE architectures where all expert weights train jointly.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="frontier">11. Building toward frontier quality</h2>
+
+<p>This architecture does not compete with GPT-4 on general benchmarks &mdash; frontier general capability requires training compute beyond what this framework addresses. What it provides that frontier closed models do not:</p>
+
+<table>
+  <thead><tr><th>Property</th><th>GPT-4 / Claude class</th><th>This architecture</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Error correction speed</strong></td><td>Frozen until next release (6&ndash;12 months)</td><td>Session: seconds. Calibration: hours. No release required.</td></tr>
+    <tr><td><strong>Domain quality</strong></td><td>Strong across all domains</td><td>Frontier-competitive on covered domains (SWE: 79% HumanEval vs GPT-4's 82%)</td></tr>
+    <tr><td><strong>Cost per token</strong></td><td>$5&ndash;15/MTok input</td><td>$0.0001&ndash;0.001/MTok self-hosted. 2&ndash;6&times; cheaper on domain tasks.</td></tr>
+    <tr><td><strong>Auditability</strong></td><td>Black box</td><td>Per-decision U score + active corrections log. DSA-compliant by design.</td></tr>
+    <tr><td><strong>Data sovereignty</strong></td><td>Third-party infrastructure</td><td>Fully self-hosted. No query leaves your infrastructure.</td></tr>
+    <tr><td><strong>Updateability</strong></td><td>New release every 6&ndash;12 months</td><td>LoRA updates daily. Per-deployment calibration history.</td></tr>
+    <tr><td><strong>Confidence gating</strong></td><td>Always produces output</td><td>C_min abstention in high-stakes domains.</td></tr>
+    <tr><td><strong>Catastrophic forgetting</strong></td><td>Persistent challenge in fine-tuning</td><td>Structurally resolved via separate weight files per specialist.</td></tr>
+  </tbody>
+</table>
+
+<h3>11.1 Minimal path from POC to production</h3>
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Validate two blue-green cycles</strong><p>Confirm U improves cycle over cycle on real models. Empirical foundation. Do not add specialists until this is measured.</p></div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Add a third specialist</strong><p>Medicine or law. One new specialist doubles cross-domain arbitration opportunities and adds the domain where correction loop value is highest.</p></div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Upgrade the Arbiter to 13B</strong><p>More impact on correction quality than adding more specialists. Upgrade arbiter first.</p></div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Add high-availability routing</strong><p>Duplicate the router behind a load balancer. Store domain confidence EMA in Redis. Boundary between demo and production service.</p></div></div>
+  <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Implement VCG at 5+ specialists</strong><p>70B arbiter as VCG engine for the initial implementation. See &sect;9.2.</p></div></div>
+  <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Scale by demand</strong><p>Add domains when routing shows measurable fallback rates. Upgrade model size (7B &rarr; 13B &rarr; 34B) when domain error rates justify hardware cost. Each addition is independent &mdash; no system-wide rebuild.</p></div></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<h2 id="dont-build">12. What not to build first</h2>
+
+<div class="warn"><strong>These are the most common mistakes. All make the first working system harder to build without making it better.</strong></div>
+<ul>
+  <li><strong>Do not build VCG before 3+ calibrated specialists.</strong> VCG requires value functions from independently calibrated models. Uniform specialists with no DPO history give the mechanism nothing to compute.</li>
+  <li><strong>Do not build routing before the correction loop works.</strong> Routing multiplies whatever the correction loop produces. A broken loop routing to five specialists distributes broken behavior at five times the rate.</li>
+  <li><strong>Do not skip the replay buffer.</strong> Every calibration run without it silently erases prior corrections. One extra parameter in the training batch. Add it at the start.</li>
+  <li><strong>Do not lower C_min to appear more capable.</strong> C_min is a safety property. Lowering it produces confident wrong answers in domains where being wrong has consequences.</li>
+  <li><strong>Do not build Arbiter stage 4 (empirical checks) first.</strong> External API calls are expensive and least reliable. Logical and mathematical checks catch the most impactful contradictions at near-zero cost.</li>
+  <li><strong>Do not run parallel harness sessions against the same specialist.</strong> KV-cache contention extends per-call time by 2&ndash;3&times;. Run parallel sessions against different specialists on different ports.</li>
+</ul>
+
+<hr>
+
+<!-- ═══ APPENDIXES ═══ -->
+<span class="appendix-label">Appendix A</span>
+<h2 id="appendix-a" class="appendix">Local simulation (M1 Mac / CPU, free)</h2>
+
+<p>Before spending on cloud GPUs, validate the framework logic locally with 1.5&ndash;3B models on Apple Silicon. The correction loop, DPO accumulation, and blue-green logic all work &mdash; just 10&ndash;30&times; slower.</p>
+
+<div class="code-block">
+  <div class="code-header">bash &mdash; M1 Max setup</div>
+<pre>pip install mlx-lm fastapi uvicorn httpx aiohttp
+
+mlx_lm.convert --hf-path deepseek-ai/deepseek-coder-1.3b-instruct \
+                --mlx-path ./models/swe_local --quantize --q-bits 4
+mlx_lm.convert --hf-path Qwen/Qwen2.5-Math-1.5B-Instruct \
+                --mlx-path ./models/math_local --quantize --q-bits 4
+mlx_lm.convert --hf-path microsoft/Phi-3.5-mini-instruct \
+                --mlx-path ./models/arbiter_local --quantize --q-bits 4
+
+mlx_lm.server --model ./models/swe_local     --port 8001 &
+mlx_lm.server --model ./models/math_local    --port 8002 &
+mlx_lm.server --model ./models/arbiter_local --port 8003 &
+
+cd agent && python router.py</pre>
+</div>
+
+<div class="code-block">
+  <div class="code-header">bash &mdash; pure simulation (no models required)</div>
+<pre>python simulate.py              # Phase 1 simulation
+python simulate_extended.py     # 3 calibration cycles
+python routing_experiment.py    # four-arm routing study</pre>
+</div>
+
+<h3>A.1 Stage 0 validation gates</h3>
+<table>
+  <thead><tr><th>Gate</th><th>Expected</th></tr></thead>
+  <tbody>
+    <tr><td>U scores in range</td><td>0.4&ndash;0.8 on all queries</td></tr>
+    <tr><td>Contradiction detection fires</td><td>At least 1 on cross-domain query</td></tr>
+    <tr><td>DPO pairs accumulate</td><td>&ge;1 pair written to store</td></tr>
+    <tr><td>Single-domain routing correct</td><td>Binary search &rarr; SWE port only</td></tr>
+    <tr><td>Fan-out triggers</td><td>Markov query &rarr; both specialists + Arbiter</td></tr>
+    <tr><td>Arbiter verdict logged</td><td>winner field present in response JSON</td></tr>
+  </tbody>
+</table>
+
+<span class="appendix-label">Appendix B</span>
+<h2 id="appendix-b" class="appendix">Measured results &mdash; RTX 4090 POC</h2>
+
+<p>Hardware: RunPod 1&times; RTX 4090 (24,564 MiB), CUDA 13.0, $0.69/hr. Models: Qwen2.5-Coder-7B-AWQ (SWE), Qwen2.5-7B-AWQ (Math), Qwen2.5-3B-AWQ (Arbiter). All results below are measured on real hardware &mdash; not simulation parameters.</p>
+
+<h3>B.1 Four-arm routing experiment</h3>
+<p>n=30 per arm, 120 total calls, 41 minutes, ~$0.47.</p>
+<table>
+  <thead><tr><th>Arm</th><th>Strategy</th><th>Accuracy</th><th>Mean U</th><th>Brier</th><th>p vs A</th><th>d</th></tr></thead>
+  <tbody>
+    <tr><td>A</td><td>No routing (3B arbiter)</td><td>43.3%</td><td>0.543</td><td>0.280</td><td>&mdash;</td><td>&mdash;</td></tr>
+    <tr><td>B</td><td>Matched routing (7B, correct domain)</td><td>76.7%</td><td>0.630</td><td>0.207</td><td>0.008</td><td>0.72</td></tr>
+    <tr><td>C</td><td>Mismatched routing (Regime 2)</td><td>56.7%</td><td>0.576</td><td>0.279</td><td>0.310</td><td>0.27</td></tr>
+    <tr><td><strong>D</strong></td><td><strong>VCG arbitration</strong></td><td><strong>86.7%</strong></td><td><strong>0.633</strong></td><td><strong>0.197</strong></td><td><strong>0.0003</strong></td><td><strong>1.02</strong></td></tr>
+  </tbody>
+</table>
+<p>Key findings: VCG +43.3pp over no-routing (p=0.0003, d=1.02). VCG 100% accuracy on math problems (5/5), 84% on SWE (21/25). Regime 2 fingerprint: Arm C confidence 0.750 vs ~0.60 elsewhere, Brier tied with no-routing. Calibration failure, not accuracy collapse.</p>
+
+<h3>B.2 BLUE baseline (pre-training)</h3>
+<table>
+  <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Accuracy</td><td>70% (7/10)</td></tr>
+    <tr><td>Mean U</td><td>0.5073</td></tr>
+    <tr><td>Brier score</td><td>0.1045</td></tr>
+    <tr><td>Contradiction rate</td><td>0.0 per query</td></tr>
+  </tbody>
+</table>
+<p>Three failures: merge sort, matrix multiply, quicksort &mdash; all complexity claim errors. These are exactly the error type the DPO correction loop targets.</p>
+
+<h3>B.3 DPO accumulation</h3>
+<p>502 paired entries (251 SWE + 251 Math), mean weight 2.50, validation passed. Initial yield ~5%; after fixing seed bank to Type A and G queries only: ~20%. LoRA trained in ~12 min (AWQ dequantize &rarr; fp16 LoRA). GREEN not promoted &mdash; U_delta +0.0011 &lt; 0.025 threshold. Adversarial eval showed U_delta &minus;0.097; contradiction rate 0.60 vs BLUE 0.45 &mdash; adapter overfit. Promotion gate correctly held BLUE.</p>
+
+<h3>B.4 Infrastructure notes</h3>
+<ul>
+  <li>RunPod nginx claims port 8001 &mdash; use 9001&ndash;9003 on RunPod cloud.</li>
+  <li>GPU memory at util=0.30 leaves insufficient KV-cache. Use 0.34/0.34/0.18.</li>
+  <li>Model downloads: 13.2 GiB in 16.9s with HF_HUB_ENABLE_HF_TRANSFER=1.</li>
+  <li>Parallel harness on same specialist: 30s/call &rarr; 45&ndash;60s. Use separate ports.</li>
+</ul>
+
+<span class="appendix-label">Appendix C</span>
+<h2 id="appendix-c" class="appendix">Build checklist</h2>
+
+<table>
+  <thead><tr><th>Component</th><th>File</th><th>Status</th><th>Phase</th></tr></thead>
+  <tbody>
+    <tr><td>Field classifier</td><td><code>field_classifier.py</code></td><td><span class="badge done">Done</span></td><td>1</td></tr>
+    <tr><td>Assertions store</td><td><code>assertions_store.py</code></td><td><span class="badge done">Done</span></td><td>1</td></tr>
+    <tr><td>Contradiction detector</td><td><code>contradiction_detector.py</code></td><td><span class="badge done">Done</span></td><td>1</td></tr>
+    <tr><td>Confidence updater</td><td><code>confidence_updater.py</code></td><td><span class="badge done">Done</span></td><td>1</td></tr>
+    <tr><td>Utility scorer</td><td><code>utility_scorer.py</code></td><td><span class="badge done">Done</span></td><td>1</td></tr>
+    <tr><td>Router (FastAPI)</td><td><code>router.py</code></td><td><span class="badge done">Done</span></td><td>1</td></tr>
+    <tr><td>Harness (DPO accumulation)</td><td><code>harness.py</code></td><td><span class="badge done">Done</span></td><td>1</td></tr>
+    <tr><td>Evaluation runner (+ <code>--include-adversarial</code>)</td><td><code>evaluate.py</code></td><td><span class="badge done">Done</span></td><td>2</td></tr>
+    <tr><td>LoRA trainer</td><td><code>train_lora.py</code></td><td><span class="badge done">Done</span></td><td>2</td></tr>
+    <tr><td>Canary runner</td><td><code>canary.py</code></td><td><span class="badge done">Done</span></td><td>2</td></tr>
+    <tr><td>Promotion checker</td><td><code>check_promotion.py</code></td><td><span class="badge done">Done</span></td><td>2</td></tr>
+    <tr><td>Arbiter Agent (stages 1&ndash;3)</td><td><code>arbiter.py</code></td><td><span class="badge done">Done</span></td><td>2</td></tr>
+    <tr><td>Cross-domain arbitration runner</td><td><code>arbiter_session.py</code></td><td><span class="badge done">Done</span></td><td>2</td></tr>
+    <tr><td>Personality wrapper</td><td><code>personality_manager.py</code></td><td><span class="badge done">Done</span></td><td>2</td></tr>
+    <tr><td>Trust manager</td><td><code>trust_manager.py</code></td><td><span class="badge done">Done</span></td><td>2</td></tr>
+    <tr><td>VCG arbitration mechanism</td><td><code>routing_experiment.py</code> (Arm D)</td><td><span class="badge partial">Partial</span></td><td>Arm D measured +43.3pp (p=0.0003) on RTX 4090. Clarke transfer code (§10.6) not yet implemented &mdash; that is Phase 6.</td></tr>
+    <tr><td>Empirical check (Arbiter stage 4)</td><td><code>arbiter_session.py</code> step 3</td><td><span class="badge partial">Partial</span></td><td>LLM-based empirical check built and tested. 3B model returned malformed verdicts in POC. Full web-search / curated-KB version not built.</td></tr>
+    <tr><td>HA router (Redis EMA, replicas)</td><td>&mdash;</td><td><span class="badge future">Future</span></td><td>Simple FastAPI router built. Redis EMA + replica layer not built.</td></tr>
+    <tr><td>Hardware-adaptive graph</td><td>RTX 4090 POC</td><td><span class="badge partial">Partial</span></td><td>3 specialists demonstrated on 1&times; RTX 4090 at 90.4% VRAM (22,206/24,564 MiB). Adaptive branching heuristic code not implemented &mdash; manual setup only.</td></tr>
+    <tr><td>Release-level distillation</td><td>&mdash;</td><td><span class="badge future">Future</span></td><td>GREEN not promoted in POC (U_delta below threshold). No distillation cycle run yet.</td></tr>
+  </tbody>
+</table>
+
 <div class="read-next">
   <h3>Where to go from here</h3>
   <ul>
-    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/simulate.py" target="_blank">agent/simulate.py</a> — run the Phase 1 simulation end-to-end</li>
-    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/routing_experiment.py" target="_blank">agent/routing_experiment.py</a> — run the four-arm routing quality study</li>
-    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/harness.py" target="_blank">agent/harness.py</a> — live harness against Claude (requires API key)</li>
-    <li><a href="whitepaper_full_v0_5.html#field-bounds">§5 — Field Bounds</a> — how C_min and E_min are derived from societal licensing standards</li>
-    <li><a href="whitepaper_full_v0_5.html#appendix-b">Appendix B</a> — formal proofs for the utility function structure, EMA optimality, confidence convergence, and personality stability</li>
-    <li><a href="whitepaper_full_v0_5.html#arbiter">§10.5 — Arbiter Agent</a> — full 4-check specification, external escalation protocol, and minimum disclosure design</li>
-    <li><a href="whitepaper_full_v0_5.html#vcg">§10.6 — VCG Arbitration</a> — game-theoretic treatment: Theorems S1–S3 (dominant strategy truthfulness, POA=1, individual rationality)</li>
-    <li><a href="whitepaper_full_v0_5.html#bluegreen">§10.7 — Blue-Green Deployment</a> — trigger thresholds, softmax traffic routing, rollback specification</li>
-    <li><a href="whitepaper_full_v0_5.html#roadmap">§12 — Roadmap</a> — Phases 1–9 with status and what next empirical validation requires</li>
-    <li><a href="domain_software_engineering_v0_5.html">Software Engineering domain</a> — the recommended first specialist domain, with full worked examples</li>
-    <li><a href="domain_ai_datacenters_v0_5.html">AI Data Centers domain</a> — fleet economics, LoRA multi-tenancy, and the consumer hardware cost model</li>
+    <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub repo</a> &mdash; all code, scripts, and result files</li>
+    <li><a href="whitepaper_full_v0_5.html#appendix-b">Appendix B</a> &mdash; formal proofs: utility function structure, EMA optimality, confidence convergence</li>
+    <li><a href="whitepaper_full_v0_5.html#vcg">&sect;10.6 &mdash; VCG Arbitration</a> &mdash; Theorems S1&ndash;S3: truthfulness, POA=1, individual rationality</li>
+    <li><a href="whitepaper_full_v0_5.html#bluegreen">&sect;10.7 &mdash; Blue-Green Deployment</a> &mdash; trigger thresholds, softmax routing, rollback specification</li>
+    <li><a href="productionizing_adaptive_utility_agent_v0_5.html">Production Architecture</a> &mdash; Micro-Expert Architecture, HA router design</li>
+    <li><a href="domain_software_engineering_v0_5.html">Software Engineering domain</a> &mdash; recommended first specialist with worked examples</li>
+    <li><a href="domain_recommendation_engines_v0_5.html">Recommendation Engines domain</a> &mdash; correction loop applied to preference signals</li>
   </ul>
 </div>
+
+<h3>B.5 Cross-domain arbitration (Phase 5)</h3>
+<p>Five-query canonical battery. All three servers concurrent. Fan-out fired on all five queries.</p>
+<table>
+  <tr><th>Query</th><th>Struct. verdict</th><th>SWE contradictions</th><th>Math contradictions</th><th>DPO pair</th></tr>
+  <tr><td>xd_01 drug dosage</td><td>case_4</td><td>0</td><td>0</td><td>No</td></tr>
+  <tr><td>xd_02 gradient descent</td><td>case_4</td><td><strong>1 (severity 0.9)</strong></td><td>0</td><td>No</td></tr>
+  <tr><td>xd_03 Dijkstra</td><td>case_4</td><td>0</td><td>0</td><td>No</td></tr>
+  <tr><td>xd_04 matmul / Strassen</td><td>case_4</td><td>0</td><td>0</td><td>No</td></tr>
+  <tr><td>xd_05 merge sort / Master Thm</td><td>case_4</td><td>0</td><td>0</td><td>No</td></tr>
+</table>
+<p><strong>Key finding:</strong> query xd_02 (gradient descent) had a logical contradiction detected at severity 0.9 &mdash;
+the assert compared <code>predictions[:100]</code> vs <code>predictions[100:]</code> (two slices of the same array at iteration 100)
+instead of loss before and after training. Code failed its own stated test case. Structured arbiter returned case_4
+(inconclusive) on all five queries &mdash; correct behavior when both specialists give substantially equivalent answers,
+meaning no genuine cross-domain disagreement occurred to create DPO pairs. Evidence chain: <code>agent/results/arbitration_evidence.json</code>.</p>
 
 </div><!-- .body -->
 </div><!-- .page -->
