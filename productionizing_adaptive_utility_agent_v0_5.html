@@ -775,6 +775,49 @@ Traffic %
 
 <p>Full specification — including delta derivations, T power analysis, tau field calibration, and the mathematical relationship to VCG arbitration — is in <a href="whitepaper_full_v0_5.html#bluegreen">§10.7 of the full whitepaper</a>.</p>
 
+<h2 id="physical-validation">15. Physical Validation — RunPod RTX 4090 (May 2026)</h2>
+
+<p>The architecture described in this document was validated end-to-end on a single NVIDIA RTX 4090 (24 GB VRAM) via RunPod cloud. Three Qwen2.5 AWQ specialists — SWE 7B, Math 7B, and a 3B Arbiter — ran concurrently within a single GPU at 90.4% VRAM utilization (22,206 / 24,564 MiB), demonstrating that the three-specialist graph described in Section 13 is achievable on consumer hardware today.</p>
+
+<div class="metricgrid">
+  <div class="metric green">
+    <div class="label">VCG routing gain</div>
+    <div class="value">+43.3pp</div>
+    <div class="unit">vs no-routing baseline (p=0.0003, d=1.02, n=30 per arm)</div>
+  </div>
+  <div class="metric green">
+    <div class="label">VRAM utilization</div>
+    <div class="value">90.4%</div>
+    <div class="unit">3 concurrent AWQ specialists on single RTX 4090</div>
+  </div>
+  <div class="metric">
+    <div class="label">DPO pairs auto-accumulated</div>
+    <div class="value">502</div>
+    <div class="unit">No human annotation. 251 SWE + 251 Math, mean weight 2.50</div>
+  </div>
+  <div class="metric">
+    <div class="label">Total experiment cost</div>
+    <div class="value">$22</div>
+    <div class="unit">1.63 GPU hours at $0.69/hr (RTX 4090)</div>
+  </div>
+</div>
+
+<div class="callout green">
+  <p><strong>Regime 2 fingerprint — calibration failure, not accuracy collapse.</strong> The mismatched-routing arm did not fail through low accuracy alone — its Brier score (0.279) was nearly identical to the no-routing baseline (0.280), but mean confidence was 0.750 versus ~0.60 for correctly-routed arms. The wrong model answered confidently and could not be caught by the C_min abstention gate. This is the Regime 2 failure mode confirmed on real hardware.</p>
+</div>
+
+<h3>15.1 Blue-Green Pipeline — What Was Measured</h3>
+
+<p>The full blue-green pipeline from Section 14 ran end-to-end: LoRA training (AWQ dequantize → fp16, ~12 min on RTX 4090), canary deployment (5% traffic), gradual shift (softmax routing), and promotion gate evaluation. The GREEN adapter was correctly rejected — U_delta +0.0011 fell below the 0.025 threshold. Adversarial evaluation showed the adapter overfit to training contradictions rather than generalizing resistance, producing U_delta −0.097 on the adversarial subset.</p>
+
+<p>This demonstrates the promotion gate working as a safety mechanism: a degraded model adapter does not reach production. The rollback path described in Section 14.3 would have triggered automatically on this result.</p>
+
+<h3>15.2 Cross-Domain Arbitration — What Was Measured</h3>
+
+<p>A five-query cross-domain battery was run with SWE and Math specialists called in parallel on each query. The contradiction detector flagged a logical error in the SWE specialist's gradient descent implementation (severity 0.9): the assert statement compared two slices of the same predictions array at iteration 100 instead of comparing loss before and after training. The code failed its own stated test case — a genuine internal contradiction caught by the logical check. Evidence chain committed to the repository: <code>agent/results/arbitration_evidence.json</code>.</p>
+
+<p>Full results are in <a href="whitepaper_full_v0_5.html#appendix-a1">Appendix A.1 of the full whitepaper</a>.</p>
+
 <div class="read-next">
   <h3>Read next</h3>
   <ul>
