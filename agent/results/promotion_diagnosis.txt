@@ -1,0 +1,30 @@
+Phase 3 — SWE GREEN v1 Promotion Diagnosis
+==================================================
+
+VERDICT: NOT PROMOTED
+
+Shift evaluation (100 queries):
+  BLUE  mean U:        0.4633
+  GREEN mean U:        0.4644
+  U delta (shift):     +0.0011  (threshold: +0.025)
+  T sustained:         0 / 10 required
+
+Adversarial subset (evaluate.py, 20 queries):
+  U delta (adv):       -0.0972
+  Accuracy BLUE:       65.0%
+  Accuracy GREEN:      55.0%
+  Contra rate BLUE:    0.450
+  Contra rate GREEN:   0.600
+
+Root cause analysis:
+  GREEN trained on seeded_contradictions.json (DPO adversarial pairs).
+  On the adversarial subset, GREEN shows LOWER U (+-0.0972) and
+  HIGHER contradiction rate than BLUE, indicating the DPO training did
+  not generalize — the adapter overfit to training contradictions rather
+  than learning to resist them.
+  Shift U delta (+0.0011) is well below the 0.025 threshold.
+
+Next steps:
+  - Increase DPO training data diversity (more contradiction types)
+  - Review training_log.json for loss curves / reward margins
+  - Consider GREEN v2 with higher-quality preference pairs

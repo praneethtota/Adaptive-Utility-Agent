@@ -185,6 +185,7 @@ async def call_endpoint(
     prompt: str,
     max_tokens: int = 512,
     temperature: float = 0.1,
+    model_id: str = "swe",
 ) -> tuple[str, int, int, float]:
     """
     Call vLLM OpenAI-compatible endpoint.
@@ -198,7 +199,7 @@ async def call_endpoint(
     resp = await client.post(
         endpoint,
         json={
-            "model": "swe",
+            "model": model_id,
             "messages":    messages,
             "max_tokens":  max_tokens,
             "temperature": temperature,
@@ -310,7 +311,7 @@ async def run_evaluation(args) -> dict:
 
             try:
                 response, p_tok, c_tok, latency_ms = await call_endpoint(
-                    client, completions_url, prompt
+                    client, completions_url, prompt, model_id=args.model_id
                 )
             except Exception as e:
                 log.error(f"[{qid}] Call failed: {e}")
@@ -566,6 +567,9 @@ def parse_args():
                         "0.0 = clean only, 1.0 = adversarial only.")
     p.add_argument("--adversarial-n", type=int, default=10,
                    help="Number of adversarial queries to sample (default 10).")
+    p.add_argument("--model-id", default="swe",
+                   help="Model ID to send in API requests (default: swe). "
+                        "Override when serving LoRA adapters (e.g. swe_green_v1).")
     # Comparison mode
     p.add_argument("--compare",   action="store_true",
                    help="Compare two result files instead of running evaluation")
