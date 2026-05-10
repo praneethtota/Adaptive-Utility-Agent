@@ -21,6 +21,7 @@ Usage:
 
 import argparse
 import asyncio
+import dataclasses
 import json
 import logging
 import sys
@@ -438,12 +439,16 @@ async def main():
     out = Path(args.export)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w") as f:
+        def _dc_default(obj):
+            if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+                return dataclasses.asdict(obj)
+            raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
         json.dump({"session_timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                    "n_queries": len(records),
                    "swe_endpoint": args.swe,
                    "math_endpoint": args.math,
                    "arbiter_endpoint": args.arbiter,
-                   "records": records}, f, indent=2)
+                   "records": records}, f, indent=2, default=_dc_default)
     log.info(f"Evidence chain saved to: {out}")
 
 
