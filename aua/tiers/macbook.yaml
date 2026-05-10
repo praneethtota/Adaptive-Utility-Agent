@@ -1,0 +1,56 @@
+# Tier: macbook
+# Backend: Ollama (vLLM does not run on macOS)
+#
+# Models run through a single Ollama process on port 11434.
+# `aua serve --tier macbook` will:
+#   1. Check Ollama is installed (brew install ollama)
+#   2. Start `ollama serve` if not already running
+#   3. Pull each model if not present
+#   4. Start the FastAPI router
+#
+# Tested on: Apple M-series (MPS), Intel Mac (CPU)
+# Memory requirement: ~8 GB RAM per 7B model (4-bit quant via Ollama)
+# Concurrent specialists: all share the same Ollama process
+#
+# For development / testing only. For production use an RTX 4090 or better.
+
+aua:
+  version: "0.5"
+  mode: local
+  backend: ollama               # vllm | ollama
+
+specialists:
+  - name: swe
+    model: qwen2.5-coder:7b     # Ollama model tag
+    port: 11434                 # Ollama port (shared across all specialists)
+    field: software_engineering
+
+  - name: math
+    model: qwen2.5:7b
+    port: 11434
+    field: mathematics
+
+arbiter:
+  model: qwen2.5:3b
+  port: 11434
+
+router:
+  port: 8000
+  host: "0.0.0.0"
+  single_domain_threshold: 0.75
+  fanout_threshold: 0.30
+  specialist_timeout: 120.0     # Ollama is slower than vLLM on CPU
+
+blue_green:
+  swe:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+  math:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+
+logging:
+  level: INFO
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"

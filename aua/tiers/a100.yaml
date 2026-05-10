@@ -1,0 +1,64 @@
+# Tier: a100
+# Backend: vLLM (fp16, no quantization — A100 has enough VRAM)
+#
+# 1× A100 80 GB SXM. Runs 7B models in fp16 for best quality.
+# Can fit larger models (13B–30B) by adjusting gpu_memory_utilization.
+#
+# Hardware: 1× NVIDIA A100 80 GB
+# Cost: ~$2.50/hr on RunPod / Lambda
+
+aua:
+  version: "0.5"
+  mode: local
+  backend: vllm
+
+specialists:
+  - name: swe
+    model: Qwen/Qwen2.5-Coder-7B-Instruct
+    port: 9001
+    gpu: 0
+    gpu_memory_utilization: 0.30
+    max_model_len: 4096
+    quantization: null            # fp16 — no quantization needed
+    enforce_eager: false          # CUDA graphs are safe on A100
+    field: software_engineering
+
+  - name: math
+    model: Qwen/Qwen2.5-7B-Instruct
+    port: 9002
+    gpu: 0
+    gpu_memory_utilization: 0.30
+    max_model_len: 4096
+    quantization: null
+    enforce_eager: false
+    field: mathematics
+
+arbiter:
+  model: Qwen/Qwen2.5-3B-Instruct
+  port: 9003
+  gpu: 0
+  gpu_memory_utilization: 0.10
+  max_model_len: 4096
+  quantization: null
+  enforce_eager: false
+
+router:
+  port: 8000
+  host: "0.0.0.0"
+  single_domain_threshold: 0.75
+  fanout_threshold: 0.30
+  specialist_timeout: 45.0
+
+blue_green:
+  swe:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+  math:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+
+logging:
+  level: INFO
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
