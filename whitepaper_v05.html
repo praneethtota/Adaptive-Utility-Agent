@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Adaptive Utility Agents — A Framework for Self-Optimizing AI Systems</title>
-<meta name="description" content="Adaptive Utility Agents: an open-source framework for reducing repeated errors in deployed LLMs without retraining. 69.6% error reduction, +10.5% routing correctness gain. Whitepaper, tutorial, and domain deep-dives by Praneeth Tota.">
+<meta name="description" content="Adaptive Utility Agents: an open-source framework for reducing repeated errors in deployed LLMs without retraining. 69.6% error reduction. Measured on RTX 4090: VCG routing +43.3pp (p=0.0003, d=1.02). Whitepaper, tutorial, and domain deep-dives by Praneeth Tota.">
 <meta name="author" content="Praneeth Tota">
 <meta name="keywords" content="Adaptive Utility Agents, AUA, LLM correction framework, utility function, self-optimizing AI, error reduction, VCG arbitration, DPO calibration, Praneeth Tota, AI systems">
 <link rel="canonical" href="https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_v05.html">
@@ -514,12 +514,12 @@ footer a:hover { text-decoration: underline; }
       <div class="hm-label">Lower cost per token vs. monolithic LLMs · Frontier-quality domain AI, no H100 required <span style="font-size:.7rem;opacity:.7">(analytical)</span></div>
     </div>
     <div class="hm">
-      <div class="hm-val green">+10.5%</div>
-      <div class="hm-label">Correctness gain from VCG arbitration routing (p&nbsp;=&nbsp;0.029)</div>
+      <div class="hm-val green">+43.3pp</div>
+      <div class="hm-label">VCG arbitration gain over no-routing — measured on RTX 4090, Qwen2.5-7B AWQ (p&nbsp;=&nbsp;0.0003, d&nbsp;=&nbsp;1.02)</div>
     </div>
     <div class="hm">
-      <div class="hm-val orange">−17.5%</div>
-      <div class="hm-label">Correctness loss from mismatched routing — quantifying Regime 2 (p&nbsp;&lt;&nbsp;0.001)</div>
+      <div class="hm-val orange">Regime&nbsp;2</div>
+      <div class="hm-label">Mismatched routing fingerprint measured: overconfidence (conf 0.75 vs 0.60) with no accuracy gain — Brier tied with no-routing</div>
     </div>
     <div class="hm">
       <div class="hm-val">r&nbsp;=&nbsp;0.461</div>
@@ -547,9 +547,9 @@ footer a:hover { text-decoration: underline; }
 <!-- SCOPE BAR -->
 <div class="scope-bar">
   <strong>Evidence scope:</strong>
-  <span class="scope-item"><span class="dot-measured"></span> Measured in this work: 69.6% error reduction, routing correctness gains, U↔quality correlation</span>
+  <span class="scope-item"><span class="dot-measured"></span> Simulation: 69.6% error reduction, U↔quality correlation (r=0.461, p&lt;10⁻⁴⁰)</span>
+  <span class="scope-item"><span class="dot-measured"></span> Measured on RTX 4090: VCG +43.3pp routing gain, 502 DPO pairs, blue-green pipeline, cross-domain arbitration</span>
   <span class="scope-item"><span class="dot-analytical"></span> Analytical (public specs): 2–6× cost advantage on consumer hardware</span>
-  <span class="scope-item"><span class="dot-pending"></span> Pending empirical validation: physical hardware comparison, LoRA calibration in production</span>
 </div>
 
 <!-- HOW IT WORKS -->
