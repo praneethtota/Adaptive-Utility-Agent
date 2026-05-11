@@ -79,10 +79,10 @@ def test_all_endpoints(minimal_config):
 
 
 def test_available_tiers():
-    assert set(AVAILABLE_TIERS) == {"macbook", "rtx4090", "a100"}
+    assert set(AVAILABLE_TIERS) == {"macbook", "single-4090", "quad-4090", "a100-cluster"}
 
 
-@pytest.mark.parametrize("tier", ["macbook", "rtx4090", "a100"])
+@pytest.mark.parametrize("tier", ["macbook", "single-4090", "quad-4090", "a100-cluster"])
 def test_load_tier(tier):
     """Every built-in tier must load without error."""
     cfg = load_tier(tier)
@@ -97,14 +97,14 @@ def test_macbook_tier_uses_ollama():
     assert cfg.backend == "ollama"
 
 
-def test_rtx4090_tier_uses_vllm():
-    cfg = load_tier("rtx4090")
+def test_single_4090_tier_uses_vllm():
+    cfg = load_tier("single-4090")
     assert cfg.backend == "vllm"
     assert cfg.specialist("swe").quantization == "awq"
 
 
-def test_a100_tier_no_enforce_eager():
-    cfg = load_tier("a100")
+def test_a100_cluster_tier_no_enforce_eager():
+    cfg = load_tier("a100-cluster")
     for spec in cfg.specialists:
         assert spec.enforce_eager is False
 
@@ -286,3 +286,72 @@ def test_gpu_memory_utilization_zero_raises():
     }
     with pytest.raises(ValueError, match="gpu_memory_utilization"):
         _parse_config(raw, source="<test>")
+
+
+# ── P-06: Tier aliases ────────────────────────────────────────────────────────
+
+
+def test_tier_aliases_imported():
+    """TIER_ALIASES must be importable from aua.config."""
+    from aua.config import TIER_ALIASES
+
+    assert "rtx4090" in TIER_ALIASES
+    assert TIER_ALIASES["rtx4090"] == "single-4090"
+    assert "a100" in TIER_ALIASES
+    assert TIER_ALIASES["a100"] == "a100-cluster"
+
+
+def test_alias_rtx4090_loads_single_4090():
+    """load_tier('rtx4090') must load the single-4090 canonical tier."""
+    cfg_alias = load_tier("rtx4090")
+    cfg_canonical = load_tier("single-4090")
+    # Both configs should be identical
+    assert cfg_alias.backend == cfg_canonical.backend
+    assert cfg_alias.router.port == cfg_canonical.router.port
+    assert len(cfg_alias.specialists) == len(cfg_canonical.specialists)
+
+
+def test_alias_a100_loads_a100_cluster():
+    """load_tier('a100') must load the a100-cluster canonical tier."""
+    cfg_alias = load_tier("a100")
+    cfg_canonical = load_tier("a100-cluster")
+    assert cfg_alias.backend == cfg_canonical.backend
+    assert cfg_alias.router.port == cfg_canonical.router.port
+
+
+def test_quad_4090_has_multiple_gpus():
+    """quad-4090 tier assigns each specialist to a different GPU."""
+    cfg = load_tier("quad-4090")
+    gpu_indices = [s.gpu for s in cfg.specialists]
+    assert len(set(gpu_indices)) == len(gpu_indices), "Each specialist should use a unique GPU"
+
+
+def test_quad_4090_has_law_specialist():
+    """quad-4090 includes a law specialist (3 total)."""
+    cfg = load_tier("quad-4090")
+    fields = [s.field for s in cfg.specialists]
+    assert "law" in fields
+    assert len(cfg.specialists) == 3
+
+
+def test_single_4090_uses_awq():
+    """single-4090 specialists must use AWQ quantization."""
+    cfg = load_tier("single-4090")
+    for s in cfg.specialists:
+        assert s.quantization == "awq"
+
+
+def test_a100_cluster_uses_fp16():
+    """a100-cluster specialists must use fp16 (quantization=None)."""
+    cfg = load_tier("a100-cluster")
+    for s in cfg.specialists:
+        assert s.quantization is None
+
+
+def test_unknown_tier_error_mentions_aliases():
+    """Error for unknown tier must list available names including aliases."""
+    with pytest.raises(ValueError) as exc_info:
+        load_tier("nonexistent_tier")
+    msg = str(exc_info.value)
+    assert "single-4090" in msg
+    assert "rtx4090" in msg  # alias should appear in help text

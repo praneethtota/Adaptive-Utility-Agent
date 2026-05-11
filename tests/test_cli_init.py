@@ -49,8 +49,8 @@ def test_init_gitignore_content():
         assert "logs/" in gi
 
 
-def test_init_default_tier_is_rtx4090():
-    """Default tier is rtx4090 when no --tier flag is given."""
+def test_init_default_tier_is_single_4090():
+    """Default tier is single-4090 when no --tier flag is given."""
     runner = CliRunner()
     with tempfile.TemporaryDirectory() as tmp:
         p = Path(tmp) / "proj"
@@ -78,7 +78,7 @@ def test_init_force_overwrites():
         # First init
         runner.invoke(main, ["init", str(p), "--tier", "macbook"])
         # Force overwrite with different tier
-        result = runner.invoke(main, ["init", str(p), "--tier", "rtx4090", "--force"])
+        result = runner.invoke(main, ["init", str(p), "--tier", "single-4090", "--force"])
         assert result.exit_code == 0, result.output
         raw = yaml.safe_load((p / "aua_config.yaml").read_text())
         assert raw["aua"]["backend"] == "vllm"
@@ -108,7 +108,7 @@ def test_init_existing_dir_is_reused():
         assert (p / "aua_config.yaml").exists()
 
 
-@pytest.mark.parametrize("tier", ["macbook", "rtx4090", "a100"])
+@pytest.mark.parametrize("tier", ["macbook", "single-4090", "quad-4090", "a100-cluster"])
 def test_init_all_tiers(tier):
     """aua init works for all supported tiers."""
     runner = CliRunner()
@@ -119,7 +119,7 @@ def test_init_all_tiers(tier):
         assert (p / "aua_config.yaml").exists()
 
 
-@pytest.mark.parametrize("tier", ["macbook", "rtx4090", "a100"])
+@pytest.mark.parametrize("tier", ["macbook", "single-4090", "quad-4090", "a100-cluster"])
 def test_init_all_tiers_generate_valid_config(tier):
     """Every tier generates a config that loads without error."""
     from aua.config import load_config

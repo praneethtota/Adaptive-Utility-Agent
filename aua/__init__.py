@@ -30,15 +30,19 @@ from aua.confidence_updater import ConfidenceUpdater
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 from aua.config import (
+    AVAILABLE_TIERS,
     FIELD_CONFIGS,
+    TIER_ALIASES,
     ArbiterConfig,
     AUAConfig,
     BlueGreenFieldConfig,
     FieldConfig,
     RouterConfig,
+    RuntimeConfig,
     SpecialistConfig,
     get_effective_config,
     load_config,
+    load_tier,
 )
 from aua.contradiction_detector import ContradictionDetector, ContradictionResult
 
@@ -83,6 +87,10 @@ __all__ = [
     "FieldConfig",
     "FIELD_CONFIGS",
     "get_effective_config",
+    "load_tier",
+    "AVAILABLE_TIERS",
+    "TIER_ALIASES",
+    "RuntimeConfig",
     # pipeline
     "FieldClassifier",
     "UtilityScorer",

@@ -1,0 +1,84 @@
+# Tier: quad-4090
+# Backend: vLLM (AWQ quantized)
+#
+# Four RTX 4090s — each specialist and the arbiter get a dedicated GPU.
+# Eliminates per-GPU VRAM pressure: each specialist gets 100% of its card.
+# Enables larger specialists (13B AWQ) and higher throughput via parallelism.
+#
+# Hardware:  4× NVIDIA RTX 4090 (24 GB VRAM each, 96 GB total)
+# Services:  swe (9001, gpu:0) + math (9002, gpu:1) + law (9003, gpu:2)
+#            + arbiter (9004, gpu:3) + router (8000)
+# VRAM:      each card ~70% — plenty of headroom for longer contexts
+# Cost:      ~$2.76/hr on RunPod (4× single-4090 rate)
+#
+# Recommended for: multi-domain production, high-throughput inference
+
+aua:
+  version: "0.6"
+  mode: local
+  backend: vllm
+
+specialists:
+  - name: swe
+    model: Qwen/Qwen2.5-Coder-14B-Instruct-AWQ  # 14B AWQ — 13 GB VRAM per card
+    port: 9001
+    field: software_engineering
+    gpu: 0                                        # dedicated card
+    gpu_memory_utilization: 0.70
+    max_model_len: 4096
+    quantization: awq
+    enforce_eager: true
+
+  - name: math
+    model: Qwen/Qwen2.5-14B-Instruct-AWQ         # 14B AWQ — 13 GB VRAM per card
+    port: 9002
+    field: mathematics
+    gpu: 1                                        # dedicated card
+    gpu_memory_utilization: 0.70
+    max_model_len: 4096
+    quantization: awq
+    enforce_eager: true
+
+  - name: law
+    model: Qwen/Qwen2.5-7B-Instruct-AWQ          # 7B AWQ — lighter for law domain
+    port: 9003
+    field: law
+    gpu: 2                                        # dedicated card
+    gpu_memory_utilization: 0.40
+    max_model_len: 4096
+    quantization: awq
+    enforce_eager: true
+
+arbiter:
+  model: Qwen/Qwen2.5-7B-Instruct-AWQ            # 7B AWQ — arbiter gets its own card
+  port: 9004
+  gpu: 3                                          # dedicated card
+  gpu_memory_utilization: 0.40
+  max_model_len: 4096
+  quantization: awq
+  enforce_eager: true
+
+router:
+  port: 8000
+  host: "0.0.0.0"
+  single_domain_threshold: 0.75
+  fanout_threshold: 0.30
+  specialist_timeout: 45.0                        # faster — no GPU contention
+
+blue_green:
+  swe:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+  math:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+  law:
+    delta: 0.030                                  # higher bar for law (high-stakes)
+    T_min: 20                                     # more interactions required
+    tau: 0.10                                     # conservative traffic split
+
+logging:
+  level: INFO
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"

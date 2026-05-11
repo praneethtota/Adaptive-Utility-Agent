@@ -1,0 +1,70 @@
+# Tier: a100-cluster
+# Backend: vLLM (fp16, no quantization — A100 has sufficient VRAM)
+# Alias: a100 (backward-compatible)
+#
+# Single A100 80 GB SXM. Full fp16 precision for highest accuracy.
+# Can host 7B models with ample headroom, or scale to 13B–30B by
+# increasing gpu_memory_utilization. CUDA graphs enabled (enforce_eager: false).
+#
+# Hardware:  1× NVIDIA A100 80 GB SXM
+# Services:  swe (9001) + math (9002) + arbiter (9003) + router (8000)
+# VRAM:      swe 30% + math 30% + arbiter 10% = 70% used, 30% headroom
+# Cost:      ~$2.50/hr on RunPod / Lambda Labs
+#
+# Recommended for: high-accuracy production, research, long-context workloads
+
+aua:
+  version: "0.6"
+  mode: local
+  backend: vllm
+
+specialists:
+  - name: swe
+    model: Qwen/Qwen2.5-Coder-7B-Instruct        # fp16 — best quality, no quant needed
+    port: 9001
+    field: software_engineering
+    gpu: 0
+    gpu_memory_utilization: 0.30
+    max_model_len: 4096                           # longer context vs 4090 (2048)
+    quantization: null                            # fp16 — A100 has 80 GB, no need to quantize
+    enforce_eager: false                          # CUDA graphs are safe and fast on A100
+
+  - name: math
+    model: Qwen/Qwen2.5-7B-Instruct              # fp16
+    port: 9002
+    field: mathematics
+    gpu: 0
+    gpu_memory_utilization: 0.30
+    max_model_len: 4096
+    quantization: null
+    enforce_eager: false
+
+arbiter:
+  model: Qwen/Qwen2.5-3B-Instruct               # fp16 — 3B is plenty for arbitration
+  port: 9003
+  gpu: 0
+  gpu_memory_utilization: 0.10
+  max_model_len: 4096
+  quantization: null
+  enforce_eager: false
+
+router:
+  port: 8000
+  host: "0.0.0.0"
+  single_domain_threshold: 0.75
+  fanout_threshold: 0.30
+  specialist_timeout: 45.0                       # A100 is faster than 4090 for fp16
+
+blue_green:
+  swe:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+  math:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+
+logging:
+  level: INFO
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"

@@ -1,65 +1,10 @@
-# Tier: rtx4090
-# Backend: vLLM (AWQ quantized)
+# DEPRECATED ALIAS — use "single-4090" instead.
 #
-# Measured configuration from RunPod RTX 4090 POC (May 2026).
-# 3 specialists fit concurrently at 90.4% VRAM (22,206 / 24,564 MiB).
-# Sequential startup with --enforce-eager is required.
+# This file exists for backward compatibility with scripts that call:
+#   aua init --tier rtx4090
+#   load_tier("rtx4090")
 #
-# Hardware: 1× NVIDIA RTX 4090 (24 GB VRAM)
-# Cost: ~$0.69/hr on RunPod
+# Both resolve to the canonical "single-4090" tier.
+# This file will be removed in v1.0.
 
-aua:
-  version: "0.5"
-  mode: local
-  backend: vllm
-
-specialists:
-  - name: swe
-    model: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
-    port: 9001
-    gpu: 0
-    gpu_memory_utilization: 0.34
-    max_model_len: 2048
-    quantization: awq
-    enforce_eager: true
-    field: software_engineering
-
-  - name: math
-    model: Qwen/Qwen2.5-7B-Instruct-AWQ
-    port: 9002
-    gpu: 0
-    gpu_memory_utilization: 0.34
-    max_model_len: 2048
-    quantization: awq
-    enforce_eager: true
-    field: mathematics
-
-arbiter:
-  model: Qwen/Qwen2.5-3B-Instruct-AWQ
-  port: 9003
-  gpu: 0
-  gpu_memory_utilization: 0.18
-  max_model_len: 2048
-  quantization: awq
-  enforce_eager: true
-
-router:
-  port: 8000
-  host: "0.0.0.0"
-  single_domain_threshold: 0.75
-  fanout_threshold: 0.30
-  specialist_timeout: 60.0
-
-blue_green:
-  swe:
-    delta: 0.025
-    T_min: 10
-    tau: 0.20
-  math:
-    delta: 0.025
-    T_min: 10
-    tau: 0.20
-
-logging:
-  level: INFO
-  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+_alias: single-4090

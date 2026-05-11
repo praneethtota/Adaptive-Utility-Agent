@@ -725,7 +725,15 @@ def _validate_no_duplicate_ports(
 
 # ── Tier loader ───────────────────────────────────────────────────────────────
 
-AVAILABLE_TIERS = ["macbook", "rtx4090", "a100"]
+# Canonical tier names — use these in new code.
+AVAILABLE_TIERS: list[str] = ["macbook", "single-4090", "quad-4090", "a100-cluster"]
+
+# Backward-compatible aliases — resolve to canonical names.
+# Deprecated: will be removed in v1.0.
+TIER_ALIASES: dict[str, str] = {
+    "rtx4090": "single-4090",
+    "a100": "a100-cluster",
+}
 
 
 def load_tier(tier: str) -> AUAConfig:
@@ -733,7 +741,8 @@ def load_tier(tier: str) -> AUAConfig:
     Load a bundled hardware-tier config template.
 
     Args:
-        tier: one of "macbook", "rtx4090", "a100"
+        tier: canonical tier name ("macbook", "single-4090", "quad-4090",
+              "a100-cluster") or backward-compatible alias ("rtx4090", "a100").
 
     Returns:
         AUAConfig from the bundled template.
@@ -741,10 +750,12 @@ def load_tier(tier: str) -> AUAConfig:
     Raises:
         ValueError: if the tier name is not recognised.
     """
-    if tier not in AVAILABLE_TIERS:
+    canonical = TIER_ALIASES.get(tier, tier)
+    if canonical not in AVAILABLE_TIERS:
+        known = sorted(AVAILABLE_TIERS) + [f"{k} (alias)" for k in sorted(TIER_ALIASES)]
         raise ValueError(
-            f"Unknown tier '{tier}'. Available: {AVAILABLE_TIERS}\n"
+            f"Unknown tier '{tier}'. Available: {known}\n"
             f"Use 'aua serve --config my.yaml' for a custom config."
         )
-    tier_path = Path(__file__).parent / "tiers" / f"{tier}.yaml"
+    tier_path = Path(__file__).parent / "tiers" / f"{canonical}.yaml"
     return load_config(tier_path)

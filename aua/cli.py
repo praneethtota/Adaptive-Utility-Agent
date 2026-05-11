@@ -67,8 +67,11 @@ def main():
     "--tier",
     "-t",
     default=None,
-    type=click.Choice(["macbook", "rtx4090", "a100"], case_sensitive=False),
-    help="Use a built-in hardware-tier template instead of aua_config.yaml.",
+    type=click.Choice(
+        ["macbook", "single-4090", "quad-4090", "a100-cluster", "rtx4090", "a100"],
+        case_sensitive=False,
+    ),
+    help="Use a built-in hardware-tier template (rtx4090/a100 are aliases).",
 )
 def serve(config, dry_run, no_router, router_only, startup_timeout, tier):
     """Start all specialists + router from aua_config.yaml.
@@ -112,10 +115,13 @@ def serve(config, dry_run, no_router, router_only, startup_timeout, tier):
 @click.option(
     "--tier",
     "-t",
-    default="rtx4090",
+    default="single-4090",
     show_default=True,
-    type=click.Choice(["macbook", "rtx4090", "a100"], case_sensitive=False),
-    help="Hardware tier template to scaffold.",
+    type=click.Choice(
+        ["macbook", "single-4090", "quad-4090", "a100-cluster", "rtx4090", "a100"],
+        case_sensitive=False,
+    ),
+    help="Hardware tier template to scaffold (rtx4090/a100 are backward-compatible aliases).",
 )
 @click.option(
     "--force",
@@ -147,6 +153,8 @@ def init(project_dir, tier, force):
     """
     import shutil
 
+    from aua.config import TIER_ALIASES
+
     target = Path(project_dir).resolve()
 
     if not target.exists():
@@ -162,7 +170,8 @@ def init(project_dir, tier, force):
             "Use [bold]--force[/bold] to overwrite."
         )
     else:
-        tier_src = Path(__file__).parent / "tiers" / f"{tier}.yaml"
+        canonical = TIER_ALIASES.get(tier, tier)
+        tier_src = Path(__file__).parent / "tiers" / f"{canonical}.yaml"
         shutil.copy(tier_src, config_path)
         action = "Overwrote" if force else "Created"
         console.print(
@@ -192,7 +201,8 @@ def init(project_dir, tier, force):
     from rich.panel import Panel
     from rich.text import Text
 
-    if tier == "macbook":
+    canonical_tier = TIER_ALIASES.get(tier, tier) if tier else tier
+    if canonical_tier == "macbook":
         step2 = "brew install ollama  # if not already installed"
         step3 = "aua serve --tier macbook"
     else:

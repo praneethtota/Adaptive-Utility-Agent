@@ -73,7 +73,7 @@ def test_config_submodule():
         FIELD_CONFIGS,
     )
 
-    assert set(AVAILABLE_TIERS) == {"macbook", "rtx4090", "a100"}
+    assert set(AVAILABLE_TIERS) == {"macbook", "single-4090", "quad-4090", "a100-cluster"}
     assert "software_engineering" in FIELD_CONFIGS
     assert "mathematics" in FIELD_CONFIGS
 
