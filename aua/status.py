@@ -47,11 +47,28 @@ _ACCENT = "bold cyan"
 def run_status(
     router_url: str = "http://localhost:8000",
     interval: int = 2,
+    once: bool = False,
+    as_json: bool = False,
 ) -> None:
     """
     Poll the router's /status endpoint and render a live dashboard.
-    Blocks until Ctrl+C.
+
+    Args:
+        router_url: base URL of the AUA router
+        interval:   refresh interval in seconds (ignored when once=True)
+        once:       fetch once and exit (no loop)
+        as_json:    print raw JSON and exit (implies once=True)
     """
+    import json as _json
+
+    if as_json or once:
+        data = _fetch(router_url)
+        if as_json:
+            print(_json.dumps(data or {}, indent=2))
+        else:
+            console.print(_render(data, router_url))
+        return
+
     console.print(f"[dim]Connecting to router at [cyan]{router_url}[/cyan]…[/dim]")
 
     with Live(

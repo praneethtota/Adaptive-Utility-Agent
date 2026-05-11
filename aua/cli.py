@@ -232,7 +232,9 @@ def init(project_dir, tier, force):
 @click.option(
     "--config", "-c", default="aua_config.yaml", show_default=True, help="Path to aua_config.yaml."
 )
-def doctor(config):
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit results as JSON.")
+@click.option("--strict", is_flag=True, default=False, help="Treat warnings as failures (exit 2).")
+def doctor(config, as_json, strict):
     """Check the entire setup before running aua serve.
 
     \b
@@ -253,8 +255,10 @@ def doctor(config):
     """
     from aua.doctor import run_doctor
 
-    n_failures = run_doctor(config)
-    if n_failures > 0:
+    n_failures = run_doctor(config, as_json=as_json, strict=strict)
+    if strict and n_failures > 0:
+        sys.exit(2)
+    elif n_failures > 0:
         sys.exit(1)
 
 
@@ -273,7 +277,12 @@ def doctor(config):
     "--interval", default=2, show_default=True, type=int, help="Refresh interval in seconds."
 )
 @click.option("--url", default=None, help="Router URL override (default: read from config).")
-def status(config, interval, url):
+@click.option("--once", is_flag=True, default=False, help="Run once and exit (no auto-refresh).")
+@click.option("--refresh", default=None, type=int, help="Alias for --interval.")
+@click.option(
+    "--json", "as_json", is_flag=True, default=False, help="Emit status as JSON and exit."
+)
+def status(config, interval, url, once, refresh, as_json):
     """Live terminal dashboard — specialist health, U scores, and more.
 
     \b
@@ -304,7 +313,10 @@ def status(config, interval, url):
         except Exception:
             router_url = "http://localhost:8000"
 
-    run_status(router_url=router_url, interval=interval)
+    effective_interval = refresh if refresh is not None else interval
+    run_status(
+        router_url=router_url, interval=effective_interval, once=once or as_json, as_json=as_json
+    )
 
 
 # ── aua rollback ──────────────────────────────────────────────────────────────

@@ -75,25 +75,35 @@ class Check:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
-def run_doctor(config_path: str = "aua_config.yaml") -> int:
+def run_doctor(
+    config_path: str = "aua_config.yaml",
+    as_json: bool = False,
+    strict: bool = False,
+) -> int:
     """
     Run all diagnostic checks and print results.
 
+    Args:
+        config_path: path to aua_config.yaml
+        as_json:     emit JSON instead of Rich terminal output
+        strict:      treat WARN as FAIL (exit code 2 in CLI)
+
     Returns:
-        Number of FAIL checks (0 = all good).
+        Number of FAIL checks (0 = all good). In strict mode, WARNs also count.
     """
+    import json as _json
+
     checks: list[Check] = []
 
     # ── Group 1: Config ───────────────────────────────────────────────────
     cfg = None
     checks += _check_config(config_path)
-    # Try to load config for subsequent groups
     try:
         from aua.config import load_config
 
         cfg = load_config(config_path)
     except Exception:
-        pass  # later groups will gracefully degrade
+        pass
 
     # ── Group 2: Dependencies ─────────────────────────────────────────────
     checks += _check_dependencies(cfg)
@@ -109,10 +119,33 @@ def run_doctor(config_path: str = "aua_config.yaml") -> int:
     if cfg:
         checks += _check_specialists_live(cfg)
 
-    # ── Print results ─────────────────────────────────────────────────────
-    _print_results(checks, config_path)
+    # ── Output ────────────────────────────────────────────────────────────
+    if as_json:
+        result = {
+            "config": config_path,
+            "strict": strict,
+            "n_pass": sum(1 for c in checks if c.status == "pass"),
+            "n_fail": sum(1 for c in checks if c.status == "fail"),
+            "n_warn": sum(1 for c in checks if c.status == "warn"),
+            "n_skip": sum(1 for c in checks if c.status in ("skip", "info")),
+            "checks": [
+                {
+                    "group": c.name,
+                    "detail": c.detail,
+                    "status": c.status,
+                    "fix": c.fix or "",
+                }
+                for c in checks
+            ],
+        }
+        print(_json.dumps(result, indent=2))
+    else:
+        _print_results(checks, config_path)
 
-    return sum(1 for c in checks if c.status == "fail")
+    n_fail = sum(1 for c in checks if c.status == "fail")
+    if strict:
+        n_fail += sum(1 for c in checks if c.status == "warn")
+    return n_fail
 
 
 # ── Check groups ──────────────────────────────────────────────────────────────

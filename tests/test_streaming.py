@@ -151,3 +151,4 @@ def test_stream_sse_headers(client, fake_swe_server):
         headers = r.headers
     assert headers.get("cache-control") == "no-cache"
     assert headers.get("x-accel-buffering") == "no"
+    assert headers.get("content-encoding") == "none"

@@ -73,12 +73,27 @@ _SSE_HEADERS = {
     "Cache-Control": "no-cache",
     "X-Accel-Buffering": "no",
     "Connection": "keep-alive",
+    "Content-Encoding": "none",  # prevent gzip middleware from buffering the stream
 }
+_SSE_HEARTBEAT_INTERVAL = 15  # seconds between SSE keep-alive comments
 
 
 def _sse(event: BaseModel) -> str:
-    """Serialise a Pydantic model as a single SSE frame: data: {json}\n\n"""
-    return f"data: {event.model_dump_json()}\n\n"
+    """Serialise a Pydantic model as a full SSE frame with named event field.
+
+    Format:
+        event: <event.type>
+        data: <json>
+        \n
+    This allows clients to use addEventListener('chunk', handler) etc.
+    """
+    event_type = getattr(event, "type", "message")
+    return f"event: {event_type}\ndata: {event.model_dump_json()}\n\n"
+
+
+def _sse_comment(text: str = "keep-alive") -> str:
+    """SSE comment frame — keeps the connection alive without triggering event handlers."""
+    return f": {text}\n\n"
 
 
 class Router:
