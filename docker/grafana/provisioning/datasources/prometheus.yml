@@ -2,10 +2,9 @@ apiVersion: 1
 datasources:
   - name: Prometheus
     type: prometheus
-    uid: DS_PROMETHEUS
+    uid: eflr6pxg9wflse
     access: proxy
-    # host.docker.internal reaches the Mac host from inside any Docker container
-    url: http://host.docker.internal:9090
+    url: http://prometheus:9090
     isDefault: true
     editable: true
     jsonData:
