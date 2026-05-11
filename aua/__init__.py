@@ -22,13 +22,10 @@ CLI:
     aua rollback           # revert to the previous BLUE model
 """
 
-# ── Version ────────────────────────────────────────────────────────────────────
-# ── Arbitration ────────────────────────────────────────────────────────────────
 from aua.arbiter import ArbiterAgent, ArbiterVerdict, VerdictCase
 from aua.assertions_store import AssertionMatch, AssertionsStore
+from aua.blue_green import BlueGreenDeployment, EvaluationSummary
 from aua.confidence_updater import ConfidenceUpdater
-
-# ── Config ─────────────────────────────────────────────────────────────────────
 from aua.config import (
     AVAILABLE_TIERS,
     FIELD_CONFIGS,
@@ -45,8 +42,7 @@ from aua.config import (
     load_tier,
 )
 from aua.contradiction_detector import ContradictionDetector, ContradictionResult
-
-# ── REST endpoint models (#09 / #10) ──────────────────────────────────────────
+from aua.correction_loop import CollectionSummary, CorrectionLoop, DPOPair
 from aua.endpoints import (
     BatchQueryRequest,
     BatchQueryResponse,
@@ -66,32 +62,32 @@ from aua.endpoints import (
     StreamErrorEvent,
     StreamStartEvent,
 )
-
-# ── Core pipeline components ───────────────────────────────────────────────────
 from aua.field_classifier import FieldClassifier
-
-# ── Routing ────────────────────────────────────────────────────────────────────
 from aua.router import Router
 from aua.utility_scorer import DomainState, TaskScore, UtilityScorer
 from aua.version import __version__
+
+# ── Aliases ────────────────────────────────────────────────────────────────────
+# Arbiter is the canonical public name; ArbiterAgent is the implementation class.
+Arbiter = ArbiterAgent
 
 __all__ = [
     # version
     "__version__",
     # config
     "load_config",
+    "load_tier",
     "AUAConfig",
     "SpecialistConfig",
     "ArbiterConfig",
     "RouterConfig",
     "BlueGreenFieldConfig",
     "FieldConfig",
+    "RuntimeConfig",
     "FIELD_CONFIGS",
-    "get_effective_config",
-    "load_tier",
     "AVAILABLE_TIERS",
     "TIER_ALIASES",
-    "RuntimeConfig",
+    "get_effective_config",
     # pipeline
     "FieldClassifier",
     "UtilityScorer",
@@ -104,10 +100,17 @@ __all__ = [
     "ConfidenceUpdater",
     # arbitration
     "ArbiterAgent",
+    "Arbiter",
     "VerdictCase",
     "ArbiterVerdict",
     # routing
     "Router",
+    # deployment & learning
+    "BlueGreenDeployment",
+    "EvaluationSummary",
+    "CorrectionLoop",
+    "DPOPair",
+    "CollectionSummary",
     # endpoint models
     "QueryRequest",
     "RouterResponse",
@@ -119,11 +122,11 @@ __all__ = [
     "StreamErrorEvent",
     "CorrectionRequest",
     "CorrectionResponse",
+    "ErrorResponse",
     "ConfigResponse",
     "DeployGreenRequest",
     "DeployGreenResponse",
     "HealthLiveResponse",
     "HealthReadyResponse",
-    "ErrorResponse",
     "HealthStartupResponse",
 ]

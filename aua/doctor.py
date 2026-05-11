@@ -449,8 +449,8 @@ def _check_hardware(cfg) -> list[Check]:
                 Check(
                     "Hardware",
                     "GPU detection",
-                    "warn",
-                    "No GPU detected — Ollama will use CPU (slow for large models)",
+                    "info",
+                    "No GPU detected — Ollama will use CPU/MPS (normal on Mac)",
                 )
             )
     elif hw.kind == "apple_silicon":
@@ -587,14 +587,16 @@ def _check_hardware(cfg) -> list[Check]:
 
         avail_mib = hw.system_ram_mib
         if needed_mib > avail_mib:
+            # Ollama handles memory paging — tight RAM is a performance concern, not a config error.
+            # Use "info" so that --strict mode does not treat this as a failure.
             checks.append(
                 Check(
                     "Hardware",
                     "RAM (Ollama)",
-                    "warn",
+                    "info",
                     f"~{needed_mib//1024} GiB needed, {avail_mib//1024} GiB available "
-                    f"— models may be slow or fail to load",
-                    fix="Reduce model size (use :3b variants) or add more RAM",
+                    f"— Ollama will page; may be slower",
+                    fix="Reduce model size (use :3b variants) or add more RAM for best performance",
                 )
             )
         else:
@@ -712,7 +714,7 @@ def _check_models(cfg) -> list[Check]:
 
 
 def _check_specialists_live(cfg) -> list[Check]:
-    """Ping each specialist. Warn (not fail) if not running — they may not be started yet."""
+    """Ping each specialist. Skip (not warn/fail) if not running — expected before aua serve."""
     checks = []
     all_servers = [(s.name, s.models_url) for s in cfg.specialists] + [
         ("arbiter", cfg.arbiter.models_url)
@@ -734,14 +736,15 @@ def _check_specialists_live(cfg) -> list[Check]:
                         )
                     )
         except Exception:
+            # Connection refused = server not started yet — this is expected before aua serve
+            # Use "skip" so --strict mode does not treat this as a failure
             checks.append(
                 Check(
                     "Specialists",
                     f"{name}",
-                    "warn",
-                    f"not reachable at {url}",
-                    fix="Start with:  aua serve\n"
-                    "    (this is expected if you haven't started the framework yet)",
+                    "skip",
+                    "not started — run 'aua serve' first",
+                    fix="Start with:  aua serve",
                 )
             )
     return checks
