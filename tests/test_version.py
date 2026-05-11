@@ -8,16 +8,29 @@ Verifies that the version string is identical everywhere it appears:
   aua CLI              — aua --version
 """
 
+import pytest
+
 import aua
 from aua.version import __version__
 
 
 def test_version_format():
-    """Version must be a valid semver-ish string like '0.5.0'."""
-    parts = __version__.split(".")
-    assert len(parts) == 3, f"Expected X.Y.Z format, got {__version__!r}"
-    for part in parts:
-        assert part.isdigit(), f"Each part must be numeric, got {part!r}"
+    """Version must be a valid PEP 440 version string.
+
+    Accepts: X.Y.Z, X.Y.ZaN (alpha), X.Y.ZbN (beta), X.Y.ZrcN (release candidate).
+    Examples: 0.5.0, 0.6.0a0, 0.7.0b1, 1.0.0rc1
+    """
+    from packaging.version import InvalidVersion, Version
+
+    try:
+        v = Version(__version__)
+    except InvalidVersion:
+        pytest.fail(f"Invalid PEP 440 version: {__version__!r}")
+
+    # Must have at least major.minor.patch
+    assert v.major >= 0
+    assert v.minor >= 0
+    assert v.micro >= 0
 
 
 def test_init_re_exports_version():
