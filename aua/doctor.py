@@ -663,8 +663,8 @@ def _check_models(cfg) -> list[Check]:
                         Check(
                             "Models",
                             f"{name} ({model})",
-                            "warn",
-                            "not yet pulled — will be pulled on aua serve",
+                            "info",
+                            "not yet pulled — will be pulled automatically on aua serve",
                             fix=f"ollama pull {model}",
                         )
                     )
