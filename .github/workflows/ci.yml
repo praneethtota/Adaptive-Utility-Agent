@@ -1,0 +1,79 @@
+# .github/workflows/ci.yml
+# AUA Framework CI — runs on every push and pull request.
+#
+# Matrix: Python 3.10 / 3.11 / 3.12
+# Steps:  install → ruff → black → mypy → pytest
+#
+# All tests use a fake OpenAI-compatible specialist server so no GPU is required.
+
+name: ci
+
+on:
+  push:
+    branches: ["main", "dev", "release/**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: "Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false          # run all matrix legs even if one fails
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # ── Linting ────────────────────────────────────────────────────────────
+
+      - name: ruff
+        run: ruff check aua tests
+
+      - name: black
+        run: black --check --line-length 100 aua tests
+
+      - name: isort
+        run: isort --check-only --profile black --line-length 100 aua tests
+
+      # ── Type checking ──────────────────────────────────────────────────────
+
+      - name: mypy
+        run: mypy aua --ignore-missing-imports
+
+      # ── Tests ──────────────────────────────────────────────────────────────
+
+      - name: pytest
+        run: pytest -q --tb=short
+
+      # ── Wheel build validation ─────────────────────────────────────────────
+
+      - name: Build wheel
+        run: |
+          pip install build
+          python -m build --wheel --outdir /tmp/dist
+          ls -lh /tmp/dist/
+
+      - name: Install from wheel and smoke-test
+        run: |
+          pip install /tmp/dist/*.whl --force-reinstall
+          python -c "
+          import aua
+          from aua.version import __version__
+          assert aua.__version__ == __version__
+          print(f'✓ aua=={aua.__version__} installed from wheel')
+          "

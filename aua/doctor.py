@@ -797,7 +797,7 @@ def _port_in_use(port: int) -> tuple[bool, int | None]:
 def _dir_size_str(path: Path) -> str:
     """Human-readable size of a directory."""
     try:
-        total = sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+        total: float = sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
         for unit in ["B", "KB", "MB", "GB"]:
             if total < 1024:
                 return f"{total:.0f} {unit}"

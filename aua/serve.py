@@ -221,7 +221,8 @@ def _wait_healthy(
             if proc.poll() is not None:
                 stderr = ""
                 try:
-                    stderr = proc.stderr.read().decode(errors="replace")[-500:]
+                    if proc.stderr is not None:
+                        stderr = proc.stderr.read().decode(errors="replace")[-500:]
                 except Exception:
                     pass
                 console.print(

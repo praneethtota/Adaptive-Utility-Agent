@@ -551,7 +551,7 @@ class ArbiterAgent:
         Look for patterns like 'X is Y' followed by 'X is not Y'.
         """
         lines = output.lower().split(".")
-        claims = {}
+        claims: dict[str, str] = {}
         for line in lines:
             line = line.strip()
             if " is " in line:

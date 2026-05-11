@@ -341,7 +341,7 @@ class Router:
         log.debug("Distribution: %s", distribution)
 
         # ── 2. Decide routing mode ────────────────────────────────────────────
-        top_domain = max(distribution, key=distribution.get)
+        top_domain = max(distribution, key=lambda k: distribution.get(k, 0.0))
         top_prob = distribution[top_domain]
 
         # Check if multiple specialists are active above fanout threshold
@@ -424,7 +424,7 @@ class Router:
             if isinstance(result, Exception):
                 log.warning("Specialist %s failed: %s", spec.name, result)
             else:
-                text, conf = result
+                text, conf = result  # type: ignore[misc]
                 responses.append((spec, text, conf))
 
         if not responses:

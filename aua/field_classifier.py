@@ -19,7 +19,7 @@ import re
 try:
     import httpx
 except ImportError:
-    httpx = None
+    httpx = None  # type: ignore[assignment]
 
 from aua.config import FIELD_CONFIGS, FieldConfig, get_effective_config
 
@@ -412,4 +412,4 @@ async def classify_field(task: str) -> dict[str, float]:
     Uses a stateless classifier (no history tracking).
     For conversation-aware classification, instantiate FieldClassifier directly.
     """
-    return await _default_classifier.classify(task, update_history=False)
+    return await _default_classifier.classify_async(task, update_history=False)
