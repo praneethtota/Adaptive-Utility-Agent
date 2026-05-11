@@ -118,14 +118,14 @@ class CorrectionLoop:
 
         pairs = []
         for item in data.get("corrections", []):
-            if item.get("confidence", 0) >= min_confidence:
+            if item.get("effective_confidence", 0) >= min_confidence:
                 pairs.append(
                     DPOPair(
                         prompt=item.get("subject", ""),
                         chosen=item.get("claim", ""),
                         rejected="",  # populated by Arbiter in v0.7
                         domain=item.get("domain", "general"),
-                        confidence=float(item.get("confidence", 0)),
+                        confidence=float(item.get("effective_confidence", 0)),
                         source=item.get("source", "arbiter"),
                     )
                 )

@@ -429,10 +429,10 @@ verdict = arbiter.arbitrate(
     field_penalty_multiplier=2.0,
 )
 
-print(verdict.case.value)         # "case_2" — B is correct
-print(verdict.correct_A)          # True — A receives a correction
-print(verdict.verified_claim)     # "Bubble sort is O(n²) average case."
-print(verdict.external_response)  # What the user sees</pre>
+print(verdict.case.value)         # "case_1", "case_2", "case_3", or "case_4"
+print(verdict.correct_A)          # True if A should receive a correction
+print(verdict.verified_claim)     # Verified answer, or None if inconclusive
+print(verdict.external_response)  # What the user sees (always safe to show)</pre>
 </div>
 
 <h3>4.4 The assertions store — cross-session memory</h3>
