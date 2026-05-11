@@ -12,7 +12,7 @@ Usage:
 
     # Access specialist endpoints
     for s in config.specialists:
-        print(s.name, s.endpoint)
+        print(s.name, s.endpoint)   # http://127.0.0.1:<port>/v1/chat/completions
 
     # Access field weights
     from aua.config import FIELD_CONFIGS
@@ -187,6 +187,50 @@ def get_effective_config(field_distribution: dict[str, float]) -> FieldConfig:
 # ── Deployment config dataclasses ─────────────────────────────────────────────
 # These are populated from aua_config.yaml.
 
+# ── Allowed keys per config section (used by unknown-key validator) ───────────
+_KNOWN_TOP_LEVEL: set[str] = {"aua", "specialists", "arbiter", "router", "blue_green", "logging"}
+_KNOWN_AUA_KEYS: set[str] = {"version", "mode", "backend", "project_name"}
+_KNOWN_SPECIALIST_KEYS: set[str] = {
+    "name",
+    "model",
+    "port",
+    "field",
+    "backend",
+    "gpu",
+    "gpu_memory_utilization",
+    "max_model_len",
+    "quantization",
+    "enforce_eager",
+    "host",
+    "scheme",
+    "endpoint_override",
+    "models_url_override",
+}
+_KNOWN_ARBITER_KEYS: set[str] = {
+    "model",
+    "port",
+    "backend",
+    "gpu",
+    "gpu_memory_utilization",
+    "max_model_len",
+    "quantization",
+    "enforce_eager",
+    "host",
+    "scheme",
+    "endpoint_override",
+    "models_url_override",
+}
+_KNOWN_ROUTER_KEYS: set[str] = {
+    "port",
+    "host",
+    "single_domain_threshold",
+    "fanout_threshold",
+    "specialist_timeout",
+    "cors_origins",
+}
+_KNOWN_BG_KEYS: set[str] = {"delta", "T_min", "tau"}
+_KNOWN_LOG_KEYS: set[str] = {"level", "format"}
+
 
 @dataclass
 class SpecialistConfig:
@@ -198,20 +242,33 @@ class SpecialistConfig:
     field: str  # maps to a key in FIELD_CONFIGS
     backend: str = "vllm"  # "vllm" | "ollama" (inherits from AUAConfig)
     gpu: int = 0  # CUDA device index (vLLM only)
-    gpu_memory_utilization: float = 0.34  # vLLM only
+    gpu_memory_utilization: float = 0.34  # vLLM only — must be in (0, 1]
     max_model_len: int = 2048  # vLLM only
     quantization: str | None = "awq"  # vLLM only: "awq" | "gptq" | None
     enforce_eager: bool = True  # vLLM only: prevents CUDA graph conflicts
 
+    # P-05: host/scheme fields replace hardcoded localhost
+    host: str = "127.0.0.1"  # bind/connect host for this specialist
+    scheme: str = "http"  # "http" | "https"
+    endpoint_override: str | None = None  # full URL override (ignores host/scheme/port)
+    models_url_override: str | None = None  # full models URL override
+
     @property
     def endpoint(self) -> str:
-        return f"http://localhost:{self.port}/v1/chat/completions"
+        """Full chat completions URL for this specialist."""
+        if self.endpoint_override:
+            return self.endpoint_override
+        path = "/api/chat" if self.backend == "ollama" else "/v1/chat/completions"
+        return f"{self.scheme}://{self.host}:{self.port}{path}"
 
     @property
     def models_url(self) -> str:
+        """Full models/tags health-check URL."""
+        if self.models_url_override:
+            return self.models_url_override
         if self.backend == "ollama":
-            return f"http://localhost:{self.port}/api/tags"
-        return f"http://localhost:{self.port}/v1/models"
+            return f"{self.scheme}://{self.host}:{self.port}/api/tags"
+        return f"{self.scheme}://{self.host}:{self.port}/v1/models"
 
     @property
     def serve_model_name(self) -> str:
@@ -259,30 +316,37 @@ class ArbiterConfig:
     port: int
     backend: str = "vllm"  # inherits from AUAConfig
     gpu: int = 0
-    gpu_memory_utilization: float = 0.18
+    gpu_memory_utilization: float = 0.18  # must be in (0, 1]
     max_model_len: int = 2048
     quantization: str | None = "awq"
     enforce_eager: bool = True
 
+    # P-05: host/scheme fields replace hardcoded localhost
+    host: str = "127.0.0.1"
+    scheme: str = "http"
+    endpoint_override: str | None = None
+    models_url_override: str | None = None
+
     @property
     def endpoint(self) -> str:
-        return f"http://localhost:{self.port}/v1/chat/completions"
+        if self.endpoint_override:
+            return self.endpoint_override
+        path = "/api/chat" if self.backend == "ollama" else "/v1/chat/completions"
+        return f"{self.scheme}://{self.host}:{self.port}{path}"
 
     @property
     def models_url(self) -> str:
+        if self.models_url_override:
+            return self.models_url_override
         if self.backend == "ollama":
-            return f"http://localhost:{self.port}/api/tags"
-        return f"http://localhost:{self.port}/v1/models"
+            return f"{self.scheme}://{self.host}:{self.port}/api/tags"
+        return f"{self.scheme}://{self.host}:{self.port}/v1/models"
 
     @property
     def serve_model_name(self) -> str:
-        """Model name to use in the request body.
-        vLLM: the --served-model-name (same as self.name).
-        Ollama: the model tag (e.g. qwen2.5-coder:7b).
-        """
         if self.backend == "ollama":
-            return self.model  # Ollama uses the tag directly
-        return "arbiter"  # vLLM uses --served-model-name
+            return self.model
+        return "arbiter"
 
     def vllm_command(self) -> list[str]:
         cmd = [
@@ -312,10 +376,48 @@ class RouterConfig:
     """FastAPI router settings."""
 
     port: int = 8000
-    single_domain_threshold: float = 0.75  # above → single specialist
-    fanout_threshold: float = 0.30  # both above → fan out
+    single_domain_threshold: float = 0.75  # above → single specialist; must be in [0, 1]
+    fanout_threshold: float = 0.30  # both above → fan out; must be in [0, 1]
     specialist_timeout: float = 60.0  # seconds per specialist call
     host: str = "0.0.0.0"
+    cors_origins: list[str] = field(default_factory=lambda: ["*"])
+
+
+@dataclass
+class RuntimeConfig:
+    """
+    Paths for runtime artifacts — all nested under a single base directory.
+
+    Default layout:
+        .aua/
+          logs/         — rotating log files per service
+          pids/         — PID files written by aua serve
+          state/        — promotion log (promotions.jsonl) + rollback state
+          checkpoints/  — model checkpoint symlinks for blue-green
+    """
+
+    base: Path = field(default_factory=lambda: Path(".aua"))
+
+    @property
+    def logs(self) -> Path:
+        return self.base / "logs"
+
+    @property
+    def pids(self) -> Path:
+        return self.base / "pids"
+
+    @property
+    def state(self) -> Path:
+        return self.base / "state"
+
+    @property
+    def checkpoints(self) -> Path:
+        return self.base / "checkpoints"
+
+    def ensure(self) -> None:
+        """Create all runtime directories (idempotent)."""
+        for p in (self.logs, self.pids, self.state, self.checkpoints):
+            p.mkdir(parents=True, exist_ok=True)
 
 
 @dataclass
@@ -349,6 +451,7 @@ class AUAConfig:
     blue_green: dict[str, BlueGreenFieldConfig]  # keyed by specialist name
     backend: str = "vllm"  # "vllm" | "ollama"
     logging: LoggingConfig = field(default_factory=LoggingConfig)
+    runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
 
     # Derived — built on load
     _specialist_by_name: dict[str, SpecialistConfig] = field(
@@ -401,7 +504,8 @@ def load_config(path: str | os.PathLike = "aua_config.yaml") -> AUAConfig:
 
     Raises:
         FileNotFoundError: if the config file doesn't exist.
-        ValueError: if required fields are missing or invalid.
+        ValueError: if required fields are missing, unknown keys are present,
+                    ports are duplicated, or values are out of range.
     """
     p = Path(path)
     if not p.exists():
@@ -420,8 +524,12 @@ def load_config(path: str | os.PathLike = "aua_config.yaml") -> AUAConfig:
 def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
     """Parse a raw YAML dict into a validated AUAConfig."""
 
+    # ── Unknown top-level keys ─────────────────────────────────────────────
+    _reject_unknown_keys(raw, _KNOWN_TOP_LEVEL, "top-level", source)
+
     # ── Top-level aua block ────────────────────────────────────────────────
     aua_block = raw.get("aua", {})
+    _reject_unknown_keys(aua_block, _KNOWN_AUA_KEYS, "aua", source)
     version = str(aua_block.get("version", "0.5"))
     mode = str(aua_block.get("mode", "local"))
     backend = str(aua_block.get("backend", "vllm"))
@@ -433,8 +541,13 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
 
     specialists: list[SpecialistConfig] = []
     for i, s in enumerate(raw_specialists):
+        _reject_unknown_keys(s, _KNOWN_SPECIALIST_KEYS, f"specialists[{i}]", source)
         _require(s, ["name", "model", "port", "field"], context=f"specialists[{i}]", source=source)
         spec_backend = str(s.get("backend", backend))
+        gpu_util = float(s.get("gpu_memory_utilization", 0.34))
+        _validate_range(
+            gpu_util, "gpu_memory_utilization", 0.0, 1.0, exclusive_lo=True, source=source
+        )
         specialists.append(
             SpecialistConfig(
                 name=s["name"],
@@ -443,41 +556,64 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
                 field=s["field"],
                 backend=spec_backend,
                 gpu=int(s.get("gpu", 0)),
-                gpu_memory_utilization=float(s.get("gpu_memory_utilization", 0.34)),
+                gpu_memory_utilization=gpu_util,
                 max_model_len=int(s.get("max_model_len", 2048)),
                 quantization=s.get("quantization", "awq") or None,
                 enforce_eager=bool(s.get("enforce_eager", True)),
+                host=str(s.get("host", "127.0.0.1")),
+                scheme=str(s.get("scheme", "http")),
+                endpoint_override=s.get("endpoint_override") or None,
+                models_url_override=s.get("models_url_override") or None,
             )
         )
 
     # ── Arbiter ────────────────────────────────────────────────────────────
     raw_arb = raw.get("arbiter", {})
+    _reject_unknown_keys(raw_arb, _KNOWN_ARBITER_KEYS, "arbiter", source)
     _require(raw_arb, ["model", "port"], context="arbiter", source=source)
+    arb_gpu_util = float(raw_arb.get("gpu_memory_utilization", 0.18))
+    _validate_range(
+        arb_gpu_util, "arbiter.gpu_memory_utilization", 0.0, 1.0, exclusive_lo=True, source=source
+    )
     arbiter = ArbiterConfig(
         model=raw_arb["model"],
         port=int(raw_arb["port"]),
         backend=str(raw_arb.get("backend", backend)),
         gpu=int(raw_arb.get("gpu", 0)),
-        gpu_memory_utilization=float(raw_arb.get("gpu_memory_utilization", 0.18)),
+        gpu_memory_utilization=arb_gpu_util,
         max_model_len=int(raw_arb.get("max_model_len", 2048)),
         quantization=raw_arb.get("quantization", "awq") or None,
         enforce_eager=bool(raw_arb.get("enforce_eager", True)),
+        host=str(raw_arb.get("host", "127.0.0.1")),
+        scheme=str(raw_arb.get("scheme", "http")),
+        endpoint_override=raw_arb.get("endpoint_override") or None,
+        models_url_override=raw_arb.get("models_url_override") or None,
     )
 
     # ── Router ─────────────────────────────────────────────────────────────
     raw_router = raw.get("router", {})
+    _reject_unknown_keys(raw_router, _KNOWN_ROUTER_KEYS, "router", source)
+    sdt = float(raw_router.get("single_domain_threshold", 0.75))
+    ft = float(raw_router.get("fanout_threshold", 0.30))
+    _validate_range(sdt, "router.single_domain_threshold", 0.0, 1.0, source=source)
+    _validate_range(ft, "router.fanout_threshold", 0.0, 1.0, source=source)
+    cors = raw_router.get("cors_origins", ["*"])
+    if isinstance(cors, str):
+        cors = [cors]
     router = RouterConfig(
         port=int(raw_router.get("port", 8000)),
-        single_domain_threshold=float(raw_router.get("single_domain_threshold", 0.75)),
-        fanout_threshold=float(raw_router.get("fanout_threshold", 0.30)),
+        single_domain_threshold=sdt,
+        fanout_threshold=ft,
         specialist_timeout=float(raw_router.get("specialist_timeout", 60.0)),
         host=str(raw_router.get("host", "0.0.0.0")),
+        cors_origins=list(cors),
     )
 
     # ── Blue-green per specialist ──────────────────────────────────────────
     raw_bg = raw.get("blue_green", {})
     blue_green: dict[str, BlueGreenFieldConfig] = {}
     for name, bg in raw_bg.items():
+        _reject_unknown_keys(bg, _KNOWN_BG_KEYS, f"blue_green.{name}", source)
         blue_green[name] = BlueGreenFieldConfig(
             delta=float(bg.get("delta", 0.025)),
             T_min=int(bg.get("T_min", 10)),
@@ -486,6 +622,7 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
 
     # ── Logging ────────────────────────────────────────────────────────────
     raw_log = raw.get("logging", {})
+    _reject_unknown_keys(raw_log, _KNOWN_LOG_KEYS, "logging", source)
     logging_cfg = LoggingConfig(
         level=str(raw_log.get("level", "INFO")).upper(),
         format=str(raw_log.get("format", "%(asctime)s [%(levelname)s] %(name)s: %(message)s")),
@@ -499,6 +636,9 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
                 f"'{s.field}'. Valid fields: {sorted(FIELD_CONFIGS)}"
             )
 
+    # ── Duplicate port check ───────────────────────────────────────────────
+    _validate_no_duplicate_ports(specialists, arbiter, router, source)
+
     return AUAConfig(
         version=version,
         mode=mode,
@@ -511,10 +651,76 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
     )
 
 
+# ── Validators ────────────────────────────────────────────────────────────────
+
+
 def _require(d: dict, keys: list[str], context: str, source: str) -> None:
     missing = [k for k in keys if k not in d]
     if missing:
         raise ValueError(f"[{source}] '{context}' is missing required field(s): {missing}")
+
+
+def _reject_unknown_keys(d: dict, known: set[str], context: str, source: str) -> None:
+    """Raise ValueError if d contains any key not in known."""
+    unknown = set(d) - known
+    if unknown:
+        raise ValueError(
+            f"[{source}] Unknown key(s) in '{context}': {sorted(unknown)}. "
+            f"Known keys: {sorted(known)}"
+        )
+
+
+def _validate_range(
+    value: float,
+    name: str,
+    lo: float,
+    hi: float,
+    source: str,
+    exclusive_lo: bool = False,
+    exclusive_hi: bool = False,
+) -> None:
+    """Raise ValueError if value is outside [lo, hi] (or exclusive variant)."""
+    lo_ok = value > lo if exclusive_lo else value >= lo
+    hi_ok = value < hi if exclusive_hi else value <= hi
+    if not (lo_ok and hi_ok):
+        lo_bracket = "(" if exclusive_lo else "["
+        hi_bracket = ")" if exclusive_hi else "]"
+        raise ValueError(
+            f"[{source}] '{name}' must be in {lo_bracket}{lo}, {hi}{hi_bracket}, got {value}"
+        )
+
+
+def _validate_no_duplicate_ports(
+    specialists: list[SpecialistConfig],
+    arbiter: ArbiterConfig,
+    router: RouterConfig,
+    source: str,
+) -> None:
+    """Raise ValueError if any two vLLM services share the same port.
+
+    Ollama specialists intentionally share port 11434 (one Ollama process
+    serves all models), so Ollama-backend entries are excluded from this check.
+    The router port is always checked against every other service.
+    """
+    seen: dict[int, str] = {}
+
+    # Only check vLLM specialists — Ollama ones share a single process/port
+    vllm_specialists = [s for s in specialists if s.backend != "ollama"]
+    all_services = [(s.name, s.port) for s in vllm_specialists]
+
+    if arbiter.backend != "ollama":
+        all_services.append(("arbiter", arbiter.port))
+
+    # Router port is always unique regardless of backend
+    all_services.append(("router", router.port))
+
+    for name, port in all_services:
+        if port in seen:
+            raise ValueError(
+                f"[{source}] Duplicate port {port} used by both "
+                f"'{seen[port]}' and '{name}'. Each service must use a unique port."
+            )
+        seen[port] = name
 
 
 # ── Tier loader ───────────────────────────────────────────────────────────────
