@@ -50,10 +50,8 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 3
-    depends_on:
-      ollama:
-        condition: service_healthy
-        required: false
+    # Router starts independently; it will retry specialist connections
+    # Use 'aua serve --reuse-running' to skip port checks on container restart
 
   # ── Ollama (CPU / Apple Silicon) ────────────────────────────────────────────
   ollama:
@@ -68,8 +66,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
       interval: 10s
       timeout: 5s
-      start_period: 10s
-      retries: 5
+      start_period: 30s
+      retries: 10
     restart: unless-stopped
     # Uncomment for Apple Silicon MPS:
     # environment:
@@ -88,9 +86,12 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: |
       "
-      ollama pull ${SWE_MODEL:-qwen2.5-coder:7b} &&
-      ollama pull ${MATH_MODEL:-qwen2.5:7b} &&
-      ollama pull ${ARBITER_MODEL:-qwen2.5:3b} &&
+      echo 'Waiting for Ollama to be ready...' &&
+      until curl -sf http://ollama:11434/api/tags > /dev/null 2>&1; do sleep 2; done &&
+      echo 'Ollama ready — pulling models...' &&
+      OLLAMA_HOST=http://ollama:11434 ollama pull ${SWE_MODEL:-qwen2.5-coder:7b} &&
+      OLLAMA_HOST=http://ollama:11434 ollama pull ${MATH_MODEL:-qwen2.5:7b} &&
+      OLLAMA_HOST=http://ollama:11434 ollama pull ${ARBITER_MODEL:-qwen2.5:3b} &&
       echo 'All models ready'
       "
     environment:
