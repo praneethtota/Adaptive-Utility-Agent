@@ -56,6 +56,10 @@ from aua.endpoints import (
     RouterResponse,
     BatchQueryRequest,
     BatchQueryResponse,
+    StreamStartEvent,      # #10
+    StreamChunkEvent,      # #10
+    StreamDoneEvent,       # #10
+    StreamErrorEvent,      # #10
     CorrectionRequest,
     CorrectionResponse,
     ConfigResponse,
@@ -108,4 +112,8 @@ __all__ = [
     "HealthLiveResponse",
     "HealthReadyResponse",
     "HealthStartupResponse",
+     "StreamStartEvent",
+    "StreamChunkEvent",
+    "StreamDoneEvent",
+    "StreamErrorEvent",
 ]

@@ -12,8 +12,9 @@ Imported by:
 Model groups:
     Query       QueryRequest, RouterResponse
     Batch       BatchQueryRequest, BatchQueryResponse
-    Corrections CorrectionRequest, CorrectionResponse
-    Config      ConfigResponse (read-only view of AUAConfig)
+    Stream      StreamStartEvent, StreamChunkEvent, StreamDoneEvent, StreamErrorEvent
+    Corrections CorrectionRequest, CorrectionResponse, CorrectionListItem, CorrectionListResponse
+    Config      ConfigResponse, SpecialistInfo, ArbiterInfo, RouterInfo
     Deploy      DeployGreenRequest, DeployGreenResponse
     Health      HealthLiveResponse, HealthReadyResponse, HealthStartupResponse
 """
@@ -44,8 +45,10 @@ class QueryRequest(BaseModel):
     )
     force_domain: Optional[str] = Field(
         None,
-        description="Pin routing to a specific domain (e.g. 'software_engineering'). "
-                    "Bypasses the field classifier. Useful for testing.",
+        description=(
+            "Pin routing to a specific domain (e.g. 'software_engineering'). "
+            "Bypasses the field classifier. Useful for testing."
+        ),
     )
 
     model_config = {"json_schema_extra": {
@@ -72,17 +75,27 @@ class RouterResponse(BaseModel):
     )
     primary_domain: str = Field(
         ...,
-        description="Domain of the winning specialist (or 'general' for arbiter fallback).",
+        description=(
+            "Domain of the winning specialist "
+            "(or 'general' for arbiter fallback)."
+        ),
     )
     response: str = Field(..., description="The specialist's response text.")
-    u_score: float = Field(..., description="Utility score U = w_e·E + w_c·C + w_k·K.")
-    confidence: float = Field(..., description="Updated confidence after contradiction check.")
+    u_score: float = Field(
+        ..., description="Utility score U = w_e·E + w_c·C + w_k·K."
+    )
+    confidence: float = Field(
+        ..., description="Updated confidence after contradiction check."
+    )
     contradictions_detected: int
     dpo_pairs_generated: int
     latency_ms: float
     specialist_responses: Optional[List[dict]] = Field(
         None,
-        description="Per-specialist responses (only populated for fanout routing).",
+        description=(
+            "Per-specialist responses "
+            "(only populated for fanout routing)."
+        ),
     )
 
 
@@ -123,10 +136,83 @@ class BatchQueryRequest(BaseModel):
 class BatchQueryResponse(BaseModel):
     """Results for a batch query request."""
 
-    results: List[RouterResponse] = Field(..., description="One result per successful query.")
-    total_latency_ms: float = Field(..., description="Wall-clock time for the entire batch.")
+    results: List[RouterResponse] = Field(
+        ..., description="One result per successful query."
+    )
+    total_latency_ms: float = Field(
+        ..., description="Wall-clock time for the entire batch."
+    )
     n_queries: int = Field(..., description="Number of queries submitted.")
-    n_errors: int = Field(..., description="Number of queries that failed (excluded from results).")
+    n_errors: int = Field(
+        ...,
+        description="Number of queries that failed (excluded from results).",
+    )
+
+
+# ── Stream ────────────────────────────────────────────────────────────────────
+# Server-Sent Events payload models for POST /query/stream.
+# Wire format per event:  data: {json}\n\n
+# Content-Type:           text/event-stream
+
+class StreamStartEvent(BaseModel):
+    """
+    First SSE event. Confirms routing decision before any tokens arrive.
+    Clients can use this to display 'Routing to {primary_domain}…' UI.
+    """
+
+    type: str = Field("start", description="Always 'start'.")
+    routing_mode: str = Field(
+        ..., description="'single' | 'fanout' | 'arbiter'."
+    )
+    primary_domain: str = Field(
+        ..., description="Domain of the specialist that will respond."
+    )
+    domain_distribution: Dict[str, float] = Field(
+        ..., description="Full field classifier output."
+    )
+
+
+class StreamChunkEvent(BaseModel):
+    """
+    One token (or small delta) from the specialist.
+    Emitted as tokens arrive from the vLLM / Ollama backend.
+    """
+
+    type: str = Field("chunk", description="Always 'chunk'.")
+    text: str = Field(..., description="Token text. May be empty string.")
+    index: int = Field(..., description="Zero-based token index within this response.")
+
+
+class StreamDoneEvent(BaseModel):
+    """
+    Final SSE event. Carries complete metadata — identical fields to RouterResponse.
+    Clients should use this to update their UI with scores and telemetry.
+    After this event the stream closes.
+    """
+
+    type: str = Field("done", description="Always 'done'.")
+    full_response: str = Field(
+        ..., description="Complete specialist response (all chunks concatenated)."
+    )
+    routing_mode: str
+    primary_domain: str
+    domain_distribution: Dict[str, float]
+    u_score: float = Field(..., description="U = w_e·E + w_c·C + w_k·K.")
+    confidence: float
+    contradictions_detected: int
+    dpo_pairs_generated: int
+    latency_ms: float
+
+
+class StreamErrorEvent(BaseModel):
+    """
+    Emitted if the specialist is unreachable or returns an error mid-stream.
+    After this event the stream closes.
+    """
+
+    type: str = Field("error", description="Always 'error'.")
+    code: int = Field(..., description="HTTP-equivalent error code.")
+    message: str = Field(..., description="Human-readable error description.")
 
 
 # ── Corrections ───────────────────────────────────────────────────────────────
@@ -146,18 +232,27 @@ class CorrectionRequest(BaseModel):
     )
     domain: str = Field(
         ...,
-        description="Field name, e.g. 'software_engineering'. Must match a key in FIELD_CONFIGS.",
+        description=(
+            "Field name, e.g. 'software_engineering'. "
+            "Must match a key in FIELD_CONFIGS."
+        ),
     )
     claim: str = Field(
         ...,
-        description="The correct claim to store, e.g. 'Bubble sort is O(n²) average case.'",
+        description=(
+            "The correct claim to store, "
+            "e.g. 'Bubble sort is O(n²) average case.'"
+        ),
         max_length=2000,
     )
     confidence: float = Field(
         0.9,
         ge=0.0,
         le=1.0,
-        description="Confidence in this correction (0.0–1.0). Defaults to 0.9 for manual entries.",
+        description=(
+            "Confidence in this correction (0.0–1.0). "
+            "Defaults to 0.9 for manual entries."
+        ),
     )
     source: Optional[str] = Field(
         "manual",
@@ -182,10 +277,15 @@ class CorrectionResponse(BaseModel):
     subject: str
     domain: str
     claim: str
-    confidence: float = Field(..., description="Effective confidence at write time.")
+    confidence: float = Field(
+        ..., description="Effective confidence at write time."
+    )
     decay_class: str = Field(
         ...,
-        description="Assigned decay class: A (no decay) | B (10yr) | C (3yr) | D (6mo).",
+        description=(
+            "Assigned decay class: "
+            "A (no decay) | B (10yr) | C (3yr) | D (6mo)."
+        ),
     )
 
 
@@ -271,32 +371,56 @@ class DeployGreenResponse(BaseModel):
     """Result of a blue-green promotion evaluation."""
 
     specialist: str
-    promoted: bool = Field(..., description="True if GREEN was promoted to production.")
-    u_delta: float = Field(..., description="U_green - U_blue. Must exceed threshold to promote.")
+    promoted: bool = Field(
+        ..., description="True if GREEN was promoted to production."
+    )
+    u_delta: float = Field(
+        ...,
+        description="U_green - U_blue. Must exceed threshold to promote.",
+    )
     blue_u: float
     green_u: float
-    threshold: float = Field(..., description="Minimum U_delta required for promotion.")
-    message: str = Field(..., description="Human-readable explanation of the promotion decision.")
+    threshold: float = Field(
+        ..., description="Minimum U_delta required for promotion."
+    )
+    message: str = Field(
+        ...,
+        description="Human-readable explanation of the promotion decision.",
+    )
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
 
 class HealthLiveResponse(BaseModel):
     """Liveness probe response."""
-    status: str = Field("alive", description="Always 'alive' if the process is running.")
+
+    status: str = Field(
+        "alive", description="Always 'alive' if the process is running."
+    )
     uptime_s: float
 
 
 class HealthReadyResponse(BaseModel):
     """Readiness probe response."""
-    status: str = Field(..., description="'ready' if all specialists are reachable.")
+
+    status: str = Field(
+        ...,
+        description="'ready' if all specialists are reachable.",
+    )
     specialists: Dict[str, str] = Field(
         ...,
-        description="Per-specialist status: 'ok' | 'unreachable' | 'http_NNN'.",
+        description=(
+            "Per-specialist status: "
+            "'ok' | 'unreachable' | 'http_NNN'."
+        ),
     )
 
 
 class HealthStartupResponse(BaseModel):
     """Startup probe response."""
-    status: str = Field(..., description="'started' once the first readiness check passed.")
+
+    status: str = Field(
+        ...,
+        description="'started' once the first readiness check passed.",
+    )
     uptime_s: float
