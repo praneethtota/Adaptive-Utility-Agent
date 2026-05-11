@@ -25,6 +25,7 @@ import asyncio
 import json
 import logging
 import time
+import uuid
 from collections import defaultdict, deque
 from collections.abc import AsyncIterator
 
@@ -182,8 +183,8 @@ class Router:
         )
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],
-            allow_methods=["*"],
+            allow_origins=self._config.router.cors_origins,
+            allow_methods=["GET", "POST", "OPTIONS"],
             allow_headers=["*"],
         )
 
@@ -467,7 +468,11 @@ class Router:
             Compare GREEN model U score against BLUE baseline.
             Promotes if U_delta >= threshold from aua_config.yaml.
             Full harness integration is roadmap item #14.
+
+            Note: Until the full evaluation harness is built (roadmap #14),
+            this endpoint always returns dry_run_only=True.
             """
+            # dry_run_only=True until full evaluation harness is built (roadmap #14)
             return await self._evaluate_green(req)
 
         # ── Telemetry ──────────────────────────────────────────────────────
@@ -494,6 +499,13 @@ class Router:
         @app.get("/stats", tags=["telemetry"], include_in_schema=False)
         async def stats():
             return self._stats()
+
+        @app.get("/version", tags=["meta"], summary="Return the running AUA Framework version")
+        async def version():
+            """Return version string. Stable — never returns 404."""
+            from aua.version import __version__
+
+            return {"version": __version__, "framework": "aua"}
 
         return app
 
@@ -561,7 +573,7 @@ class Router:
                 if is_fanout:
                     fanout_req = QueryRequest(
                         query=req.query,
-                        session_id=req.session_id or "default",
+                        session_id=req.session_id or str(uuid.uuid4()),
                         conversation_history=req.conversation_history or [],
                         force_domain=None,
                     )
@@ -873,7 +885,7 @@ class Router:
                     return await self._handle(
                         QueryRequest(
                             query=q,
-                            session_id=req.session_id or "default",
+                            session_id=req.session_id or str(uuid.uuid4()),
                             conversation_history=[],
                             force_domain=None,
                         )

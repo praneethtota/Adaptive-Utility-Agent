@@ -55,6 +55,7 @@ from aua.endpoints import (
     CorrectionResponse,
     DeployGreenRequest,
     DeployGreenResponse,
+    ErrorResponse,
     HealthLiveResponse,
     HealthReadyResponse,
     HealthStartupResponse,
@@ -123,5 +124,6 @@ __all__ = [
     "DeployGreenResponse",
     "HealthLiveResponse",
     "HealthReadyResponse",
+    "ErrorResponse",
     "HealthStartupResponse",
 ]

@@ -352,6 +352,11 @@ class DeployGreenRequest(BaseModel):
 class DeployGreenResponse(BaseModel):
     """Result of a blue-green promotion evaluation."""
 
+    dry_run_only: bool = Field(
+        True,
+        description="True until the full evaluation harness is built (roadmap #14).",
+    )
+
     specialist: str
     promoted: bool = Field(..., description="True if GREEN was promoted to production.")
     u_delta: float = Field(
@@ -368,6 +373,19 @@ class DeployGreenResponse(BaseModel):
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
+
+
+class ErrorResponse(BaseModel):
+    """Standard error envelope for all AUA API errors."""
+
+    error: str = Field(..., description="Stable error code string, e.g. 'specialist_unreachable'.")
+    message: str = Field(..., description="Human-readable description of the error.")
+    status_code: int = Field(
+        ..., description="HTTP status code repeated in body for client convenience."
+    )
+    request_id: str | None = Field(
+        None, description="Echo of session_id from the request, if present."
+    )
 
 
 class HealthLiveResponse(BaseModel):
