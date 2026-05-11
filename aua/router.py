@@ -96,18 +96,22 @@ def _sse_comment(text: str = "keep-alive") -> str:
     return f": {text}\n\n"
 
 
-
 # ── Chat Session request models ───────────────────────────────────────────────
 # Must be module-level — Pydantic v2 cannot handle locally-defined models.
 
+
 class CreateSessionRequest(BaseModel):
     """Request body for POST /sessions."""
+
     title: str = ""
+
 
 class SendMessageRequest(BaseModel):
     """Request body for POST /sessions/{id}/messages."""
+
     content: str
     stream: bool = False
+
 
 def _audit_query(
     req: QueryRequest,
