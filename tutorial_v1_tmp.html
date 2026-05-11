@@ -1027,7 +1027,7 @@ specialists:
 <pre>security:
   encryption:
     enabled: true
-    key_secret: AUA_ENCRYPTION_KEY   <span class="c"># 32-byte base64 key from secrets provider</span></pre>
+    key_secret: AUA_ENCRYPTION_KEY   <span class="c"># 64-char hex key — see §14.3 for generation</span></pre>
 </div>
 
 <h3>12.5 Audit log</h3>
@@ -1162,9 +1162,24 @@ docker-compose --profile gpu --profile observability --profile secure up</pre>
 </table>
 
 <h3>14.3 Environment configuration</h3>
+
+<p>Generate your encryption key before deploying — it must be a 32-byte value encoded as 64 hex characters. Run either command once and store the output:</p>
+<div class="code-block">
+<div class="code-header">bash — generate AUA_ENCRYPTION_KEY</div>
+<pre># Option 1 — Python (no extra dependencies)
+python3 -c "import os; print(os.urandom(32).hex())"
+
+# Option 2 — OpenSSL
+openssl rand -hex 32
+
+# Either prints a 64-character hex string, e.g.:
+# a3f2c1e8b7d4509261af3e2c84b19d07f6a5c3e1b8294d6072f1e3a5c8b2d490</pre>
+</div>
+<p style="font-size:.88rem;color:var(--muted);">Keep this value secret and never commit it to version control. Rotate it by generating a new key, re-encrypting state, and restarting. Encryption uses AES-256-GCM; the key is loaded at startup from the named environment variable.</p>
+
 <div class="code-block">
 <div class="code-header">.env</div>
-<pre>AUA_ENCRYPTION_KEY=base64_32_byte_key_here
+<pre>AUA_ENCRYPTION_KEY=&lt;64-char hex string from above&gt;
 AUA_ADMIN_TOKEN=aua_tk_...
 SWE_API_KEY=...
 POSTGRES_URL=postgresql://aua:password@db:5432/aua_state</pre>

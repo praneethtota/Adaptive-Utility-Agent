@@ -1005,6 +1005,8 @@ security:
 audit:
   enabled: true
   hash_chain: true</pre>
+  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial_v1_tmp.html#security">Tutorial §12.4</a> for key management.</p>
+
 
   <h3>4. Start and query</h3>
   <pre>aua serve
