@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { signOut, useSession } from 'next-auth/react'
-import { MessageSquare, Plus, Trash2, Settings, ChevronRight, LogOut, Activity } from 'lucide-react'
+import { Plus, Trash2, Settings, Send, Activity, MessageSquare, LogOut } from 'lucide-react'
 import { DebuggerPanel } from '@/components/debugger/DebuggerPanel'
 import { ControlsDrawer } from '@/components/controls/ControlsDrawer'
 import { createSession, listSessions, getMessages, sendMessage, deleteSession } from '@/lib/api'
@@ -93,100 +93,405 @@ export function ChatLayout() {
       })
       loadSessions()
     } catch (err: any) {
-      setMessages(prev => [...prev, { id: 'err-' + Date.now(), session_id: activeSession.id, role: 'assistant', content: `Error: ${err?.message || 'Unknown'}`, created_at: Date.now() / 1000 }])
+      setMessages(prev => [...prev, {
+        id: 'err-' + Date.now(),
+        session_id: activeSession.id,
+        role: 'assistant',
+        content: `Error: ${err?.message || 'Unknown'}`,
+        created_at: Date.now() / 1000,
+      }])
     } finally { setLoading(false) }
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
-      {/* Sidebar */}
-      <aside className="w-60 border-r border-[#e4e1da] bg-[#fafaf8] flex flex-col flex-shrink-0">
-        <div className="px-4 py-4 border-b border-[#e4e1da] flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-[#4338ca] flex items-center justify-center">
-            <span className="text-white text-xs font-bold">A</span>
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
+
+      {/* ── Sidebar ── matches the HTML page nav style */}
+      <aside
+        className="flex flex-col flex-shrink-0"
+        style={{
+          width: '230px',
+          background: '#fafaf8',
+          borderRight: '1px solid var(--line)',
+        }}
+      >
+        {/* Wordmark */}
+        <div style={{
+          padding: '1rem 1.25rem .9rem',
+          borderBottom: '1px solid var(--line)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '.6rem',
+        }}>
+          <div style={{
+            width: '28px', height: '28px',
+            borderRadius: '6px',
+            background: 'var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <span style={{ color: '#fff', fontSize: '.7rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>A</span>
           </div>
-          <span className="font-semibold text-sm">AUA Framework</span>
+          <span style={{
+            fontFamily: '"DM Serif Display", Georgia, serif',
+            fontSize: '1.05rem',
+            color: 'var(--ink)',
+            lineHeight: 1.2,
+          }}>AUA Framework</span>
         </div>
-        <div className="px-3 py-3">
-          <button onClick={newSession} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-[#4338ca] text-white hover:bg-[#3730a3] transition-colors">
-            <Plus size={14} /> New Chat
+
+        {/* New chat */}
+        <div style={{ padding: '.75rem 1rem' }}>
+          <button
+            onClick={newSession}
+            style={{
+              width: '100%',
+              display: 'flex', alignItems: 'center', gap: '.5rem',
+              padding: '.4rem .85rem',
+              borderRadius: '999px',
+              background: 'var(--tag-bg)',
+              color: 'var(--accent)',
+              border: '1px solid #c7d2fe',
+              fontSize: '.75rem',
+              fontWeight: 600,
+              fontFamily: '"JetBrains Mono", monospace',
+              letterSpacing: '.04em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              transition: 'background .15s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#dde4ff')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--tag-bg)')}
+          >
+            <Plus size={12} /> New Chat
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-3 space-y-0.5">
+
+        {/* Session list */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 .75rem' }}>
+          {sessions.length === 0 && (
+            <p style={{ fontSize: '.78rem', color: 'var(--muted)', padding: '.5rem .5rem', fontStyle: 'italic' }}>
+              No chats yet
+            </p>
+          )}
           {sessions.map(s => (
-            <button key={s.id} onClick={() => selectSession(s)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-xs group transition-colors
-                ${activeSession?.id === s.id ? 'bg-[#eef2ff] text-[#4338ca]' : 'text-[#374151] hover:bg-[#f0ede6]'}`}>
-              <span className="flex items-center gap-1.5 min-w-0">
-                <MessageSquare size={11} className="flex-shrink-0" />
-                <span className="truncate">{s.title}</span>
+            <button
+              key={s.id}
+              onClick={() => selectSession(s)}
+              style={{
+                width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '.4rem .6rem',
+                borderRadius: '6px',
+                border: 'none',
+                background: activeSession?.id === s.id ? 'var(--tag-bg)' : 'transparent',
+                color: activeSession?.id === s.id ? 'var(--accent)' : '#374151',
+                fontSize: '.82rem',
+                textAlign: 'left',
+                cursor: 'pointer',
+                marginBottom: '1px',
+                transition: 'background .1s',
+              }}
+              onMouseEnter={e => { if (activeSession?.id !== s.id) e.currentTarget.style.background = 'var(--soft)' }}
+              onMouseLeave={e => { if (activeSession?.id !== s.id) e.currentTarget.style.background = 'transparent' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '.4rem', minWidth: 0 }}>
+                <MessageSquare size={10} style={{ flexShrink: 0, opacity: .6 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</span>
               </span>
-              <button onClick={e => removeSession(s, e)} className="opacity-0 group-hover:opacity-100 hover:text-red-500">
+              <span
+                onClick={e => removeSession(s, e)}
+                style={{
+                  opacity: 0, flexShrink: 0, padding: '2px',
+                  color: 'var(--accent3)', cursor: 'pointer',
+                  transition: 'opacity .1s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '0')}
+                className="session-delete"
+              >
                 <Trash2 size={11} />
-              </button>
+              </span>
             </button>
           ))}
         </div>
-        <div className="border-t border-[#e4e1da] px-3 py-3 space-y-0.5">
-          <button onClick={() => setShowControls(true)} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[#374151] hover:bg-[#f0ede6]">
-            <Settings size={13} /> AUA Controls
-          </button>
-          <button onClick={() => setShowDebugger(d => !d)} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${showDebugger ? 'bg-[#eef2ff] text-[#4338ca]' : 'text-[#374151] hover:bg-[#f0ede6]'}`}>
-            <Activity size={13} /> Framework Debugger
-          </button>
-          <button onClick={() => signOut()} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[#6b7280] hover:bg-[#f0ede6]">
-            <LogOut size={13} /> Sign out ({authSession?.user?.name || 'user'})
-          </button>
+
+        {/* Bottom nav items — same as HTML page nav links */}
+        <div style={{ borderTop: '1px solid var(--line)', padding: '.75rem 1rem .9rem' }}>
+          {[
+            { icon: <Settings size={12} />, label: 'AUA Controls', onClick: () => setShowControls(true), active: false },
+            {
+              icon: <Activity size={12} />, label: 'Framework Debugger',
+              onClick: () => setShowDebugger(d => !d), active: showDebugger,
+            },
+            {
+              icon: <LogOut size={12} />,
+              label: `Sign out${authSession?.user?.name ? ` (${authSession.user.name})` : ''}`,
+              onClick: () => signOut(), active: false, muted: true,
+            },
+          ].map(({ icon, label, onClick, active, muted }) => (
+            <button
+              key={label}
+              onClick={onClick}
+              style={{
+                width: '100%',
+                display: 'flex', alignItems: 'center', gap: '.5rem',
+                padding: '.35rem .6rem',
+                borderRadius: '6px',
+                border: 'none',
+                background: active ? 'var(--tag-bg)' : 'transparent',
+                color: active ? 'var(--accent)' : muted ? 'var(--muted)' : '#374151',
+                fontSize: '.82rem',
+                fontWeight: active ? 600 : 400,
+                textAlign: 'left',
+                cursor: 'pointer',
+                marginBottom: '1px',
+                transition: 'background .1s',
+              }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--soft)' }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+            >
+              {icon} {label}
+            </button>
+          ))}
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 flex flex-col min-w-0">
-        <div className="border-b border-[#e4e1da] px-6 py-3 flex items-center justify-between">
-          <span className="text-sm font-medium truncate">{activeSession?.title || 'Select or create a chat'}</span>
-          {lastDebug && <span className="text-xs text-[#6b7280] font-mono">{lastDebug.domain} · U={lastDebug.u_score.toFixed(3)} · {lastDebug.latency_ms.toFixed(0)}ms</span>}
+      {/* ── Main chat area ── */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--paper)' }}>
+
+        {/* Top bar — matches sticky nav from HTML pages */}
+        <div style={{
+          padding: '.75rem 1.75rem',
+          borderBottom: '1px solid var(--line)',
+          background: '#fafaf8',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          flexShrink: 0,
+        }}>
+          <span style={{
+            fontSize: '.92rem',
+            fontWeight: 500,
+            color: activeSession ? 'var(--ink)' : 'var(--muted)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {activeSession?.title || 'Select or create a chat'}
+          </span>
+          {lastDebug && (
+            <span style={{
+              fontFamily: '"JetBrains Mono", monospace',
+              fontSize: '.72rem',
+              color: 'var(--muted)',
+              flexShrink: 0,
+              background: 'var(--soft)',
+              padding: '.2rem .6rem',
+              borderRadius: '999px',
+              border: '1px solid var(--line)',
+            }}>
+              {lastDebug.domain} · U={lastDebug.u_score.toFixed(3)} · {lastDebug.latency_ms.toFixed(0)}ms
+            </span>
+          )}
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+          {/* Empty state — hero-style */}
           {!activeSession && (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[#eef2ff] flex items-center justify-center mb-4">
-                <MessageSquare size={26} className="text-[#4338ca]" />
-              </div>
-              <h2 className="text-base font-semibold mb-1">AUA Framework Chat</h2>
-              <p className="text-sm text-[#6b7280] max-w-xs mb-4">Multi-specialist AI routing with utility scoring and arbitration.</p>
-              <button onClick={newSession} className="px-4 py-2 bg-[#4338ca] text-white text-sm rounded-lg hover:bg-[#3730a3]">Start a new chat</button>
+            <div style={{
+              flex: 1,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              textAlign: 'center', padding: '3rem 1rem',
+            }}>
+              <span style={{
+                display: 'inline-block',
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: '.68rem',
+                fontWeight: 600,
+                letterSpacing: '.1em',
+                textTransform: 'uppercase',
+                background: 'var(--tag-bg)',
+                color: 'var(--accent)',
+                padding: '.25rem .75rem',
+                borderRadius: '999px',
+                marginBottom: '1.1rem',
+              }}>
+                AUA v1.0
+              </span>
+              <h2 style={{
+                fontFamily: '"DM Serif Display", Georgia, serif',
+                fontSize: '1.8rem',
+                lineHeight: 1.2,
+                margin: '0 0 .75rem',
+                color: 'var(--ink)',
+              }}>
+                Framework Chat
+              </h2>
+              <p style={{ fontSize: '.95rem', color: 'var(--muted)', maxWidth: '340px', marginBottom: '1.75rem', lineHeight: 1.6 }}>
+                Multi-specialist routing with utility scoring and arbitration. Start a new chat to begin.
+              </p>
+              <button
+                onClick={newSession}
+                style={{
+                  padding: '.55rem 1.4rem',
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '.88rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'background .15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#3730a3')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--accent)')}
+              >
+                Start a new chat
+              </button>
             </div>
           )}
+
+          {/* Message list */}
           {messages.map(m => (
-            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm ${m.role === 'user' ? 'bg-[#4338ca] text-white rounded-br-sm' : 'bg-[#f0ede6] text-[#18181b] rounded-bl-sm'}`}>
-                <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
-                {m.role === 'assistant' && m.domain && (
-                  <p className="mt-1 text-[10px] opacity-60 font-mono">{m.domain} · {m.routing_mode} · U={m.u_score?.toFixed(3)} · {m.latency_ms?.toFixed(0)}ms</p>
-                )}
-              </div>
+            <div key={m.id} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              {m.role === 'user' ? (
+                /* User message — accent pill, right-aligned */
+                <div style={{
+                  maxWidth: '68%',
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  borderRadius: '8px 8px 2px 8px',
+                  padding: '.65rem 1rem',
+                  fontSize: '.9rem',
+                  lineHeight: 1.65,
+                }}>
+                  <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{m.content}</p>
+                </div>
+              ) : (
+                /* Assistant message — paper card, left-aligned, like a callout */
+                <div style={{
+                  maxWidth: '78%',
+                  background: 'var(--paper)',
+                  border: '1px solid var(--line)',
+                  borderLeft: '3px solid var(--accent)',
+                  borderRadius: '0 8px 8px 0',
+                  padding: '.85rem 1.1rem',
+                  fontSize: '.9rem',
+                  lineHeight: 1.7,
+                  color: 'var(--ink)',
+                }}>
+                  <p className="prose-aua" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{m.content}</p>
+                  {m.domain && (
+                    <p style={{
+                      marginTop: '.6rem',
+                      marginBottom: 0,
+                      fontFamily: '"JetBrains Mono", monospace',
+                      fontSize: '.68rem',
+                      color: 'var(--muted)',
+                      paddingTop: '.5rem',
+                      borderTop: '1px solid var(--line)',
+                    }}>
+                      {m.domain} · {m.routing_mode} · U={m.u_score?.toFixed(3)} · {m.latency_ms?.toFixed(0)}ms
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           ))}
+
+          {/* Loading indicator */}
           {loading && (
-            <div className="flex justify-start">
-              <div className="bg-[#f0ede6] rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1">
-                {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full bg-[#4338ca] animate-bounce" style={{animationDelay:`${i*0.15}s`}} />)}
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              <div style={{
+                background: 'var(--paper)',
+                border: '1px solid var(--line)',
+                borderLeft: '3px solid var(--accent)',
+                borderRadius: '0 8px 8px 0',
+                padding: '.75rem 1rem',
+                display: 'flex', gap: '5px', alignItems: 'center',
+              }}>
+                {[0, 1, 2].map(i => (
+                  <div key={i} style={{
+                    width: '7px', height: '7px',
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    opacity: .7,
+                    animation: 'bounce 1.1s ease-in-out infinite',
+                    animationDelay: `${i * 0.18}s`,
+                  }} />
+                ))}
+                <style>{`@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}`}</style>
               </div>
             </div>
           )}
+
           <div ref={bottomRef} />
         </div>
-        <div className="border-t border-[#e4e1da] px-6 py-4">
-          <div className="flex gap-3 items-end">
-            <textarea value={input} onChange={e => setInput(e.target.value)}
+
+        {/* Input bar */}
+        <div style={{
+          borderTop: '1px solid var(--line)',
+          padding: '1rem 1.75rem 1.25rem',
+          background: '#fafaf8',
+          flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', gap: '.75rem', alignItems: 'flex-end' }}>
+            <textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-              placeholder={activeSession ? 'Ask anything… (Enter to send)' : 'Create a chat first'}
-              disabled={!activeSession || loading} rows={1}
-              className="flex-1 resize-none px-4 py-3 rounded-xl border border-[#e4e1da] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#4338ca] disabled:opacity-50 placeholder:text-[#9ca3af]"
-              style={{ maxHeight: '120px', overflowY: 'auto' }} />
-            <button onClick={send} disabled={!input.trim() || loading || !activeSession}
-              className="px-4 py-3 bg-[#4338ca] text-white rounded-xl text-sm hover:bg-[#3730a3] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-              <ChevronRight size={18} />
+              placeholder={activeSession ? 'Ask anything… (Enter to send, Shift+Enter for newline)' : 'Create a chat first'}
+              disabled={!activeSession || loading}
+              rows={1}
+              style={{
+                flex: 1,
+                resize: 'none',
+                padding: '.65rem 1rem',
+                borderRadius: '8px',
+                border: '1px solid var(--line)',
+                background: 'var(--paper)',
+                color: 'var(--ink)',
+                fontSize: '.9rem',
+                lineHeight: 1.5,
+                fontFamily: '"DM Sans", system-ui, sans-serif',
+                outline: 'none',
+                maxHeight: '140px',
+                overflowY: 'auto',
+                transition: 'border-color .15s, box-shadow .15s',
+              }}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = 'var(--accent)'
+                e.currentTarget.style.boxShadow = '0 0 0 2px #c7d2fe'
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = 'var(--line)'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            />
+            <button
+              onClick={send}
+              disabled={!input.trim() || loading || !activeSession}
+              style={{
+                padding: '.65rem .9rem',
+                background: 'var(--accent)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                opacity: (!input.trim() || loading || !activeSession) ? .4 : 1,
+                transition: 'background .15s, opacity .15s',
+              }}
+              onMouseEnter={e => { if (!e.currentTarget.disabled) e.currentTarget.style.background = '#3730a3' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent)' }}
+            >
+              <Send size={16} />
             </button>
           </div>
         </div>

@@ -1,3 +1,59 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --bg: #f7f6f2;
+  --paper: #ffffff;
+  --ink: #18181b;
+  --muted: #6b7280;
+  --line: #e4e1da;
+  --soft: #f0ede6;
+  --soft2: #ecfdf5;
+  --accent: #4338ca;
+  --accent2: #0f766e;
+  --accent3: #c2410c;
+  --tag-bg: #eef2ff;
+  --tag-text: #4338ca;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar styling — matches page feel */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #c9c4bd; }
+
+/* Prose content inside assistant messages */
+.prose-aua p { margin: 0 0 .75rem; }
+.prose-aua p:last-child { margin-bottom: 0; }
+.prose-aua code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .82em;
+  background: var(--soft);
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: #333;
+}
+.prose-aua pre {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  overflow-x: auto;
+  font-size: .79rem;
+  line-height: 1.6;
+  margin: .5rem 0 .75rem;
+}
+.prose-aua pre code { background: none; padding: 0; }
+.prose-aua strong { font-weight: 600; }
