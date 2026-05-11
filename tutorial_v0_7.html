@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Tutorial v0.7</title>
+<meta name="description" content="12-part hands-on tutorial for AUA Framework v0.7. Django-style: working code in under 10 minutes.">
+<meta name="author" content="Praneeth Tota">
+<!-- No canonical link — this page is not yet publicly indexed -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--paper:#ffffff;--ink:#18181b;--muted:#6b7280;--line:#e4e1da;--accent:#4338ca;--accent2:#0f766e;--accent3:#c2410c;--soft:#f0ede6;--soft2:#ecfdf5;--soft3:#fff7ed;--code-bg:#f2f0eb;--tag-bg:#eef2ff;--tag-text:#4338ca}
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:16px;line-height:1.75;color:var(--ink);background:var(--bg);margin:0;padding:0}
+.page{max-width:960px;margin:0 auto;padding:0 0 5rem;background:var(--paper);border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
+nav{display:flex;flex-wrap:wrap;gap:.6rem .9rem;padding:1rem 2rem;border-bottom:1px solid var(--line);background:#fafaf8;font-size:.88rem;position:sticky;top:0;z-index:10}
+nav a{color:var(--accent);text-decoration:none;font-weight:500}
+nav a:hover{text-decoration:underline}
+nav a.active{color:var(--ink);font-weight:600}
+.hero{padding:3rem 2.5rem 2.5rem;border-bottom:1px solid var(--line);background:linear-gradient(160deg,#f0ede6 0%,#fff 60%)}
+.hero-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;background:var(--tag-bg);color:var(--tag-text);padding:.25rem .7rem;border-radius:999px;margin-bottom:1.2rem}
+.hero h1{font-family:'DM Serif Display',Georgia,serif;font-size:2.4rem;line-height:1.2;margin:0 0 .75rem;color:var(--ink)}
+.hero .subtitle{font-size:1.05rem;color:#444;max-width:700px;margin-bottom:1.25rem;line-height:1.65}
+.hero-pills{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.25rem}
+.pill{font-size:.82rem;font-weight:500;padding:.3rem .85rem;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff}
+.body{padding:2rem 2.5rem 0}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.5rem;line-height:1.3;margin:3.5rem 0 .75rem;padding-bottom:.5rem;border-bottom:2px solid var(--line);color:var(--ink);scroll-margin-top:60px}
+h2.part-heading{margin-top:4rem;border-bottom-color:var(--accent);color:var(--accent)}
+h3{font-size:1.05rem;font-weight:600;margin:1.8rem 0 .5rem;color:#222}
+h4{font-size:.95rem;font-weight:600;margin:1.3rem 0 .4rem;color:#333}
+p{margin:0 0 1rem}
+a{color:var(--accent)}
+ul,ol{margin:.3rem 0 1rem;padding-left:1.3rem}
+li{margin:.3rem 0}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:var(--code-bg);padding:2px 6px;border-radius:4px;color:#333}
+pre{background:var(--code-bg);border:1px solid #e0dbd4;border-radius:8px;padding:1.1rem 1.25rem;overflow-x:auto;margin:.75rem 0 1.5rem;font-size:.79rem;line-height:1.7;font-family:'JetBrains Mono',monospace;color:#222}
+.code-block{margin:.75rem 0 1.5rem}
+.code-header{display:flex;align-items:center;justify-content:space-between;background:#e8e5de;border:1px solid #d8d4cc;border-bottom:none;border-radius:8px 8px 0 0;padding:.4rem .9rem;font-size:.78rem;font-family:'JetBrains Mono',monospace;color:#555}
+.code-block pre{border-radius:0 0 8px 8px;margin:0}
+.callout{background:var(--soft);border-left:4px solid var(--accent);padding:1rem 1.25rem;margin:1.25rem 0 1.5rem;border-radius:0 8px 8px 0}
+.callout.green{background:var(--soft2);border-left-color:var(--accent2)}
+.callout.orange{background:var(--soft3);border-left-color:var(--accent3)}
+.callout p{margin:0}.callout p+p{margin-top:.5rem}
+.part-badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;padding:.2rem .6rem;border-radius:4px;background:var(--tag-bg);color:var(--tag-text);letter-spacing:.05em;margin-right:.5rem;vertical-align:middle}
+.time-badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.7rem;padding:.2rem .55rem;border-radius:4px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;vertical-align:middle}
+table{width:100%;border-collapse:collapse;font-size:.88rem;margin:1rem 0 1.5rem}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:8px 12px;font-size:.82rem;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.05em}
+td{padding:8px 12px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#fafaf8}
+.toc{background:var(--soft);border-radius:10px;padding:1.1rem 1.4rem;margin:1.5rem 0 2rem}
+.toc p{font-weight:600;margin-bottom:.5rem}
+.toc ol{margin:0;column-count:2;column-gap:2rem}
+.toc li{font-size:.9rem;margin:.2rem 0;break-inside:avoid}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.warn{background:#fff7ed;border-left:4px solid var(--accent3);padding:1rem 1.25rem;margin:1.25rem 0 1.5rem;border-radius:0 8px 8px 0}
+hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
+.output-block{background:#111;color:#d4d4d4;border-radius:8px;padding:1.1rem 1.25rem;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.7;margin:.75rem 0 1.5rem;overflow-x:auto}
+.output-block .ok{color:#4ade80}
+.output-block .dim{color:#6b7280}
+.output-block .hi{color:#93c5fd}
+.step-check{display:flex;align-items:baseline;gap:.6rem;margin:.4rem 0}
+.step-check .check{color:var(--accent2);font-weight:700;flex-shrink:0}
+.next-part{background:linear-gradient(135deg,#eef2ff 0%,#f0fdf4 100%);border:1px solid var(--line);border-radius:10px;padding:1.25rem 1.5rem;margin-top:2.5rem}
+.next-part p{margin:0;font-size:.92rem}
+.next-part strong{display:block;margin-bottom:.3rem}
+@media(max-width:640px){.hero h1{font-size:1.8rem}.body{padding:1.5rem 1.25rem 0}nav{display:none}.toc ol{column-count:1}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <a href="whitepaper_v05.html">Home</a>
+  <a href="whitepaper_full_v0_5.html">Full Whitepaper</a>
+  <a href="tutorial_v0_5.html">Tutorial v0.5</a>
+  <a href="tutorial_v0_7.html" class="active">Tutorial v0.7</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Tutorial &middot; v0.7 &middot; Draft</div>
+  <h1>AUA Framework — Builder's Tutorial</h1>
+  <p class="subtitle">12 parts. Working code in under 10 minutes. No theory required upfront — you run things first, understand why second. By the end you'll have a self-optimizing multi-specialist AI system running on your hardware, fully containerized, with a correction loop and blue-green deployment.</p>
+  <div class="hero-pills">
+    <span class="pill">v0.7.0b0</span>
+    <span class="pill">Python 3.11+</span>
+    <span class="pill">Mac / Linux / Docker</span>
+    <span class="pill">12 parts</span>
+  </div>
+</div>
+
+<div class="body">
+
+<div class="toc">
+  <p>Parts</p>
+  <ol>
+    <li><a href="#part-1">Quickstart — under 10 minutes</a></li>
+    <li><a href="#part-2">Models &amp; Fields</a></li>
+    <li><a href="#part-3">Routing &amp; Utility</a></li>
+    <li><a href="#part-4">The Arbiter &amp; Corrections</a></li>
+    <li><a href="#part-5">Blue-Green Deployment</a></li>
+    <li><a href="#part-6">Config System in Depth</a></li>
+    <li><a href="#part-7">The Correction Loop</a></li>
+    <li><a href="#part-8">Hooks &amp; Middleware</a></li>
+    <li><a href="#part-9">Security</a></li>
+    <li><a href="#part-10">Observability</a></li>
+    <li><a href="#part-11">Docker Deployment</a></li>
+    <li><a href="#part-12">Expert Deployment</a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 1 -->
+<h2 id="part-1" class="part-heading"><span class="part-badge">Part 1</span> Quickstart <span class="time-badge">~8 min</span></h2>
+
+<p>Install, scaffold a project, verify your setup, and start the router. You will have a live HTTP endpoint before you read the next paragraph.</p>
+
+<h3>1.1 Install</h3>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre># Requires Python 3.11+
+pip install "adaptive-utility-agent[dev]"
+
+# Verify
+aua --version</pre>
+</div>
+
+<div class="output-block"><span class="ok">aua, version 0.7.0b0</span></div>
+
+<h3>1.2 Scaffold a project</h3>
+
+<p>Pick the tier that matches your hardware. AUA ships four built-in templates:</p>
+
+<table>
+<tr><th>Tier</th><th>Hardware</th><th>Backend</th><th>Notes</th></tr>
+<tr><td><code>macbook</code></td><td>Mac M-series / Intel</td><td>Ollama</td><td>Best starting point</td></tr>
+<tr><td><code>single-4090</code></td><td>1× RTX 4090 24 GB</td><td>vLLM AWQ</td><td>Production-grade</td></tr>
+<tr><td><code>quad-4090</code></td><td>4× RTX 4090</td><td>vLLM AWQ</td><td>One GPU per specialist</td></tr>
+<tr><td><code>a100-cluster</code></td><td>1× A100 80 GB</td><td>vLLM fp16</td><td>Highest accuracy</td></tr>
+</table>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua init my-project --tier macbook
+cd my-project</pre>
+</div>
+
+<div class="output-block"><span class="ok">✓</span> Created directory: <span class="hi">my-project</span>
+<span class="ok">✓</span> Created <span class="hi">aua_config.yaml</span>  <span class="dim">(tier: macbook)</span>
+<span class="ok">✓</span> Created <span class="hi">models/</span>
+<span class="ok">✓</span> Created <span class="hi">dpo_pairs/</span>
+<span class="ok">✓</span> Created <span class="hi">results/</span>
+<span class="ok">✓</span> Created <span class="hi">logs/</span>
+<span class="ok">✓</span> Created <span class="hi">.gitignore</span></div>
+
+<h3>1.3 Check your setup</h3>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua doctor</pre>
+</div>
+
+<p>Every check shows <strong>PASS / FAIL / WARN</strong> with a fix instruction. Common issues on first run:</p>
+
+<ul>
+  <li><strong>ollama binary not found</strong> — install with <code>brew install ollama</code></li>
+  <li><strong>model not yet pulled</strong> — informational, handled automatically by <code>aua serve</code></li>
+  <li><strong>Port 11434 in use</strong> — another Ollama instance is running; that's fine</li>
+</ul>
+
+<div class="callout green">
+  <p><strong>--strict mode for CI:</strong> <code>aua doctor --strict</code> exits 0 only when there are zero failures and zero warnings. Use this in your CI pipeline to gate deployments.</p>
+</div>
+
+<h3>1.4 Dry run</h3>
+
+<p>See exactly what <code>aua serve</code> will launch without starting anything:</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua serve --dry-run</pre>
+</div>
+
+<div class="output-block"><span class="dim">aua serve  v0.7  DRY RUN</span>
+
+  Component   Model               Port    GPU   Backend
+  swe         qwen2.5-coder:7b   11434     0    ollama
+  math        qwen2.5:7b         11434     0    ollama
+  arbiter     qwen2.5:3b         11434     0    ollama
+  router      FastAPI + uvicorn   8000     —    —
+
+<span class="dim">Dry run complete. No processes started.</span></div>
+
+<h3>1.5 Start the system</h3>
+
+<div class="code-block">
+<div class="code-header">bash — two terminals</div>
+<pre># Terminal 1: start everything
+aua serve
+
+# Terminal 2: send your first query
+curl -s -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Write binary search in Python. State the time complexity."}' \
+  | python3 -m json.tool</pre>
+</div>
+
+<div class="output-block">{
+  <span class="hi">"routing_mode"</span>: "single",
+  <span class="hi">"primary_domain"</span>: "software_engineering",
+  <span class="hi">"response"</span>: "...",
+  <span class="hi">"u_score"</span>: 0.631,
+  <span class="hi">"confidence"</span>: 0.74,
+  <span class="hi">"contradictions_detected"</span>: 0,
+  <span class="hi">"latency_ms"</span>: 312.4
+}</div>
+
+<p>That <code>u_score</code> field is the utility score — the governing control signal explained in Part 3. The query routed to the <code>swe</code> specialist because it scored highest on the <em>software_engineering</em> field classifier.</p>
+
+<div class="next-part">
+  <p><strong>Part 1 complete.</strong> You have a running AUA router. Part 2 explains what a specialist actually is and how to add your own fields.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 2 -->
+<h2 id="part-2" class="part-heading"><span class="part-badge">Part 2</span> Models &amp; Fields <span class="time-badge">~12 min</span></h2>
+
+<p>A <em>specialist</em> is a language model that answers queries in a specific domain. A <em>field</em> defines the stakes: how confident must the model be before it answers, and how hard should errors be penalized?</p>
+
+<h3>2.1 What's in aua_config.yaml</h3>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — macbook tier</div>
+<pre>aua:
+  version: "0.6"
+  mode: local
+  backend: ollama          # "vllm" | "ollama"
+
+specialists:
+  - name: swe              # unique name — used in routing, logs, API
+    model: qwen2.5-coder:7b
+    port: 11434            # Ollama: all specialists share one port
+    field: software_engineering   # maps to FIELD_CONFIGS key
+    gpu: 0
+
+  - name: math
+    model: qwen2.5:7b
+    port: 11434
+    field: mathematics
+
+arbiter:
+  model: qwen2.5:3b
+  port: 11434
+
+router:
+  port: 8000
+  single_domain_threshold: 0.75   # route to single specialist above this
+  fanout_threshold: 0.30          # fan out to multiple when both fields above this</pre>
+</div>
+
+<h3>2.2 Built-in fields and their weights</h3>
+
+<p>Each field configures how <code>U = w_e·E + w_c·C + w_k·K</code> is evaluated. High-stakes fields weight confidence more heavily and penalize errors harder.</p>
+
+<table>
+<tr><th>Field</th><th>w_e</th><th>w_c</th><th>w_k</th><th>c_min</th><th>Penalty</th></tr>
+<tr><td><code>surgery</code></td><td>0.20</td><td>0.70</td><td>0.10</td><td>0.95</td><td>10×</td></tr>
+<tr><td><code>aviation</code></td><td>0.20</td><td>0.70</td><td>0.10</td><td>0.95</td><td>10×</td></tr>
+<tr><td><code>law</code></td><td>0.30</td><td>0.60</td><td>0.10</td><td>0.85</td><td>5×</td></tr>
+<tr><td><code>software_engineering</code></td><td>0.55</td><td>0.35</td><td>0.10</td><td>0.70</td><td>2×</td></tr>
+<tr><td><code>mathematics</code></td><td>0.50</td><td>0.40</td><td>0.10</td><td>0.75</td><td>3×</td></tr>
+<tr><td><code>creative_writing</code></td><td>0.80</td><td>0.05</td><td>0.15</td><td>0.05</td><td>1×</td></tr>
+</table>
+
+<h3>2.3 Inspecting field configs in code</h3>
+
+<div class="code-block">
+<div class="code-header">Python</div>
+<pre>from aua import FIELD_CONFIGS
+
+cfg = FIELD_CONFIGS["surgery"]
+print(f"c_min = {cfg.c_min}")         # 0.95 — must be 95% confident to answer
+print(f"penalty = {cfg.penalty_multiplier}x")  # 10x — surgery errors penalized heavily
+
+cfg_swe = FIELD_CONFIGS["software_engineering"]
+print(f"efficacy weight = {cfg_swe.w_efficacy}")   # 0.55 — performance matters most</pre>
+</div>
+
+<h3>2.4 Adding a new specialist</h3>
+
+<p>Adding a domain is three steps: add a specialist to <code>aua_config.yaml</code>, pick a field from <code>FIELD_CONFIGS</code> (or plan a custom one for v0.8+), restart.</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — add law specialist (macbook tier)</div>
+<pre>specialists:
+  - name: swe
+    model: qwen2.5-coder:7b
+    port: 11434
+    field: software_engineering
+
+  - name: math
+    model: qwen2.5:7b
+    port: 11434
+    field: mathematics
+
+  - name: law                      # NEW
+    model: qwen2.5:7b              # same model, different field weights
+    port: 11434
+    field: law                     # c_min=0.85, penalty=5x</pre>
+</div>
+
+<div class="callout">
+  <p><strong>Ollama shared port:</strong> all Ollama specialists share port 11434. Ollama distinguishes them by model tag in the request body. The duplicate-port validator in AUA automatically exempts Ollama backends.</p>
+</div>
+
+<div class="next-part">
+  <p><strong>Part 2 complete.</strong> You understand what specialists and fields are. Part 3 shows how the router decides which specialist answers — and how utility score is computed.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 3 -->
+<h2 id="part-3" class="part-heading"><span class="part-badge">Part 3</span> Routing &amp; Utility <span class="time-badge">~15 min</span></h2>
+
+<h3>3.1 The three routing modes</h3>
+
+<p>Every query goes through three stages: field classification → routing decision → specialist call → utility scoring.</p>
+
+<table>
+<tr><th>Mode</th><th>When</th><th>What happens</th></tr>
+<tr><td><strong>single</strong></td><td>One field scores above <code>single_domain_threshold</code> (0.75)</td><td>Query goes to that specialist only</td></tr>
+<tr><td><strong>fanout</strong></td><td>Two+ fields both above <code>fanout_threshold</code> (0.30)</td><td>Query sent to all qualifying specialists; best U score wins</td></tr>
+<tr><td><strong>arbiter</strong></td><td>Fanout returned contradictory answers</td><td>Arbiter resolves the conflict, issues a correction</td></tr>
+</table>
+
+<h3>3.2 Force a routing mode for testing</h3>
+
+<div class="code-block">
+<div class="code-header">bash — force single domain</div>
+<pre>curl -s -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Prove the Pythagorean theorem.",
+    "force_domain": "mathematics"
+  }' | python3 -m json.tool</pre>
+</div>
+
+<h3>3.3 The utility function</h3>
+
+<p><code>U = w_e·E + w_c·C + w_k·K</code> — three terms, field-weighted:</p>
+
+<ul>
+  <li><strong>E (Efficacy)</strong> — how well did this answer perform relative to baseline? Mann-Whitney dominance probability over prior outputs. Range [0, 1].</li>
+  <li><strong>C (Confidence)</strong> — Kalman-filtered internal consistency score, penalized on each contradiction detected. Range [0, 1].</li>
+  <li><strong>K (Curiosity)</strong> — UCB-style exploration bonus for high-upside uncertain domains. Capped at 50% of total U to preserve exploitation dominance.</li>
+</ul>
+
+<div class="callout green">
+  <p><strong>U is a control signal, not a metric.</strong> It directly gates whether a model promotes to production (blue-green), determines DPO pair weight during training, and controls whether the arbiter escalates a verdict.</p>
+</div>
+
+<h3>3.4 Watching U scores live</h3>
+
+<div class="code-block">
+<div class="code-header">bash — live dashboard</div>
+<pre>aua status                    # auto-refreshing terminal UI
+aua status --once             # single snapshot
+aua status --json             # machine-readable JSON
+aua status --url http://remote-host:8000  # remote router</pre>
+</div>
+
+<h3>3.5 U score via API</h3>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>curl http://localhost:8000/status | python3 -m json.tool | grep -A 10 '"utility"'</pre>
+</div>
+
+<div class="output-block">"utility": {
+  "software_engineering": {
+    <span class="hi">"mean_u"</span>: 0.631,
+    <span class="hi">"last_u"</span>: 0.648,
+    <span class="hi">"confidence"</span>: 0.74,
+    <span class="hi">"queries"</span>: 42
+  }
+}</div>
+
+<div class="next-part">
+  <p><strong>Part 3 complete.</strong> You understand how routing decisions are made and what the utility score represents. Part 4 covers what happens when two specialists disagree.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 4 -->
+<h2 id="part-4" class="part-heading"><span class="part-badge">Part 4</span> The Arbiter &amp; Corrections <span class="time-badge">~15 min</span></h2>
+
+<p>When fanout routing produces contradictory responses from two specialists, the Arbiter runs four checks, issues a verdict, and injects correction signals back into both models. This is the core online learning mechanism.</p>
+
+<h3>4.1 The four arbitration checks</h3>
+
+<table>
+<tr><th>Check</th><th>Weight</th><th>What it detects</th></tr>
+<tr><td>Logical</td><td>0.30</td><td>Does the output contradict its own premises?</td></tr>
+<tr><td>Mathematical</td><td>0.40</td><td>Are complexity / numerical claims provably wrong?</td></tr>
+<tr><td>Cross-session</td><td>0.20</td><td>Contradicts a prior verified assertion?</td></tr>
+<tr><td>Empirical</td><td>0.10</td><td>External ground truth check (roadmap Phase 1)</td></tr>
+</table>
+
+<h3>4.2 The four verdict cases</h3>
+
+<table>
+<tr><th>Case</th><th>Meaning</th><th>Action</th></tr>
+<tr><td>Case 1</td><td>A correct, B wrong</td><td>Correct B, reinforce A, store verified claim</td></tr>
+<tr><td>Case 2</td><td>B correct, A wrong</td><td>Correct A, reinforce B, store verified claim</td></tr>
+<tr><td>Case 3</td><td>Both wrong</td><td>Correct both + open curiosity gap bonus</td></tr>
+<tr><td>Case 4</td><td>Inconclusive</td><td>Flag for external escalation, hedge response</td></tr>
+</table>
+
+<h3>4.3 Using the Arbiter directly</h3>
+
+<div class="code-block">
+<div class="code-header">Python</div>
+<pre>from aua import ArbiterAgent, AssertionsStore
+
+store = AssertionsStore()
+arbiter = ArbiterAgent(store)
+
+verdict = arbiter.arbitrate(
+    subject="bubble_sort_complexity",
+    domain="software_engineering",
+    output_A="Bubble sort is O(n) average case.",
+    output_B="Bubble sort is O(n²) average case.",
+    field_penalty_multiplier=2.0,
+)
+
+print(verdict.case.value)         # "case_2" — B is correct
+print(verdict.correct_A)          # True — A receives a correction
+print(verdict.verified_claim)     # "Bubble sort is O(n²) average case."
+print(verdict.external_response)  # What the user sees</pre>
+</div>
+
+<h3>4.4 The assertions store — cross-session memory</h3>
+
+<p>Verified claims are stored with a field-specific decay class:</p>
+
+<table>
+<tr><th>Class</th><th>Decay τ</th><th>Used for</th></tr>
+<tr><td>A</td><td>Never</td><td>Mathematical proofs, algorithm correctness</td></tr>
+<tr><td>B</td><td>10 years</td><td>Classical physics, structural engineering</td></tr>
+<tr><td>C</td><td>3 years</td><td>Medicine, law, architecture</td></tr>
+<tr><td>D</td><td>6 months</td><td>Security CVEs, clinical guidelines, ML benchmarks</td></tr>
+</table>
+
+<div class="code-block">
+<div class="code-header">Python — query the assertions store</div>
+<pre>from aua import AssertionsStore
+
+store = AssertionsStore()
+# After arbitration has stored some facts:
+matches = store.query("bubble_sort", domain="software_engineering")
+for m in matches:
+    print(f"{m.assertion.claim[:60]}  (conf={m.effective_confidence:.2f})")</pre>
+</div>
+
+<h3>4.5 Manual corrections via REST</h3>
+
+<div class="code-block">
+<div class="code-header">bash — inject a correction fact</div>
+<pre>curl -X POST http://localhost:8000/corrections \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "heapsort_complexity",
+    "domain": "software_engineering",
+    "claim": "Heapsort is O(n log n) worst-case, O(1) extra space.",
+    "confidence": 0.99,
+    "source": "manual"
+  }'</pre>
+</div>
+
+<div class="output-block">{
+  <span class="ok">"stored"</span>: true,
+  <span class="hi">"subject"</span>: "heapsort_complexity",
+  <span class="hi">"decay_class"</span>: "A"
+}</div>
+
+<div class="next-part">
+  <p><strong>Part 4 complete.</strong> You understand how the Arbiter resolves conflicts and stores verified facts. Part 5 shows how those U scores gate model promotion.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 5 -->
+<h2 id="part-5" class="part-heading"><span class="part-badge">Part 5</span> Blue-Green Deployment <span class="time-badge">~20 min</span></h2>
+
+<p>Blue-green deployment is how AUA promotes new model versions. The <em>BLUE</em> model is in production. A <em>GREEN</em> candidate runs against canary traffic. When GREEN's utility score exceeds BLUE by <code>delta</code> over at least <code>T_min</code> interactions, it promotes.</p>
+
+<h3>5.1 Promotion thresholds</h3>
+
+<p>Configured per-specialist under <code>blue_green:</code> in <code>aua_config.yaml</code>:</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>blue_green:
+  swe:
+    delta: 0.025    # GREEN must beat BLUE by +2.5% U to promote
+    T_min: 10       # need at least 10 canary interactions
+    tau: 0.20       # softmax temperature for traffic split</pre>
+</div>
+
+<h3>5.2 Using BlueGreenDeployment</h3>
+
+<div class="code-block">
+<div class="code-header">Python</div>
+<pre>from aua import BlueGreenDeployment
+from aua.config import load_config
+
+config = load_config("aua_config.yaml")
+bg = BlueGreenDeployment(config, specialist_name="swe")
+
+print(f"BLUE model:       {bg.blue_model}")
+print(f"Delta threshold:  {bg.delta_threshold}")  # 0.025
+print(f"T_min:            {bg.t_min}")             # 10
+
+# Register a candidate GREEN model
+bg.register_green("models/swe-green-v2/")
+
+# Evaluate (full harness arrives in v0.8 — currently returns dry_run=True)
+import asyncio
+summary = asyncio.run(bg.evaluate(n_queries=10))
+print(f"dry_run: {summary.dry_run}")  # True until harness built
+
+# When evaluation harness is live:
+if bg.should_promote(summary):
+    bg.promote()
+    print("GREEN promoted to BLUE")</pre>
+</div>
+
+<h3>5.3 The promotions log</h3>
+
+<p>Every promotion is recorded atomically to <code>.aua/state/promotions.jsonl</code> with a UUID and timestamp. The file is append-only and file-locked to prevent concurrent write corruption.</p>
+
+<div class="code-block">
+<div class="code-header">bash — inspect promotion history</div>
+<pre>cat .aua/state/promotions.jsonl | python3 -m json.tool</pre>
+</div>
+
+<h3>5.4 Rollback</h3>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua rollback --specialist swe          # interactive confirm
+aua rollback --specialist swe --yes    # skip confirm
+aua rollback --dry-run                 # preview only — no changes
+aua rollback --all --yes               # roll back every specialist</pre>
+</div>
+
+<p>Rollback reads the promotions log, reverts <code>aua_config.yaml</code> to the previous BLUE model using an atomic <code>.tmp → os.replace()</code> write, and restarts the specialist server.</p>
+
+<div class="callout orange">
+  <p><strong>The full evaluation harness (automated canary scoring) is roadmap item #14, arriving in v0.8.</strong> In v0.7, <code>BlueGreenDeployment.evaluate()</code> returns <code>dry_run=True</code>. You can trigger manual rollbacks and record promotions manually today.</p>
+</div>
+
+<div class="next-part">
+  <p><strong>Part 5 complete.</strong> You understand how promotion and rollback work. Part 6 goes deep on the config system — hot reload, validation, and all available options.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 6 -->
+<h2 id="part-6" class="part-heading"><span class="part-badge">Part 6</span> Config System in Depth <span class="time-badge">~15 min</span></h2>
+
+<h3>6.1 Config validation</h3>
+
+<p>AUA validates <code>aua_config.yaml</code> strictly on load. Three categories of errors are caught:</p>
+
+<div class="code-block">
+<div class="code-header">bash — validate without starting anything</div>
+<pre>aua config validate
+aua config validate --config /path/to/other.yaml</pre>
+</div>
+
+<table>
+<tr><th>Error type</th><th>Example</th></tr>
+<tr><td>Unknown keys</td><td><code>aua.typo_key: value</code> → <em>Unknown key(s) in 'aua': ['typo_key']</em></td></tr>
+<tr><td>Duplicate ports</td><td>Two vLLM specialists on port 9001</td></tr>
+<tr><td>Out-of-range values</td><td><code>single_domain_threshold: 1.5</code> → must be in [0, 1]</td></tr>
+<tr><td>Missing required fields</td><td>Specialist with no <code>model</code> key</td></tr>
+</table>
+
+<h3>6.2 Hot reload — changing config without restart</h3>
+
+<p>Some fields can be updated without restarting any process. Send SIGHUP to the running router or use the CLI:</p>
+
+<div class="code-block">
+<div class="code-header">bash — hot reload</div>
+<pre># Method 1: CLI (auto-detects router PID from .aua/pids/router.pid)
+aua config reload
+
+# Method 2: SIGHUP directly
+kill -HUP $(cat .aua/pids/router.pid)</pre>
+</div>
+
+<table>
+<tr><th>Hot-reloadable (no restart)</th><th>Requires restart</th></tr>
+<tr><td>routing thresholds</td><td>model name or path</td></tr>
+<tr><td>promotion delta / T_min / tau</td><td>specialist port</td></tr>
+<tr><td>logging level</td><td>GPU assignment</td></tr>
+<tr><td>cors_origins</td><td>backend (vllm ↔ ollama)</td></tr>
+</table>
+
+<h3>6.3 Host and scheme overrides</h3>
+
+<p>By default specialists are accessed at <code>http://127.0.0.1:{port}</code>. For distributed setups, override per-specialist:</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — remote specialist</div>
+<pre>specialists:
+  - name: swe
+    model: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
+    port: 9001
+    field: software_engineering
+    host: "10.0.0.42"          # remote machine
+    scheme: "https"            # TLS (mTLS coming in v0.9)
+    # OR: full override
+    endpoint_override: "http://k8s-swe-service:9001/v1/chat/completions"</pre>
+</div>
+
+<h3>6.4 The RuntimeConfig paths</h3>
+
+<p><code>aua serve</code> creates these directories automatically on startup:</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>.aua/
+  logs/          # per-service log files (swe.log, math.log, router.log)
+  pids/          # PID files (router.pid, swe.pid, ...)
+  state/         # promotions.jsonl (atomic writes, file-locked)
+  checkpoints/   # model checkpoint symlinks for blue-green</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — access runtime paths</div>
+<pre>from aua.config import load_config
+
+cfg = load_config("aua_config.yaml")
+rt = cfg.runtime
+
+print(rt.logs)        # PosixPath('.aua/logs')
+print(rt.pids)        # PosixPath('.aua/pids')
+print(rt.state)       # PosixPath('.aua/state')
+
+# Create all dirs (aua serve does this automatically)
+rt.ensure()</pre>
+</div>
+
+<div class="next-part">
+  <p><strong>Part 6 complete.</strong> You know how to validate, hot-reload, and inspect all config options. Part 7 covers the correction loop — how AUA collects DPO pairs for training.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 7 -->
+<h2 id="part-7" class="part-heading"><span class="part-badge">Part 7</span> The Correction Loop <span class="time-badge">~15 min</span></h2>
+
+<p>The correction loop closes the gap between detected errors and model improvement. It collects contradiction events from the router, formats them as DPO training pairs, and exports them for the next fine-tuning cycle.</p>
+
+<h3>7.1 How corrections accumulate</h3>
+
+<p>Every time the Arbiter issues a correction (Cases 1, 2, 3), it stores the verified claim in the assertions store and the DPO pair is available via the router's <code>/corrections</code> endpoint. In fanout mode, corrections happen automatically in the background.</p>
+
+<div class="code-block">
+<div class="code-header">bash — check accumulated corrections</div>
+<pre>curl http://localhost:8000/corrections | python3 -m json.tool</pre>
+</div>
+
+<h3>7.2 Using CorrectionLoop</h3>
+
+<div class="code-block">
+<div class="code-header">Python</div>
+<pre>import asyncio
+from aua import CorrectionLoop
+from aua.config import load_config
+
+config = load_config("aua_config.yaml")
+loop = CorrectionLoop(config, router_url="http://localhost:8000")
+
+async def main():
+    # Collect high-confidence pairs from the router
+    pairs = await loop.collect_pairs(min_confidence=0.8)
+    print(f"Collected {len(pairs)} pairs")
+
+    # Export to JSONL for DPO training
+    summary = loop.export_pairs(pairs, output_dir="dpo_pairs")
+    print(f"Exported to: {summary.output_path}")
+    print(f"Domains: {summary.domains}")
+
+asyncio.run(main())</pre>
+</div>
+
+<div class="output-block">Collected 7 pairs
+Exported to: dpo_pairs/dpo_pairs_20260511_143022.jsonl
+Domains: ['software_engineering', 'mathematics']</div>
+
+<h3>7.3 DPO pair format</h3>
+
+<p>Each exported file is JSONL with one record per line:</p>
+
+<div class="code-block">
+<div class="code-header">dpo_pairs/dpo_pairs_*.jsonl</div>
+<pre>{"prompt": "bubble_sort_complexity", "chosen": "Bubble sort is O(n²) average case.", "rejected": "", "domain": "software_engineering", "confidence": 0.91, "source": "arbiter"}
+{"prompt": "heapsort_complexity", "chosen": "Heapsort is O(n log n) worst-case.", "rejected": "", "domain": "software_engineering", "confidence": 0.99, "source": "manual"}</pre>
+</div>
+
+<div class="callout">
+  <p><strong>Training integration (v0.8):</strong> <code>CorrectionLoop.train()</code> will trigger LoRA fine-tuning on the affected specialist and hand off to <code>BlueGreenDeployment</code> for evaluation. For now, export the pairs and pass them to your preferred training pipeline (TRL, Axolotl, Unsloth).</p>
+</div>
+
+<h3>7.4 Field-specific penalty weights in training</h3>
+
+<p>When you pass DPO pairs to your trainer, use <code>penalty_multiplier</code> from <code>FIELD_CONFIGS</code> as the loss weight. A surgical error should update the model 10× harder than a creative writing mistake:</p>
+
+<div class="code-block">
+<div class="code-header">Python — get penalty weight for your training loop</div>
+<pre>from aua import FIELD_CONFIGS
+
+for pair in pairs:
+    field_cfg = FIELD_CONFIGS.get(pair.domain, FIELD_CONFIGS["general"])
+    loss_weight = field_cfg.penalty_multiplier
+    # pass loss_weight to your DPO trainer's per-sample weight</pre>
+</div>
+
+<div class="next-part">
+  <p><strong>Part 7 complete.</strong> You can collect and export DPO training pairs. Part 8 covers hooks and middleware — how to intercept the query lifecycle.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 8 -->
+<h2 id="part-8" class="part-heading"><span class="part-badge">Part 8</span> Hooks &amp; Middleware <span class="time-badge">~10 min</span></h2>
+
+<div class="callout orange">
+  <p><strong>Roadmap item F-10 / F-11 — arriving in v0.8.</strong> The hook and middleware systems are designed and documented here. The interfaces below are stable; implementation ships in the next release.</p>
+</div>
+
+<h3>8.1 Planned hook points</h3>
+
+<p>Hooks fire at named lifecycle events. Each hook receives an event dict and returns a (possibly modified) event dict.</p>
+
+<div class="code-block">
+<div class="code-header">Python — hook interface (v0.8)</div>
+<pre>class MyHook:
+    async def __call__(self, event: dict) -> dict:
+        # Runs at the named lifecycle point
+        # Modify event or log it; return the (possibly modified) event
+        print(f"[hook] {event['type']} session={event.get('session_id')}")
+        return event</pre>
+</div>
+
+<table>
+<tr><th>Hook name</th><th>When it fires</th></tr>
+<tr><td><code>pre_query</code></td><td>Before field classification</td></tr>
+<tr><td><code>post_route</code></td><td>After routing decision, before specialist call</td></tr>
+<tr><td><code>post_specialist_call</code></td><td>After each specialist responds</td></tr>
+<tr><td><code>on_correction</code></td><td>After Arbiter issues a correction</td></tr>
+<tr><td><code>on_promotion</code></td><td>After a GREEN model is promoted</td></tr>
+<tr><td><code>on_rollback</code></td><td>After a rollback completes</td></tr>
+</table>
+
+<h3>8.2 Hot reload today — the bridge</h3>
+
+<p><code>HotReloader</code> is already available. It handles config reload via SIGHUP and patches live router state:</p>
+
+<div class="code-block">
+<div class="code-header">Python — embed HotReloader in a custom server</div>
+<pre>import signal
+from aua import HotReloader, Router
+from aua.config import load_config
+
+config = load_config("aua_config.yaml")
+router = Router.from_config(config)
+
+reloader = HotReloader("aua_config.yaml")
+reloader.attach(router)
+reloader.register_sighup()   # SIGHUP → reload config → patch router live
+
+# Now run uvicorn:
+import uvicorn
+uvicorn.run(router.app, host="0.0.0.0", port=8000)</pre>
+</div>
+
+<div class="next-part">
+  <p><strong>Part 8 complete.</strong> You know the planned hook interface and can use HotReloader today. Part 9 covers security — secrets, CORS, and what doctor checks for.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 9 -->
+<h2 id="part-9" class="part-heading"><span class="part-badge">Part 9</span> Security <span class="time-badge">~10 min</span></h2>
+
+<h3>9.1 CORS configuration</h3>
+
+<p>By default CORS allows all origins (<code>["*"]</code>). In production, restrict to your frontend domain:</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>router:
+  port: 8000
+  cors_origins:
+    - "https://my-app.example.com"
+    - "https://admin.example.com"</pre>
+</div>
+
+<p><code>cors_origins</code> is hot-reloadable — change it and run <code>aua config reload</code> without restarting.</p>
+
+<div class="warn">
+  <p><strong>Doctor warning on unsafe settings:</strong> If you run with <code>cors_origins: ["*"]</code> and <code>host: "0.0.0.0"</code> on a public IP, <code>aua doctor</code> will warn loudly. This combination exposes the router to the internet with no access control.</p>
+</div>
+
+<h3>9.2 Secrets (roadmap #19 — v0.8)</h3>
+
+<p>In v0.7, all config values are plaintext in <code>aua_config.yaml</code>. The planned secrets system references environment variables or a vault:</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — planned v0.8 secrets syntax</div>
+<pre>secrets:
+  provider: env              # "env" | "vault" | "aws" | "gcp"
+
+# Reference secrets by name, not value:
+api_key_secret: OPENAI_API_KEY   # reads from $OPENAI_API_KEY</pre>
+</div>
+
+<p>Until v0.8 ships: use Docker Compose environment files (<code>.env</code>) and never commit credentials to git.</p>
+
+<h3>9.3 GET /config redaction</h3>
+
+<p>The <code>GET /config</code> endpoint is already designed to be safe — it returns the structural config without sensitive runtime values. The <code>/corrections</code> endpoint returns claims without evidence chains (those are internal-only).</p>
+
+<h3>9.4 Port exposure</h3>
+
+<p>In production, only the router port (8000) should be public. Specialist ports (9001–9003 for vLLM, 11434 for Ollama) are internal and should be firewalled.</p>
+
+<div class="code-block">
+<div class="code-header">docker-compose.yml — production port exposure</div>
+<pre>services:
+  router:
+    ports:
+      - "8000:8000"    # public
+  swe:
+    # No ports: — internal only, accessible within Docker network only
+  arbiter:
+    # No ports: — internal only</pre>
+</div>
+
+<div class="next-part">
+  <p><strong>Part 9 complete.</strong> You know how to configure CORS and what's coming for secrets. Part 10 covers observability — dashboard, Prometheus, and Grafana.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 10 -->
+<h2 id="part-10" class="part-heading"><span class="part-badge">Part 10</span> Observability <span class="time-badge">~10 min</span></h2>
+
+<h3>10.1 Terminal dashboard</h3>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua status                     # live, auto-refreshes every 2s
+aua status --interval 5        # refresh every 5s
+aua status --once              # single snapshot, then exit
+aua status --json              # raw JSON (pipe to jq)
+aua status --url http://prod:8000   # remote router</pre>
+</div>
+
+<p>The dashboard shows: specialist health (UP/DOWN), p50/p95 latency, routing distribution, utility score trends, contradiction rate, arbiter verdict distribution, and memory usage.</p>
+
+<h3>10.2 REST telemetry endpoints</h3>
+
+<table>
+<tr><th>Endpoint</th><th>Returns</th></tr>
+<tr><td><code>GET /status</code></td><td>Full telemetry snapshot (powers <code>aua status</code>)</td></tr>
+<tr><td><code>GET /health/live</code></td><td><code>{"status":"alive","uptime_s":...}</code></td></tr>
+<tr><td><code>GET /health/ready</code></td><td>200 if all specialists reachable, 503 if any down</td></tr>
+<tr><td><code>GET /health/startup</code></td><td>200 once first readiness check has passed</td></tr>
+<tr><td><code>GET /version</code></td><td><code>{"version":"0.7.0b0","framework":"aua"}</code></td></tr>
+<tr><td><code>GET /docs</code></td><td>Interactive Swagger UI</td></tr>
+</table>
+
+<h3>10.3 Prometheus + Grafana (Docker)</h3>
+
+<div class="code-block">
+<div class="code-header">bash — start full observability stack</div>
+<pre>docker compose --profile ollama --profile obs up</pre>
+</div>
+
+<p>This adds:</p>
+<ul>
+  <li><strong>Prometheus</strong> at <code>http://localhost:9090</code> — scrapes <code>/metrics</code> every 10s, 15-day retention</li>
+  <li><strong>Grafana</strong> at <code>http://localhost:3000</code> — default credentials: <code>admin / aua-admin</code></li>
+</ul>
+
+<p>Pre-configured alerts (in <code>docker/prometheus/alerts.yml</code>):</p>
+<ul>
+  <li><code>AUA_SpecialistDown</code> — router unreachable for 1 min</li>
+  <li><code>AUA_HighContradictionRate</code> — contradiction rate &gt; 30% for 5 min</li>
+  <li><code>AUA_LowUtilityScore</code> — mean U &lt; 0.5 for 10 min</li>
+  <li><code>AUA_ArbiterCaseFourSpike</code> — inconclusive verdicts spiking</li>
+</ul>
+
+<div class="next-part">
+  <p><strong>Part 10 complete.</strong> You can monitor your deployment from the terminal, REST, or Grafana. Part 11 walks through the full Docker deployment.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 11 -->
+<h2 id="part-11" class="part-heading"><span class="part-badge">Part 11</span> Docker Deployment <span class="time-badge">~20 min</span></h2>
+
+<h3>11.1 Three deployment modes</h3>
+
+<table>
+<tr><th>Mode</th><th>Command</th><th>Use case</th></tr>
+<tr><td>Router only</td><td><code>docker compose up</code></td><td>You have specialists running elsewhere</td></tr>
+<tr><td>+ Ollama (CPU)</td><td><code>docker compose --profile ollama up</code></td><td>Mac / Linux server, CPU inference</td></tr>
+<tr><td>+ Observability</td><td><code>docker compose --profile ollama --profile obs up</code></td><td>Full stack with Prometheus + Grafana</td></tr>
+</table>
+
+<h3>11.2 GPU (vLLM) deployment</h3>
+
+<div class="code-block">
+<div class="code-header">bash — GPU stack (requires NVIDIA Container Toolkit)</div>
+<pre># Install NVIDIA Container Toolkit first:
+# https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/
+
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.gpu.yml \
+  up</pre>
+</div>
+
+<p>The GPU overlay starts three vLLM containers (swe, math, arbiter) with sequential health-check dependencies — swe must be healthy before math starts, math before arbiter. This prevents CUDA graph profiling conflicts on single-GPU setups.</p>
+
+<h3>11.3 Environment customization</h3>
+
+<div class="code-block">
+<div class="code-header">bash — copy and edit .env</div>
+<pre>cp .env.example .env
+# Edit .env:
+#   AUA_ROUTER_PORT=8000
+#   SWE_MODEL=qwen2.5-coder:7b
+#   GRAFANA_PASSWORD=change-me-in-production
+#   PROMETHEUS_PORT=9090</pre>
+</div>
+
+<h3>11.4 Volume mounts</h3>
+
+<table>
+<tr><th>Volume</th><th>What it holds</th><th>Persisted</th></tr>
+<tr><td><code>aua-state</code></td><td><code>.aua/</code> — logs, pids, state, checkpoints</td><td>Yes</td></tr>
+<tr><td><code>ollama-models</code></td><td>Downloaded Ollama models</td><td>Yes — survives container rebuild</td></tr>
+<tr><td><code>prometheus-data</code></td><td>Prometheus TSDB (15 days)</td><td>Yes</td></tr>
+<tr><td><code>grafana-data</code></td><td>Grafana dashboards and settings</td><td>Yes</td></tr>
+</table>
+
+<h3>11.5 Build stages</h3>
+
+<p>The Dockerfile has three stages:</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre># Production image (default)
+docker build --target prod -t aua:0.7.0b0 .
+
+# Dev image (includes test deps, runs pytest)
+docker build --target dev -t aua-dev:latest .
+docker run aua-dev:latest   # runs pytest</pre>
+</div>
+
+<div class="next-part">
+  <p><strong>Part 11 complete.</strong> You can run the full stack in Docker with CPU or GPU. Part 12 covers expert deployment — custom configs, production checklist, and what's coming next.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PART 12 -->
+<h2 id="part-12" class="part-heading"><span class="part-badge">Part 12</span> Expert Deployment <span class="time-badge">~20 min</span></h2>
+
+<h3>12.1 Production checklist</h3>
+
+<div class="steps">
+
+<div class="step-check"><span class="check">☐</span><span>Change <code>cors_origins</code> from <code>["*"]</code> to your actual frontend domains</span></div>
+<div class="step-check"><span class="check">☐</span><span>Change Grafana default password from <code>aua-admin</code></span></div>
+<div class="step-check"><span class="check">☐</span><span>Firewall specialist ports — only router port 8000 should be public</span></div>
+<div class="step-check"><span class="check">☐</span><span>Set <code>logging.level: WARNING</code> in <code>aua_config.yaml</code> (reduces log volume)</span></div>
+<div class="step-check"><span class="check">☐</span><span>Bind volumes to a backup-managed path (not ephemeral Docker storage)</span></div>
+<div class="step-check"><span class="check">☐</span><span>Configure Prometheus alert routing (PagerDuty, Slack webhook)</span></div>
+<div class="step-check"><span class="check">☐</span><span>Run <code>aua doctor --strict</code> in CI to gate deployments</span></div>
+<div class="step-check"><span class="check">☐</span><span>Test rollback before you need it: <code>aua rollback --dry-run</code></span></div>
+
+</div>
+
+<h3>12.2 Custom config without editing AUA internals</h3>
+
+<p>You never need to edit AUA source code to customize behavior. Everything is in <code>aua_config.yaml</code>:</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — full production example (single-4090 tier)</div>
+<pre>aua:
+  version: "0.7"
+  mode: local
+  backend: vllm
+
+specialists:
+  - name: swe
+    model: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
+    port: 9001
+    field: software_engineering
+    gpu: 0
+    gpu_memory_utilization: 0.34
+    max_model_len: 2048
+    quantization: awq
+    enforce_eager: true
+    host: "127.0.0.1"   # only router can reach this
+
+  - name: math
+    model: Qwen/Qwen2.5-7B-Instruct-AWQ
+    port: 9002
+    field: mathematics
+    gpu: 0
+    gpu_memory_utilization: 0.34
+    max_model_len: 2048
+    quantization: awq
+    enforce_eager: true
+
+arbiter:
+  model: Qwen/Qwen2.5-3B-Instruct-AWQ
+  port: 9003
+  gpu: 0
+  gpu_memory_utilization: 0.18
+  max_model_len: 2048
+  quantization: awq
+  enforce_eager: true
+
+router:
+  port: 8000
+  host: "0.0.0.0"
+  single_domain_threshold: 0.75
+  fanout_threshold: 0.30
+  specialist_timeout: 60.0
+  cors_origins:
+    - "https://my-app.example.com"
+
+blue_green:
+  swe:
+    delta: 0.025
+    T_min: 20       # more conservative in production
+    tau: 0.15
+  math:
+    delta: 0.025
+    T_min: 20
+    tau: 0.15
+
+logging:
+  level: WARNING
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"</pre>
+</div>
+
+<h3>12.3 Systemd service (non-Docker)</h3>
+
+<div class="code-block">
+<div class="code-header">/etc/systemd/system/aua.service</div>
+<pre>[Unit]
+Description=AUA Framework Router
+After=network.target
+
+[Service]
+User=aua
+WorkingDirectory=/opt/aua
+ExecStart=/opt/aua/.venv/bin/aua serve
+ExecReload=/bin/kill -HUP $MAINPID   # hot-reload on systemctl reload aua
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">bash — control the service</div>
+<pre>systemctl start aua
+systemctl reload aua    # hot-reload config (sends SIGHUP)
+systemctl status aua
+journalctl -u aua -f    # follow logs</pre>
+</div>
+
+<h3>12.4 What's coming in v0.8</h3>
+
+<table>
+<tr><th>Item</th><th>What it adds</th></tr>
+<tr><td>Full evaluation harness (#14)</td><td><code>BlueGreenDeployment.evaluate()</code> runs real canary scoring</td></tr>
+<tr><td>LoRA training trigger (#12)</td><td><code>CorrectionLoop.train()</code> kicks off fine-tuning</td></tr>
+<tr><td>Session IDs (#15)</td><td>session_id + trace_id + request_id end-to-end through all components</td></tr>
+<tr><td>Secrets management (#19)</td><td>Env var / Vault / AWS SM references in config</td></tr>
+<tr><td>Hook system (F-10)</td><td>pre_query, on_correction, on_promotion lifecycle hooks</td></tr>
+<tr><td>Middleware (F-11)</td><td>before_query / after_response pipeline</td></tr>
+</table>
+
+<h3>12.5 Getting help</h3>
+
+<ul>
+  <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub repository</a> — issues, discussions, source</li>
+  <li><a href="whitepaper_full_v0_5.html">Full whitepaper</a> — formal proofs, theorems, and mathematical foundations</li>
+  <li><a href="tutorial_v0_5.html">v0.5 tutorial</a> — the original builder's guide (still valid for concepts)</li>
+  <li><code>aua --help</code>, <code>aua serve --help</code>, <code>aua doctor --help</code> — always up to date</li>
+</ul>
+
+<hr>
+
+<p style="color:var(--muted);font-size:.88rem;text-align:center">AUA Framework v0.7.0b0 &middot; Tutorial draft &middot; <a href="https://github.com/praneethtota/Adaptive-Utility-Agent">github.com/praneethtota/Adaptive-Utility-Agent</a></p>
+
+</div><!-- .body -->
+</div><!-- .page -->
+</body>
+</html>
