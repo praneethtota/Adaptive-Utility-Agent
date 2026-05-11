@@ -50,6 +50,22 @@ from aua.config import (
     get_effective_config,
 )
 
+# ── REST endpoint models (#09) ─────────────────────────────────────────────────
+from aua.endpoints import (
+    QueryRequest,
+    RouterResponse,
+    BatchQueryRequest,
+    BatchQueryResponse,
+    CorrectionRequest,
+    CorrectionResponse,
+    ConfigResponse,
+    DeployGreenRequest,
+    DeployGreenResponse,
+    HealthLiveResponse,
+    HealthReadyResponse,
+    HealthStartupResponse,
+)
+
 __all__ = [
     # version
     "__version__",
@@ -79,4 +95,17 @@ __all__ = [
     "ArbiterVerdict",
     # routing
     "Router",
+    # endpoint models
+    "QueryRequest",
+    "RouterResponse",
+    "BatchQueryRequest",
+    "BatchQueryResponse",
+    "CorrectionRequest",
+    "CorrectionResponse",
+    "ConfigResponse",
+    "DeployGreenRequest",
+    "DeployGreenResponse",
+    "HealthLiveResponse",
+    "HealthReadyResponse",
+    "HealthStartupResponse",
 ]
