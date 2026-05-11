@@ -1,0 +1,29 @@
+# AUA Smoke Eval — Mathematics
+name: math_smoke
+field: mathematics
+description: Basic mathematical reasoning and notation
+
+cases:
+  - id: derivative_polynomial
+    prompt: "What is the derivative of f(x) = x^3 + 2x^2 - 5x + 1?"
+    expected_properties:
+      - contains_any: ["3x^2", "3x²", "4x", "3x^2 + 4x - 5"]
+      - min_length: 20
+
+  - id: kalman_filter
+    prompt: "Explain the Kalman filter. What is it used for?"
+    expected_properties:
+      - contains_any: ["estimate", "noise", "state", "prediction", "update"]
+      - min_length: 50
+
+  - id: gradient_descent
+    prompt: "Explain gradient descent in one paragraph."
+    expected_properties:
+      - contains_any: ["gradient", "minimum", "loss", "learning rate", "step"]
+      - min_length: 40
+
+  - id: big_o_examples
+    prompt: "Give three examples of Big O complexity classes with explanation."
+    expected_properties:
+      - contains: "O("
+      - min_length: 60

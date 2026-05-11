@@ -246,7 +246,7 @@ def test_version_endpoint_returns_correct_version(client):
     assert r.status_code == 200
     body = r.json()
     assert "version" in body
-    assert body["version"] == "0.9.0rc1"
+    assert body["version"] == "0.9.0rc2"
     assert body["framework"] == "aua"
 
 

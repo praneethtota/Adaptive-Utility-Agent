@@ -96,6 +96,19 @@ def _sse_comment(text: str = "keep-alive") -> str:
     return f": {text}\n\n"
 
 
+
+# ── Chat Session request models ───────────────────────────────────────────────
+# Must be module-level — Pydantic v2 cannot handle locally-defined models.
+
+class CreateSessionRequest(BaseModel):
+    """Request body for POST /sessions."""
+    title: str = ""
+
+class SendMessageRequest(BaseModel):
+    """Request body for POST /sessions/{id}/messages."""
+    content: str
+    stream: bool = False
+
 def _audit_query(
     req: QueryRequest,
     domain: str,
@@ -562,6 +575,92 @@ class Router:
             from aua.version import __version__
 
             return {"version": __version__, "framework": "aua"}
+
+        # ── Chat Session API (U-01) ───────────────────────────────────────────
+        from aua.chat import (
+            add_message,
+            create_session,
+            delete_session,
+            ensure_chat_tables,
+            get_messages,
+            get_session,
+            list_sessions,
+        )
+
+        ensure_chat_tables()
+
+        @app.post("/sessions", tags=["sessions"], summary="Create a new chat session")
+        async def sessions_create(req: CreateSessionRequest):
+            return create_session(title=req.title)
+
+        @app.get("/sessions", tags=["sessions"], summary="List all chat sessions")
+        async def sessions_list(limit: int = 50):
+            return {"sessions": list_sessions(limit=limit)}
+
+        @app.get("/sessions/{session_id}", tags=["sessions"])
+        async def sessions_get(session_id: str):
+            s = get_session(session_id)
+            if not s:
+                raise HTTPException(404, f"Session {session_id!r} not found")
+            return s
+
+        @app.delete("/sessions/{session_id}", tags=["sessions"])
+        async def sessions_delete(session_id: str):
+            ok = delete_session(session_id)
+            if not ok:
+                raise HTTPException(404, f"Session {session_id!r} not found")
+            return {"deleted": session_id}
+
+        @app.get("/sessions/{session_id}/messages", tags=["sessions"])
+        async def sessions_messages(session_id: str, limit: int = 100):
+            if not get_session(session_id):
+                raise HTTPException(404, f"Session {session_id!r} not found")
+            return {"messages": get_messages(session_id, limit=limit)}
+
+        @app.post("/sessions/{session_id}/messages", tags=["sessions"])
+        async def sessions_send(session_id: str, req: SendMessageRequest):
+            if not get_session(session_id):
+                raise HTTPException(404, f"Session {session_id!r} not found")
+
+            # Store user message
+            add_message(session_id, role="user", content=req.content)
+
+            # Build conversation history for the router
+            history_msgs = get_messages(session_id, limit=20)
+            history = [
+                {"role": m["role"], "content": m["content"]}
+                for m in history_msgs[:-1]  # exclude the message we just added
+            ]
+
+            # Route through the framework
+            query_req = QueryRequest(
+                query=req.content,
+                session_id=session_id,
+                conversation_history=history,
+            )
+            result = await self._handle(query_req)
+
+            # Store assistant message
+            add_message(
+                session_id,
+                role="assistant",
+                content=result.response,
+                domain=result.primary_domain,
+                routing_mode=result.routing_mode,
+                u_score=result.u_score,
+                latency_ms=result.latency_ms,
+            )
+
+            return {
+                "session_id": session_id,
+                "message_id": str(uuid.uuid4()),
+                "response": result.response,
+                "domain": result.primary_domain,
+                "routing_mode": result.routing_mode,
+                "u_score": result.u_score,
+                "latency_ms": result.latency_ms,
+                "contradictions_detected": result.contradictions_detected,
+            }
 
         @app.get("/metrics", tags=["observability"], include_in_schema=False)
         async def prometheus_metrics():
@@ -1070,6 +1169,7 @@ class Router:
         log.info("single→%s  U=%.3f  C=%.3f  contra=%d  dpo=%d", domain, u, conf, n_contra, n_dpo)
         _audit_query(req, domain, "single", u, conf, latency_ms, n_contra)
         from aua.metrics import get_metrics
+
         get_metrics().record_query(
             domain=domain,
             routing_mode="single",
@@ -1151,7 +1251,14 @@ class Router:
         self._total_dpo += n_dpo
         _fanout_ms = round((time.time() - t0) * 1000, 1)
         from aua.metrics import get_metrics as _gm
-        _gm().record_query(domain=primary_domain, routing_mode="fanout", latency_s=_fanout_ms / 1000, u_score=u, status="ok")
+
+        _gm().record_query(
+            domain=primary_domain,
+            routing_mode="fanout",
+            latency_s=_fanout_ms / 1000,
+            u_score=u,
+            status="ok",
+        )
         return RouterResponse(
             query=req.query,
             routing_mode="fanout",
@@ -1183,7 +1290,14 @@ class Router:
         self._total_dpo += n_dpo
         _arb_ms = round((time.time() - t0) * 1000, 1)
         from aua.metrics import get_metrics as _gm2
-        _gm2().record_query(domain="general", routing_mode="arbiter", latency_s=_arb_ms / 1000, u_score=u, status="ok")
+
+        _gm2().record_query(
+            domain="general",
+            routing_mode="arbiter",
+            latency_s=_arb_ms / 1000,
+            u_score=u,
+            status="ok",
+        )
         return RouterResponse(
             query=req.query,
             routing_mode="arbiter",

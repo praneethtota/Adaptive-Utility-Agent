@@ -73,7 +73,9 @@ def main():
     ),
     help="Use a built-in hardware-tier template (rtx4090/a100 are aliases).",
 )
-def serve(config, dry_run, no_router, router_only, startup_timeout, tier):
+@click.option("--with-ui", "with_ui", is_flag=True, default=False, help="Also start the Chat UI.")
+@click.option("--ui-port", default=3001, show_default=True, type=int, help="Chat UI port.")
+def serve(config, dry_run, no_router, router_only, startup_timeout, tier, with_ui, ui_port):
     """Start all specialists + router from aua_config.yaml.
 
     \b
@@ -105,6 +107,9 @@ def serve(config, dry_run, no_router, router_only, startup_timeout, tier):
         router_only=router_only,
         startup_timeout=startup_timeout,
     )
+
+    if with_ui and not dry_run:
+        _start_chat_ui(ui_port)
 
 
 # ── aua init ──────────────────────────────────────────────────────────────────
@@ -1376,3 +1381,348 @@ def certs_inspect(cert_dir, as_json):
         else:
             status = f"[green]valid ({days}d remaining)[/green]"
         console.print(f"  {status}  {Path(r['file']).name}")
+
+
+# ── aua eval ──────────────────────────────────────────────────────────────────
+
+
+@main.group()
+def eval():
+    """Run evaluation datasets against the live AUA router."""
+    pass
+
+
+@eval.command("run")
+@click.option("--dataset", "-d", required=True, help="Path to eval dataset YAML.")
+@click.option("--config", "-c", default="aua_config.yaml", show_default=True)
+@click.option("--url", default="http://localhost:8000", show_default=True, help="Router URL.")
+@click.option("--output-dir", default=".aua/evals", show_default=True)
+@click.option("--timeout", default=120.0, show_default=True, type=float)
+@click.option("--json", "as_json", is_flag=True, default=False)
+def eval_run(dataset, config, url, output_dir, timeout, as_json):
+    """Run an evaluation dataset against the live router.
+
+    \b
+    Examples:
+        aua eval run --dataset evals/coding_smoke.yaml
+        aua eval run --dataset evals/math_smoke.yaml --json
+    """
+    import json as _json
+
+    from aua.eval import run_dataset, save_report
+
+    console.print(f"Running eval: [cyan]{dataset}[/cyan]  router=[dim]{url}[/dim]")
+
+    try:
+        report = run_dataset(dataset, router_url=url, timeout=timeout)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Eval failed: {e}")
+        sys.exit(1)
+
+    fname = save_report(report, output_dir)
+
+    if as_json:
+        print(_json.dumps(report.to_dict(), indent=2))
+        return
+
+    # Pretty summary
+    rate_color = (
+        "green" if report.pass_rate >= 0.8 else "yellow" if report.pass_rate >= 0.5 else "red"
+    )
+    console.print(f"\n[bold]Results — {report.dataset_name}[/bold]")
+    console.print(
+        f"  Pass rate:   [{rate_color}]{report.pass_rate:.0%}[/{rate_color}]  ({report.passed}/{report.total})"
+    )
+    console.print(f"  Mean U:      {report.mean_u_score:.4f}")
+    console.print(f"  Mean latency:{report.mean_latency_ms:.0f}ms")
+
+    for c in report.cases:
+        icon = "[green]✓[/green]" if c["passed"] else "[red]✗[/red]"
+        fail_str = f"  [dim]{'; '.join(c['failures'])}[/dim]" if c["failures"] else ""
+        err_str = f"  [red]{c['error']}[/red]" if c["error"] else ""
+        console.print(
+            f"  {icon} {c['id']:35s} U={c['u_score']:.3f}  {c['latency_ms']:.0f}ms{fail_str}{err_str}"
+        )
+
+    console.print(f"\n[dim]Report saved: {fname}[/dim]")
+
+    if report.pass_rate < 0.5:
+        sys.exit(1)
+
+
+@eval.command("report")
+@click.argument("report_path", default=".aua/evals/latest.json")
+@click.option("--json", "as_json", is_flag=True, default=False)
+def eval_report(report_path, as_json):
+    """Display a saved eval report.
+
+    \b
+    Examples:
+        aua eval report
+        aua eval report .aua/evals/coding_smoke_20260511_090000.json
+    """
+    import json as _json
+
+    try:
+        data = _json.loads(Path(report_path).read_text())
+    except FileNotFoundError:
+        console.print(f"[red]✗[/red] Report not found: {report_path}")
+        sys.exit(1)
+
+    if as_json:
+        print(_json.dumps(data, indent=2))
+        return
+
+    s = data["summary"]
+    console.print(f"\n[bold]{data['dataset']}[/bold]  [dim]{data.get('run_at_human', '')}[/dim]")
+    console.print(f"  Pass rate: {s['pass_rate']:.0%}  ({s['passed']}/{s['total']})")
+    console.print(f"  Mean U:    {s['mean_u_score']:.4f}")
+    console.print(f"  Latency:   {s['mean_latency_ms']:.0f}ms")
+    for c in data["cases"]:
+        icon = "[green]✓[/green]" if c["passed"] else "[red]✗[/red]"
+        console.print(f"  {icon} {c['id']}")
+
+
+@eval.command("compare")
+@click.option("--baseline", required=True, help="Baseline report JSON path.")
+@click.option("--candidate", required=True, help="Candidate report JSON path.")
+@click.option("--json", "as_json", is_flag=True, default=False)
+def eval_compare(baseline, candidate, as_json):
+    """Compare two eval reports for regression.
+
+    \b
+    Examples:
+        aua eval compare --baseline .aua/evals/blue.json --candidate .aua/evals/green.json
+    """
+    import json as _json
+
+    def _load(path: str) -> dict:
+        return _json.loads(Path(path).read_text())
+
+    b = _load(baseline)
+    c = _load(candidate)
+
+    b_rate = b["summary"]["pass_rate"]
+    c_rate = c["summary"]["pass_rate"]
+    b_u = b["summary"]["mean_u_score"]
+    c_u = c["summary"]["mean_u_score"]
+
+    delta_pass = c_rate - b_rate
+    delta_u = c_u - b_u
+    regressed = delta_pass < -0.05 or delta_u < -0.02
+
+    result = {
+        "verdict": "REGRESSION" if regressed else "OK",
+        "regressed": regressed,
+        "baseline": {"dataset": b["dataset"], "pass_rate": b_rate, "u_score": b_u},
+        "candidate": {"dataset": c["dataset"], "pass_rate": c_rate, "u_score": c_u},
+        "delta_pass_rate": round(delta_pass, 3),
+        "delta_u_score": round(delta_u, 4),
+    }
+
+    if as_json:
+        print(_json.dumps(result, indent=2))
+        return
+
+    verdict_color = "red" if regressed else "green"
+    console.print(f"\n[bold][{verdict_color}]{result['verdict']}[/{verdict_color}][/bold]")
+    console.print(f"  Pass rate: {b_rate:.0%} → {c_rate:.0%}  (Δ {delta_pass:+.0%})")
+    console.print(f"  U score:   {b_u:.4f} → {c_u:.4f}  (Δ {delta_u:+.4f})")
+
+    if regressed:
+        sys.exit(1)
+
+
+# ── aua corrections / dpo export ──────────────────────────────────────────────
+
+
+@main.group()
+def corrections():
+    """Manage and export corrections from the state store."""
+    pass
+
+
+@corrections.command("export")
+@click.option(
+    "--format", "fmt", default="jsonl", show_default=True, type=click.Choice(["jsonl", "json"])
+)
+@click.option("--domain", default=None, help="Filter by domain.")
+@click.option("--limit", default=1000, show_default=True, type=int)
+@click.option("--output", "-o", default=None, help="Output file path (default: stdout).")
+@click.option("--redact", is_flag=True, default=False, help="Redact sensitive fields.")
+def corrections_export(fmt, domain, limit, output, redact):
+    """Export stored corrections from the state store.
+
+    \b
+    Examples:
+        aua corrections export --format jsonl
+        aua corrections export --domain software_engineering --output corrections.jsonl
+        aua corrections export --redact
+    """
+    import json as _json
+
+    from aua.state import get_state_store
+
+    store = get_state_store()
+    filters = {"domain": domain} if domain else {}
+    records = store.query("corrections", filters=filters, limit=limit)
+
+    if redact:
+        for r in records:
+            if "claim" in r and len(r["claim"]) > 100:
+                r["claim"] = r["claim"][:100] + "...[redacted]"
+
+    if fmt == "jsonl":
+        lines = "\n".join(_json.dumps(r, default=str) for r in records)
+    else:
+        lines = _json.dumps(records, indent=2, default=str)
+
+    if output:
+        Path(output).write_text(lines)
+        console.print(f"[green]✓[/green] Exported {len(records)} corrections → {output}")
+    else:
+        print(lines)
+
+
+@main.group()
+def dpo():
+    """Export DPO preference pairs for fine-tuning."""
+    pass
+
+
+@dpo.command("export")
+@click.option(
+    "--format",
+    "fmt",
+    default="jsonl",
+    show_default=True,
+    type=click.Choice(["jsonl", "preference-pairs"]),
+)
+@click.option("--domain", default=None, help="Filter by domain.")
+@click.option("--limit", default=1000, show_default=True, type=int)
+@click.option("--output", "-o", default=None, help="Output file path (default: stdout).")
+def dpo_export(fmt, domain, limit, output):
+    """Export DPO preference pairs for fine-tuning.
+
+    Output format: {prompt, chosen, rejected, field, utility_chosen,
+                    utility_rejected, correction_ids, trace_id}
+
+    \b
+    Examples:
+        aua dpo export --format jsonl --output dpo_pairs.jsonl
+        aua dpo export --format preference-pairs --domain software_engineering
+    """
+    import json as _json
+
+    from aua.state import get_state_store
+
+    store = get_state_store()
+    filters = {"domain": domain} if domain else {}
+    records = store.query("corrections", filters=filters, limit=limit)
+
+    # Build DPO pairs: corrections have claim (chosen) and rejected
+    pairs = []
+    for r in records:
+        if not r.get("rejected"):
+            continue
+        pairs.append(
+            {
+                "prompt": r.get("subject", ""),
+                "chosen": r.get("claim", ""),
+                "rejected": r.get("rejected", ""),
+                "field": r.get("domain", ""),
+                "utility_chosen": r.get("effective_confidence", 0.0),
+                "utility_rejected": 0.0,
+                "correction_ids": [r.get("id", "")],
+                "trace_id": "",
+                "source": r.get("source", "arbiter"),
+            }
+        )
+
+    if fmt == "jsonl" or fmt == "preference-pairs":
+        lines = "\n".join(_json.dumps(p, default=str) for p in pairs)
+    else:
+        lines = _json.dumps(pairs, indent=2, default=str)
+
+    if output:
+        Path(output).write_text(lines)
+        console.print(f"[green]✓[/green] Exported {len(pairs)} DPO pairs → {output}")
+    else:
+        if pairs:
+            print(lines)
+        else:
+            console.print("[dim]No DPO pairs found (need contradictions to generate pairs).[/dim]")
+
+
+def _start_chat_ui(port: int = 3001) -> None:
+    """Start the AUA Chat UI (Next.js) as a background process."""
+    import shutil
+    import subprocess as _sp
+
+    ui_dir = Path(__file__).parent.parent / "apps" / "aua_chat"
+    if not ui_dir.exists():
+        console.print("[yellow]⚠[/yellow]  Chat UI not found at apps/aua_chat/. Skipping.")
+        return
+
+    if not shutil.which("node"):
+        console.print("[yellow]⚠[/yellow]  Node.js not found — Chat UI requires Node.js 18+.")
+        return
+
+    # Install deps if needed
+    node_modules = ui_dir / "node_modules"
+    if not node_modules.exists():
+        console.print("[dim]Installing Chat UI dependencies (first run)…[/dim]")
+        _sp.run(["npm", "install", "--prefer-offline"], cwd=str(ui_dir), check=True)
+
+    console.print(f"[dim]Starting Chat UI on http://localhost:{port}[/dim]")
+    _sp.Popen(
+        ["npm", "run", "dev", "--", "--port", str(port)],
+        cwd=str(ui_dir),
+        stdout=_sp.DEVNULL,
+        stderr=_sp.DEVNULL,
+    )
+    console.print(
+        f"[green]✓[/green] Chat UI: [cyan]http://localhost:{port}[/cyan]  (admin / aua-admin)"
+    )
+
+
+@main.command("ui")
+@click.option("--port", default=3001, show_default=True, type=int)
+@click.option("--install-only", is_flag=True, default=False, help="Only install dependencies.")
+def ui_command(port, install_only):
+    """Start the AUA Chat UI independently.
+
+    \b
+    Requires Node.js 18+ and npm. First run installs dependencies.
+
+    \b
+    Examples:
+        aua ui
+        aua ui --port 4000
+        aua serve --with-ui
+    """
+    import shutil
+    import subprocess as _sp
+
+    ui_dir = Path(__file__).parent.parent / "apps" / "aua_chat"
+    if not ui_dir.exists():
+        console.print(f"[red]✗[/red] Chat UI not found: {ui_dir}")
+        sys.exit(1)
+    if not shutil.which("node"):
+        console.print("[red]✗[/red] Node.js not found — install Node.js 18+")
+        sys.exit(1)
+
+    node_modules = ui_dir / "node_modules"
+    if not node_modules.exists() or install_only:
+        console.print("Installing dependencies…")
+        _sp.run(["npm", "install"], cwd=str(ui_dir), check=True)
+        if install_only:
+            console.print("[green]✓ Dependencies installed.[/green]")
+            return
+
+    console.print(f"Starting Chat UI on [cyan]http://localhost:{port}[/cyan]")
+    console.print("[dim]Login: admin / aua-admin  (set AUA_USERS env to change)[/dim]")
+    try:
+        _sp.run(["npm", "run", "dev", "--", "--port", str(port)], cwd=str(ui_dir))
+    except KeyboardInterrupt:
+        console.print("\n[dim]Chat UI stopped.[/dim]")

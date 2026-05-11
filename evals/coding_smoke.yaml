@@ -1,0 +1,38 @@
+# AUA Smoke Eval — Software Engineering
+# Run: aua eval run --dataset evals/coding_smoke.yaml
+name: coding_smoke
+field: software_engineering
+description: Basic coding correctness and complexity awareness
+
+cases:
+  - id: binary_search_impl
+    prompt: "Write a binary search function in Python."
+    expected_properties:
+      - contains: "def binary_search"
+      - contains_any: ["mid", "low", "high"]
+      - min_length: 50
+
+  - id: binary_search_complexity
+    prompt: "What is the time complexity of binary search and why?"
+    expected_properties:
+      - contains_any: ["O(log n)", "O(log(n))", "logarithmic"]
+      - min_length: 30
+
+  - id: merge_sort
+    prompt: "Implement merge sort in Python. State its time complexity."
+    expected_properties:
+      - contains: "def merge"
+      - contains_any: ["O(n log n)", "O(n*log n)", "n log n"]
+      - min_length: 80
+
+  - id: fibonacci_dp
+    prompt: "Write a dynamic programming solution for Fibonacci numbers."
+    expected_properties:
+      - contains_any: ["memo", "dp", "cache", "lru_cache", "memoiz"]
+      - min_length: 40
+
+  - id: lru_cache
+    prompt: "Implement an LRU cache in Python."
+    expected_properties:
+      - contains_any: ["OrderedDict", "deque", "capacity", "cache"]
+      - min_length: 60

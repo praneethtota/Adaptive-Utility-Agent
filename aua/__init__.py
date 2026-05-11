@@ -27,6 +27,15 @@ from aua.assertions_store import AssertionMatch, AssertionsStore
 from aua.auth import AUAToken, TokenManager, get_token_manager, init_token_manager
 from aua.blue_green import BlueGreenDeployment, EvaluationSummary
 from aua.certs import generate_dev_certs, inspect_certs
+from aua.chat import (
+    add_message,
+    create_session,
+    delete_session,
+    ensure_chat_tables,
+    get_messages,
+    get_session,
+    list_sessions,
+)
 from aua.confidence_updater import ConfidenceUpdater
 from aua.config import (
     AVAILABLE_TIERS,
@@ -65,6 +74,7 @@ from aua.endpoints import (
     StreamErrorEvent,
     StreamStartEvent,
 )
+from aua.eval import EvalReport, run_dataset, save_report
 from aua.field_classifier import FieldClassifier
 from aua.hooks import HookRunner, get_hook_runner
 from aua.hot_reload import HotReloader, ReloadResult
@@ -190,6 +200,18 @@ __all__ = [
     "get_metrics",
     # v0.9 — logging
     "configure_logging",
+    # v0.9 — chat session API
+    "create_session",
+    "get_session",
+    "list_sessions",
+    "delete_session",
+    "get_messages",
+    "add_message",
+    "ensure_chat_tables",
+    # v0.9 — eval harness
+    "EvalReport",
+    "run_dataset",
+    "save_report",
     # v0.9 — rate limiting
     "RateLimitMiddleware",
     # v0.9 — encryption at rest

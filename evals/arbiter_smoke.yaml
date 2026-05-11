@@ -1,0 +1,18 @@
+# AUA Smoke Eval — Arbiter behaviour
+name: arbiter_smoke
+field: any
+description: Tests arbiter engagement on cross-domain queries
+
+cases:
+  - id: cross_domain_cs_math
+    prompt: "Explain the mathematical basis of binary search. Why is it O(log n)?"
+    expected_properties:
+      - contains_any: ["log", "halv", "divid"]
+      - min_length: 40
+
+  - id: software_and_math_overlap
+    prompt: "Implement Newton's method for finding square roots in Python."
+    expected_properties:
+      - contains: "def "
+      - contains_any: ["newton", "sqrt", "converge", "iterate"]
+      - min_length: 40

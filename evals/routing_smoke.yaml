@@ -1,0 +1,24 @@
+# AUA Smoke Eval — Routing correctness
+# Tests that the router sends queries to correct domains
+name: routing_smoke
+field: any
+description: Verifies routing decisions
+
+cases:
+  - id: code_goes_to_swe
+    prompt: "Write a quicksort in Python."
+    expected_properties:
+      - expected_domain: software_engineering
+      - min_length: 30
+
+  - id: math_goes_to_math
+    prompt: "What is the integral of sin(x)?"
+    expected_properties:
+      - expected_domain_any: [mathematics, software_engineering]
+      - min_length: 10
+
+  - id: general_question
+    prompt: "What is the capital of France?"
+    expected_properties:
+      - contains_any: ["Paris", "paris"]
+      - min_length: 3

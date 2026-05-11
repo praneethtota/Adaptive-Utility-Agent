@@ -1,0 +1,17 @@
+# AUA Smoke Eval — Correction loop
+name: correction_smoke
+field: software_engineering
+description: Checks that correction injection works
+
+cases:
+  - id: basic_with_correction_context
+    prompt: "What is the time complexity of bubble sort?"
+    expected_properties:
+      - contains_any: ["O(n^2)", "O(n²)", "quadratic", "n squared"]
+      - min_length: 20
+
+  - id: stack_operations
+    prompt: "What are the time complexities of push and pop on a stack?"
+    expected_properties:
+      - contains_any: ["O(1)", "constant"]
+      - min_length: 10
