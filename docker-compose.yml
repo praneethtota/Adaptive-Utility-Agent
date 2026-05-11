@@ -86,18 +86,14 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: |
       "
-      echo 'Waiting for Ollama to be ready...' &&
-      until ollama list > /dev/null 2>&1; do
-        echo 'Ollama not ready yet — retrying in 3s...' && sleep 3
-      done &&
-      echo 'Ollama ready — pulling models...' &&
+      echo 'Ollama is healthy (depends_on verified) — pulling models...' &&
       ollama pull ${SWE_MODEL:-qwen2.5-coder:7b} &&
       ollama pull ${MATH_MODEL:-qwen2.5:7b} &&
       ollama pull ${ARBITER_MODEL:-qwen2.5:3b} &&
       echo 'All models ready'
       "
     environment:
-      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=ollama:11434
     restart: "no"
 
   # ── Prometheus ──────────────────────────────────────────────────────────────
