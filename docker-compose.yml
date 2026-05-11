@@ -17,6 +17,7 @@ name: aua
 
 x-aua-base: &aua-base
   image: aua:${AUA_VERSION:-0.7.0b0}
+  pull_policy: build  # always build from local Dockerfile — never pull from registry
   build:
     context: .
     target: prod
