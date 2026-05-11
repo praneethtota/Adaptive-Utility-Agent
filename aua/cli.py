@@ -1656,33 +1656,81 @@ def dpo_export(fmt, domain, limit, output):
 
 def _start_chat_ui(port: int = 3001) -> None:
     """Start the AUA Chat UI (Next.js) as a background process."""
+    import os
     import shutil
     import subprocess as _sp
+    import time
 
     ui_dir = Path(__file__).parent.parent / "apps" / "aua_chat"
     if not ui_dir.exists():
         console.print("[yellow]⚠[/yellow]  Chat UI not found at apps/aua_chat/. Skipping.")
+        console.print(
+            "[dim]  Tip: run [cyan]cd apps/aua_chat && npm run dev[/cyan] in a separate terminal.[/dim]"
+        )
         return
 
-    if not shutil.which("node"):
-        console.print("[yellow]⚠[/yellow]  Node.js not found — Chat UI requires Node.js 18+.")
+    # Build a PATH that includes common node install locations on Mac
+    # (nvm, homebrew, volta, fnm, system) — shutil.which alone misses nvm paths
+    extra = [
+        os.path.expanduser("~/.nvm/versions/node/$(node --version 2>/dev/null)/bin"),
+        "/opt/homebrew/bin",           # Apple Silicon homebrew
+        "/usr/local/bin",              # Intel homebrew / system node
+        os.path.expanduser("~/.volta/bin"),
+        os.path.expanduser("~/.fnm/current/bin"),
+    ]
+    env = os.environ.copy()
+    env["PATH"] = ":".join(extra) + ":" + env.get("PATH", "")
+
+    npm = shutil.which("npm", path=env["PATH"])
+    if not npm:
+        console.print("[yellow]⚠[/yellow]  npm not found — Chat UI requires Node.js 18+.")
+        console.print(
+            "  Install: [cyan]brew install node[/cyan]  or  [cyan]https://nodejs.org[/cyan]\n"
+            "  Then run manually: [cyan]cd apps/aua_chat && npm run dev[/cyan]"
+        )
         return
 
     # Install deps if needed
     node_modules = ui_dir / "node_modules"
     if not node_modules.exists():
         console.print("[dim]Installing Chat UI dependencies (first run)…[/dim]")
-        _sp.run(["npm", "install", "--prefer-offline"], cwd=str(ui_dir), check=True)
+        _sp.run([npm, "install", "--prefer-offline"], cwd=str(ui_dir), check=True, env=env)
+
+    # Log to .aua/logs/ui.log so errors are visible
+    log_dir = Path(".aua") / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / "ui.log"
+    log_file = open(log_path, "w")
 
     console.print(f"[dim]Starting Chat UI on http://localhost:{port}[/dim]")
-    _sp.Popen(
-        ["npm", "run", "dev", "--", "--port", str(port)],
+    proc = _sp.Popen(
+        [npm, "run", "dev", "--", "--port", str(port)],
         cwd=str(ui_dir),
-        stdout=_sp.DEVNULL,
-        stderr=_sp.DEVNULL,
+        stdout=log_file,
+        stderr=log_file,
+        env=env,
     )
+
+    # Give Next.js 2 seconds to fail fast — if it exits immediately, surface the log
+    time.sleep(2)
+    if proc.poll() is not None:
+        log_file.flush()
+        console.print(f"[red]✗[/red]  Chat UI failed to start. Last log lines ({log_path}):")
+        try:
+            lines = log_path.read_text().strip().splitlines()
+            for line in lines[-10:]:
+                console.print(f"  [dim]{line}[/dim]")
+        except Exception:
+            pass
+        console.print(
+            "\n  Run manually in a separate terminal:\n"
+            f"  [cyan]cd {ui_dir} && npm run dev[/cyan]"
+        )
+        return
+
     console.print(
-        f"[green]✓[/green] Chat UI: [cyan]http://localhost:{port}[/cyan]  (admin / aua-admin)"
+        f"[green]✓[/green] Chat UI: [cyan]http://localhost:{port}[/cyan]  "
+        f"(admin / aua-admin)  log: {log_path}"
     )
 
 
@@ -1701,6 +1749,7 @@ def ui_command(port, install_only):
         aua ui --port 4000
         aua serve --with-ui
     """
+    import os
     import shutil
     import subprocess as _sp
 
@@ -1708,14 +1757,25 @@ def ui_command(port, install_only):
     if not ui_dir.exists():
         console.print(f"[red]✗[/red] Chat UI not found: {ui_dir}")
         sys.exit(1)
-    if not shutil.which("node"):
-        console.print("[red]✗[/red] Node.js not found — install Node.js 18+")
+
+    # Resolve npm with Mac-aware PATH (nvm, homebrew, volta, fnm)
+    extra = [
+        "/opt/homebrew/bin", "/usr/local/bin",
+        os.path.expanduser("~/.volta/bin"),
+        os.path.expanduser("~/.fnm/current/bin"),
+    ]
+    env = os.environ.copy()
+    env["PATH"] = ":".join(extra) + ":" + env.get("PATH", "")
+    npm = shutil.which("npm", path=env["PATH"])
+    if not npm:
+        console.print("[red]✗[/red] npm not found — install Node.js 18+")
+        console.print("  [cyan]brew install node[/cyan]  or  [cyan]https://nodejs.org[/cyan]")
         sys.exit(1)
 
     node_modules = ui_dir / "node_modules"
     if not node_modules.exists() or install_only:
         console.print("Installing dependencies…")
-        _sp.run(["npm", "install"], cwd=str(ui_dir), check=True)
+        _sp.run([npm, "install"], cwd=str(ui_dir), check=True, env=env)
         if install_only:
             console.print("[green]✓ Dependencies installed.[/green]")
             return
@@ -1723,6 +1783,6 @@ def ui_command(port, install_only):
     console.print(f"Starting Chat UI on [cyan]http://localhost:{port}[/cyan]")
     console.print("[dim]Login: admin / aua-admin  (set AUA_USERS env to change)[/dim]")
     try:
-        _sp.run(["npm", "run", "dev", "--", "--port", str(port)], cwd=str(ui_dir))
+        _sp.run([npm, "run", "dev", "--", "--port", str(port)], cwd=str(ui_dir), env=env)
     except KeyboardInterrupt:
         console.print("\n[dim]Chat UI stopped.[/dim]")

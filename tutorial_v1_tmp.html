@@ -241,7 +241,7 @@ aua doctor --strict        <span class="c"># warnings as failures — use in CI<
 aua doctor --json          <span class="c"># machine-readable output</span>
 
 aua serve                  <span class="c"># start specialists + router + arbiter</span>
-aua serve --with-ui        <span class="c"># also start Chat UI at :3000</span>
+aua serve --with-ui        <span class="c"># also start Chat UI at :3001 (see note below)</span>
 aua serve --dry-run        <span class="c"># print commands without executing</span></pre>
 </div>
 
@@ -683,9 +683,43 @@ FAILED:
 <!-- ═══════════════════════════════════════════ PART 9 -->
 <h2 id="part-9" class="part-heading"><span class="part-badge">Part 9</span> Chat UI <span class="time-badge">~15 min</span></h2>
 
-<p>AUA ships a Next.js 14 reference UI. Start it with <code>aua serve --with-ui</code>. Login with the credentials in your config (default: <code>admin</code> / <code>aua-admin</code>).</p>
+<p>AUA ships a Next.js 14 Chat UI at <code>apps/aua_chat/</code>. It requires Node.js 18+ and runs as a separate process from the AUA router.</p>
 
-<h3>9.1 Three-zone layout</h3>
+<h3>9.0 Prerequisites</h3>
+<div class="code-block">
+<div class="code-header">bash — check Node.js</div>
+<pre>node --version   <span class="c"># must be 18+</span>
+npm --version
+
+<span class="c"># Install Node.js if missing:</span>
+brew install node          <span class="c"># macOS</span>
+# or download from https://nodejs.org</pre>
+</div>
+
+<h3>9.1 Starting the full stack</h3>
+<p>The Chat UI and AUA router run as two separate processes. Open <strong>two terminals</strong>:</p>
+
+<div class="code-block">
+<div class="code-header">Terminal 1 — AUA router (specialists + arbiter)</div>
+<pre>cd my-aua-project
+aua serve --tier macbook        <span class="c"># Mac / Apple Silicon + Ollama</span>
+<span class="c"># aua serve                     # Linux / RTX 4090 + vLLM</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Terminal 2 — Chat UI (Next.js dev server)</div>
+<pre>cd my-aua-project/apps/aua_chat
+npm install          <span class="c"># first run only — installs Next.js dependencies</span>
+npm run dev          <span class="c"># starts on http://localhost:3001</span></pre>
+</div>
+
+<p>Open <strong>http://localhost:3001</strong> — sign in with <code>admin / aua-admin</code>.</p>
+
+<div class="callout">
+  <p><strong>Note on <code>aua serve --with-ui</code>.</strong> This flag attempts to start the Chat UI automatically in the background. It works when <code>npm</code> is on your system PATH (standard Linux/Docker installs). On macOS with nvm or homebrew, node may not be on the PATH that background processes see, causing the UI to silently fail to start. If you see no Chat UI after <code>--with-ui</code>, use the two-terminal approach above — it always works. The UI log is at <code>.aua/logs/ui.log</code> if you want to diagnose the background start.</p>
+</div>
+
+<h3>9.2 Three-zone layout</h3>
 <table>
 <tr><th>Zone</th><th>Contents</th></tr>
 <tr><td><strong>Left</strong> — Session sidebar</td><td>All sessions, search, new session</td></tr>
@@ -693,10 +727,10 @@ FAILED:
 <tr><td><strong>Right</strong> — Framework Debugger</td><td>Routing decision, utility breakdown, arbiter output, latency, cost, trace link</td></tr>
 </table>
 
-<h3>9.2 AUA Controls drawer</h3>
+<h3>9.3 AUA Controls drawer</h3>
 <p>Click <strong>AUA Controls</strong> (left edge of the screen) to open the configuration drawer. Change routing thresholds, utility weights, arbiter policy, corrections, blue-green status, and observability settings — all without restarting. Uses <code>aua config reload</code> under the hood.</p>
 
-<h3>9.3 Chat Session API</h3>
+<h3>9.4 Chat Session API</h3>
 <div class="code-block">
 <div class="code-header">bash — Session API (also used by the UI)</div>
 <pre><span class="c"># Create a session</span>
@@ -716,7 +750,7 @@ curl http://localhost:8000/sessions \
   -H "Authorization: Bearer $AUA_TOKEN"</pre>
 </div>
 
-<h3>9.4 SSE streaming event types</h3>
+<h3>9.5 SSE streaming event types</h3>
 <table>
 <tr><th>Event</th><th>When fired</th></tr>
 <tr><td><code>route</code></td><td>Routing decision made — field, mode, specialists</td></tr>
