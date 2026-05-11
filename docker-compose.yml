@@ -41,7 +41,7 @@ services:
   router:
     <<: *aua-base
     container_name: aua-router
-    command: ["aua", "serve", "--router-only", "--reuse-running"]
+    command: ["aua", "serve", "--router-only"]
     ports:
       - "${AUA_ROUTER_PORT:-8000}:8000"
     healthcheck:
