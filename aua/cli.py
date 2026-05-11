@@ -947,7 +947,7 @@ def extensions_list(as_json):
     reg = get_registry()
     hooks = get_hook_runner().registered_hooks()
     mw = get_middleware_pipeline().registered()
-    data = {"plugins": list(reg._plugins.keys()), "middleware": mw, "hooks": hooks}  # type: ignore[attr-defined]
+    data = {"plugins": list(getattr(reg, "_plugins", {}).keys()), "middleware": mw, "hooks": hooks}
 
     if as_json:
         print(_json.dumps(data, indent=2))
@@ -1053,3 +1053,326 @@ def extensions_inspect(import_path):
     console.print(f"  Description: {doc or '(no docstring)'}")
     console.print(f"  Methods:     {', '.join(methods) or '(none)'}")
     console.print(f"  Module file: {getattr(module, '__file__', 'unknown')}")
+
+
+# ── aua token ─────────────────────────────────────────────────────────────────
+
+
+@main.group()
+def token():
+    """Manage AUA API access tokens."""
+    pass
+
+
+@token.command("create")
+@click.option(
+    "--scope",
+    "-s",
+    multiple=True,
+    required=True,
+    help="Scope to grant (repeat for multiple). Use 'aua:admin' for all scopes.",
+)
+@click.option(
+    "--expires",
+    default="30d",
+    show_default=True,
+    help="Expiry: Nd (days), Nw (weeks), Nm (months). e.g. 30d, 2w, 1m.",
+)
+@click.option("--label", default="", help="Human-readable label for this token.")
+@click.option("--config", "-c", default="aua_config.yaml", show_default=True)
+def token_create(scope, expires, label, config):
+    """Create a new API access token.
+
+    \b
+    Examples:
+        aua token create --scope aua:query --expires 30d
+        aua token create --scope aua:query --scope aua:stream --label "prod-app"
+        aua token create --scope aua:admin --expires 1d --label "ci-deploy"
+    """
+    import re
+
+    from aua.auth import VALID_SCOPES, TokenManager
+
+    # Parse expiry
+    m = re.match(r"^(\d+)([dwm])$", expires.lower())
+    if not m:
+        console.print("[red]✗[/red] --expires format: Nd, Nw, or Nm (e.g. 30d, 2w, 1m)")
+        sys.exit(1)
+    n, unit = int(m.group(1)), m.group(2)
+    days = {"d": n, "w": n * 7, "m": n * 30}[unit]
+
+    # Validate scopes
+    scopes = list(scope)
+    invalid = set(scopes) - VALID_SCOPES - {"aua:admin"}
+    if invalid:
+        console.print(f"[red]✗[/red] Unknown scopes: {invalid}")
+        console.print(f"Valid scopes: {sorted(VALID_SCOPES)}")
+        sys.exit(1)
+
+    try:
+        from aua.config import load_config
+
+        cfg = load_config(config)
+    except Exception:
+        cfg = None
+
+    mgr = TokenManager.from_config(cfg)
+
+    tok, tok_str = mgr.create(scopes=scopes, expires_days=days, label=label)
+
+    console.print(f"[green]✓ Token created[/green]  id=[dim]{tok.token_id[:8]}...[/dim]")
+    console.print(f"  Scopes:  {', '.join(tok.scopes)}")
+    console.print(f"  Expires: {tok.as_dict()['expires_at_human']}")
+    if label:
+        console.print(f"  Label:   {label}")
+    console.print("\n[bold]Token (store securely — shown once):[/bold]")
+    console.print(f"\n{tok_str}\n")
+    console.print("[dim]Use as: Authorization: Bearer <token>[/dim]")
+
+
+@token.command("list")
+@click.option("--config", "-c", default="aua_config.yaml", show_default=True)
+@click.option("--json", "as_json", is_flag=True, default=False)
+@click.option("--include-revoked", is_flag=True, default=False)
+def token_list(config, as_json, include_revoked):
+    """List all active tokens.
+
+    \b
+    Examples:
+        aua token list
+        aua token list --include-revoked
+        aua token list --json
+    """
+    import json as _json
+
+    from aua.auth import TokenManager
+
+    try:
+        from aua.config import load_config
+
+        cfg = load_config(config)
+    except Exception:
+        cfg = None
+
+    mgr = TokenManager.from_config(cfg)
+    tokens = mgr.list_tokens(include_revoked=include_revoked)
+
+    if as_json:
+        print(_json.dumps(tokens, indent=2, default=str))
+        return
+
+    if not tokens:
+        console.print("[dim]No tokens found.[/dim]")
+        return
+
+    from rich import box
+    from rich.table import Table
+
+    table = Table(box=box.SIMPLE, header_style="bold dim")
+    table.add_column("ID (prefix)")
+    table.add_column("Label")
+    table.add_column("Scopes")
+    table.add_column("Expires")
+    table.add_column("Status")
+
+    for t in tokens:
+        tid = t.get("token_id", "")[:8] + "..."
+        expiry = t.get("expires_at_human", t.get("expires_at", ""))[:10]
+        revoked = t.get("revoked", False)
+        status = "[red]revoked[/red]" if revoked else "[green]active[/green]"
+        scopes = ", ".join(t.get("scopes", []))
+        table.add_row(tid, t.get("label", ""), scopes, expiry, status)
+
+    console.print(table)
+
+
+@token.command("revoke")
+@click.argument("token_id")
+@click.option("--config", "-c", default="aua_config.yaml", show_default=True)
+def token_revoke(token_id, config):
+    """Revoke a token by its ID (or ID prefix).
+
+    \b
+    Examples:
+        aua token revoke abc12345-...
+    """
+    from aua.auth import TokenManager
+
+    try:
+        from aua.config import load_config
+
+        cfg = load_config(config)
+    except Exception:
+        cfg = None
+
+    mgr = TokenManager.from_config(cfg)
+
+    # If only prefix supplied, match against list
+    if len(token_id) < 36:
+        tokens = mgr.list_tokens(include_revoked=False)
+        matches = [t for t in tokens if t.get("token_id", "").startswith(token_id)]
+        if len(matches) == 0:
+            console.print(f"[red]✗[/red] No active token found with prefix {token_id!r}")
+            sys.exit(1)
+        if len(matches) > 1:
+            console.print(
+                f"[red]✗[/red] Ambiguous prefix — {len(matches)} tokens match. Use full ID."
+            )
+            sys.exit(1)
+        token_id = matches[0]["token_id"]
+
+    ok = mgr.revoke(token_id)
+    if ok:
+        console.print(f"[green]✓ Token revoked:[/green] {token_id[:8]}...")
+    else:
+        console.print(f"[red]✗[/red] Token not found: {token_id}")
+        sys.exit(1)
+
+
+@token.command("inspect")
+@click.argument("token_str_or_id")
+@click.option("--config", "-c", default="aua_config.yaml", show_default=True)
+def token_inspect(token_str_or_id, config):
+    """Inspect a token string or token ID.
+
+    \b
+    Examples:
+        aua token inspect eyJ...  # raw token string
+        aua token inspect abc12345  # token ID prefix
+    """
+    from aua.auth import TokenError, TokenManager
+
+    try:
+        from aua.config import load_config
+
+        cfg = load_config(config)
+    except Exception:
+        cfg = None
+
+    mgr = TokenManager.from_config(cfg)
+
+    # Try as token string first, then as ID
+    if "." in token_str_or_id:
+        try:
+            tok = mgr.verify(token_str_or_id)
+            d = tok.as_dict()
+            console.print("[green]✓ Valid token[/green]")
+        except TokenError as e:
+            console.print(f"[yellow]⚠ Token invalid:[/yellow] {e}")
+            # Try to parse without verification for inspection
+            try:
+                import base64
+                import json as _json
+
+                payload_b64 = token_str_or_id.rsplit(".", 1)[0]
+                payload = _json.loads(base64.urlsafe_b64decode(payload_b64 + "=="))
+                d = payload
+                console.print("[dim](signature verification failed — showing payload only)[/dim]")
+            except Exception:
+                sys.exit(1)
+    else:
+        # Lookup by ID
+        tokens = mgr.list_tokens(include_revoked=True)
+        matches = [t for t in tokens if t.get("token_id", "").startswith(token_str_or_id)]
+        if not matches:
+            console.print(f"[red]✗[/red] Token not found: {token_str_or_id}")
+            sys.exit(1)
+        d = matches[0]
+
+    for k, v in d.items():
+        console.print(f"  [dim]{k:20s}[/dim] {v}")
+
+
+# ── aua certs ─────────────────────────────────────────────────────────────────
+
+
+@main.group()
+def certs():
+    """Manage mTLS certificates for internal AUA communication."""
+    pass
+
+
+@certs.command("generate")
+@click.option(
+    "--cert-dir",
+    default=".aua/certs",
+    show_default=True,
+    help="Directory to write certificates to.",
+)
+@click.option("--force", is_flag=True, default=False, help="Overwrite existing certificates.")
+def certs_generate(cert_dir, force):
+    """Generate self-signed dev certificates for mTLS.
+
+    WARNING: These are for development only. Use your own CA in production.
+
+    \b
+    Examples:
+        aua certs generate
+        aua certs generate --cert-dir /etc/aua/certs
+    """
+    from pathlib import Path as _Path
+
+    cert_path = _Path(cert_dir)
+    if cert_path.exists() and list(cert_path.glob("*.pem")) and not force:
+        console.print(
+            f"[yellow]⚠[/yellow]  Certificates already exist in {cert_dir}. "
+            "Use [bold]--force[/bold] to overwrite."
+        )
+        sys.exit(1)
+
+    console.print(f"Generating development certificates in [cyan]{cert_dir}[/cyan]...")
+
+    try:
+        from aua.certs import generate_dev_certs
+
+        paths = generate_dev_certs(cert_dir)
+    except ImportError as e:
+        console.print(f"[red]✗[/red] {e}")
+        sys.exit(1)
+
+    for name, path in paths.items():
+        console.print(f"  [green]✓[/green] {name:15s} → {path}")
+
+    console.print(
+        "\n[yellow]⚠ Development certs only — do not use in production![/yellow]\n"
+        "[dim]For production: provide your own CA-signed certificates.[/dim]"
+    )
+
+
+@certs.command("inspect")
+@click.option("--cert-dir", default=".aua/certs", show_default=True)
+@click.option("--json", "as_json", is_flag=True, default=False)
+def certs_inspect(cert_dir, as_json):
+    """Show certificate expiry dates.
+
+    \b
+    Examples:
+        aua certs inspect
+        aua certs inspect --cert-dir /etc/aua/certs
+    """
+    import json as _json
+
+    from aua.certs import inspect_certs
+
+    results = inspect_certs(cert_dir)
+
+    if not results:
+        console.print(f"[dim]No certificates found in {cert_dir}[/dim]")
+        return
+
+    if as_json:
+        print(_json.dumps(results, indent=2))
+        return
+
+    for r in results:
+        if "error" in r:
+            console.print(f"[red]✗[/red] {r['file']}: {r['error']}")
+            continue
+        days = r.get("days_remaining", 0)
+        if r.get("expired"):
+            status = "[red]EXPIRED[/red]"
+        elif r.get("expiring_soon"):
+            status = f"[yellow]expiring in {days}d[/yellow]"
+        else:
+            status = f"[green]valid ({days}d remaining)[/green]"
+        console.print(f"  {status}  {Path(r['file']).name}")

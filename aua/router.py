@@ -522,6 +522,23 @@ class Router:
 
             return {"version": __version__, "framework": "aua"}
 
+        @app.get("/metrics", tags=["observability"], include_in_schema=False)
+        async def prometheus_metrics():
+            """Prometheus metrics endpoint. Install prometheus-client for full metrics."""
+            from fastapi.responses import Response
+
+            from aua.metrics import get_metrics
+
+            content, content_type = get_metrics().get_prometheus_output()
+            return Response(content=content, media_type=content_type)
+
+        @app.get("/metrics/cost", tags=["observability"], summary="Cost tracking metrics")
+        async def cost_metrics():
+            """GPU cost and query cost metrics."""
+            from aua.metrics import get_metrics
+
+            return get_metrics().get_cost_summary(self._config)
+
         return app
 
     # ── Streaming ─────────────────────────────────────────────────────────────

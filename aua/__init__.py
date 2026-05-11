@@ -24,7 +24,9 @@ CLI:
 
 from aua.arbiter import ArbiterAgent, ArbiterVerdict, VerdictCase
 from aua.assertions_store import AssertionMatch, AssertionsStore
+from aua.auth import AUAToken, TokenManager, get_token_manager, init_token_manager
 from aua.blue_green import BlueGreenDeployment, EvaluationSummary
+from aua.certs import generate_dev_certs, inspect_certs
 from aua.confidence_updater import ConfidenceUpdater
 from aua.config import (
     AVAILABLE_TIERS,
@@ -65,6 +67,8 @@ from aua.endpoints import (
 from aua.field_classifier import FieldClassifier
 from aua.hooks import HookRunner, get_hook_runner
 from aua.hot_reload import HotReloader, ReloadResult
+from aua.logging_config import configure_logging
+from aua.metrics import AUAMetrics, get_metrics
 from aua.middleware import AuditMiddleware, MiddlewarePipeline, PIIRedactionMiddleware
 from aua.plugins.errors import ALL_ERROR_CODES, AUAErrorCode, get_error_code
 from aua.plugins.interfaces import (
@@ -81,6 +85,8 @@ from aua.plugins.registry import PluginLoadError, PluginRegistry, get_registry, 
 from aua.presets import AVAILABLE_PRESETS, PRESETS, PresetSpec, get_preset
 from aua.router import Router
 from aua.safety import SafetyConfig, SafetyPolicy
+from aua.secrets import SecretsManager, get_secrets_manager, resolve_secret
+from aua.session import SessionContext, get_current, get_current_or_none, new_session_context
 from aua.state import FilesStateStore, SQLiteStateStore, get_state_store
 from aua.templates.registry import get_template, list_templates, render_template
 from aua.utility_scorer import DomainState, TaskScore, UtilityScorer
@@ -158,6 +164,28 @@ __all__ = [
     # v0.8 — safety
     "SafetyPolicy",
     "SafetyConfig",
+    # v0.9 — security & auth
+    "AUAToken",
+    "TokenManager",
+    "get_token_manager",
+    "init_token_manager",
+    # v0.9 — certs
+    "generate_dev_certs",
+    "inspect_certs",
+    # v0.9 — session
+    "SessionContext",
+    "new_session_context",
+    "get_current",
+    "get_current_or_none",
+    # v0.9 — secrets
+    "SecretsManager",
+    "get_secrets_manager",
+    "resolve_secret",
+    # v0.9 — metrics
+    "AUAMetrics",
+    "get_metrics",
+    # v0.9 — logging
+    "configure_logging",
     # v0.8 — templates
     "get_template",
     "render_template",
