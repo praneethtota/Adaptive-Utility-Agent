@@ -194,9 +194,14 @@ def _check_ports(config: AUAConfig) -> None:
     Skip with --reuse-running if services are already running (e.g. after a crash).
     """
     conflicts = []
-    services = [(s.name, s.port) for s in config.specialists]
-    services.append(("arbiter", config.arbiter.port))
-    services.append(("router", config.router.port))
+    # For Ollama backend, specialists share port 11434 with the Ollama server.
+    # That port is intentionally already in use — skip specialist port checks.
+    if config.backend == "ollama":
+        services = [("router", config.router.port)]
+    else:
+        services = [(s.name, s.port) for s in config.specialists]
+        services.append(("arbiter", config.arbiter.port))
+        services.append(("router", config.router.port))
 
     for name, port in services:
         if _port_in_use(port):
