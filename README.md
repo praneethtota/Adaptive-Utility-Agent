@@ -23,6 +23,127 @@ The full site includes the whitepaper with rendered math, an architecture-first 
 | Energy Systems | Grid software, DER, smart home | [domain_energy_systems_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_energy_systems_v0_5.html) |
 | Creative Systems | Generative media, content platforms | [domain_creative_systems_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_creative_systems_v0_5.html) |
 
+
+---
+
+## 🚀 Quickstart (v0.6-alpha)
+
+### 1. Install
+
+```bash
+# Runtime only (CPU / Ollama)
+pip install adaptive-utility-agent
+
+# With GPU serving backend (Linux, CUDA required)
+pip install "adaptive-utility-agent[vllm]"
+
+# Development (includes test tools)
+pip install "adaptive-utility-agent[dev]"
+```
+
+### 2. Scaffold a project
+
+```bash
+# Mac/CPU — uses Ollama (install with: brew install ollama)
+aua init my-project --tier macbook
+
+# Single RTX 4090 — uses vLLM with AWQ quantization
+aua init my-project --tier single-4090
+
+# Quad RTX 4090 — dedicated GPU per specialist
+aua init my-project --tier quad-4090
+
+# A100 80 GB — fp16, no quantization
+aua init my-project --tier a100-cluster
+
+cd my-project
+```
+
+### 3. Check your setup
+
+```bash
+aua doctor
+# Every check shows PASS / FAIL / WARN with fix instructions.
+# Exit 0 = all good. Exit 1 = at least one failure.
+
+aua doctor --json   # Machine-readable JSON output
+aua doctor --strict # Treat warnings as failures (exit 2)
+```
+
+### 4. Start the system
+
+```bash
+aua serve                     # start specialists + router
+aua serve --dry-run           # print commands without executing
+aua serve --tier single-4090  # override tier at startup
+aua serve --reuse-running     # skip port-conflict check
+```
+
+### 5. Send a query
+
+```bash
+# Single query (cURL)
+curl -X POST http://localhost:8000/query   -H "Content-Type: application/json"   -d '{"query": "Write binary search in Python. State time complexity."}'
+
+# Streaming (SSE)
+curl -N http://localhost:8000/query/stream   -X POST -H "Content-Type: application/json"   -d '{"query": "Explain the VCG mechanism."}'
+
+# Python
+from aua import Router
+from aua.config import load_config
+
+config = load_config("aua_config.yaml")
+router = Router.from_config(config)
+result = await router.query("Write bubble sort. What is its O complexity?")
+print(result.response)
+print(f"U={result.u_score:.3f}  mode={result.routing_mode}")
+```
+
+### 6. Monitor
+
+```bash
+aua status                    # live terminal dashboard (auto-refreshes)
+aua status --once             # single snapshot, then exit
+aua status --json             # JSON output
+aua status --url http://host:8000  # remote router
+```
+
+### 7. Roll back a model promotion
+
+```bash
+aua rollback --specialist swe          # interactive
+aua rollback --specialist swe --yes    # skip confirmation
+aua rollback --dry-run                 # preview only
+aua rollback --all --yes               # roll back every specialist
+```
+
+### Runtime layout
+
+```
+my-project/
+├── aua_config.yaml      ← edit this to change models/ports/tiers
+├── models/              ← place AWQ model files here
+├── dpo_pairs/           ← accumulated automatically
+├── results/             ← experiment outputs
+├── logs/                ← CLI logs
+└── .aua/                ← runtime artifacts (auto-created by aua serve)
+    ├── logs/            ← per-service log files
+    ├── pids/            ← PID files
+    ├── state/           ← promotions.jsonl
+    └── checkpoints/     ← model symlinks
+```
+
+### Supported tiers
+
+| Tier | Hardware | Backend | Specialists |
+|---|---|---|---|
+| `macbook` | Apple M-series / Intel Mac | Ollama | swe, math |
+| `single-4090` | 1× RTX 4090 24 GB | vLLM AWQ | swe, math |
+| `quad-4090` | 4× RTX 4090 (dedicated per GPU) | vLLM AWQ | swe, math, law |
+| `a100-cluster` | 1× A100 80 GB | vLLM fp16 | swe, math |
+
+Aliases `rtx4090` → `single-4090` and `a100` → `a100-cluster` remain for backward compatibility.
+
 ---
 
 ## License
@@ -31,7 +152,7 @@ The full site includes the whitepaper with rendered math, an architecture-first 
 **Whitepaper:** Creative Commons Attribution 4.0 — see `LICENSE-CC-BY-4.0`
 
 If you build on this work, please cite:
-> Tota, P. (2026). *Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems* (v0.5). GitHub. https://github.com/praneethtota/Adaptive-Utility-Agent
+> Tota, P. (2026). *Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems* (v0.6-alpha). GitHub. https://github.com/praneethtota/Adaptive-Utility-Agent
 
 ---
 
