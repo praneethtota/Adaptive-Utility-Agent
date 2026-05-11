@@ -8,6 +8,10 @@ Sequential startup is required: parallel vLLM startup causes CUDA graph
 profiling conflicts on single-GPU setups. Measured on RTX 4090: sequential
 with --enforce-eager is reliable; parallel without it fails.
 
+Foreground-only: aua serve runs in the foreground and blocks until Ctrl+C
+or SIGTERM. Use a process supervisor (systemd, supervisor, screen) for
+background/daemon operation.
+
 Usage (programmatic):
     from aua.serve import serve
     serve(config, dry_run=False, startup_timeout=120)
@@ -18,6 +22,7 @@ Usage (CLI — preferred):
     aua serve --dry-run
     aua serve --no-router
     aua serve --router-only
+    aua serve --reuse-running   # skip port-conflict check
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ from __future__ import annotations
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -36,7 +42,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from aua.config import ArbiterConfig, AUAConfig, SpecialistConfig
+from aua.config import ArbiterConfig, AUAConfig, RuntimeConfig, SpecialistConfig
 
 console = Console()
 
@@ -47,6 +53,8 @@ POLL_INTERVAL = 3.0
 # Extra sleep after a server reports healthy before starting the next one
 # (vLLM needs a moment to finish model loading after /v1/models responds)
 POST_HEALTH_SLEEP = 5.0
+# Grace period for SIGTERM before escalating to SIGKILL (seconds)
+SHUTDOWN_GRACE_SECONDS = 15
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -58,32 +66,60 @@ def serve(
     no_router: bool = False,
     router_only: bool = False,
     startup_timeout: int = DEFAULT_STARTUP_TIMEOUT,
+    reuse_running: bool = False,
 ) -> None:
     """
     Start all specialists and the router from config.
 
+    Runs in the foreground — blocks until Ctrl+C or SIGTERM.
+    For daemon/background operation, wrap with systemd or supervisord.
+
     Args:
         config:          loaded AUAConfig
-        dry_run:         print commands without executing
+        dry_run:         print commands without executing; always exits 0
         no_router:       start specialists only, skip FastAPI router
         router_only:     skip specialists, only start FastAPI router
         startup_timeout: seconds to wait for each specialist to become healthy
+        reuse_running:   skip port-conflict check (use when services are already up)
     """
     _print_banner(config, dry_run, no_router, router_only)
 
+    # ── Ensure runtime directories ─────────────────────────────────────────
+    if not dry_run:
+        config.runtime.ensure()
+
+    # ── Port-conflict check ────────────────────────────────────────────────
+    if not dry_run and not reuse_running and not router_only:
+        _check_ports(config)
+
     processes: list[subprocess.Popen] = []
 
-    # Register cleanup on Ctrl+C and SIGTERM
-    def _shutdown(sig=None, frame=None):
+    # ── Register graceful shutdown ─────────────────────────────────────────
+    def _shutdown(sig=None, frame=None) -> None:
         console.print("\n[yellow]⚡ Shutting down...[/yellow]")
+        # Phase 1: SIGTERM — ask nicely
         for p in processes:
             if p.poll() is None:
-                p.terminate()
-        # Give them 5s to exit gracefully, then kill
-        time.sleep(2)
+                try:
+                    p.terminate()
+                except OSError:
+                    pass
+        # Phase 2: wait up to SHUTDOWN_GRACE_SECONDS
+        deadline = time.time() + SHUTDOWN_GRACE_SECONDS
+        while time.time() < deadline:
+            if all(p.poll() is not None for p in processes):
+                break
+            time.sleep(0.5)
+        # Phase 3: SIGKILL — force remaining processes
         for p in processes:
             if p.poll() is None:
-                p.kill()
+                try:
+                    p.kill()
+                except OSError:
+                    pass
+        # Remove stale PID files
+        if not dry_run:
+            _remove_pid_files(config)
         console.print("[yellow]All processes stopped.[/yellow]")
         sys.exit(0)
 
@@ -98,12 +134,12 @@ def serve(
                 processes.append(p)
         else:
             for spec in config.specialists:
-                p = _start_specialist(spec, dry_run, startup_timeout)
+                p = _start_specialist(spec, dry_run, startup_timeout, config.runtime)
                 if p:
                     processes.append(p)
 
             # Arbiter
-            p = _start_arbiter(config.arbiter, dry_run, startup_timeout)
+            p = _start_arbiter(config.arbiter, dry_run, startup_timeout, config.runtime)
             if p:
                 processes.append(p)
 
@@ -114,7 +150,7 @@ def serve(
     # ── dry_run exits here ─────────────────────────────────────────────────
     if dry_run:
         console.print("\n[dim]Dry run complete. No processes started.[/dim]")
-        return
+        return  # exit 0
 
     # ── Wait for all child processes (router runs in-process via uvicorn) ──
     # If we reach here without starting uvicorn (--no-router), just wait.
@@ -124,7 +160,6 @@ def serve(
         )
         try:
             while True:
-                # Check any specialist died unexpectedly
                 for p in processes:
                     if p.poll() is not None:
                         console.print(
@@ -137,6 +172,83 @@ def serve(
             _shutdown()
 
 
+# ── Port-conflict detection ───────────────────────────────────────────────────
+
+
+def _port_in_use(port: int, host: str = "127.0.0.1") -> bool:
+    """Return True if `port` is already bound on `host`."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        try:
+            s.connect((host, port))
+            return True
+        except (ConnectionRefusedError, OSError):
+            return False
+
+
+def _check_ports(config: AUAConfig) -> None:
+    """
+    Verify all required ports are free before starting any process.
+    Exits with a clear error if a conflict is detected.
+
+    Skip with --reuse-running if services are already running (e.g. after a crash).
+    """
+    conflicts = []
+    services = [(s.name, s.port) for s in config.specialists]
+    services.append(("arbiter", config.arbiter.port))
+    services.append(("router", config.router.port))
+
+    for name, port in services:
+        if _port_in_use(port):
+            conflicts.append((name, port))
+
+    if conflicts:
+        lines = "\n".join(f"  {name}: port {port} already in use" for name, port in conflicts)
+        console.print(
+            f"\n[red]✗ Port conflict detected:[/red]\n{lines}\n\n"
+            "[dim]Options:\n"
+            "  --reuse-running   skip this check (if services are already up)\n"
+            "  Change ports in aua_config.yaml\n"
+            "  Kill the conflicting processes[/dim]"
+        )
+        sys.exit(1)
+
+
+# ── PID file helpers ──────────────────────────────────────────────────────────
+
+
+def _write_pid_file(name: str, pid: int, runtime: RuntimeConfig) -> None:
+    """Write PID to .aua/pids/{name}.pid"""
+    try:
+        pid_path = runtime.pids / f"{name}.pid"
+        pid_path.write_text(str(pid))
+    except OSError:
+        pass  # non-fatal — PID files are best-effort
+
+
+def _remove_pid_files(config: AUAConfig) -> None:
+    """Remove all PID files for this config's services."""
+    names = [s.name for s in config.specialists] + ["arbiter", "router"]
+    for name in names:
+        try:
+            pid_path = config.runtime.pids / f"{name}.pid"
+            pid_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+# ── Log file helpers ──────────────────────────────────────────────────────────
+
+
+def _open_log(name: str, runtime: RuntimeConfig):
+    """Open a log file for service `name` under .aua/logs/. Returns file handle."""
+    try:
+        log_path = runtime.logs / f"{name}.log"
+        return open(log_path, "ab")  # append binary — preserves prior runs
+    except OSError:
+        return subprocess.DEVNULL
+
+
 # ── Specialist startup ────────────────────────────────────────────────────────
 
 
@@ -144,6 +256,7 @@ def _start_specialist(
     spec: SpecialistConfig,
     dry_run: bool,
     timeout: int,
+    runtime: RuntimeConfig,
 ) -> subprocess.Popen | None:
     cmd = spec.vllm_command()
 
@@ -161,12 +274,15 @@ def _start_specialist(
     if dry_run:
         return None
 
+    log_fh = _open_log(spec.name, runtime)
     p = subprocess.Popen(
         cmd,
         env=_build_env(spec.gpu, spec.backend),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stdout=log_fh,
+        stderr=log_fh,
     )
+    _write_pid_file(spec.name, p.pid, runtime)
+    console.print(f"  [dim]pid={p.pid}  log={runtime.logs / (spec.name + '.log')}[/dim]")
     _wait_healthy(spec.name, spec.models_url, p, timeout)
     return p
 
@@ -175,6 +291,7 @@ def _start_arbiter(
     arb: ArbiterConfig,
     dry_run: bool,
     timeout: int,
+    runtime: RuntimeConfig,
 ) -> subprocess.Popen | None:
     cmd = arb.vllm_command()
 
@@ -192,12 +309,15 @@ def _start_arbiter(
     if dry_run:
         return None
 
+    log_fh = _open_log("arbiter", runtime)
     p = subprocess.Popen(
         cmd,
         env=_build_env(arb.gpu, arb.backend),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stdout=log_fh,
+        stderr=log_fh,
     )
+    _write_pid_file("arbiter", p.pid, runtime)
+    console.print(f"  [dim]pid={p.pid}  log={runtime.logs / 'arbiter.log'}[/dim]")
     _wait_healthy("arbiter", arb.models_url, p, timeout)
     return p
 
@@ -217,18 +337,9 @@ def _wait_healthy(
         spinner="dots",
     ) as status:
         while time.time() < deadline:
-            # Check if process died while we were waiting
             if proc.poll() is not None:
-                stderr = ""
-                try:
-                    if proc.stderr is not None:
-                        stderr = proc.stderr.read().decode(errors="replace")[-500:]
-                except Exception:
-                    pass
                 console.print(
-                    f"\n[red]✗ {name} exited unexpectedly "
-                    f"(code={proc.returncode}).[/red]\n"
-                    f"[dim]{stderr}[/dim]"
+                    f"\n[red]✗ {name} exited unexpectedly " f"(code={proc.returncode}).[/red]"
                 )
                 sys.exit(1)
 
@@ -276,11 +387,10 @@ def _start_ollama(
         2. Start `ollama serve` if not already reachable
         3. Pull each model that is not yet present
     """
-    ollama_url = f"http://localhost:{config.arbiter.port}/api/tags"
+    ollama_url = f"http://{config.arbiter.host}:{config.arbiter.port}/api/tags"
 
     console.print(f"\n[bold]Backend: Ollama[/bold]  [dim]port {config.arbiter.port}[/dim]")
 
-    # ── Check binary ──────────────────────────────────────────────────────
     if not dry_run and shutil.which("ollama") is None:
         console.print(
             "\n[red]✗ 'ollama' not found in PATH.[/red]\n"
@@ -297,7 +407,6 @@ def _start_ollama(
             console.print(f"  [dim]$ ollama pull {m}[/dim]")
         return None
 
-    # ── Start ollama serve if not reachable ───────────────────────────────
     proc = None
     try:
         with httpx.Client(timeout=2.0) as client:
@@ -313,7 +422,6 @@ def _start_ollama(
         )
         _wait_healthy("ollama", ollama_url, proc, timeout)
 
-    # ── Pull models ───────────────────────────────────────────────────────
     all_models = list(dict.fromkeys([s.model for s in config.specialists] + [config.arbiter.model]))
     for model in all_models:
         _ollama_pull(model)
@@ -336,7 +444,7 @@ def _ollama_pull(model: str) -> None:
     console.print(f"  Pulling [cyan]{model}[/cyan] (this may take a while)...")
     pull = subprocess.run(
         ["ollama", "pull", model],
-        capture_output=False,  # show progress to terminal
+        capture_output=False,
     )
     if pull.returncode != 0:
         console.print(f"  [red]✗ Failed to pull {model}[/red]")
@@ -366,12 +474,10 @@ def _start_router(
         console.print(f"  [dim]$ uvicorn aua.router:app --host {host} --port {port}[/dim]")
         return
 
-    # Print the ready panel
     _print_ready(config)
+    _write_pid_file("router", os.getpid(), config.runtime)
 
     router = Router.from_config(config)
-
-    # uvicorn.run blocks until Ctrl+C
     uvicorn.run(
         router.app,
         host=host,
@@ -388,7 +494,6 @@ def _build_env(gpu_index: int, backend: str = "vllm") -> dict:
     env = os.environ.copy()
     if backend == "vllm":
         env["CUDA_VISIBLE_DEVICES"] = str(gpu_index)
-    # Ollama / CPU: don't set CUDA_VISIBLE_DEVICES — Ollama manages devices itself
     return env
 
 
@@ -467,9 +572,13 @@ def _print_ready(config: AUAConfig) -> None:
 
     lines = Text()
     lines.append(f"  POST  http://{display_host}:{port}/query\n", style="green")
-    lines.append(f"  GET   http://{display_host}:{port}/health\n", style="dim")
-    lines.append(f"  GET   http://{display_host}:{port}/stats\n", style="dim")
+    lines.append(f"  POST  http://{display_host}:{port}/query/stream\n", style="green")
+    lines.append(f"  GET   http://{display_host}:{port}/health/live\n", style="dim")
+    lines.append(f"  GET   http://{display_host}:{port}/status\n", style="dim")
     lines.append(f"  GET   http://{display_host}:{port}/docs\n", style="dim")
+    pids_path = config.runtime.pids
+    lines.append(f"\n  PIDs: {pids_path}/\n", style="dim")
+    lines.append(f"  Logs: {config.runtime.logs}/\n", style="dim")
 
     console.print(
         Panel(
