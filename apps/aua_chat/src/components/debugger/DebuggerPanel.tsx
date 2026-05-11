@@ -7,43 +7,49 @@ interface Props {
   loading: boolean
 }
 
+/* Debugger palette — mint/teal (--soft2 / --accent2) */
+const D = {
+  bg:         '#ecfdf5',   // --soft2
+  bgHeader:   '#d1fae5',   // slightly deeper mint for section headers
+  bgCode:     '#bbf7d0',   // code block / formula bg
+  border:     '#6ee7b7',   // mint border
+  borderTop:  '#34d399',   // header top border (2px, accent)
+  accent:     '#0f766e',   // --accent2 teal
+  accentSoft: '#ccfbf1',   // tag bg
+  ink:        '#134e4a',   // dark teal ink
+  muted:      '#4d7c72',   // muted teal
+  row:        '#a7f3d0',   // row separator
+}
+
 export function DebuggerPanel({ debug, loading }: Props) {
   return (
     <aside style={{
-      width: '268px',
-      flexShrink: 0,
-      borderLeft: '1px solid var(--line)',
-      background: '#fafaf8',
-      display: 'flex',
-      flexDirection: 'column',
-      overflowY: 'auto',
+      width: '262px', flexShrink: 0,
+      display: 'flex', flexDirection: 'column', overflowY: 'auto',
+      background: D.bg,
+      borderLeft: `1px solid ${D.border}`,
+      boxShadow: '-2px 0 10px rgba(15,118,110,.08)',
+      zIndex: 1,
     }}>
-      {/* Header — matches HTML page h2 section heading style */}
+      {/* Header */}
       <div style={{
         padding: '.85rem 1.1rem .75rem',
-        borderBottom: '2px solid var(--line)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        borderBottom: `2px solid ${D.borderTop}`,
+        background: D.bgHeader,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <span style={{
-          fontFamily: '"DM Serif Display", Georgia, serif',
-          fontSize: '1rem',
-          color: 'var(--ink)',
-          lineHeight: 1.2,
+          fontFamily: '"DM Serif Display",Georgia,serif',
+          fontSize: '1rem', color: D.ink, lineHeight: 1.2,
         }}>
           Framework Debugger
         </span>
         <span style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: '.65rem',
-          fontWeight: 600,
-          letterSpacing: '.08em',
-          textTransform: 'uppercase',
-          background: 'var(--tag-bg)',
-          color: 'var(--accent)',
-          padding: '.15rem .5rem',
-          borderRadius: '999px',
+          fontFamily: '"JetBrains Mono",monospace', fontSize: '.62rem', fontWeight: 700,
+          letterSpacing: '.08em', textTransform: 'uppercase',
+          background: D.accentSoft, color: D.accent,
+          padding: '.15rem .5rem', borderRadius: '999px',
+          border: `1px solid ${D.border}`,
         }}>
           live
         </span>
@@ -51,12 +57,10 @@ export function DebuggerPanel({ debug, loading }: Props) {
 
       {loading && (
         <div style={{
-          padding: '.85rem 1.1rem',
-          fontSize: '.8rem',
-          color: 'var(--accent)',
-          fontFamily: '"JetBrains Mono", monospace',
-          borderBottom: '1px solid var(--line)',
-          background: 'var(--tag-bg)',
+          padding: '.75rem 1.1rem', fontSize: '.78rem',
+          color: D.accent, fontFamily: '"JetBrains Mono",monospace',
+          borderBottom: `1px solid ${D.border}`,
+          background: D.bgHeader,
         }}>
           Routing query…
         </div>
@@ -64,55 +68,37 @@ export function DebuggerPanel({ debug, loading }: Props) {
 
       {!debug && !loading && (
         <div style={{ padding: '2rem 1.1rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '.82rem', color: 'var(--muted)', fontStyle: 'italic', margin: 0 }}>
+          <p style={{ fontSize: '.8rem', color: D.muted, fontStyle: 'italic', margin: 0 }}>
             Send a message to see routing debug info
           </p>
         </div>
       )}
 
       {debug && (
-        <div style={{ padding: '0', fontSize: '.82rem' }}>
+        <div style={{ fontSize: '.8rem' }}>
 
-          {/* Route Summary — callout style */}
-          <Section label="Route Summary">
-            <Row label="Domain"         value={debug.domain}                    accent />
-            <Row label="Mode"           value={debug.routing_mode}              />
-            <Row label="U Score"        value={debug.u_score.toFixed(4)}        />
-            <Row label="Confidence"     value={debug.confidence.toFixed(3)}     />
-            <Row label="Latency"        value={`${debug.latency_ms.toFixed(0)}ms`} />
-            <Row label="Contradictions" value={String(debug.contradictions_detected)} />
+          <Section label="Route Summary" colors={D}>
+            <Row label="Domain"         value={debug.domain}                       accent colors={D} />
+            <Row label="Mode"           value={debug.routing_mode}                 colors={D} />
+            <Row label="U Score"        value={debug.u_score.toFixed(4)}           colors={D} />
+            <Row label="Confidence"     value={debug.confidence.toFixed(3)}        colors={D} />
+            <Row label="Latency"        value={`${debug.latency_ms.toFixed(0)}ms`} colors={D} />
+            <Row label="Contradictions" value={String(debug.contradictions_detected)} colors={D} />
           </Section>
 
-          {/* Classifier output */}
           {Object.keys(debug.domain_distribution).length > 0 && (
-            <Section label="Classifier Output">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+            <Section label="Classifier Output" colors={D}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
                 {Object.entries(debug.domain_distribution)
                   .sort(([, a], [, b]) => b - a)
                   .map(([domain, prob]) => (
                     <div key={domain}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                        <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>
-                          {domain}
-                        </span>
-                        <span style={{ fontFamily: '"JetBrains Mono", monospace', color: 'var(--muted)', fontSize: '.75rem' }}>
-                          {(prob * 100).toFixed(1)}%
-                        </span>
+                        <span style={{ color: D.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%', fontSize: '.76rem' }}>{domain}</span>
+                        <span style={{ fontFamily: '"JetBrains Mono",monospace', color: D.muted, fontSize: '.72rem' }}>{(prob * 100).toFixed(1)}%</span>
                       </div>
-                      {/* Weight-track style from domain pages */}
-                      <div style={{
-                        height: '8px',
-                        background: 'var(--line)',
-                        borderRadius: '999px',
-                        overflow: 'hidden',
-                      }}>
-                        <div style={{
-                          height: '100%',
-                          width: `${prob * 100}%`,
-                          background: 'var(--accent)',
-                          borderRadius: '999px',
-                          transition: 'width .3s ease',
-                        }} />
+                      <div style={{ height: '7px', background: D.bgCode, borderRadius: '999px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${prob * 100}%`, background: D.accent, borderRadius: '999px', transition: 'width .3s' }} />
                       </div>
                     </div>
                   ))}
@@ -120,52 +106,30 @@ export function DebuggerPanel({ debug, loading }: Props) {
             </Section>
           )}
 
-          {/* Utility formula — code block style */}
-          <Section label="Utility Breakdown">
+          <Section label="Utility Breakdown" colors={D}>
             <div style={{
-              background: 'var(--soft)',
-              border: '1px solid var(--line)',
-              borderRadius: '6px',
-              padding: '.6rem .85rem',
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: '.75rem',
-              lineHeight: 1.7,
-              color: '#374151',
+              background: D.bgCode, border: `1px solid ${D.border}`,
+              borderRadius: '6px', padding: '.55rem .8rem',
+              fontFamily: '"JetBrains Mono",monospace', fontSize: '.72rem',
+              lineHeight: 1.7, color: D.ink,
             }}>
-              U = w_e·E + w_c·C + w_k·K
-              <br />
-              <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                = {debug.u_score.toFixed(4)}
-              </span>
+              U = w_e·E + w_c·C + w_k·K<br />
+              <span style={{ color: D.accent, fontWeight: 700 }}>= {debug.u_score.toFixed(4)}</span>
             </div>
           </Section>
 
-          {/* Specialist responses */}
           {debug.specialist_responses && Object.keys(debug.specialist_responses).length > 0 && (
-            <Section label="Specialist Calls">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
+            <Section label="Specialist Calls" colors={D}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
                 {Object.entries(debug.specialist_responses).map(([name, resp]) => (
                   <div key={name}>
+                    <p style={{ margin: '0 0 3px', fontWeight: 600, color: D.ink, fontSize: '.76rem' }}>{name}</p>
                     <p style={{
-                      margin: '0 0 4px',
-                      fontWeight: 600,
-                      color: 'var(--ink)',
-                      fontSize: '.78rem',
-                    }}>
-                      {name}
-                    </p>
-                    <p style={{
-                      margin: 0,
-                      color: 'var(--muted)',
-                      background: 'var(--soft)',
-                      borderRadius: '6px',
-                      padding: '.5rem .7rem',
-                      lineHeight: 1.6,
-                      fontSize: '.78rem',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 4,
-                      WebkitBoxOrient: 'vertical' as const,
-                      overflow: 'hidden',
+                      margin: 0, color: D.muted, background: D.bgCode,
+                      border: `1px solid ${D.border}`, borderRadius: '6px',
+                      padding: '.45rem .65rem', lineHeight: 1.6, fontSize: '.75rem',
+                      overflow: 'hidden', display: '-webkit-box',
+                      WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' as const,
                     }}>
                       {String(resp).slice(0, 200)}{String(resp).length > 200 ? '…' : ''}
                     </p>
@@ -174,59 +138,39 @@ export function DebuggerPanel({ debug, loading }: Props) {
               </div>
             </Section>
           )}
-
         </div>
       )}
     </aside>
   )
 }
 
-/* Section block — matches the HTML page h2 section pattern */
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({ label, children, colors: C }: { label: string; children: React.ReactNode; colors: typeof D }) {
   return (
-    <div style={{ borderBottom: '1px solid var(--line)' }}>
-      <div style={{
-        padding: '.6rem 1.1rem .4rem',
-        borderBottom: '1px solid var(--line)',
-        background: 'var(--bg)',
-      }}>
+    <div style={{ borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ padding: '.5rem 1.1rem .35rem', borderBottom: `1px solid ${C.border}`, background: C.bgHeader }}>
         <span style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: '.65rem',
-          fontWeight: 700,
-          letterSpacing: '.1em',
-          textTransform: 'uppercase',
-          color: 'var(--muted)',
+          fontFamily: '"JetBrains Mono",monospace', fontSize: '.62rem',
+          fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted,
         }}>
           {label}
         </span>
       </div>
-      <div style={{ padding: '.75rem 1.1rem' }}>
-        {children}
-      </div>
+      <div style={{ padding: '.7rem 1.1rem' }}>{children}</div>
     </div>
   )
 }
 
-/* Row — key/value pair matching the page's table-row style */
-function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Row({ label, value, accent, colors: C }: { label: string; value: string; accent?: boolean; colors: typeof D }) {
   return (
     <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'baseline',
-      padding: '3px 0',
-      borderBottom: '1px solid #f0ede6',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      padding: '3px 0', borderBottom: `1px solid ${C.row}`,
     }}>
-      <span style={{ color: 'var(--muted)', fontSize: '.78rem' }}>{label}</span>
+      <span style={{ color: C.muted, fontSize: '.76rem' }}>{label}</span>
       <span style={{
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: '.75rem',
-        fontWeight: accent ? 700 : 400,
-        color: accent ? 'var(--accent)' : '#374151',
-      }}>
-        {value}
-      </span>
+        fontFamily: '"JetBrains Mono",monospace', fontSize: '.73rem',
+        fontWeight: accent ? 700 : 400, color: accent ? C.accent : C.ink,
+      }}>{value}</span>
     </div>
   )
 }
