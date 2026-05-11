@@ -22,8 +22,6 @@ CLI:
 """
 
 # ── Version ────────────────────────────────────────────────────────────────────
-__version__ = "0.5.0"
-
 # ── Arbitration ────────────────────────────────────────────────────────────────
 from aua.arbiter import ArbiterAgent, ArbiterVerdict, VerdictCase
 from aua.assertions_store import AssertionMatch, AssertionsStore
@@ -49,6 +47,7 @@ from aua.field_classifier import FieldClassifier
 # ── Routing ────────────────────────────────────────────────────────────────────
 from aua.router import Router
 from aua.utility_scorer import DomainState, TaskScore, UtilityScorer
+from aua.version import __version__
 
 __all__ = [
     # version

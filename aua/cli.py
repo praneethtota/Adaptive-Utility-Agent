@@ -15,11 +15,13 @@ from pathlib import Path
 import click
 from rich.console import Console
 
+from aua.version import __version__
+
 console = Console()
 
 
 @click.group()
-@click.version_option(version="0.5.0", prog_name="aua")
+@click.version_option(version=__version__, prog_name="aua")
 def main():
     """Adaptive Utility Agents — deployable specialist framework.
 
