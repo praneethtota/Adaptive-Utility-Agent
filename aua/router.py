@@ -1069,6 +1069,14 @@ class Router:
         latency_ms = round((time.time() - t0) * 1000, 1)
         log.info("single→%s  U=%.3f  C=%.3f  contra=%d  dpo=%d", domain, u, conf, n_contra, n_dpo)
         _audit_query(req, domain, "single", u, conf, latency_ms, n_contra)
+        from aua.metrics import get_metrics
+        get_metrics().record_query(
+            domain=domain,
+            routing_mode="single",
+            latency_s=latency_ms / 1000,
+            u_score=u,
+            status="ok",
+        )
         return RouterResponse(
             query=req.query,
             routing_mode="single",
@@ -1141,6 +1149,9 @@ class Router:
             self._requests_per_spec[s.name] = self._requests_per_spec.get(s.name, 0) + 1
         self._total_contradictions += n_contra
         self._total_dpo += n_dpo
+        _fanout_ms = round((time.time() - t0) * 1000, 1)
+        from aua.metrics import get_metrics as _gm
+        _gm().record_query(domain=primary_domain, routing_mode="fanout", latency_s=_fanout_ms / 1000, u_score=u, status="ok")
         return RouterResponse(
             query=req.query,
             routing_mode="fanout",
@@ -1151,7 +1162,7 @@ class Router:
             confidence=conf,
             contradictions_detected=n_contra,
             dpo_pairs_generated=n_dpo,
-            latency_ms=round((time.time() - t0) * 1000, 1),
+            latency_ms=_fanout_ms,
             specialist_responses=spec_responses,
         )
 
@@ -1170,6 +1181,9 @@ class Router:
         self._requests_per_spec["arbiter"] = self._requests_per_spec.get("arbiter", 0) + 1
         self._total_contradictions += n_contra
         self._total_dpo += n_dpo
+        _arb_ms = round((time.time() - t0) * 1000, 1)
+        from aua.metrics import get_metrics as _gm2
+        _gm2().record_query(domain="general", routing_mode="arbiter", latency_s=_arb_ms / 1000, u_score=u, status="ok")
         return RouterResponse(
             query=req.query,
             routing_mode="arbiter",
@@ -1180,7 +1194,7 @@ class Router:
             confidence=conf,
             contradictions_detected=n_contra,
             dpo_pairs_generated=n_dpo,
-            latency_ms=round((time.time() - t0) * 1000, 1),
+            latency_ms=_arb_ms,
         )
 
     # ── Specialist call (buffered) ────────────────────────────────────────────
