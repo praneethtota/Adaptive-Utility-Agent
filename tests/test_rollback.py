@@ -23,6 +23,8 @@ def project_dir():
         p = Path(tmp)
         shutil.copy(FIXTURES / "aua_config_minimal.yaml", p / "aua_config.yaml")
         (p / "results").mkdir()
+        # P-09: create .aua/state/ for the new JSONL promotions log
+        (p / ".aua" / "state").mkdir(parents=True)
         yield p
 
 

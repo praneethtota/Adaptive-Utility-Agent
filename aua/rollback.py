@@ -1,7 +1,8 @@
 """
 aua/rollback.py — One-command revert to the previous BLUE model.
 
-Rollback works from a promotions log at results/aua_promotions.json.
+Rollback works from a promotions log at .aua/state/promotions.jsonl.
+(Configurable via RuntimeConfig.)
 Every blue-green promotion records a PromotionEvent there. Rollback
 reads the log, finds the last non-reverted promotion for the target
 specialist, reverts aua_config.yaml, and restarts the specialist server.
@@ -24,16 +25,19 @@ import os
 import signal
 import subprocess
 import time
+import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
+from filelock import FileLock
 from rich.console import Console
 
 console = Console()
 
-PROMOTIONS_FILE = "results/aua_promotions.json"
+PROMOTIONS_FILE = "results/aua_promotions.json"  # legacy path — kept for migration
+STATE_FILE = ".aua/state/promotions.jsonl"  # canonical path (P-09+)
 HEALTH_TIMEOUT = 120
 POLL_INTERVAL = 3.0
 
@@ -62,24 +66,78 @@ class PromotionEvent:
 # ── Promotions log ────────────────────────────────────────────────────────────
 
 
+def _state_path(project_dir: str) -> Path:
+    """Return the canonical .aua/state/promotions.jsonl path."""
+    return Path(project_dir) / STATE_FILE
+
+
+def _lock_path(project_dir: str) -> Path:
+    return Path(project_dir) / ".aua/state/promotions.lock"
+
+
 def load_promotions(project_dir: str = ".") -> list[PromotionEvent]:
-    """Load the promotions log from results/aua_promotions.json."""
-    path = Path(project_dir) / PROMOTIONS_FILE
-    if not path.exists():
+    """Load the promotions log from .aua/state/promotions.jsonl.
+
+    Also migrates legacy results/aua_promotions.json if present.
+    File-locked for safe concurrent access.
+    """
+    state = _state_path(project_dir)
+    legacy = Path(project_dir) / PROMOTIONS_FILE
+
+    # Migrate legacy JSON → JSONL on first access
+    if not state.exists() and legacy.exists():
+        state.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            old_events = json.loads(legacy.read_text())
+            with state.open("w") as f:
+                for e in old_events:
+                    f.write(json.dumps(e) + "\n")
+            console.print(f"  [dim]Migrated promotions log: {legacy} → {state}[/dim]")
+        except Exception:
+            pass
+
+    if not state.exists():
         return []
+
+    lock = FileLock(str(_lock_path(project_dir)))
     try:
-        raw = json.loads(path.read_text())
-        return [PromotionEvent(**e) for e in raw]
+        with lock.acquire(timeout=10):
+            lines = state.read_text().splitlines()
+        events = []
+        for line in lines:
+            line = line.strip()
+            if line:
+                events.append(PromotionEvent(**json.loads(line)))
+        return events
     except Exception as e:
         console.print(f"[yellow]⚠[/yellow]  Could not read promotions log: {e}")
         return []
 
 
 def save_promotions(events: list[PromotionEvent], project_dir: str = ".") -> None:
-    """Write the promotions log, creating results/ if needed."""
-    path = Path(project_dir) / PROMOTIONS_FILE
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps([e.as_dict() for e in events], indent=2))
+    """Write the promotions log atomically to .aua/state/promotions.jsonl.
+
+    Uses file locking and atomic replace (.tmp → final) to prevent corruption
+    from concurrent rollback+deploy operations.
+    """
+    state = _state_path(project_dir)
+    state.parent.mkdir(parents=True, exist_ok=True)
+
+    tmp = state.with_suffix(".jsonl.tmp")
+    lock = FileLock(str(_lock_path(project_dir)))
+
+    try:
+        with lock.acquire(timeout=10):
+            # Write to .tmp first (atomic within same filesystem)
+            tmp.write_text("\n".join(json.dumps(e.as_dict()) for e in events) + "\n")
+            # Atomic rename — POSIX guarantees this is atomic
+            os.replace(str(tmp), str(state))
+    except Exception as e:
+        console.print(f"[yellow]⚠[/yellow]  Could not save promotions log: {e}")
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def record_promotion(
@@ -95,7 +153,7 @@ def record_promotion(
     """
     events = load_promotions(project_dir)
     event = PromotionEvent(
-        id=f"promo_{len(events)+1:04d}",
+        id=str(uuid.uuid4()),
         timestamp=datetime.now(timezone.utc).isoformat(),
         specialist=specialist,
         from_model=from_model,
@@ -118,6 +176,7 @@ def run_rollback(
     all_specialists: bool = False,
     yes: bool = False,
     restart: bool = True,
+    dry_run: bool = False,
 ) -> int:
     """
     Revert specialist(s) to their previous BLUE model.
@@ -175,7 +234,9 @@ def run_rollback(
                 # --all: silently skip specialists with no history
                 console.print(f"  [dim]{target_name}: no un-reverted promotions — skipping[/dim]")
                 continue
-        result = _rollback_one(target_name, cfg, config_path, project_dir, events, yes, restart)
+        result = _rollback_one(
+            target_name, cfg, config_path, project_dir, events, yes, restart, dry_run=dry_run
+        )
         if result != 0:
             n_errors += 1
 
@@ -190,6 +251,7 @@ def _rollback_one(
     events: list[PromotionEvent],
     yes: bool,
     restart: bool,
+    dry_run: bool = False,
 ) -> int:
     """Roll back a single specialist. Returns 0 on success, 1 on failure."""
 
@@ -228,6 +290,12 @@ def _rollback_one(
         f"[dim]{green_model} → {blue_model}[/dim]"
     )
 
+    if dry_run:
+        console.print("  [yellow]DRY RUN[/yellow] — no changes made")
+        console.print(f"  Would update: {config_path}  ({name}.model = {blue_model})")
+        console.print(f"  Would save rollback event to: {_state_path(project_dir)}")
+        return 0
+
     # ── 1. Update aua_config.yaml ─────────────────────────────────────────
     _update_config_model(config_path, name, blue_model)
     console.print(
@@ -248,7 +316,7 @@ def _rollback_one(
 
     # Record rollback event
     rollback_event = PromotionEvent(
-        id=f"rollback_{len(events)+1:04d}",
+        id=str(uuid.uuid4()),
         timestamp=last.reverted_at,
         specialist=name,
         from_model=green_model,
@@ -339,11 +407,13 @@ def _update_config_model(config_path: str, specialist_name: str, new_model: str)
             s["model"] = new_model
             break
 
-    # Write back with yaml.dump (preserves structure, sorts keys=False)
-    path.write_text(
+    # Atomic write: .tmp → replace (prevents partial writes on crash)
+    tmp = path.with_suffix(".yaml.tmp")
+    tmp.write_text(
         "# aua_config.yaml — updated by aua rollback\n"
         + yaml.dump(raw, default_flow_style=False, sort_keys=False, allow_unicode=True)
     )
+    os.replace(str(tmp), str(path))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
