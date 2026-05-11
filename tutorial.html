@@ -169,9 +169,10 @@ aua doctor
 aua serve
 
 <span class="c"># 5. First query (new terminal)</span>
+# Auth is disabled by default — the Authorization header is optional until you enable it
 curl -s -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Write binary search in Python", "session_id": "qs-demo"}' \
+  -d '{"query": "Write binary search in Python", "session_id": "qs-demo"}' \
   | python3 -m json.tool</pre>
 </div>
 
@@ -230,7 +231,7 @@ aua --version
 cd my-project
 
 <span class="c"># See what init created</span>
-aua config show</pre>
+aua config expand</pre>
 </div>
 
 <h3>1.3 Validate and start</h3>
@@ -343,7 +344,7 @@ aua fields inspect software_engineering</pre>
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $AUA_TOKEN" \
   -d '{
-    "prompt": "Write binary search in Python. State the time complexity.",
+    "query": "Write binary search in Python. State the time complexity.",
     "session_id": "demo-session"
   }' | python3 -m json.tool</pre>
 </div>
@@ -403,7 +404,9 @@ curl http://localhost:8000/status | python3 -m json.tool</pre>
 <h3>4.3 Using the Arbiter directly</h3>
 <div class="code-block">
 <div class="code-header">Python</div>
-<pre>from aua import ArbiterAgent, AssertionsStore
+<pre># ArbiterAgent runs automatically inside aua serve.
+# Use directly in Python for testing or custom workflows:
+from aua import ArbiterAgent, AssertionsStore
 
 store = AssertionsStore()
 arbiter = ArbiterAgent(store)
@@ -464,17 +467,20 @@ print(verdict.external_response) <span class="c"># safe to return to user</span>
 <h3>5.2 Promote and rollback</h3>
 <div class="code-block">
 <div class="code-header">bash</div>
-<pre><span class="c"># Deploy green candidate</span>
-aua deploy green --specialist swe --model models/swe-v2/
+<pre><span class="c"># Trigger blue-green promotion check via REST API</span>
+curl -X POST http://localhost:8000/deploy/green \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AUA_TOKEN" \
+  -d '{"specialist": "swe", "new_model": "qwen2.5-coder:14b"}'
 
 <span class="c"># Check status</span>
 aua status --once
 
 <span class="c"># Roll back to previous BLUE</span>
 aua rollback --specialist swe
-aua rollback --specialist swe --yes     <span class="c"># skip confirm</span>
-aua rollback --dry-run                  <span class="c"># preview only</span>
-aua rollback --all --yes                <span class="c"># all specialists</span></pre>
+aua rollback --specialist swe --yes     <span class="c"># skip confirmation</span>
+aua rollback --no-restart               <span class="c"># update config only, no restart</span>
+aua rollback --all --yes                <span class="c"># roll back all specialists</span></pre>
 </div>
 
 <h3>5.3 Using BlueGreenDeployment in Python</h3>
@@ -510,10 +516,7 @@ if bg.should_promote(summary):
 <div class="code-block">
 <div class="code-header">bash</div>
 <pre>aua config validate           <span class="c"># strict schema check — catches typos, dupe ports, bad ranges</span>
-aua config show               <span class="c"># current loaded config (secrets redacted)</span>
-aua config expand             <span class="c"># compact YAML → full resolved config</span>
-aua config diff a.yaml b.yaml <span class="c"># show differences</span>
-aua config explain routing.fanout_threshold  <span class="c"># human-readable explanation + defaults</span>
+aua config expand             <span class="c"># full resolved config with all defaults filled in (secrets redacted)</span>
 aua presets list              <span class="c"># list all built-in presets</span>
 aua presets inspect coding    <span class="c"># full preset config</span></pre>
 </div>
@@ -536,9 +539,10 @@ kill -HUP $(cat .aua/pids/router.pid)  <span class="c"># same effect</span></pre
 <h3>6.3 Config versioning and migration</h3>
 <div class="code-block">
 <div class="code-header">bash</div>
-<pre>aua config check-version
-aua config migrate --from 0.7 --to 1.0 --dry-run  <span class="c"># preview</span>
-aua config migrate --from 0.7 --to 1.0             <span class="c"># apply</span></pre>
+<pre><span class="c"># Config versioning: the aua.version field in aua_config.yaml tracks schema compatibility.</span>
+<span class="c"># Validate against the current schema:</span>
+aua config validate
+aua config expand   <span class="c"># see full resolved config with defaults applied</span></pre>
 </div>
 
 <div class="next-part"><p><strong>Part 6 done.</strong> Part 7 covers the correction loop and DPO pair export.</p></div>
@@ -565,7 +569,7 @@ aua dpo export --format preference-pairs --redact</pre>
 <div class="code-block">
 <div class="code-header">dpo_pairs_*.jsonl</div>
 <pre>{
-  "prompt": "bubble_sort_complexity",
+  "query": "bubble_sort_complexity",
   "chosen": "Bubble sort is O(n²) average case.",
   "rejected": "Bubble sort is O(n) average case.",
   "field": "software_engineering",
@@ -674,8 +678,8 @@ FAILED:
     aua eval run \
       --dataset evals/coding_smoke.yaml \
       --config aua_config.yaml \
-      --fail-on-regression
-  <span class="c"># exits 1 if any regression detected</span></pre>
+      --json > .aua/evals/ci_result.json
+  <span class="c"># check exit code: 0 = pass, 1 = failure</span></pre>
 </div>
 
 <div class="next-part"><p><strong>Part 8 done.</strong> Part 9 covers the Chat UI and how to use the Framework Debugger.</p></div>
@@ -743,7 +747,7 @@ curl -X POST http://localhost:8000/sessions \
 curl -X POST http://localhost:8000/sessions/{id}/stream \
   -H "Authorization: Bearer $AUA_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Explain quicksort"}'
+  -d '{"query": "Explain quicksort"}'
 
 <span class="c"># List all sessions</span>
 curl http://localhost:8000/sessions \
@@ -880,8 +884,8 @@ class GatewayBackend(ModelBackendPlugin):
 <div class="code-header">bash</div>
 <pre>aua extensions list
 aua extensions inspect utility_scorer
-aua extensions reload          <span class="c"># hot-reload plugin (dev mode)</span>
-aua plugins doctor             <span class="c"># validate all import paths</span></pre>
+aua extensions test --kind utility_scorer --import-path mypackage.myplugin:MyPlugin
+<span class="c"># To pick up plugin changes: restart aua serve</span></pre>
 </div>
 
 <div class="next-part"><p><strong>Part 10 done.</strong> Part 11 covers hooks and middleware — intercepting the query lifecycle.</p></div>
@@ -1006,7 +1010,7 @@ aua token revoke &lt;token-id&gt;</pre>
 curl -X POST http://localhost:8000/query \
   -H "Authorization: Bearer $AUA_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Explain quicksort", "session_id": "s1"}'</pre>
+  -d '{"query": "Explain quicksort", "session_id": "s1"}'</pre>
 </div>
 
 <h3>12.2 mTLS — encrypted internal communication</h3>
@@ -1018,8 +1022,7 @@ aua certs generate
 <span class="c"># Inspect cert details</span>
 aua certs inspect
 
-<span class="c"># Rotate certs (hot-reloaded, no restart needed)</span>
-aua certs rotate</pre>
+<span class="c"># Rotate certs (hot-reloaded, no restart needed)</span></pre>
 </div>
 
 <div class="code-block">
@@ -1069,11 +1072,11 @@ specialists:
 
 <div class="code-block">
 <div class="code-header">bash</div>
-<pre><span class="c"># View recent audit events</span>
-aua audit tail
+<pre><span class="c"># View recent audit events (written to .aua/audit.log)</span>
+tail -f .aua/audit.log
 
-<span class="c"># Verify hash chain integrity</span>
-aua audit verify</pre>
+<span class="c"># Export corrections (machine-readable audit trail)</span>
+aua corrections export --format jsonl</pre>
 </div>
 
 <div class="callout orange">
@@ -1128,9 +1131,9 @@ aua audit verify</pre>
 <h3>13.3 Grafana dashboard</h3>
 <div class="code-block">
 <div class="code-header">bash — start with observability profile</div>
-<pre>docker-compose --profile observability up
+<pre>docker-compose --profile obs up
 
-<span class="c"># Grafana at http://localhost:3001
+<span class="c"># Grafana at http://localhost:3000
 # Dashboard pre-loaded: 20 panels covering query volume, latency p50/p95/p99,
 # routing distribution, U score trends, contradiction rate, arbiter verdicts,
 # specialist health, VRAM usage, blue-green split, auth failures, cost</span></pre>
@@ -1177,13 +1180,13 @@ docker-compose up
 docker-compose --profile gpu up
 
 <span class="c"># + Prometheus and Grafana</span>
-docker-compose --profile observability up
+docker-compose --profile obs up
 
-<span class="c"># + mTLS, auth, secrets</span>
-docker-compose --profile secure up
+<span class="c"># Full local stack (Ollama + observability)</span>
+docker compose --profile ollama --profile obs up
 
-<span class="c"># All at once</span>
-docker-compose --profile gpu --profile observability --profile secure up</pre>
+<span class="c"># GPU (Linux + NVIDIA) — uses separate compose file</span>
+docker compose -f docker-compose.gpu.yml up</pre>
 </div>
 
 <h3>14.2 Deployment profiles</h3>
@@ -1263,13 +1266,9 @@ audit:
 <div class="code-block">
 <div class="code-header">bash</div>
 <pre>aua config validate [--config &lt;path&gt;]
-aua config show [--json]
+aua config expand [--json]
 aua config expand
-aua config diff &lt;a.yaml&gt; &lt;b.yaml&gt;
-aua config explain &lt;key&gt;
-aua config reload
-aua config check-version
-aua config migrate --from &lt;ver&gt; --to &lt;ver&gt; [--dry-run]</pre>
+aua config reload</pre>
 </div>
 
 <h3>aua models / fields / presets / defaults</h3>
@@ -1294,16 +1293,15 @@ aua token inspect &lt;token-id&gt;</pre>
 <div class="code-block">
 <div class="code-header">bash</div>
 <pre>aua certs generate [--ca-cert &lt;path&gt;] [--ca-key &lt;path&gt;]
-aua certs inspect
-aua certs rotate</pre>
+aua certs inspect</pre>
 </div>
 
 <h3>aua eval</h3>
 <div class="code-block">
 <div class="code-header">bash</div>
-<pre>aua eval run --dataset &lt;path&gt; [--config &lt;path&gt;] [--fail-on-regression]
+<pre>aua eval run --dataset &lt;path&gt; [--config &lt;path&gt;] [--json]
 aua eval report &lt;results.json&gt;
-aua eval compare --baseline &lt;tag&gt; --candidate &lt;tag&gt;</pre>
+aua eval compare --baseline &lt;blue.json&gt; --candidate &lt;green.json&gt;</pre>
 </div>
 
 <h3>aua corrections / dpo</h3>
@@ -1319,8 +1317,7 @@ aua dpo export --format preference-pairs [--redact]</pre>
 <pre>aua extensions list
 aua extensions inspect &lt;name&gt;
 aua extensions test --kind &lt;type&gt; --import-path &lt;path&gt;
-aua extensions reload
-aua plugins doctor</pre>
+# Validate: aua extensions test --kind <type> --import-path <path></pre>
 </div>
 
 <h3>aua status / rollback</h3>
