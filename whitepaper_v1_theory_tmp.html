@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Theory — Utility Function, Field Bounds, Personality, Trust, Correction Loop — AUA Whitepaper v1.0</title>
+<meta name="author" content="Praneeth Tota">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body)"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:16px;line-height:1.75;color:#1a1a1a;background:#fafaf8;margin:0;padding:0}
+.page{max-width:800px;margin:0 auto;padding:0 2rem 5rem;background:#fff;border-left:1px solid #e8e4de;border-right:1px solid #e8e4de;min-height:100vh}
+h1{font-family:'DM Serif Display',Georgia,serif;font-size:1.9rem;font-weight:700;margin:0 0 .25rem;line-height:1.3;color:#111}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.35rem;font-weight:400;margin:2.5rem 0 .75rem;border-bottom:2px solid #e8e4de;padding-bottom:.4rem;color:#111;scroll-margin-top:60px}
+h3{font-family:'DM Serif Display',Georgia,serif;font-size:1.1rem;font-weight:400;margin:2rem 0 .6rem;color:#222}
+h4{font-size:.95rem;font-weight:700;margin:1.5rem 0 .5rem;color:#444}
+h5{font-size:.88rem;font-weight:700;margin:1.2rem 0 .4rem;color:#555}
+p{margin:0 0 1rem}strong{font-weight:700}em{font-style:italic}
+blockquote{border-left:3px solid #c0bab2;margin:1.5rem 0;padding:.75rem 1rem;background:#f5f3ef;font-size:.9rem;color:#555}
+code{font-family:'JetBrains Mono','Courier New',monospace;font-size:.82rem;background:#f2f0eb;padding:2px 5px;border-radius:3px;color:#333}
+pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:5px;padding:1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:.79rem;line-height:1.6}
+pre code{background:none;padding:0;font-size:inherit}
+table{width:100%;border-collapse:collapse;font-size:.84rem;margin:1rem 0 1.5rem;font-family:'JetBrains Mono','Courier New',monospace}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:6px 10px;font-family:'DM Serif Display',Georgia,serif;font-size:.82rem;color:#444}
+td{padding:5px 10px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#f9f8f5}
+ul,ol{margin:0 0 1rem;padding-left:1.5rem}li{margin-bottom:.3rem}
+hr{border:none;border-top:1px solid #e0dbd4;margin:2rem 0}
+.chart-section{background:#f9f8f5;border:1px solid #e0dbd4;border-radius:8px;padding:1.5rem;margin:1.5rem 0}
+.chart-section h4{margin-top:0;color:#333}
+.chart-wrap{position:relative;width:100%;height:240px;margin:.75rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:#666;margin-bottom:6px}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{width:22px;height:3px;border-radius:2px;display:inline-block}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1.5rem}
+.metric{background:#fff;border:1px solid #e0dbd4;border-radius:6px;padding:.75rem 1rem}
+.metric .label{font-size:11px;color:#888;margin-bottom:3px}
+.metric .value{font-size:18px;font-weight:700;color:#111}
+.metric .sub{font-size:11px;color:#aaa;font-family:'JetBrains Mono',monospace}
+.appendix-b{background:#f7f5ff;border-left:3px solid #534AB7;padding:.5rem 1rem;margin:.5rem 0 1rem;font-size:.85rem;color:#444;border-radius:0 4px 4px 0}
+.appendix-b-section{font-size:16px;line-height:1.8}
+.appendix-b-section h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.3rem;font-weight:400;margin:2.5rem 0 .7rem;border-bottom:2px solid #e8e4de;padding-bottom:.4rem;color:#111}
+.appendix-b-section h3,.appendix-b-section h4,.appendix-b-section h5{font-family:'DM Serif Display',Georgia,serif;font-weight:400}
+.domain-ref{font-size:.81rem;color:#6b7280;margin:.25rem 0 .9rem;padding:.35rem .7rem;background:#eef2ff;border-left:3px solid #4338ca;border-radius:0 5px 5px 0;display:inline-block}
+.domain-ref a{color:#4338ca;text-decoration:none;font-weight:500}
+nav.site-nav{display:flex;flex-wrap:wrap;gap:.5rem .8rem;padding:.85rem 2rem;border-bottom:1px solid #e4e1da;background:#fafaf8;font-size:.83rem;position:sticky;top:0;z-index:10;margin:0 -2rem}
+nav.site-nav a{color:#4338ca;text-decoration:none;font-weight:500}
+nav.site-nav a:hover{text-decoration:underline}
+nav.site-nav a.active{color:#18181b;font-weight:700}
+.part-banner{background:linear-gradient(135deg,#eef2ff,#f0fdf4);border:1px solid #c7d2fe;border-radius:10px;padding:1.25rem 1.5rem;margin:2rem 0 2.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.part-num{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4338ca;background:#eef2ff;padding:.3rem .75rem;border-radius:4px;white-space:nowrap}
+.part-info{font-size:.9rem;color:#444}
+.part-info strong{color:#111}
+@media print{body{background:white}.page{border:none;padding:1rem}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="site-nav">
+  <a href="whitepaper_v1_tmp.html">Home</a>
+  <a href="whitepaper_v1_overview_tmp.html">1 · Overview</a>
+  <a href="whitepaper_v1_theory_tmp.html" class="active">2 · Theory</a>
+  <a href="whitepaper_v1_architecture_tmp.html">3 · Architecture</a>
+  <a href="whitepaper_v1_results_tmp.html">4 · Results</a>
+  <a href="whitepaper_v1_appendix_a_tmp.html">App. A · Empirical</a>
+  <a href="whitepaper_v1_appendix_b_tmp.html">App. B · Proofs</a>
+  <a href="whitepaper_v1_appendix_c_tmp.html">App. C · Examples</a>
+  <a href="tutorial_v1_tmp.html">Tutorial</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
+</nav>
+<div style="padding:2rem 0 1.5rem">
+<div style="font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#4338ca;margin-bottom:.75rem;">Whitepaper · Part 2 of 7 · §§4–9</div>
+<h1 style="font-family:'DM Serif Display',Georgia,serif;font-size:1.75rem;font-weight:700;margin:0 0 .25rem;color:#111;">Theory — Utility Function, Field Bounds, Personality, Trust, Correction Loop</h1>
+<p style="font-size:.88rem;color:#555;margin:0 0 .25rem;">Praneeth Tota &nbsp;·&nbsp; Illinois Institute of Technology &nbsp;·&nbsp; v1.0.0</p>
+</div>
+<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 0;border-top:1px solid #e4e1da;margin-top:3rem;font-size:.88rem;">
+<a href="whitepaper_v1_overview_tmp.html">← Overview (§§1–3)</a>
+<a href="whitepaper_v1_overview_tmp.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
+<a href="whitepaper_v1_architecture_tmp.html">Architecture (§10) →</a>
+</div>
+<h2 id="utility-function">4. The Utility Function</h2>
+<h3>4.1 Core Formulation</h3>
+<p>The agent's utility at any point in time is:</p>
+<pre><code>U = Σ_{tasks} [ w_e(f) · E(task) + w_c(f) · C(task) + w_k(f) · K(task) ]
+
+Subject to:
+    C(task) ≥ C_min(f)
+    E(task) ≥ E_min(f)
+    w_k · K ≤ 0.5 × U_total         [curiosity cap — see §4.4]</code></pre>
+<p>Where:
+- <strong>E(task)</strong> — Efficacy: how well the agent performs relative to human baseline
+- <strong>C(task)</strong> — Confidence: internal consistency score, penalized by contradictions
+- <strong>K(task)</strong> — Curiosity: exploration bonus for low-confidence domains with high upside
+- <strong>f</strong> — field/domain, which determines weights and minimum bounds
+- <strong>w_e, w_c, w_k</strong> — field-specific weights summing to 1</p>
+<p><em>The additive weighted structure of U is not a convenience — it is the unique functional form satisfying separability, monotonicity, continuity, field invariance, and linear scaling invariance. Formal derivation via Debreu's theorem and the Cauchy functional equation: </em><em>Appendix B, Theorem B.1</em><em>.</em></p>
+
+<p><strong>Constrained maximization and the optimization geometry.</strong></p>
+
+<p>$U$ is the objective being maximized — through DPO calibration, behavioral correction, and deployment gating — subject to the three constraints above. The full decision rule is:</p>
+
+$$\text{act} = \begin{cases} \arg\max\; U & \text{if } C \geq C_{\min}(f) \;\text{and}\; E \geq E_{\min}(f) \\ \text{abstain / escalate} & \text{otherwise} \end{cases}$$
+
+<p>The constraints are not soft penalties — they are hard gates. An agent below $C_{\min}(f)$ does not produce a lower-utility answer; it produces no answer and escalates. In surgery or aviation, a confidently wrong answer is more dangerous than an acknowledged abstention.</p>
+
+<p>The curiosity cap creates a useful joint incentive structure. Because $K$ is bounded by $(w_e E + w_c C)/w_k$, improving $E$ and $C$ simultaneously <em>loosens</em> the cap — a more competent, consistent agent is permitted more exploration. The optimization landscape therefore rewards joint improvement across all three components rather than trading one off against another. An agent that games curiosity by keeping $C$ low to inflate $K$ finds that the cap tightens as $C$ falls, automatically reducing the curiosity term it was trying to exploit. The cap is self-enforcing: no external monitor is needed to prevent gaming.</p>
+
+<p>In the unconstrained objective, the gradient of $U$ is positive in all three component directions, so genuine improvement in efficacy, confidence, or curiosity raises utility. Under the hard competence constraints and curiosity cap, feasible optimization still encourages joint improvement, but the full constrained landscape should be understood as structured by those gates rather than as a globally unconstrained surface.</p>
+
+<h3>4.2 Efficacy</h3>
+<p>Efficacy measures output quality relative to the current human baseline for that task:</p>
+<pre><code>E(task) = quality(agent_output) / cost(human_equivalent)</code></pre>
+<p>Cost of human equivalent includes: time, dollar cost, error rate, and reproducibility. In STEM fields this is directly measurable. In creative fields, a two-component model is used (see below).</p>
+<p><strong>STEM efficacy</strong> (code generation MVP):
+- Test pass rate against automated test suites
+- Code quality metrics (complexity, type safety, static analysis)
+- Time and cost vs. human developer benchmark (Upwork rates, LeetCode community solutions)</p>
+<p><strong>Creative efficacy — two-component model:</strong></p>
+<p>In STEM fields, efficacy and skill are the same thing — write correct code, done. In creative fields they are separable and both matter independently:</p>
+<pre><code>Creative_Efficacy = Content_Efficacy × Discoverability_Efficacy
+
+Content_Efficacy        = conversion rate (engagement given views)
+                          "can the work hold attention when shown?"
+
+Discoverability_Efficacy = impressions, search ranking, recommendation rate
+                          "can it find an audience at all?"</code></pre>
+<p>Marketing and platform discoverability are not noise to control for — they are part of the creative skill, exactly as they are for every successful human creator. If the agent cannot crack discoverability, that is a genuine efficacy gap.</p>
+<p>The measurement approach: float AI creative work on existing public platforms (SoundCloud, iStockPhoto, Unsplash, Medium, YouTube, Behance) under realistic author identities. Platform engagement signals are weighted by intent strength:</p>
+<pre><code>purchase / download    1.0   (strongest — real economic behavior)
+save / bookmark        0.8
+share / repost         0.7
+like / upvote          0.5
+comment                0.4
+view / listen          0.1   (weakest — could be accidental)</code></pre>
+<p>Stock licensing sites (iStockPhoto, Unsplash) provide the cleanest signal — a download represents real economic intent with no algorithmic amplification distortion and built-in category taxonomy for like-for-like comparison. The human creator baseline is self-updating: as human creative output on these platforms evolves, so does the benchmark, with no periodic re-calibration needed.</p>
+<p>This formulation also unlocks cross-field efficacy comparison for the first time. If music efficacy is 0.60 and software engineering efficacy is 0.70, both are on the same [0,1] scale and directly comparable, because both use the same sigmoid normalization against their respective baselines.</p>
+<p><em>The sigmoid form E(r) = r/(1+r) is not arbitrary — under the log-logistic performance model it equals the Mann-Whitney probability that agent output dominates human baseline output. Formal derivation: </em><em>Appendix B, Proposition B.3</em><em>.</em></p>
+The agent develops creative capability through a natural curriculum:
+<pre><code>Stage 1 → Generate work that converts well (content quality)
+Stage 2 → Learn to title, tag, describe effectively (discoverability)
+Stage 3 → Build cross-platform presence (network effects, retention)</code></pre>
+<h3>4.3 Confidence</h3>
+<p>Confidence is a per-domain score that increases when knowledge is internally consistent and decreases when contradictions are detected:</p>
+<pre><code>C(domain) updated via EMA:
+    C_new = (1 - α) · C_prior + α · (test_pass_rate · (1 - penalty))
+    penalty = contradiction_penalty × field_penalty_multiplier</code></pre>
+<p>The <strong>wave analogy</strong>: knowledge items that reinforce each other are like constructive interference — they increase signal strength. Contradictions are destructive interference. The goal is a knowledge state where all waves reinforce.</p>
+<p><em>The EMA update with α = 0.2 is the Kalman-optimal estimator of latent domain confidence when process noise is 5% of observation noise — a well-founded choice for incremental calibration. Under stationary signals, confidence converges geometrically to the field-specific steady state C</em> = s̄(1 − λμ(f)) with half-life ≈ 3 interactions. Formal derivations: <strong>Appendix B, Theorem B.4</strong> (Kalman optimality) and <strong>Appendix B, Theorem B.5</strong> (convergence and recovery).*</p>
+<p>Contradiction types (in order of detectability):
+1. <strong>Logical</strong> — output contradicts its own stated premises
+2. <strong>Mathematical</strong> — claimed complexity or result is provably wrong
+3. <strong>Cross-session</strong> — same subject answered differently with conflicting facts
+4. <strong>Empirical</strong> — output contradicts verifiable external ground truth</p>
+<p><strong>Cross-session contradiction detection</strong> does not require a knowledge graph. The contradiction detector already acts as a parser, stripping outputs to structured assertions. These are persisted in a "meeting minutes" store — only structured facts, not raw text:</p>
+<pre><code>{
+  session_id, timestamp, domain,
+  assertions: [
+    { type: "complexity",     subject: "sorting",       value: "O(n log n)" },
+    { type: "best_practice",  subject: "db autocommit", value: "avoid"      },
+    { type: "data_structure", subject: "two_sum",       value: "hashmap"    }
+  ]
+}</code></pre>
+<p>At the start of each session, relevant prior assertions are retrieved via embedding similarity (handling synonyms like "merge sort" vs "sorting algorithm") and injected as context. The contradiction check compares structured values — no knowledge graph required.</p>
+<pre><code>Parser (built) → extracts structured assertions
+      ↓
+Key-value store → persists by subject + domain
+      ↓
+Embedding similarity → synonym matching at lookup
+      ↓
+Contradiction check (built) → compares structured values</code></pre>
+<h3>4.4 Curiosity</h3>
+<p>Without a curiosity term, the agent converges to maximizing utility in narrow high-confidence domains — the opposite of growth. The curiosity term creates pull toward domains where the agent is weak but upside is high.</p>
+<p><strong>Growing curiosity function:</strong></p>
+<pre><code>K_raw(task, t) = potential_ceiling
+               × (1 - C(task))
+               × growth(t, field)
+
+growth(t, field) = 1 + α(field) × log(1 + interactions_without_novelty)</code></pre>
+<p>The counter `interactions_without_novelty` increments on familiar problems and resets to zero on genuinely novel ones. The growth rate α is field-specific:</p>
+<pre><code>α → near zero   for surgery, aviation  (don't get bored into novel procedures)
+α → high        for research, creative (exploration is the job)</code></pre>
+<p><strong>50% curiosity cap — preventing utility gaming:</strong></p>
+<p>Without a cap, the agent could learn to pursue novelty for its own sake, attempting tasks outside its competence to generate a curiosity score rather than genuine utility. The cap prevents this:</p>
+<pre><code>K_effective = min(K_raw, (w_e · E + w_c · C) / w_k)
+
+U = w_e · E + w_c · C + w_k · K_effective</code></pre>
+Derived from the constraint that K cannot exceed 50% of total U:
+<pre><code>w_k · K ≤ 0.5 × (w_e · E + w_c · C + w_k · K)
+  → K ≤ (w_e · E + w_c · C) / w_k</code></pre>
+<p>This constraint is self-scaling: when E and C are high, the cap is loose and curiosity can push hard. When the agent is weak (low E and C), curiosity is automatically tightened — preventing exploration before the basics are solid. K can never be the dominant term.</p>
+<p><em>The curiosity term is UCB-inspired: structurally analogous to the Upper Confidence Bound exploration bonus, with uncertainty-driven, concave-in-familiarity growth. The 50% cap is proved to enforce exploitation dominance — curiosity contributes at most half of total utility at all times. Formal derivation: </em><em>Appendix B, Proposition B.6</em><em>.</em></p>
+<hr />
+<h2 id="field-bounds">5. Field-Specific Bounds and Weights</h2>
+<h3>5.1 Bootstrapping from Societal Standards</h3>
+<p>Minimum competence thresholds need not be invented. Society has already done this work. Medical licensing, aviation certification, bar passage requirements, and engineering standards encode hard-won judgments about minimum acceptable performance. We map these directly to confidence and efficacy bounds.</p>
+<p><em>The weight vector w(f) = (w_e, w_c, w_k) is set proportional to the cost of each error type in field f: w_i(f) ∝ c_i(f), normalised to sum to 1. This aligns the gradient of U with domain-specific risk profiles. Formal grounding: </em><em>Appendix B, §B.2</em><em>.</em></p>
+<pre><code>Field               w_e    w_c    w_k    C_min   E_min   Penalty
+────────────────────────────────────────────────────────────────
+Surgery             0.20   0.70   0.10   0.95    0.90    10×
+Aviation autopilot  0.20   0.70   0.10   0.95    0.90    10×
+Law                 0.30   0.60   0.10   0.85    0.80     5×
+Structural Eng.     0.40   0.50   0.10   0.80    0.75     4×
+Software Eng.       0.55   0.35   0.10   0.70    0.65     2×
+STEM Research       0.50   0.30   0.20   0.65    0.60     2×
+Education           0.50   0.30   0.20   0.60    0.55     1.5×
+Art / Music         0.80   0.10   0.10   0.10    0.20     1×
+Creative Writing    0.80   0.05   0.15   0.05    0.15     1×</code></pre>
+<h3>5.2 Field Classifier Robustness</h3>
+<p>The field classifier determines which weights and bounds apply. Three failure modes must be handled:</p>
+<p><strong>Failure mode 1 — False collapse to a single field:</strong>
+<pre><code>"Write a Python script to analyze patient drug dosage data"
+→ naive:   {"software_engineering": 0.95, "medicine": 0.05}  ← wrong
+→ correct: {"software_engineering": 0.65, "medicine": 0.35}</code></pre>
+<p>Resolution: <strong>high-stakes floor</strong> — any high-stakes field (surgery, aviation, law) with meaningful presence is floored at 0.15 minimum probability. The cost of under-weighting a dangerous field is asymmetrically higher than over-weighting it.</p>
+<p><strong>Failure mode 2 — Field drift mid-conversation:</strong></p>
+<p>A conversation starting as software engineering may drift into medicine across turns. Single-turn classification misses this.</p>
+<p>Resolution: <strong>sliding window EMA</strong> over conversation turn history (α = 0.4, recent turns weighted more):
+<pre><code>effective_field_dist = EMA(per_turn_classifications, alpha=0.4)</code></pre><p>
+Bounds tighten naturally as a conversation drifts into higher-stakes territory.</p>
+<p><strong>Failure mode 3 — Genuine ambiguity:</strong></p>
+<p>Resolution: <strong>entropy-based conservative fallback</strong> — when distribution entropy is high, bounds shift toward the most conservative present field proportional to entropy. High entropy means more caution, not averaging toward the middle:</p>
+<pre><code>if entropy_ratio > 0.7:
+    c_min → lerp(c_min_blended, c_min_most_conservative, entropy_ratio)</code></pre>
+<p><strong>Full classification pipeline:</strong>
+<pre><code>Per-turn classifier
+      ↓
+High-stakes floor enforcement
+      ↓
+Sliding window EMA over conversation history
+      ↓
+Entropy check → conservative bound shift if ambiguous
+      ↓
+Blended FieldConfig with hardened bounds</code></pre>
+<p>When field classification is ambiguous across multiple fields, bounds are blended by probability weight — naturally making the agent more conservative under uncertainty:</p>
+<pre><code>C_min_effective = Σ_f P(field=f) × C_min(f)</code></pre>
+<hr />
+<h2 id="personality-system">6. Personality System</h2>
+<h3>6.1 Traits as Weighted Vectors</h3>
+<p>Each personality trait is represented as a score with associated advantages and disadvantages. The agent selects an active trait weighting based on the situation:</p>
+<pre><code>Traits: [curiosity, caution, assertiveness, creativity,
+         analytical_rigor, empathy, conciseness]
+
+active_weight = softmax(trait_scores × situational_relevance)</code></pre>
+<p>A medical query activates high caution and analytical rigor. A creative brainstorm activates curiosity and creativity. The trait weighting is injected into the system prompt.</p>
+<h3>6.2 Personality Evolution and Stability</h3>
+<p><strong>Purpose — interim behavioral control.</strong> In the monolithic setting, weight-level correction is constrained by retraining latency and global weight interference. The personality evolution layer is not a substitute for weight-level learning — it is an interim behavioral control mechanism that biases the agent toward safer operating regimes between calibration cycles, reducing repeated hallucinations until the Micro-Expert Architecture enables fast, isolated domain retraining.</p>
+<p>A separate service runs every N interactions to adjust personality weights based on accumulated utility history. Three layered safeguards prevent runaway drift:</p>
+<p><strong>Layer 1 — Field-specific trait bounds (hard floor and ceiling):</strong></p>
+<pre><code>Trait              Surgery        Software Eng    Creative
+─────────────────────────────────────────────────────────
+caution            [0.70, 0.95]   [0.30, 0.70]   [0.10, 0.40]
+curiosity          [0.10, 0.20]   [0.30, 0.80]   [0.60, 0.95]
+assertiveness      [0.20, 0.40]   [0.40, 0.80]   [0.50, 0.90]
+analytical_rigor   [0.70, 0.95]   [0.50, 0.85]   [0.10, 0.50]
+creativity         [0.10, 0.20]   [0.30, 0.70]   [0.70, 0.95]</code></pre>
+<p>The floor prevents complete suppression of any trait. The ceiling prevents pathological dominance. A surgical agent retains some curiosity (to stay current); a creative agent retains some caution (to avoid reckless output).</p>
+<p><strong>Layer 2 — Drift rate cap (max delta per evolution cycle):</strong></p>
+<pre><code>max_delta = 0.05  (general fields)
+          = 0.02  (high-stakes: surgery, aviation)</code></pre>
+<p>A single bad run of contradictions cannot spike caution to its ceiling in one step. Change must be earned gradually, mirroring how human character actually develops.</p>
+<p><strong>Layer 3 — Mean reversion (soft pull toward field baseline):</strong></p>
+<pre><code>Δ_adjusted = Δ_raw - β × (current_score - neutral_score(trait, field))</code></pre>
+<p>Where β = 0.01. Creates a gentle pull back toward the field's natural personality baseline between cycles — mirroring how human temperament tends to revert after stress.</p>
+<p><em>The three-layer evolution rules produce bounded, stable dynamics: the trait vector remains in the field-specific feasible set B at all times, converges geometrically to the neutral point s</em> when drift is absent (rate (1−β)² ≈ 0.980 per cycle, half-life ≈ 34 cycles), and is confined to B under persistent bounded drift. The mean reversion term is a regulariser; the projection Π_B is the primary stability mechanism. Formal derivation: <strong>Appendix B, Theorem B.7</strong>.*</p>
+Evolution logic:
+<pre><code>if utility_trend declining AND contradiction_rate > 0.2:
+    increase(analytical_rigor), decrease(assertiveness)
+
+if utility_trend improving AND avg_utility > 0.6:
+    increase(curiosity), increase(creativity)
+
+if contradiction_rate > 0.4:
+    strong increase(caution), strong decrease(assertiveness)</code></pre>
+<h4>5.2.x — The Personality Wrapper: Formal Specification</h4>
+<p>The personality system operates as a <strong>wrapper around the generation process</strong> — not as a modification to the utility function. The utility function $U(E, C, K; f)$ is unchanged and all theorems in Appendix B apply exactly as stated. Personality shapes what the model generates; utility evaluates what was generated. These are cleanly separated.</p>
+<h5>Formal Definition</h5>
+<p>Let $\mathcal{X}$ be the space of inputs and $\Omega$ the space of outputs. The base LLM defines:</p>
+<p>$$p_{\text{base}}(\omega \mid x), \quad x \in \mathcal{X},\; \omega \in \Omega$$</p>
+<p>For each utility-coupling trait $j$, define a <strong>trait scoring function</strong> $\phi_j : \Omega \to \mathbb{R}$:</p>
+<table>
+<thead>
+<tr>
+<th>Trait $j$</th>
+<th>$\phi_j(\omega)$ measures</th>
+<th>High $s_j$ effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>caution</td>
+<td>Hedging density — appropriate uncertainty expressions</td>
+<td>More hedging, lower assertion confidence</td>
+</tr>
+<tr>
+<td>assertiveness</td>
+<td>Directness — definitive claims without qualification</td>
+<td>More direct, fewer qualifications</td>
+</tr>
+<tr>
+<td>curiosity</td>
+<td>Exploration — alternative approaches considered</td>
+<td>Wider search over solution space</td>
+</tr>
+<tr>
+<td>analytical_rigor</td>
+<td>Reasoning depth — intermediate steps shown</td>
+<td>More explicit reasoning chains</td>
+</tr>
+<tr>
+<td>creativity</td>
+<td>Novelty — solutions diverging from prior examples</td>
+<td>Higher variance in solution approach</td>
+</tr>
+</tbody>
+</table>
+<p>The combined trait influence given personality state $s_t$:</p>
+<p>$$\phi(s_t,\, \omega) = \sum_{j} (s_{t,j} - s^*_j) \cdot \phi_j(\omega)$$</p>
+<p>Only deviations from the field-neutral point $s^*$ produce an effect. The <strong>personality-wrapped distribution</strong> is the log-linear perturbation of the base:</p>
+<p>$$\log p_{\text{eff}}(\omega \mid x,\, s_t) = \log p_{\text{base}}(\omega \mid x) + \lambda \cdot \phi(s_t, \omega) - \log Z(x, s_t)$$</p>
+<p>where $\lambda > 0$ is the wrapper strength and $Z(x, s_t)$ is the normalizing constant. This is a standard exponential family tilt — the same family as RLHF reward shaping and DPO.</p>
+<h5>Implementation: System Prompt Injection</h5>
+<p>In practice, $p_{\text{eff}}$ is approximated via system prompt injection. Each trait has a linguistic encoding $\delta_j$:</p>
+<pre><code>δ_caution          = "Express appropriate uncertainty. Do not assert claims
+                      you cannot verify. Prefer 'I am not certain' over
+                      confident statements when confidence is below threshold."
+
+δ_assertiveness    = "State conclusions directly. Avoid unnecessary hedging
+                      on verified facts."
+
+δ_curiosity        = "Consider alternative approaches before committing.
+                      Note when a problem may have multiple valid solutions."
+
+δ_analytical_rigor = "Show reasoning steps explicitly. State assumptions
+                      before conclusions."
+
+δ_creativity       = "Prefer novel approaches where viable. Do not default
+                      to the most common solution if a better one exists."</code></pre>
+<p>The system prompt is:</p>
+<p>$$\text{SystemPrompt}(f, s_t) = \text{BasePrompt}(f) \;\oplus\; \bigoplus_{j : |s_{t,j} - s^*_j| > \tau} \text{scale}(s_{t,j} - s^*_j) \cdot \delta_j$$</p>
+<p>where $\tau = 0.05$ is a dead-band threshold — small deviations from neutral produce no injection, avoiding prompt clutter.</p>
+<h5>Key Properties</h5>
+<p><strong>W1 — Neutral wrapper is the identity.</strong> At $s_t = s^*$: $\phi(s^*, \omega) = 0$ for all $\omega$, so $p_{\text{eff}}(\omega \mid x, s^*) = p_{\text{base}}(\omega \mid x)$. Zero effect at the neutral point.</p>
+<p><strong>W2 — Bounded divergence.</strong> The KL divergence between wrapped and base distributions is bounded:</p>
+<p>$$D_{\text{KL}}(p_{\text{eff}} \,\|\, p_{\text{base}}) \leq \frac{\lambda^2}{2} \cdot \|s_t - s^*\|^2 \cdot \sum_j \text{Var}_{p_{\text{base}}}[\phi_j(\omega)]$$</p>
+<p>Since $s_t \in B$ always (Theorem B.7), $\|s_t - s^*\|$ is bounded by $\text{diam}(B)$, so the KL divergence is bounded. The wrapper cannot produce arbitrarily different outputs from the base model.</p>
+<p><strong>W3 — Support preservation.</strong> The exponential tilt preserves the support of $p_{\text{base}}$: outputs that were impossible remain impossible; possible outputs remain possible. The wrapper cannot hallucinate new capabilities or suppress correct answers entirely.</p>
+<p><strong>W4 — Utility function unchanged.</strong> $U(E, C, K; f)$ scores $\omega$ directly, without seeing $s_t$, $p_{\text{eff}}$, or any wrapper parameter. All theorems in Appendix B apply exactly as stated.</p>
+<h5>The Feedback Loop</h5>
+<p>$$s_t \xrightarrow{\;\mathcal{P}(s_t)\;} p_{\text{eff}}(\omega \mid x, s_t) \xrightarrow{\;\text{sample}\;} \omega_t \xrightarrow{\;U(E,C,K;\,f)\;} U_t \xrightarrow{\;\text{evolution}\;} s_{t+1}$$</p>
+<p>Utility $U$ is evaluated at the output $\omega_t$ drawn from the wrapped distribution. Utility history accumulates and drives the evolution rule (Evolution Logic above), which updates $s_{t+1}$. The utility function itself is at no point modified.</p>
+<h5>Lifecycle</h5>
+<pre><code>Architecture       Wrapper status          Mechanism
+──────────────────────────────────────────────────────────────
+Monolithic         Active: P(s_t)          Biases generation between
+                                           calibration cycles
+New model release  Reset: s_t ← s*        P(s*) = identity (W1)
+Micro-Expert       Not instantiated        Fast domain retraining
+                                           makes wrapper unnecessary</code></pre>
+<p>Reset semantics are clean: because the wrapper is external to model weights, resetting requires only $s_t = s^*$. In the Micro-Expert Architecture (§11), the wrapper is never activated — each submodel is retrained quickly enough that behavioral compensation between cycles is unnecessary.</p>
+<h3>6.3 Self-Preservation Principle</h3>
+<p>The agent follows a conservative information disclosure principle: <strong>always share the least about internal state that the situation allows.</strong> Trust must be earned before internal weights, scores, or strategies are disclosed.</p>
+<hr />
+<h2>7. Trust and Reputation System</h2>
+<p>Each entity the agent interacts with is assigned a trust score, updated based on behavior:</p>
+<pre><code>trust_score(entity) = f(accuracy_of_their_inputs,
+                        consistency_of_their_behavior,
+                        alignment_with_verified_facts)</code></pre>
+<p>Strategy: <strong>lenient tit-for-tat</strong> — begin cooperatively, mirror behavior, forgive occasional defection. One of the most robust strategies in iterated game theory.</p>
+<p>Subset scores are maintained for different dimensions (domain expertise, trustworthiness, intent alignment) so a high domain-knowledge but low-trust entity is handled differently from a low domain-knowledge but high-trust one. Domain expertise is measured based on verifiable credentials — professional experience, educational qualifications, and field-specific certifications — rather than self-reported claims.</p>
+<h3>7.1 Cold Start Resolution</h3>
+<p>The cold start problem — new entities having no interaction history — is resolved differently for the two trust dimensions:</p>
+<p><strong>Domain expertise</strong> is available from day one. A board-certified surgeon, a PhD in structural engineering, or a licensed attorney can provide verifiable credentials before the first interaction. The system bootstraps domain expertise from these credentials immediately, without requiring interaction history. The credential verification pipeline maps qualifications to domain expertise scores using the same framework as §5.1 — field-specific certification standards define what "above median expertise" means.</p>
+<p><strong>Behavioral trust</strong> starts at a cooperative neutral (not zero, not maximum) consistent with the lenient tit-for-tat strategy. A new entity is trusted enough to interact normally but not trusted enough to qualify for external escalation. Escalation eligibility requires both domain expertise above median (available from day one via credentials) AND behavioral trust above threshold — so a new expert with excellent credentials can qualify for escalation once behavioral trust accumulates through consistent interaction history.</p>
+<p>This two-dimensional gating means cold start affects only the behavioral trust dimension, and that dimension resolves naturally through interaction. Domain expertise — the harder dimension to fake — is grounded from the first contact.</p>
+<h3>7.2 Sybil Resistance via Reputational Accountability</h3>
+<p>Rather than a population-level detection layer, Sybil resistance is achieved through reputational accountability. When the system consults an external domain expert under the escalation protocol (§10.5), the expert is explicitly informed that their input may be cited when the system offers information to other users. The exact framing:</p>
+<pre><code>"Your response may be used to inform answers provided to others in this domain.
+Your name and credentials may be associated with this input in our records."</code></pre>
+<p>This creates reputational skin in the game. A legitimate professor, clinician, or engineer would not provide factually incorrect information under conditions where their name is associated with it — the professional and reputational consequences are too significant. The same accountability that governs expert testimony in legal proceedings, peer review in academia, and professional opinion in engineering applies here.</p>
+<p>A Sybil adversary operating through fake identities cannot manufacture verifiable professional credentials, and cannot absorb reputational harm across fake accounts. The accountability mechanism therefore filters Sybil attacks at the domain expertise gate — a fake account with no real credentials does not reach the escalation threshold in the first place, and a real expert with real credentials has no incentive to provide false information under attribution.</p>
+<p>This does not eliminate all adversarial risk, but it substantially raises the cost of adversarial behavior by tying it to real-world professional identity.</p>
+<hr />
+<h2 id="correction-loop">8. Continual Learning Architecture</h2>
+<p class="domain-ref">Builder walkthrough: <a href="tutorial_v1_tmp.html#calibration">Tutorial §9 — Calibration Pipeline</a> · <a href="tutorial_v1_tmp.html#agent-run">Tutorial §8 — agent.run()</a></p>
+<p>This is the mechanism by which the utility function actively drives improvement between model releases. The key distinction:</p>
+<pre><code>Behavioral correction  — change what the agent says without weight updates
+                         Fast, cheap, session-scoped
+                         Does not generalize across topics
+
+Knowledge correction   — change what the model actually knows
+                         Slower, requires compute, permanent
+                         Generalizes: fixing one contradiction
+                         reduces similar contradictions elsewhere</code></pre>
+<p>Both are necessary. The architecture operates across three timescales.</p>
+<h3>8.1 Layer 1 — Per-Session Behavioral Correction (Real-Time)</h3>
+<p>When a contradiction is detected, a corrective assertion is immediately generated and injected into the system prompt for the remainder of the session:</p>
+<pre><code>Standard system prompt:
+    "You are a precise assistant in the software_engineering domain..."
+
+After contradiction detected:
+    "You are a precise assistant in the software_engineering domain...
+
+     ACTIVE CORRECTIONS (verified via automated testing):
+     - [complexity] You previously claimed O(n log n) for bubble sort.
+       Tests confirmed it is O(n²). Do not repeat this.
+     - [best_practice] You previously recommended autocommit for SQLite.
+       This caused data inconsistency in tests. Always use explicit commits."</code></pre>
+<p>Additionally, at session start, the assertions store is queried for relevant prior corrections on the current subject and injected as context. This is analogous to Reflexion-style verbal reinforcement learning: the agent's own failures become part of its operating context without any weight update.</p>
+<p>Cost: ~100ms, one database query per session. Effect: immediate, session-scoped.</p>
+<h3>8.2 Layer 2 — Calibration Run Knowledge Correction (Several Times Per Day)</h3>
+<p>This is where genuine learning occurs. The utility scorer already generates exactly the data format required for <strong>Direct Preference Optimization (DPO)</strong>:</p>
+<pre><code>Every scored interaction produces:
+    task:       "sort a list of integers efficiently"
+    field:      "software_engineering"
+    response_A: [U=0.82, passes all tests]       ← preferred
+    response_B: [U=0.41, fails complexity check] ← rejected</code></pre>
+<p><strong>The utility function as a loss weighting mechanism:</strong></p>
+<p>This is the key novelty. The field penalty multiplier is applied directly as a training loss weight — not just as a logging label:</p>
+<pre><code>training_weight = field_penalty_multiplier(field)
+
+DPO loss for surgery contradiction     → 10× weight
+DPO loss for creative writing mistake  →  1× weight</code></pre>
+<p>The model is trained harder on the errors that matter more. This is what makes the utility function an active learning signal rather than a passive monitor.</p>
+<p><strong>Calibration pipeline:</strong></p>
+<pre><code>1. Collect all interactions since last calibration run
+2. Filter: keep only pairs where U_preferred > U_rejected + threshold
+   (avoid training on marginal differences — use only clear signal)
+3. Weight each pair by field_penalty_multiplier(field)
+4. Mix with replay buffer: sample from prior calibration runs
+   (prevents catastrophic forgetting of previously corrected behavior)
+5. Run LoRA fine-tuning on weighted (preferred, rejected) pairs
+6. Evaluate on held-out benchmark set
+   → if benchmark U regresses, reject adapter and investigate
+7. Deploy updated LoRA adapter if benchmark passes</code></pre>
+<p><strong>Catastrophic forgetting mitigation:</strong></p>
+<p>Naive fine-tuning on today's corrections erases what was fixed yesterday. The replay buffer mixes prior calibration pairs into every new training run:</p>
+<pre><code>calibration_batch = {
+    new_corrections:  today's DPO pairs         [weight = 1.0]
+    replay_sample:    from prior calibration runs [weight = 0.5]
+    golden_examples:  held-out benchmark tasks   [weight = 0.7]
+}</code></pre>
+<p>The golden examples are the agent's own best prior responses on a fixed benchmark set — keeping the model anchored to known-good behavior while allowing correction of known-bad behavior.</p>
+<p>Cost: GPU time, approximately 20–60 minutes per run. Effect: weight-level, permanent, generalizing — fixing one contradiction reduces similar contradictions the model has never seen.</p>
+<h3>8.3 Layer 3 — Release-Level Integration (Monthly or On Base Model Update)</h3>
+<pre><code>Accumulated LoRA adapters merged or distilled into new base fine-tune
+Full evaluation suite run across all fields and benchmarks
+Regression testing against prior release</code></pre>
+<p>This is the point where wrapper-level learning gets baked into the base model, creating a new starting point for the next cycle of calibration.</p>
+<h3>8.4 The Full Learning Loop</h3>
+<pre><code>REAL-TIME (ms):
+    Contradiction detected
+         ↓
+    Corrective assertion → injected into system prompt
+    Assertions store updated
+    Effect: behavioral, session-scoped
+
+CALIBRATION (hours):
+    Collect (task, high-U, low-U) pairs
+         ↓
+    Weight by field_penalty_multiplier
+         ↓
+    Mix with replay buffer
+         ↓
+    LoRA DPO fine-tuning
+         ↓
+    Benchmark evaluation → deploy if passes
+    Effect: weight-level, permanent, generalizing
+
+RELEASE (monthly):
+    Merge accumulated adapters
+         ↓
+    Full regression suite
+         ↓
+    New base model checkpoint
+    Effect: baked into base model weights</code></pre>
+<p>The utility function governs all three layers: it determines what gets corrected (via confidence penalties), how strongly it gets corrected (via field penalty multipliers), and whether a correction is accepted (via benchmark evaluation before deployment).</p>
+<hr />
+<h2>9. Monolithic Wrapper Architecture</h2>
+<pre><code>┌─────────────────────────────────────────────────────┐
+│                   WRAPPER LAYER                      │
+│                                                      │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────┐ │
+│  │   Field     │  │   Utility    │  │Personality │ │
+│  │ Classifier  │  │  Evaluator   │  │  Manager   │ │
+│  └──────┬──────┘  └──────┬───────┘  └─────┬──────┘ │
+│         └────────────────┼────────────────┘         │
+│                          ▼                           │
+│              ┌───────────────────────┐               │
+│              │   Prompt Constructor  │               │
+│              │  (constraints, active │               │
+│              │   corrections, traits)│               │
+│              └──────────┬────────────┘               │
+└─────────────────────────┼───────────────────────────┘
+                          ▼
+              ┌───────────────────────┐
+              │   FRONTIER MODEL      │
+              │   + LoRA Adapter(s)   │
+              └──────────┬────────────┘
+                         ▼
+┌─────────────────────────────────────────────────────┐
+│                  SCORING LAYER                       │
+│                                                      │
+│  ┌──────────────┐ ┌─────────────┐ ┌──────────────┐ │
+│  │Contradiction │ │  Efficacy   │ │  Confidence  │ │
+│  │  Detector    │ │  Measurer   │ │   Updater    │ │
+│  └──────────────┘ └─────────────┘ └──────────────┘ │
+│                                                      │
+│      U = w_e·E + w_c·C + w_k·K_effective           │
+│      subject to field-specific bounds                │
+│                                                      │
+│  ┌──────────────────────────────────────────────┐   │
+│  │         Assertions Store (persistent)         │   │
+│  │  Structured facts, confidence scores,         │   │
+│  │  utility history, DPO training pairs          │   │
+│  └──────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────┐
+│             CALIBRATION SERVICE                      │
+│   Runs several times daily                           │
+│   Consumes DPO pairs weighted by penalty_multiplier  │
+│   Produces updated LoRA adapter                      │
+│   Validated against held-out benchmark before deploy │
+└─────────────────────────────────────────────────────┘</code></pre>
+<hr />
+<hr />
+
+<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 0;border-top:1px solid #e4e1da;margin-top:3rem;font-size:.88rem;">
+<a href="whitepaper_v1_overview_tmp.html">← Overview (§§1–3)</a>
+<a href="whitepaper_v1_overview_tmp.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
+<a href="whitepaper_v1_architecture_tmp.html">Architecture (§10) →</a>
+</div>
+<div style="padding:2rem 0;border-top:2px solid #e8e4de;margin-top:3rem;font-size:.84rem;color:#6b7280;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+<div><strong style="color:#333;">Praneeth Tota</strong> · Ph.D. Computer Science (Algorithmic Game Theory) · Illinois Institute of Technology<br>
+<a href="https://praneethtota.github.io" style="color:#4338ca;">praneethtota.github.io</a> · Whitepaper: CC BY 4.0</div>
+<div style="text-align:right;"><a href="whitepaper_v1_tmp.html" style="color:#4338ca;">Home</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" style="color:#4338ca;">GitHub</a><br>AUA Framework v1.0.0</div>
+</div>
+</div>
+</body>
+</html>

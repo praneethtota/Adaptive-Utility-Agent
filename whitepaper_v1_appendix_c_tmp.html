@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Appendix C — Real-World Applications: Worked Examples — AUA Whitepaper v1.0</title>
+<meta name="author" content="Praneeth Tota">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body)"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:16px;line-height:1.75;color:#1a1a1a;background:#fafaf8;margin:0;padding:0}
+.page{max-width:800px;margin:0 auto;padding:0 2rem 5rem;background:#fff;border-left:1px solid #e8e4de;border-right:1px solid #e8e4de;min-height:100vh}
+h1{font-family:'DM Serif Display',Georgia,serif;font-size:1.9rem;font-weight:700;margin:0 0 .25rem;line-height:1.3;color:#111}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.35rem;font-weight:400;margin:2.5rem 0 .75rem;border-bottom:2px solid #e8e4de;padding-bottom:.4rem;color:#111;scroll-margin-top:60px}
+h3{font-family:'DM Serif Display',Georgia,serif;font-size:1.1rem;font-weight:400;margin:2rem 0 .6rem;color:#222}
+h4{font-size:.95rem;font-weight:700;margin:1.5rem 0 .5rem;color:#444}
+h5{font-size:.88rem;font-weight:700;margin:1.2rem 0 .4rem;color:#555}
+p{margin:0 0 1rem}strong{font-weight:700}em{font-style:italic}
+blockquote{border-left:3px solid #c0bab2;margin:1.5rem 0;padding:.75rem 1rem;background:#f5f3ef;font-size:.9rem;color:#555}
+code{font-family:'JetBrains Mono','Courier New',monospace;font-size:.82rem;background:#f2f0eb;padding:2px 5px;border-radius:3px;color:#333}
+pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:5px;padding:1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:.79rem;line-height:1.6}
+pre code{background:none;padding:0;font-size:inherit}
+table{width:100%;border-collapse:collapse;font-size:.84rem;margin:1rem 0 1.5rem;font-family:'JetBrains Mono','Courier New',monospace}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:6px 10px;font-family:'DM Serif Display',Georgia,serif;font-size:.82rem;color:#444}
+td{padding:5px 10px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#f9f8f5}
+ul,ol{margin:0 0 1rem;padding-left:1.5rem}li{margin-bottom:.3rem}
+hr{border:none;border-top:1px solid #e0dbd4;margin:2rem 0}
+.chart-section{background:#f9f8f5;border:1px solid #e0dbd4;border-radius:8px;padding:1.5rem;margin:1.5rem 0}
+.chart-section h4{margin-top:0;color:#333}
+.chart-wrap{position:relative;width:100%;height:240px;margin:.75rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:#666;margin-bottom:6px}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{width:22px;height:3px;border-radius:2px;display:inline-block}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1.5rem}
+.metric{background:#fff;border:1px solid #e0dbd4;border-radius:6px;padding:.75rem 1rem}
+.metric .label{font-size:11px;color:#888;margin-bottom:3px}
+.metric .value{font-size:18px;font-weight:700;color:#111}
+.metric .sub{font-size:11px;color:#aaa;font-family:'JetBrains Mono',monospace}
+.appendix-b{background:#f7f5ff;border-left:3px solid #534AB7;padding:.5rem 1rem;margin:.5rem 0 1rem;font-size:.85rem;color:#444;border-radius:0 4px 4px 0}
+.appendix-b-section{font-size:16px;line-height:1.8}
+.appendix-b-section h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.3rem;font-weight:400;margin:2.5rem 0 .7rem;border-bottom:2px solid #e8e4de;padding-bottom:.4rem;color:#111}
+.appendix-b-section h3,.appendix-b-section h4,.appendix-b-section h5{font-family:'DM Serif Display',Georgia,serif;font-weight:400}
+.domain-ref{font-size:.81rem;color:#6b7280;margin:.25rem 0 .9rem;padding:.35rem .7rem;background:#eef2ff;border-left:3px solid #4338ca;border-radius:0 5px 5px 0;display:inline-block}
+.domain-ref a{color:#4338ca;text-decoration:none;font-weight:500}
+nav.site-nav{display:flex;flex-wrap:wrap;gap:.5rem .8rem;padding:.85rem 2rem;border-bottom:1px solid #e4e1da;background:#fafaf8;font-size:.83rem;position:sticky;top:0;z-index:10;margin:0 -2rem}
+nav.site-nav a{color:#4338ca;text-decoration:none;font-weight:500}
+nav.site-nav a:hover{text-decoration:underline}
+nav.site-nav a.active{color:#18181b;font-weight:700}
+.part-banner{background:linear-gradient(135deg,#eef2ff,#f0fdf4);border:1px solid #c7d2fe;border-radius:10px;padding:1.25rem 1.5rem;margin:2rem 0 2.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.part-num{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4338ca;background:#eef2ff;padding:.3rem .75rem;border-radius:4px;white-space:nowrap}
+.part-info{font-size:.9rem;color:#444}
+.part-info strong{color:#111}
+@media print{body{background:white}.page{border:none;padding:1rem}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="site-nav">
+  <a href="whitepaper_v1_tmp.html">Home</a>
+  <a href="whitepaper_v1_overview_tmp.html">1 · Overview</a>
+  <a href="whitepaper_v1_theory_tmp.html">2 · Theory</a>
+  <a href="whitepaper_v1_architecture_tmp.html">3 · Architecture</a>
+  <a href="whitepaper_v1_results_tmp.html">4 · Results</a>
+  <a href="whitepaper_v1_appendix_a_tmp.html">App. A · Empirical</a>
+  <a href="whitepaper_v1_appendix_b_tmp.html">App. B · Proofs</a>
+  <a href="whitepaper_v1_appendix_c_tmp.html" class="active">App. C · Examples</a>
+  <a href="tutorial_v1_tmp.html">Tutorial</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
+</nav>
+<div style="padding:2rem 0 1.5rem">
+<div style="font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#4338ca;margin-bottom:.75rem;">Whitepaper · Appendix C · Numerical worked examples for 5 domains</div>
+<h1 style="font-family:'DM Serif Display',Georgia,serif;font-size:1.75rem;font-weight:700;margin:0 0 .25rem;color:#111;">Appendix C — Real-World Applications: Worked Examples</h1>
+<p style="font-size:.88rem;color:#555;margin:0 0 .25rem;">Praneeth Tota &nbsp;·&nbsp; Illinois Institute of Technology &nbsp;·&nbsp; v1.0.0</p>
+</div>
+<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 0;border-top:1px solid #e4e1da;margin-top:3rem;font-size:.88rem;">
+<a href="whitepaper_v1_results_tmp.html">← Results (§§11–14)</a>
+<a href="whitepaper_v1_overview_tmp.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
+<a href="whitepaper_v1_appendix_a_tmp.html">Appendix A →</a>
+</div>
+<h2 id="appendix-c">Appendix C: Real-World Applications — Worked Examples</h2>
+<p>This appendix contains the full worked numerical examples for the five domains introduced in §2. Each example shows the attribute definitions, field weight tables, option comparisons, and explicit utility calculations. The condensed summaries in §2 provide the practical intuition; this appendix provides the mathematical grounding.</p>
+<p>The utility function framework is not limited to language model calibration. The same architecture — field-weighted multi-attribute utility, contradiction detection, confidence-gated decisions, and adaptive weight evolution — applies naturally to any autonomous system that must make real-time decisions under competing objectives and uncertainty. This section illustrates five domains, each with a worked numerical example, to make the framework's practical mechanics concrete.</p>
+<p>Two properties distinguish utility-governed agents from conventional rule-based or single-objective systems:</p>
+<p><strong>Nuanced trade-offs.</strong> Unlike rule-based systems ("if speed &gt; threshold, brake"), utility agents evaluate all objectives simultaneously and select the action maximising their weighted sum. A slightly slower but substantially safer route is not a failure mode — it is the correct mathematical outcome when the safety weight is high.</p>
+<p><strong>Calibrated uncertainty.</strong> Confidence $C$ in the utility function encodes the agent's self-assessed reliability. When $C$ falls below the field-specific minimum $C_{\min}(f)$, the agent abstains or escalates rather than producing a low-quality output. An autonomous vehicle uncertain about road conditions abstains from a lane change rather than proceeding at reduced confidence.</p>
+<hr />
+<h3 id="appendix-c1">C.1 Autonomous Vehicles — Multi-Objective Route and Manoeuvre Selection</h3>
+<p class="domain-ref">Domain deep-dive: <a href="domain_self_driving_v0_5.html">Self-Driving Vehicles</a> · <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a></p>
+<p>An autonomous vehicle must balance safety, efficiency, and passenger comfort in real time. The utility function operates at the manoeuvre level (lane changes, following distance, speed selection) and at the route level (highway vs surface streets, rerouting around incidents).</p>
+<h4>Attributes and field weights</h4>
+<p>For the <code>autonomous_driving</code> field in standard mode:</p>
+<p>$$U = w_s \cdot s + w_e \cdot e + w_c \cdot c$$</p>
+<p>where $s$ = collision avoidance probability, $e$ = journey time efficiency, $c$ = ride comfort (inverse of harsh braking/acceleration events).</p>
+<table>
+<thead><tr><th>Mode</th><th>$w_s$ (safety)</th><th>$w_e$ (efficiency)</th><th>$w_c$ (comfort)</th><th>$C_{\min}$</th></tr></thead>
+<tbody>
+<tr><td>Standard</td><td>0.70</td><td>0.20</td><td>0.10</td><td>0.85</td></tr>
+<tr><td>Emergency transport</td><td>0.55</td><td>0.40</td><td>0.05</td><td>0.80</td></tr>
+<tr><td>School zone</td><td>0.90</td><td>0.05</td><td>0.05</td><td>0.95</td></tr>
+</tbody>
+</table>
+<h4>Worked example — lane change decision</h4>
+<table>
+<thead><tr><th>Attribute</th><th>Option A: Aggressive lane change</th><th>Option B: Stay in lane</th></tr></thead>
+<tbody>
+<tr><td>Safety $s$</td><td>0.60</td><td>0.95</td></tr>
+<tr><td>Efficiency $e$</td><td>0.90</td><td>0.50</td></tr>
+<tr><td>Comfort $c$</td><td>0.40</td><td>0.80</td></tr>
+</tbody>
+</table>
+<p>$$U_A = (0.60 \times 0.70) + (0.90 \times 0.20) + (0.40 \times 0.10) = 0.42 + 0.18 + 0.04 = \mathbf{0.64}$$</p>
+<p>$$U_B = (0.95 \times 0.70) + (0.50 \times 0.20) + (0.80 \times 0.10) = 0.665 + 0.10 + 0.08 = \mathbf{0.845}$$</p>
+<p><strong>Decision: Option B.</strong> Although Option A is much faster, the safety weight makes it mathematically inferior. In emergency-transport mode ($w_e = 0.40$), the same calculation yields $U_A = 0.73$, $U_B = 0.745$ — Option B still wins but by only 1.5pp, reflecting the legitimately higher weight on speed. In a school zone ($w_s = 0.90$), $U_A = 0.63$, $U_B = 0.895$ — the gap widens to 26.5pp, correctly encoding near-absolute safety priority.</p>
+<p><strong>Confidence gate.</strong> If sensor fusion uncertainty drives $C$ below $C_{\min} = 0.85$, the vehicle abstains from the lane change and signals the driver — rather than executing a manoeuvre it cannot verify is safe.</p>
+<p><strong>Adaptation over time.</strong> The assertions store accumulates verified patterns: "this motorway stretch has high merge conflict rate at 17:30–18:30." Future decisions on the same route retrieve this prior automatically, tightening $w_s$ during that window without manual reconfiguration.</p>
+<hr />
+
+<h4>C.1.1 Edge Deployment Note — Battery and Power Constraints</h4>
+<p>The Micro-Expert Architecture has a distinct advantage for in-vehicle deployment beyond cost: it is the only architecture that fits within automotive compute power envelopes. A monolithic frontier model on a datacenter GPU (H100: 700W, A100: 400W) cannot run on-board in any production vehicle. Domain-specialist models on Jetson-class embedded hardware can:</p>
+<table>
+<thead><tr><th>Component</th><th>Hardware</th><th>Power draw</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>Perception specialist</td><td>Jetson AGX Orin</td><td>15–60W</td><td>Object detection, lane marking, sign reading</td></tr>
+<tr><td>Motion planning specialist</td><td>Jetson Orin NX</td><td>10–25W</td><td>Trajectory optimisation, collision avoidance</td></tr>
+<tr><td>Traffic rules specialist</td><td>Jetson Orin NX</td><td>10–25W</td><td>Traffic law, edge cases, emergency protocols</td></tr>
+<tr><td><strong>Total system compute</strong></td><td></td><td><strong>~110W</strong></td><td>vs 700W for a single H100</td></tr>
+</tbody>
+</table>
+<p>The three specialists run in a <strong>pipeline</strong>, not sequentially: perception runs continuously, motion planning consumes its output as it arrives, rules checks run in parallel. Total added latency is the pipeline stage depth, not the sum of all inference times. Each specialist is independently updateable via software — a traffic law update does not require revalidating the perception model.</p>
+<p>Published benchmarks confirm that domain-fine-tuned 7B specialists match or exceed general 70B models on their target tasks (§10.9.3). The Micro-Expert Architecture is therefore not merely cheaper for server deployments — for battery-constrained autonomous systems, it is the only viable architecture that achieves frontier-quality domain inference.</p>
+<h3 id="appendix-c2">C.2 Drone Delivery — Dynamic Route Selection Under Environmental Uncertainty</h3>
+<p class="domain-ref">Domain deep-dive: <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a></p>
+<p>A delivery drone must weigh delivery speed against energy consumption and collision risk — where risk is a function of current wind speed, airspace traffic, and battery state.</p>
+<h4>Attributes and field weights</h4>
+<p>$$U = w_s \cdot s + w_d \cdot d + w_\eta \cdot \eta$$</p>
+<p>where $s$ = airspace safety margin, $d$ = on-time delivery probability, $\eta$ = energy efficiency (range preserved for return).</p>
+<table>
+<thead><tr><th>Mode</th><th>$w_s$</th><th>$w_d$</th><th>$w_\eta$</th><th>$C_{\min}$</th></tr></thead>
+<tbody>
+<tr><td>Standard</td><td>0.50</td><td>0.30</td><td>0.20</td><td>0.75</td></tr>
+<tr><td>Storm warning active</td><td>0.80</td><td>0.10</td><td>0.10</td><td>0.90</td></tr>
+<tr><td>Battery &lt; 30%</td><td>0.40</td><td>0.20</td><td>0.40</td><td>0.80</td></tr>
+</tbody>
+</table>
+<h4>Worked example — route selection with approaching storm</h4>
+<table>
+<thead><tr><th>Attribute</th><th>Option A: Direct high-altitude route</th><th>Option B: Low-altitude detour</th></tr></thead>
+<tbody>
+<tr><td>Safety $s$</td><td>0.45</td><td>0.88</td></tr>
+<tr><td>Delivery speed $d$</td><td>0.90</td><td>0.55</td></tr>
+<tr><td>Energy efficiency $\eta$</td><td>0.70</td><td>0.60</td></tr>
+</tbody>
+</table>
+<p><strong>Standard mode:</strong> $U_A = (0.45\times0.50)+(0.90\times0.30)+(0.70\times0.20) = 0.225+0.27+0.14 = \mathbf{0.635}$, $U_B = \mathbf{0.725}$. Option B wins by 9pp.</p>
+<p><strong>Storm warning mode</strong> ($w_s=0.80$): $U_A = (0.45\times0.80)+(0.90\times0.10)+(0.70\times0.10) = \mathbf{0.520}$, $U_B = (0.88\times0.80)+(0.55\times0.10)+(0.60\times0.10) = \mathbf{0.819}$. Gap widens to 30pp.</p>
+<p><strong>Decision: Option B in both modes</strong>, but the framework's response is proportionate — mild preference for the safe route under normal conditions, strong preference as storm conditions activate. If wind exceeds a threshold driving $C$ below $C_{\min}(0.90)$, the drone returns to base rather than proceeding on a route it cannot safely evaluate.</p>
+<hr />
+
+<h4>C.2.1 Edge Deployment Note — Drone Power Budget</h4>
+<p>A delivery drone's total system power budget (motors, sensors, compute, communications) is typically 200–500W. A Jetson Orin NX running a 7B specialist model consumes 10–25W — leaving the vast majority of the budget for flight. A datacenter GPU at 400–700W exceeds the entire drone power budget before any other system draws power.</p>
+<p>A single 7B routing + planning specialist on a Jetson Orin NX therefore enables on-board intelligent routing decisions that would otherwise require offloading to a ground server (adding network latency and a failure mode when connectivity drops). Battery life improves directly: reducing compute power from hypothetical 100W (GPU) to 25W (Jetson) extends flight time by a meaningful fraction of the total battery budget.</p>
+<h3 id="appendix-c3">C.3 Smart Home Energy Management — Comfort vs Cost vs Carbon</h3>
+<p class="domain-ref">Domain deep-dive: <a href="domain_energy_systems_v0_5.html">Energy Systems</a></p>
+<p>A smart home agent controls HVAC, appliances, EV charging, and lighting to balance occupant comfort against electricity cost and carbon footprint — objectives that change moment to moment as grid prices, renewable availability, and occupant schedules shift.</p>
+<h4>Attributes and field weights</h4>
+<p>$$U = w_c \cdot c + w_k \cdot k + w_g \cdot g$$</p>
+<p>where $c$ = comfort level, $k$ = cost efficiency (inverse of electricity spend), $g$ = inverse grid carbon intensity.</p>
+<table>
+<thead><tr><th>Mode</th><th>$w_c$</th><th>$w_k$</th><th>$w_g$</th><th>Trigger</th></tr></thead>
+<tbody>
+<tr><td>Standard</td><td>0.40</td><td>0.40</td><td>0.20</td><td>Normal grid conditions</td></tr>
+<tr><td>Peak pricing event</td><td>0.20</td><td>0.65</td><td>0.15</td><td>Price &gt; 3× baseline</td></tr>
+<tr><td>High solar availability</td><td>0.40</td><td>0.20</td><td>0.40</td><td>Solar generation &gt; 80% load</td></tr>
+<tr><td>Occupant comfort override</td><td>0.75</td><td>0.15</td><td>0.10</td><td>Explicit preference signal</td></tr>
+</tbody>
+</table>
+<h4>Worked example — afternoon appliance scheduling</h4>
+<table>
+<thead><tr><th>Attribute</th><th>Option A: Run appliances now (3pm)</th><th>Option B: Defer to off-peak (11pm)</th></tr></thead>
+<tbody>
+<tr><td>Comfort $c$</td><td>0.90</td><td>0.65</td></tr>
+<tr><td>Cost efficiency $k$</td><td>0.30</td><td>0.90</td></tr>
+<tr><td>Carbon $g$</td><td>0.35</td><td>0.75</td></tr>
+</tbody>
+</table>
+<p><strong>Standard mode:</strong> $U_A = (0.90\times0.40)+(0.30\times0.40)+(0.35\times0.20) = \mathbf{0.550}$. $U_B = (0.65\times0.40)+(0.90\times0.40)+(0.75\times0.20) = \mathbf{0.770}$. Deferral wins.</p>
+<p><strong>Peak pricing:</strong> $U_A = \mathbf{0.428}$, $U_B = \mathbf{0.828}$. Gap doubles — correct, as cost efficiency weight rises to 0.65. When the occupant explicitly signals they need laundry done now, the comfort override ($w_c=0.75$) makes Option A optimal — the agent defers to expressed preference rather than optimising silently against it. Cross-session learning accumulates patterns ("Thursday 11pm reliably coincides with grid carbon dip") and future scheduling decisions retrieve this prior automatically.</p>
+<hr />
+<h3 id="appendix-c4">C.4 Energy Grid Load Balancing — Stability vs Cost vs Renewables</h3>
+<p class="domain-ref">Domain deep-dive: <a href="domain_energy_systems_v0_5.html">Energy Systems</a></p>
+<p>A grid management agent balances load across generation sources in real time, with decisions required in seconds and errors that cascade across interconnected infrastructure. High-stakes field parameters ($C_{\min}=0.95$ under surge) ensure the agent escalates to human operators when forecast reliability drops rather than committing large generation decisions under uncertainty.</p>
+<h4>Attributes and field weights</h4>
+<p>$$U = w_\sigma \cdot \sigma + w_e \cdot e + w_r \cdot r$$</p>
+<p>where $\sigma$ = grid frequency stability, $e$ = generation cost efficiency, $r$ = renewable utilisation fraction.</p>
+<table>
+<thead><tr><th>Mode</th><th>$w_\sigma$</th><th>$w_e$</th><th>$w_r$</th><th>$C_{\min}$</th></tr></thead>
+<tbody>
+<tr><td>Normal operations</td><td>0.50</td><td>0.30</td><td>0.20</td><td>0.80</td></tr>
+<tr><td>Demand surge (&gt;15%)</td><td>0.80</td><td>0.10</td><td>0.10</td><td>0.95</td></tr>
+<tr><td>Renewable surplus</td><td>0.35</td><td>0.25</td><td>0.40</td><td>0.75</td></tr>
+</tbody>
+</table>
+<h4>Worked example — unexpected demand spike</h4>
+<table>
+<thead><tr><th>Attribute</th><th>Option A: Gas peaker plant</th><th>Option B: Demand response + battery</th></tr></thead>
+<tbody>
+<tr><td>Stability $\sigma$</td><td>0.95</td><td>0.75</td></tr>
+<tr><td>Cost efficiency $e$</td><td>0.30</td><td>0.80</td></tr>
+<tr><td>Renewable utilisation $r$</td><td>0.10</td><td>0.70</td></tr>
+</tbody>
+</table>
+<p><strong>Normal operations:</strong> $U_A = \mathbf{0.585}$, $U_B = \mathbf{0.755}$. Demand response wins — cleaner and cheaper, stability trade-off is acceptable.</p>
+<p><strong>Demand surge mode</strong> ($w_\sigma=0.80$): $U_A = (0.95\times0.80)+(0.30\times0.10)+(0.10\times0.10) = \mathbf{0.800}$. $U_B = (0.75\times0.80)+(0.80\times0.10)+(0.70\times0.10) = \mathbf{0.750}$. <strong>Decision flips.</strong> The gas peaker becomes optimal because grid stability now dominates — a 5pp reversal that directly encodes the shift in $w_\sigma$ from 0.50 to 0.80. The same architecture produces the right decision in both contexts without separate rule sets for each scenario.</p>
+<hr />
+<h3 id="appendix-c5">C.5 Dynamic Pricing — Revenue vs Retention vs Market Share</h3>
+<p class="domain-ref">Domain deep-dive: <a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a></p>
+<p>A dynamic pricing agent for a platform (ride-sharing, e-commerce, SaaS) must balance short-term revenue against customer satisfaction and long-run market share. Conventional surge pricing maximises immediate revenue but can be catastrophically bad for retention when applied without a utility trade-off framework.</p>
+<h4>Attributes and field weights</h4>
+<p>$$U = w_r \cdot r + w_s \cdot s + w_m \cdot m$$</p>
+<p>where $r$ = revenue per transaction (normalised), $s$ = predicted customer satisfaction, $m$ = market share trajectory signal.</p>
+<table>
+<thead><tr><th>Mode</th><th>$w_r$</th><th>$w_s$</th><th>$w_m$</th><th>Trigger</th></tr></thead>
+<tbody>
+<tr><td>Standard</td><td>0.50</td><td>0.30</td><td>0.20</td><td>Normal conditions</td></tr>
+<tr><td>Competitive threat</td><td>0.25</td><td>0.35</td><td>0.40</td><td>Competitor price drop &gt;10%</td></tr>
+<tr><td>Supply crunch</td><td>0.65</td><td>0.20</td><td>0.15</td><td>Supply &lt; 40% of demand</td></tr>
+<tr><td>New market entry</td><td>0.20</td><td>0.40</td><td>0.40</td><td>New geography or category</td></tr>
+</tbody>
+</table>
+<h4>Worked example — surge demand event</h4>
+<table>
+<thead><tr><th>Attribute</th><th>Option A: Surge +40%</th><th>Option B: +10% with loyalty reward</th></tr></thead>
+<tbody>
+<tr><td>Revenue $r$</td><td>0.90</td><td>0.55</td></tr>
+<tr><td>Satisfaction $s$</td><td>0.25</td><td>0.80</td></tr>
+<tr><td>Market share $m$</td><td>0.30</td><td>0.75</td></tr>
+</tbody>
+</table>
+<p><strong>Standard mode:</strong> $U_A = (0.90\times0.50)+(0.25\times0.30)+(0.30\times0.20) = \mathbf{0.585}$. $U_B = (0.55\times0.50)+(0.80\times0.30)+(0.75\times0.20) = \mathbf{0.665}$. Moderate pricing with loyalty reward wins.</p>
+<p><strong>Supply crunch mode</strong> ($w_r=0.65$): $U_A = \mathbf{0.680}$, $U_B = \mathbf{0.630}$. Surge pricing becomes optimal — the supply constraint makes moderate pricing financially untenable and the utility framework reflects this correctly. A flat "never surge" policy would be suboptimal in genuine crunch conditions; a flat "always surge on demand" policy destroys customer relationships in normal conditions. The utility framework selects the right option in each context through the same formula.</p>
+<p>The assertions store accumulates segment-level elasticity data: "business travellers have satisfaction elasticity 0.3; leisure travellers 0.8." Future pricing decisions use segment-specific confidence-weighted $s$ values rather than a population average, improving both revenue and retention simultaneously.</p>
+<hr />
+
+<hr />
+<h3 id="appendix-c6">C.6 AI Data Centers — Revenue per Watt, Fleet Heterogeneity, and Specialist Serving</h3>
+<p class="domain-ref">Domain deep-dive: <a href="domain_ai_datacenters_v0_5.html">AI Data Centers</a></p>
+<p>For an AI data center or GPU cloud operator, the framework is valuable only if it improves economics. The relevant variables are not raw benchmark score alone, but <strong>cost per useful query</strong>, <strong>revenue per watt</strong>, and <strong>utilisation across a heterogeneous fleet</strong>. That makes this domain a natural fit for the Micro-Expert Architecture.</p>
+<h4>Operator objective</h4>
+<p>One useful operator-facing utility is:</p>
+<p>$$U = w_m \cdot m + w_u \cdot u + w_q \cdot q$$</p>
+<p>where $m$ = margin per served query, $u$ = fleet utilisation, and $q$ = delivered query quality on the target specialist workload.</p>
+<table>
+<thead><tr><th>Attribute</th><th>Monolithic frontier serving</th><th>Routed specialist serving</th></tr></thead>
+<tbody>
+<tr><td>Margin $m$</td><td>0.45</td><td>0.80</td></tr>
+<tr><td>Utilisation $u$</td><td>0.55</td><td>0.78</td></tr>
+<tr><td>Quality $q$</td><td>0.92</td><td>0.88</td></tr>
+</tbody>
+</table>
+<p>With weights $(w_m, w_u, w_q) = (0.40, 0.30, 0.30)$, the routed specialist stack scores $U = 0.812$ versus $0.625$ for the monolith. The point is not that the specialist always wins on absolute quality, but that on the right query class it can dominate on the operator’s real objective function.</p>
+<h4>Why mixed fleets matter</h4>
+<p>A mixed fleet containing H100s, A100s, A40s, L40S-class cards, and consumer-adjacent GPUs is difficult to monetise if every customer must be served by one giant general model. Specialist routing changes that. A lower-tier GPU that cannot profitably host a broad 70B model may still be ideal for a fine-tuned 7B domain specialist with high utilisation and lower SLA burden. The framework therefore gives product meaning to hardware that might otherwise be commercially awkward.</p>
+<h4>LoRA multi-tenancy and tiered SLAs</h4>
+<p>The architecture also creates a clean path for LoRA multi-tenancy. A shared base specialist can stay resident while customer- or vertical-specific adapters rotate through it, improving effective utilisation and reducing cold-start overhead. Operators can then offer distinct products: frontier broad-model inference on scarce top-end hardware, and specialist guaranteed-quality inference on cheaper pools at lower headline price but potentially higher gross margin.</p>
+
+<hr />
+<h3 id="appendix-c7">C.7 Self-Driving Companies — Modular Safety Cases, Shadow Mode, and Fleet Learning</h3>
+<p class="domain-ref">Domain deep-dive: <a href="domain_self_driving_v0_5.html">Self-Driving Vehicles</a> · <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a></p>
+<p>For self-driving and autonomy companies, the framework’s strongest benefits are <strong>independent updateability</strong>, <strong>auditable decision traces</strong>, and <strong>formal abstention under uncertainty</strong>. Those are exactly the properties that current end-to-end black-box stacks struggle to demonstrate in certification and incident review.</p>
+<h4>Component decomposition</h4>
+<p>A natural three-way split is:</p>
+<ul>
+<li>Perception specialist</li>
+<li>Motion-planning specialist</li>
+<li>Traffic-rules / policy specialist</li>
+</ul>
+<p>Updating one does not change the others. That matters because a regulator or internal safety board can narrow the revalidation scope to the changed component plus its interfaces, instead of re-opening the entire stack.</p>
+<h4>Worked framing — shadow mode as blue-green deployment</h4>
+<p>Autonomy teams already run shadow mode: a candidate model computes decisions without acting on them, and its outputs are compared to the live path. In this framework that becomes a formal blue-green deployment protocol. The candidate specialist is the green deployment, the production specialist is blue, and promotion depends on utility and safety metrics rather than ad hoc review alone.</p>
+<h4>Abstention and remote escalation</h4>
+<p>The confidence gate is also directly relevant. If road conditions, sensor fusion, or map consistency push confidence below the field threshold, the system should not “answer anyway.” It should defer: refuse the manoeuvre, slow, or escalate to a remote human operator depending on the operational design domain. This is not only good engineering; it aligns with how safety-critical autonomy is increasingly expected to behave under regulatory scrutiny.</p>
+<h4>Fleet learning without full-stack retraining</h4>
+<p>Edge cases encountered by one vehicle can be stored as structured assertions and later turned into DPO-weighted corrections for the relevant specialist only. A rare pedestrian behaviour in San Francisco improves the perception specialist fleet-wide without perturbing traffic rules or motion planning weights. That is the fleet-scale version of the paper’s cross-session learning claim, and it is significantly easier to certify than end-to-end full-stack retraining after every safety-relevant discovery.</p>
+
+<hr />
+<h3>C.8 Advantages Over Conventional Approaches</h3>
+<p>The five examples above make two structural advantages concrete:</p>
+<p><strong>Nuanced trade-offs without explicit rules.</strong> A conventional system requires a human to pre-enumerate every conflict scenario and write a resolution rule for each. The utility framework resolves conflicts automatically through the weighted sum — the drone selects the safe route in storm conditions without a "storm mode" rule having been pre-written, because the confidence-weighted shift in $w_s$ does the work. The number of scenarios a rule-based system must handle grows combinatorially with the number of objectives; the utility framework scales to arbitrarily many objectives with a single additive formula whose structure is proved to be the unique correct one under five axioms (Theorem B.1).</p>
+<p><strong>Calibrated uncertainty as a first-class decision variable.</strong> Conventional systems treat uncertainty as noise to be filtered before the decision is made. The utility framework treats it as an explicit input: $C$ tracks the agent's self-assessed reliability, and $C_{\min}(f)$ creates a hard gate below which the agent abstains. An autonomous vehicle uncertain about road conditions does not guess — it declines to execute the manoeuvre. A grid management agent uncertain about demand forecasts escalates to a human rather than committing a large generation change. In safety-critical domains this property is not a refinement; it is the primary design requirement, and it falls out of the utility architecture by construction.</p>
+<p>The field-specific weight vectors and minimum competence thresholds make both advantages domain-calibrated rather than generic. The same architecture that tolerates more risk in dynamic pricing ($C_{\min}=0.60$) demands near-certainty in grid management ($C_{\min}=0.95$) — not through separate codebases, but through the same utility function with different field parameters derived from domain-specific liability and safety standards (§5).</p>
+
+<h4>C.8.1 Cross-Session Memory and Error Non-Repetition</h4>
+<p>Conventional AI systems are stateless between sessions — the same vehicle makes the same route-planning mistake on Tuesday that it made on Monday. The assertions store gives the utility-governed agent persistent, decay-weighted memory: the autonomous vehicle that learned "high merge conflict at junction X at 17:30–18:30" on Monday applies that prior on Tuesday without being retrained. The three-layer learning architecture (§8) means errors detected today actively suppress the same errors tomorrow through DPO-weighted correction injection. For a drone that has learned a particular flight corridor has unpredictable wind shear, that knowledge persists across flights and informs future route selection automatically. No conventional rule-based or single-session system has this property without explicit manual rule entry.</p>
+
+<h4>C.8.2 Interpretable Decision Rationale — Regulatory Readiness</h4>
+<p>Because $U = w_s \cdot s + w_e \cdot e + w_c \cdot c$ with named, weighted components, the agent can always produce a human-readable decision audit: <em>"Option B was selected because its safety score (0.95) with weight 0.70 outweighed the 32% efficiency advantage of Option A at weight 0.20. Total utility: 0.845 vs 0.640."</em> Neural systems cannot produce this audit by construction. For regulated domains — aviation certification (DO-178C), automotive safety (ISO 26262), medical device approval (FDA 510k), financial algorithm compliance (MiFID II) — interpretability is a regulatory requirement, not a design preference. The utility function provides it by construction, with no additional instrumentation required.</p>
+
+<h4>C.8.3 Principled Abstention at the Competence Boundary</h4>
+<p>The $C_{\min}(f)$ gate is not a confidence hedge — it is a formal model of the agent's own competence boundary. Below the threshold the agent does not produce a low-confidence answer; it categorically refuses to act and escalates. An autonomous vehicle uncertain about road conditions does not slow down and proceed cautiously — it refuses the lane change and signals the driver. A grid management agent uncertain about demand forecasts does not make a smaller generation adjustment — it escalates to a human operator. Neural systems produce output regardless of internal reliability; there is no formal mechanism preventing generation of a confident answer on a query the model has never reliably encountered. For safety-critical systems, the distinction between "lower-quality output" and "no output with escalation" is the difference between a well-designed system and a dangerous one.</p>
+
+<h4>C.8.4 Principled Cross-Domain Deployment from a Single Architecture</h4>
+<p>The same codebase deploys across all five domains in this appendix by changing only the field configuration — the weight vector, penalty multiplier $\mu(f)$, and competence threshold $C_{\min}(f)$. These parameters are not arbitrary engineering choices: they are derived from domain-specific liability standards (§5.1) — medical malpractice thresholds, ICAO Annex 13 aviation certification, ISO 26262 automotive safety classifications. A regulatory body auditing the autonomous vehicle deployment can evaluate the weight choices against existing automotive safety standards rather than treating them as opaque model internals. Cross-domain regulatory compliance with a unified, auditable parameterisation is a structural property of the architecture, not an add-on.</p>
+
+<h4>C.8.5 Additional Structural Advantages</h4>
+<table>
+<thead>
+<tr><th>Advantage</th><th>Mechanism</th><th>Formal grounding</th><th>Contrast with conventional systems</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Curiosity with guaranteed exploitation dominance</strong></td>
+<td>Exploration bonus capped at 50% of total utility; cap tightens automatically as competence falls</td>
+<td>Proposition B.6 — proved exactly</td>
+<td>ε-greedy and UCB have no domain-calibrated competence-relative guarantee; may explore when the agent is already unreliable</td>
+</tr>
+<tr>
+<td><strong>VCG-aligned multi-agent coordination</strong></td>
+<td>Clarke pivot transfers make truthful capability reporting each agent's dominant strategy; socially optimal task allocation follows</td>
+<td>Theorem S1 (truthfulness), Theorem S2 (POA = 1)</td>
+<td>Conventional multi-agent systems suffer strategic misreporting; agents overstate capabilities to receive preferred assignments; no formal coordination guarantee without mechanism design</td>
+</tr>
+<tr>
+<td><strong>Predictable personality stability — safety certifiable</strong></td>
+<td>Behavioural tendencies evolve within formally proved bounds; field-specific floors and ceilings enforced by projection</td>
+<td>Theorem B.7 — Lyapunov stable, stays in field bounds under bounded drift</td>
+<td>Neural systems offer no formal guarantee against post-deployment behavioural shift; "generally behaves well" is not a safety case statement</td>
+</tr>
+</tbody>
+</table>
+<hr />
+
+<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 0;border-top:1px solid #e4e1da;margin-top:3rem;font-size:.88rem;">
+<a href="whitepaper_v1_results_tmp.html">← Results (§§11–14)</a>
+<a href="whitepaper_v1_overview_tmp.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
+<a href="whitepaper_v1_appendix_a_tmp.html">Appendix A →</a>
+</div>
+<div style="padding:2rem 0;border-top:2px solid #e8e4de;margin-top:3rem;font-size:.84rem;color:#6b7280;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+<div><strong style="color:#333;">Praneeth Tota</strong> · Ph.D. Computer Science (Algorithmic Game Theory) · Illinois Institute of Technology<br>
+<a href="https://praneethtota.github.io" style="color:#4338ca;">praneethtota.github.io</a> · Whitepaper: CC BY 4.0</div>
+<div style="text-align:right;"><a href="whitepaper_v1_tmp.html" style="color:#4338ca;">Home</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" style="color:#4338ca;">GitHub</a><br>AUA Framework v1.0.0</div>
+</div>
+</div>
+</body>
+</html>

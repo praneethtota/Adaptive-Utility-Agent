@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Appendix B — Mathematical Foundations and Proofs — AUA Whitepaper v1.0</title>
+<meta name="author" content="Praneeth Tota">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body)"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:16px;line-height:1.75;color:#1a1a1a;background:#fafaf8;margin:0;padding:0}
+.page{max-width:800px;margin:0 auto;padding:0 2rem 5rem;background:#fff;border-left:1px solid #e8e4de;border-right:1px solid #e8e4de;min-height:100vh}
+h1{font-family:'DM Serif Display',Georgia,serif;font-size:1.9rem;font-weight:700;margin:0 0 .25rem;line-height:1.3;color:#111}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.35rem;font-weight:400;margin:2.5rem 0 .75rem;border-bottom:2px solid #e8e4de;padding-bottom:.4rem;color:#111;scroll-margin-top:60px}
+h3{font-family:'DM Serif Display',Georgia,serif;font-size:1.1rem;font-weight:400;margin:2rem 0 .6rem;color:#222}
+h4{font-size:.95rem;font-weight:700;margin:1.5rem 0 .5rem;color:#444}
+h5{font-size:.88rem;font-weight:700;margin:1.2rem 0 .4rem;color:#555}
+p{margin:0 0 1rem}strong{font-weight:700}em{font-style:italic}
+blockquote{border-left:3px solid #c0bab2;margin:1.5rem 0;padding:.75rem 1rem;background:#f5f3ef;font-size:.9rem;color:#555}
+code{font-family:'JetBrains Mono','Courier New',monospace;font-size:.82rem;background:#f2f0eb;padding:2px 5px;border-radius:3px;color:#333}
+pre{background:#f2f0eb;border:1px solid #e0dbd4;border-radius:5px;padding:1rem 1.25rem;overflow-x:auto;margin:1rem 0 1.5rem;font-size:.79rem;line-height:1.6}
+pre code{background:none;padding:0;font-size:inherit}
+table{width:100%;border-collapse:collapse;font-size:.84rem;margin:1rem 0 1.5rem;font-family:'JetBrains Mono','Courier New',monospace}
+th{text-align:left;border-bottom:2px solid #c0bab2;padding:6px 10px;font-family:'DM Serif Display',Georgia,serif;font-size:.82rem;color:#444}
+td{padding:5px 10px;border-bottom:1px solid #e8e4de;vertical-align:top}
+tr:nth-child(even) td{background:#f9f8f5}
+ul,ol{margin:0 0 1rem;padding-left:1.5rem}li{margin-bottom:.3rem}
+hr{border:none;border-top:1px solid #e0dbd4;margin:2rem 0}
+.chart-section{background:#f9f8f5;border:1px solid #e0dbd4;border-radius:8px;padding:1.5rem;margin:1.5rem 0}
+.chart-section h4{margin-top:0;color:#333}
+.chart-wrap{position:relative;width:100%;height:240px;margin:.75rem 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:#666;margin-bottom:6px}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{width:22px;height:3px;border-radius:2px;display:inline-block}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1.5rem}
+.metric{background:#fff;border:1px solid #e0dbd4;border-radius:6px;padding:.75rem 1rem}
+.metric .label{font-size:11px;color:#888;margin-bottom:3px}
+.metric .value{font-size:18px;font-weight:700;color:#111}
+.metric .sub{font-size:11px;color:#aaa;font-family:'JetBrains Mono',monospace}
+.appendix-b{background:#f7f5ff;border-left:3px solid #534AB7;padding:.5rem 1rem;margin:.5rem 0 1rem;font-size:.85rem;color:#444;border-radius:0 4px 4px 0}
+.appendix-b-section{font-size:16px;line-height:1.8}
+.appendix-b-section h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.3rem;font-weight:400;margin:2.5rem 0 .7rem;border-bottom:2px solid #e8e4de;padding-bottom:.4rem;color:#111}
+.appendix-b-section h3,.appendix-b-section h4,.appendix-b-section h5{font-family:'DM Serif Display',Georgia,serif;font-weight:400}
+.domain-ref{font-size:.81rem;color:#6b7280;margin:.25rem 0 .9rem;padding:.35rem .7rem;background:#eef2ff;border-left:3px solid #4338ca;border-radius:0 5px 5px 0;display:inline-block}
+.domain-ref a{color:#4338ca;text-decoration:none;font-weight:500}
+nav.site-nav{display:flex;flex-wrap:wrap;gap:.5rem .8rem;padding:.85rem 2rem;border-bottom:1px solid #e4e1da;background:#fafaf8;font-size:.83rem;position:sticky;top:0;z-index:10;margin:0 -2rem}
+nav.site-nav a{color:#4338ca;text-decoration:none;font-weight:500}
+nav.site-nav a:hover{text-decoration:underline}
+nav.site-nav a.active{color:#18181b;font-weight:700}
+.part-banner{background:linear-gradient(135deg,#eef2ff,#f0fdf4);border:1px solid #c7d2fe;border-radius:10px;padding:1.25rem 1.5rem;margin:2rem 0 2.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.part-num{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4338ca;background:#eef2ff;padding:.3rem .75rem;border-radius:4px;white-space:nowrap}
+.part-info{font-size:.9rem;color:#444}
+.part-info strong{color:#111}
+@media print{body{background:white}.page{border:none;padding:1rem}}
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="site-nav">
+  <a href="whitepaper_v1_tmp.html">Home</a>
+  <a href="whitepaper_v1_overview_tmp.html">1 · Overview</a>
+  <a href="whitepaper_v1_theory_tmp.html">2 · Theory</a>
+  <a href="whitepaper_v1_architecture_tmp.html">3 · Architecture</a>
+  <a href="whitepaper_v1_results_tmp.html">4 · Results</a>
+  <a href="whitepaper_v1_appendix_a_tmp.html">App. A · Empirical</a>
+  <a href="whitepaper_v1_appendix_b_tmp.html" class="active">App. B · Proofs</a>
+  <a href="whitepaper_v1_appendix_c_tmp.html">App. C · Examples</a>
+  <a href="tutorial_v1_tmp.html">Tutorial</a>
+  <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
+</nav>
+<div style="padding:2rem 0 1.5rem">
+<div style="font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#4338ca;margin-bottom:.75rem;">Whitepaper · Appendix B · Formal proofs: Debreu, Kalman, Lyapunov, VCG</div>
+<h1 style="font-family:'DM Serif Display',Georgia,serif;font-size:1.75rem;font-weight:700;margin:0 0 .25rem;color:#111;">Appendix B — Mathematical Foundations and Proofs</h1>
+<p style="font-size:.88rem;color:#555;margin:0 0 .25rem;">Praneeth Tota &nbsp;·&nbsp; Illinois Institute of Technology &nbsp;·&nbsp; v1.0.0</p>
+</div>
+<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 0;border-top:1px solid #e4e1da;margin-top:3rem;font-size:.88rem;">
+<a href="whitepaper_v1_appendix_a_tmp.html">← Appendix A</a>
+<a href="whitepaper_v1_overview_tmp.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
+</div>
+<div class="appendix-b-section"><h2 id="appendix-b">Appendix B: Mathematical Foundations</h2>
+<p>This appendix contains formal mathematical foundations for the utility function and system components introduced in §§4–5. Each result is cross-referenced from its first appearance in the main text. Proofs are self-contained; familiarity with basic real analysis and probability is assumed.</p>
+<p><strong>Index of results:</strong>
+- <strong>Theorem B.1</strong> (§B.1): Additive linear structure of U — Debreu + Cauchy derivation
+- <strong>§B.2</strong>: Field weight justification — cost proportionality design principle
+- <strong>Proposition B.3</strong> (§B.3): Efficacy sigmoid — Mann-Whitney interpretation
+- <strong>Theorem B.4</strong> (§B.4): EMA confidence update — Kalman optimality for ρ = 0.05
+- <strong>Proposition B.6</strong> (§B.6): Curiosity cap — exploitation dominance proof
+- <strong>Theorem B.5</strong> (§B.5): Confidence convergence — geometric convergence in expectation, recovery time
+- <strong>Theorem B.7</strong> (§B.7): Personality stability — Lyapunov analysis, bounded stable dynamics</p>
+<hr />
+<p>Before analyzing the properties of the utility function $U$, we justify its structure from first principles. In its current form,</p>
+<p>$$U(E, C, K; f) = w_e(f)\,E + w_c(f)\,C + w_k(f)\,K$$</p>
+<p>may appear as a convenient aggregation. This section establishes that its structure is <strong>not arbitrary</strong>, but arises naturally from a set of desiderata on how performance, consistency, and exploration should contribute to decision-making.</p>
+<hr />
+<h3>B.1 Additive Linear Structure from Separability and Scaling</h3>
+<p>We seek a utility function $U : [0,1]^3 \to \mathbb{R}$ over three measurable dimensions:
+- efficacy $E$,
+- confidence $C$,
+- curiosity $K$,</p>
+<p>satisfying the following axioms.</p>
+<p><strong>A1 (Monotonicity).</strong>
+$U$ is strictly increasing in each argument.</p>
+<p><strong>A2 (Continuity).</strong>
+$U$ is continuous on $[0,1]^3$.</p>
+<p><strong>A3 (Marginal Independence / Separability).</strong>
+The marginal effect of improving one dimension does not depend on the current level of the others. Formally, for any $E, E', C, C', K$:</p>
+<p>$$U(E,C,K) - U(E',C,K) = U(E,C',K) - U(E',C',K)$$</p>
+<p><strong>A4 (Field-Invariant Structure).</strong>
+The functional form of $U$ is identical across fields; only the weight vector $w(f)$ may vary with $f$.</p>
+<p><strong>A5 (Linear Scaling Invariance).</strong>
+For all $\lambda \in (0, 1]$ such that $(\lambda E, \lambda C, \lambda K) \in [0,1]^3$:</p>
+<p>$$U(\lambda E,\, \lambda C,\, \lambda K) = \lambda\, U(E, C, K)$$</p>
+<p><em>Motivation.</em> A5 states that scaling all dimensions by the same factor scales utility proportionally. This is natural when $E$, $C$, and $K$ are all measured on the same normalized $[0,1]$ scale: an agent at half performance, half confidence, and half curiosity should have half the utility. It rules out curvature in the component functions and is the standard homogeneity assumption in welfare economics (Blackorby and Donaldson, 1982).</p>
+<hr />
+<h3>Theorem B.1</h3>
+<p><em>Under axioms A1–A5, the utility function is necessarily of the form</em></p>
+<p>$$U(E, C, K; f) = w_e(f)\,E + w_c(f)\,C + w_k(f)\,K$$</p>
+<p><em>with $w_e(f), w_c(f), w_k(f) > 0$ and $w_e(f) + w_c(f) + w_k(f) = 1$.</em></p>
+<hr />
+<h3>Proof</h3>
+<p><strong>Step 1 — Additive representation from A1–A3.</strong></p>
+<p>A3 states that each argument is preferentially independent of the others. Applying this pairwise — $E$ independent of $(C,K)$, $C$ independent of $(E,K)$, $K$ independent of $(E,C)$ — gives mutual preferential independence. By the theorem of Debreu (1960, Theorem 3): a continuous utility function on a connected domain with mutually preferentially independent components admits an additively separable representation. Therefore there exist continuous strictly increasing functions $\phi_E, \phi_C, \phi_K : [0,1] \to \mathbb{R}$ such that:</p>
+<p>$$U(E, C, K) = \phi_E(E) + \phi_C(C) + \phi_K(K)$$</p>
+<p><strong>Step 2 — Linearity from A5 via the Cauchy functional equation.</strong></p>
+<p>Substitute the additive form into A5:</p>
+<p>$$\phi_E(\lambda E) + \phi_C(\lambda C) + \phi_K(\lambda K) = \lambda\bigl(\phi_E(E) + \phi_C(C) + \phi_K(K)\bigr)$$</p>
+<p>Fix $C = C_0 \in (0,1]$ and $K = K_0 \in (0,1]$ and vary $E \in (0,1]$:</p>
+<p>$$\phi_E(\lambda E) - \lambda\,\phi_E(E) = \lambda\,\phi_C(C_0) - \phi_C(\lambda C_0) + \lambda\,\phi_K(K_0) - \phi_K(\lambda K_0)$$</p>
+<p>The right-hand side depends only on $C_0$, $K_0$, and $\lambda$ — not on $E$. Therefore the left-hand side must be constant in $E$:</p>
+<p>$$\phi_E(\lambda E) - \lambda\,\phi_E(E) = h(\lambda) \qquad \text{for all } E,\lambda \in (0,1], \tag{$*$}$$</p>
+<p>where $h : (0,1] \to \mathbb{R}$ is a function of $\lambda$ alone. We now determine $\phi_E$ and $h$ using only continuity — no differentiability is assumed.</p>
+<p><em>Step 2a — Determine $h$ via iterated application of $(*)$.</em> Apply $(*)$ twice in sequence: first with scaling $\lambda_2$ then with $\lambda_1$, and vice versa:</p>
+<p>$$\phi_E(\lambda_1\lambda_2 E) = \lambda_1\phi_E(\lambda_2 E) + h(\lambda_1) = \lambda_1\lambda_2\phi_E(E) + \lambda_1 h(\lambda_2) + h(\lambda_1)$$</p>
+<p>By symmetry (swapping $\lambda_1 \leftrightarrow \lambda_2$):</p>
+<p>$$\phi_E(\lambda_1\lambda_2 E) = \lambda_1\lambda_2\phi_E(E) + \lambda_2 h(\lambda_1) + h(\lambda_2)$$</p>
+<p>Equating the two expressions:</p>
+<p>$$\lambda_1 h(\lambda_2) + h(\lambda_1) = \lambda_2 h(\lambda_1) + h(\lambda_2) \implies (\lambda_1 - 1)h(\lambda_2) = (\lambda_2 - 1)h(\lambda_1)$$</p>
+<p>For any $\lambda_1 \neq 1$ and $\lambda_2 \neq 1$, this gives $h(\lambda_1)/(\lambda_1 - 1) = h(\lambda_2)/(\lambda_2 - 1) =: c$ for some constant $c \in \mathbb{R}$. By continuity of $\phi_E$ (and hence of $h$, which equals $\phi_E(\lambda E) - \lambda\phi_E(E)$), this extends to $\lambda = 1$ with $h(1) = c(1-1) = 0$. Therefore:</p>
+<p>$$h(\lambda) = c(\lambda - 1) \quad \text{for all } \lambda \in (0,1]$$</p>
+<p><em>Step 2b — Conclude linearity of $\phi_E$.</em> Substituting $h(\lambda) = c(\lambda-1)$ into $(*)$ and setting $E = 1$:</p>
+<p>$$\phi_E(\lambda) = \lambda\,\phi_E(1) + c(\lambda - 1) = \lambda\bigl(\phi_E(1) + c\bigr) - c$$</p>
+<p>Setting $w_E = \phi_E(1) + c$ and $c_E = -c$, we obtain $\phi_E(E) = w_E E + c_E$ for all $E \in (0,1]$, and by continuity at $E = 0$ as well. This derivation uses only continuity (A2); no differentiability of $\phi_E$ is required.</p>
+<p>By the same argument applied separately to $C_0$ and $K_0$:</p>
+<p>$$\phi_C(C) = w_C\,C + c_C, \qquad \phi_K(K) = w_K\,K + c_K$$</p>
+<p><strong>Step 3 — Normalization.</strong></p>
+<p>With $U(0,0,0) = 0$, we get $c_E + c_C + c_K = 0$. Under A4, the functional form is the same across fields, so field dependence enters only through $w_i(f)$, not through $c_i$. The natural convention $\phi_i(0) = 0$ (zero contribution from a zero-valued dimension) gives $c_i = 0$ individually. Normalizing so that $U(1,1,1) = 1$ yields $w_E + w_C + w_K = 1$. Strict monotonicity (A1) requires $w_i > 0$.</p>
+<p>Therefore:</p>
+<p>$$U(E, C, K; f) = w_e(f)\,E + w_c(f)\,C + w_k(f)\,K \qquad \blacksquare$$</p>
+<hr />
+<h3>Remark on Non-Additive Alternatives</h3>
+<p>Non-separable forms such as $U = E \cdot C$ violate A3: the marginal utility of increasing $E$ depends on the current level of $C$, creating the undesirable incentive of concentrating on dimensions already performing well rather than improving weaknesses. Non-homogeneous forms such as $U = \sqrt{E \cdot C \cdot K}$ violate A5: an agent at half performance does not achieve half utility. The linear form is not merely convenient — it is the unique form satisfying all five axioms jointly.</p>
+<hr />
+<h3>B.2 Field-Specific Weighting via Cost Sensitivity</h3>
+<p>Different domains place different importance on correctness, reliability, and exploration. We model this via a field-dependent weight vector $w(f)$.</p>
+<p><strong>Setup.</strong> Define:
+- $c_E(f)$: expected cost of an incorrect output in field $f$,
+- $c_C(f)$: expected cost of internal inconsistency in field $f$,
+- $c_K(f)$: expected cost of failing to explore high-upside domains in field $f$.</p>
+<p><strong>Design principle.</strong> We set:</p>
+<p>$$w_i(f) = \frac{c_i(f)}{c_E(f) + c_C(f) + c_K(f)}$$</p>
+<p>so that the gradient $\nabla_x U = (w_e, w_c, w_k)$ is proportional to the cost vector. This ensures that a unit improvement in the highest-cost dimension produces the largest utility gain, aligning the agent's optimization with domain-specific risk.</p>
+<p><strong>Empirical calibration.</strong> The weight ordering is verified against professional liability standards:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>$c_E$</th>
+<th>$c_C$</th>
+<th>$c_K$</th>
+<th>$w_e$</th>
+<th>$w_c$</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Surgery / Aviation</td>
+<td>Very high (irreversible harm)</td>
+<td>Very high (trust, procedure)</td>
+<td>Low</td>
+<td>0.20</td>
+<td>0.70</td>
+</tr>
+<tr>
+<td>Law</td>
+<td>High (precedent, liability)</td>
+<td>High (consistency)</td>
+<td>Low</td>
+<td>0.30</td>
+<td>0.60</td>
+</tr>
+<tr>
+<td>Software Engineering</td>
+<td>Moderate (fixable)</td>
+<td>Moderate</td>
+<td>Moderate</td>
+<td>0.55</td>
+<td>0.35</td>
+</tr>
+<tr>
+<td>Creative Writing</td>
+<td>Low (subjective)</td>
+<td>Very low</td>
+<td>High (novelty)</td>
+<td>0.80</td>
+<td>0.05–0.10</td>
+</tr>
+</tbody>
+</table>
+<p>The weight ordering $w_c(\text{surgery}) \gg w_c(\text{creative})$ is consistent with medical malpractice standards, ICAO Annex 13 aviation incident reporting, and ISO 26262 software safety classifications, all of which impose stronger consistency requirements in higher-stakes fields.</p>
+<p><strong>Status.</strong> This is a decision-theoretic design principle grounded in cost proportionality, not a strict optimality theorem. The weights encode domain knowledge and are calibrated empirically. Future work may derive them from a formal expected-harm minimization over a specified loss model.</p>
+<hr />
+<h3>B.3 Efficacy as a Saturating Performance Ratio</h3>
+<p>We define efficacy as a function of the relative performance ratio:</p>
+<p>$$r = \frac{\text{agent performance}}{\text{human baseline}}$$</p>
+<p>using the transformation:</p>
+<p>$$E(r) = \frac{r}{1+r}$$</p>
+<h3>Properties</h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Formula</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Parity with human baseline</td>
+<td>$E(1)$</td>
+<td>$0.5$</td>
+</tr>
+<tr>
+<td>Bounded above</td>
+<td>$\lim_{r\to\infty} E(r)$</td>
+<td>$1$</td>
+</tr>
+<tr>
+<td>Bounded below</td>
+<td>$\lim_{r\to 0} E(r)$</td>
+<td>$0$</td>
+</tr>
+<tr>
+<td>Smooth and monotone</td>
+<td>$E'(r)$</td>
+<td>$1/(1+r)^2 > 0$</td>
+</tr>
+<tr>
+<td>Diminishing returns above baseline</td>
+<td>$E''(r)$ for $r>1$</td>
+<td>$< 0$</td>
+</tr>
+</tbody>
+</table>
+<h3>Mann–Whitney Interpretation</h3>
+<p>Under the <strong>log-logistic performance model</strong>, $E(r)$ equals the Mann–Whitney dominance probability exactly — not merely analogously.</p>
+<p><strong>Proposition B.3.</strong> <em>Let $X_{\text{agent}} \sim \text{LogLogistic}(\mu_a, s)$ and $X_{\text{human}} \sim \text{LogLogistic}(\mu_h, s)$ with the same scale $s=1$, and let $r = e^{\mu_a - \mu_h}$ be the ratio of medians. Then:</em></p>
+<p>$$P(X_{\text{agent}} > X_{\text{human}}) = \frac{r}{1+r} = E(r)$$</p>
+<p><strong>Proof.</strong> The log-logistic distribution has CDF $F(x; \mu, s) = 1/(1 + e^{-(\log x - \mu)/s})$. For $s=1$:</p>
+<p>$$P(X_a > X_h) = P(\log X_a > \log X_h) = \int_0^\infty F_{X_h}(x)\,f_{X_a}(x)\,dx$$</p>
+<p>Under the log-logistic model with $\mu_a$ and $\mu_h$, this integral yields the closed-form expression (under the log-logistic assumption):</p>
+<p>$$P(X_a > X_h) = \frac{e^{\mu_a}}{e^{\mu_a} + e^{\mu_h}} = \frac{e^{\mu_a - \mu_h}}{1 + e^{\mu_a - \mu_h}} = \frac{r}{1+r} \qquad \blacksquare$$</p>
+<p><em>Note:</em> The result uses the specific structure of the log-logistic CDF. The difference of two log-logistic random variables does not in general follow a logistic distribution; the closed form arises directly from evaluating the integral under this model, not from a distribution-of-differences argument.</p>
+<p><strong>Scope of the claim.</strong> The equality $E(r) = P(X_a > X_h)$ holds under the log-logistic model with equal scale. Under different distributional assumptions (e.g., log-normal), the dominance probability takes a different form. The log-logistic assumption is standard for ratio comparisons in non-parametric statistics and produces the simplest closed form consistent with the boundary conditions $E(0) = 0$, $E(1) = 0.5$, $E(\infty) = 1$. We adopt this model and the resulting formula; the choice of distribution is a modelling assumption, not a mathematical necessity.</p>
+<h3>Comparison to Linear Normalization</h3>
+<p>A linear normalization $E_{\text{lin}}(r) = \min(r, 1)$ has a discontinuous derivative at $r=1$, gives zero marginal utility for any superhuman improvement, and lacks a probabilistic interpretation. The sigmoid form $r/(1+r)$ avoids all three issues and is the natural functional form for a dominance probability under a location-scale family of performance distributions.</p>
+<hr />
+<h3>B.4 Confidence as a Kalman-Optimal Filtered Estimate</h3>
+<p>Confidence is updated via the exponential moving average:</p>
+<p>$$C_{t+1} = (1-\alpha)\,C_t + \alpha\,s_t$$</p>
+<p>where $s_t \in [0,1]$ is the observed test pass rate at time $t$.</p>
+<h3>State-Space Model</h3>
+<p>Model latent domain confidence $\theta_t$ (the agent's true underlying competence) as a random walk observed through noisy pass rates:</p>
+<p>$$\theta_{t+1} = \theta_t + \varepsilon_t, \qquad \varepsilon_t \sim \mathcal{N}(0,\, \sigma_q^2) \quad \text{(process noise)}$$</p>
+<p>$$s_t = \theta_t + \eta_t, \qquad \eta_t \sim \mathcal{N}(0,\, \sigma_r^2) \quad \text{(observation noise)}$$</p>
+<p>The random walk model captures the assumption that true competence changes gradually — through calibration and learning — rather than jumping discontinuously.</p>
+<h3>Theorem B.4 (Kalman–EMA Equivalence)</h3>
+<p><em>In steady state, the Kalman filter for the above system reduces exactly to the EMA update $C_{t+1} = (1-\alpha^*)C_t + \alpha^* s_t$ with optimal gain:</em></p>
+<p>$$\alpha^* = \frac{-\sigma_q^2 + \sqrt{\sigma_q^{4} + 4\sigma_q^{2}\sigma_r^{2}}}{2\sigma_r^2}$$</p>
+<p><em>The choice $\alpha = 0.2$ is optimal when the noise ratio $\rho = \sigma_q^2/\sigma_r^2 = 0.05$.</em></p>
+<p><strong>Proof.</strong> The Kalman filter update is $C_{t+1} = C_t + K_t(s_t - C_t)$, identical to the EMA with $\alpha = K_t$. In steady state $K_t \to K^*$. The steady-state error covariance $P^*$ satisfies the discrete algebraic Riccati equation:</p>
+<p>$$P^* = \frac{P^* \sigma_r^2}{P^* + \sigma_r^2} + \sigma_q^2$$</p>
+<p>with $K^* = P^*/(P^* + \sigma_r^2)$. Substituting $P^* = K^*\sigma_r^2/(1-K^*)$ and simplifying:</p>
+<p>$$K^{*2}\sigma_r^2 + K^*\sigma_q^2 - \sigma_q^2 = 0 \quad \Longrightarrow \quad K^* = \frac{-\sigma_q^2 + \sqrt{\sigma_q^{4} + 4\sigma_q^{2}\sigma_r^{2}}}{2\sigma_r^2}$$</p>
+<p>Setting $K^* = \alpha^* = 0.2$ and solving for $\rho = \sigma_q^2/\sigma_r^2$:</p>
+<p>$$0.2 = \frac{-\rho + \sqrt{\rho^2 + 4\rho}}{2}
+\implies (0.4 + \rho)^2 = \rho^2 + 4\rho
+\implies 0.16 = 3.2\rho
+\implies \rho = 0.05 \qquad \blacksquare$$</p>
+<h3>Interpretation of $\rho = 0.05$</h3>
+<p>The noise ratio $\rho = 0.05$ means process noise is 5% of observation noise: true competence changes slowly relative to the variability of individual test outcomes. This is the correct regime for incremental calibration over many interactions — a single test pass or fail is noisy, while genuine competence changes only through sustained learning. The value $\alpha = 0.2$ is therefore not arbitrary; it is the Kalman-optimal gain for an agent whose true competence evolves at 5% the rate of observational variability.</p>
+<h3>Sensitivity</h3>
+<table>
+<thead>
+<tr>
+<th>$\rho = \sigma_q^2/\sigma_r^2$</th>
+<th>Optimal $\alpha^*$</th>
+<th>Regime</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.01</td>
+<td>0.095</td>
+<td>Very slow competence change — conservative updates</td>
+</tr>
+<tr>
+<td>0.05</td>
+<td>0.200</td>
+<td>Incremental learning (baseline)</td>
+</tr>
+<tr>
+<td>0.11</td>
+<td>0.281</td>
+<td>Moderate-pace learning</td>
+</tr>
+<tr>
+<td>0.25</td>
+<td>0.390</td>
+<td>Fast-changing competence</td>
+</tr>
+</tbody>
+</table>
+<p>For high-stakes fields where competence changes very slowly (surgery, aviation), smaller $\alpha$ values are appropriate. Deriving field-specific optimal gains from domain learning rate estimates is left as future work.</p>
+<p><strong>Remark on reasoning direction.</strong> The derivation above runs in reverse: the value $\alpha = 0.2$ was adopted first as a practically motivated heuristic (standard EMA learning rate in online learning literature), and the Kalman analysis was then used to characterize the noise regime for which this choice is provably optimal. This is a <em>justification</em> of a prior heuristic rather than a pure derivation. An alternative framing is: if we believe the process-to-observation noise ratio is approximately $\rho \approx 0.05$ — i.e., true competence changes at roughly 5% the rate of single-trial variability, which is plausible for an agent learning incrementally over many interactions — then $\alpha = 0.2$ is the unique Kalman-optimal gain under this model. The sensitivity table confirms the forward direction is consistent: $\rho = 0.05$ returns $\alpha^* = 0.200$ exactly. The validity of the Riccati derivation is model-specific; it relies on the random-walk / Gaussian-noise state-space model stated above, and does not extend to, e.g., heavy-tailed observation noise or non-stationary competence dynamics.</p>
+<hr />
+<h3>B.6 Curiosity as a UCB-Inspired Exploration Term</h3>
+<p>We define:</p>
+<p>$$K(d,t) = (C_{\max} - C_d)\;\nu_d\;\bigl(1 + \alpha_f\,\log(1 + n_{\text{fam}})\bigr)$$</p>
+<p>where $C_{\max} - C_d$ is the remaining confidence gap, $\nu_d \in [0,1]$ is the novelty of domain $d$, and $n_{\text{fam}}$ counts consecutive familiar interactions (resets on novel problems).</p>
+<h3>Structural Analogy to UCB</h3>
+<p>The UCB1 algorithm (Auer et al., 2002) selects arms by:</p>
+<p>$$\text{UCB}_d(t) = \hat{\mu}_d + \sqrt{\frac{2\log t}{n_d}}$$</p>
+<p>The curiosity term maps onto this structure as follows:</p>
+<table>
+<thead>
+<tr>
+<th>UCB1 component</th>
+<th>Curiosity component</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$\hat{\mu}_d$ (mean estimate)</td>
+<td>$C_d$ (confidence)</td>
+<td>Current estimated competence</td>
+</tr>
+<tr>
+<td>$1 - \hat{\mu}_d$ (uncertainty gap)</td>
+<td>$C_{\max} - C_d$</td>
+<td>Remaining upside in domain $d$</td>
+</tr>
+<tr>
+<td>$\sqrt{2\log t / n_d}$ (exploration bonus)</td>
+<td>$\nu_d\,(1 + \alpha_f \log(1 + n_{\text{fam}}))$</td>
+<td>Novelty-scaled familiarity pressure</td>
+</tr>
+</tbody>
+</table>
+<p>Both bonuses are concave and increasing in the "time since last exploration," creating persistent but diminishing pressure to revisit underexplored domains. The key structural difference is functional form: UCB uses $\sqrt{\log t / n}$; we use $\nu \cdot (1 + \alpha \log n_{\text{fam}})$. Both are in the sublinear growth family that prevents any single domain from being ignored indefinitely.</p>
+<p><strong>What this establishes:</strong> The curiosity term is UCB-<em>inspired</em> — it shares the structural properties (uncertainty-driven, concave in familiarity, bounded by exploitation) that make UCB effective. We do not claim exact equivalence to UCB1 or formal regret optimality; those results require a full bandit analysis under our specific setting, which is left as future work.</p>
+<h3>Proposition B.6 — The Cap Enforces Exploitation Dominance</h3>
+<p><strong>Proposition.</strong> <em>The constraint $w_k K \leq w_e E + w_c C$ implies that curiosity contributes at most 50% of total utility at all times:</em></p>
+<p>$$r_K \;\triangleq\; \frac{w_k K}{U} \;\leq\; \frac{1}{2}$$</p>
+<p><strong>Proof.</strong> Let $S = w_e E + w_c C$ (the exploitation component). The cap states $w_k K \leq S$. Total utility is $U = S + w_k K$. Therefore:</p>
+<p>$$r_K = \frac{w_k K}{S + w_k K} \leq \frac{S}{S + S} = \frac{1}{2} \qquad \blacksquare$$</p>
+<p>Equality holds only when $w_k K = S$, i.e., when curiosity is at its maximum and exploitation and exploration contribute equally. In all other cases $r_K < 1/2$.</p>
+<h3>Why 50%?</h3>
+<p>The 50% threshold is the tightest constant upper bound derivable from the single constraint "exploitation $\geq$ exploration in utility contribution at all times." A tighter cap (e.g., 30%) would unnecessarily restrict exploration during early learning when $E$ and $C$ are low. A looser cap (e.g., 70%) would permit exploration to dominate even when the agent has high confidence and efficacy — which is the gaming behavior we want to prevent. The 50% bound is therefore not arbitrary: it is the most permissive cap consistent with the requirement that exploitation never falls below exploration.</p>
+<p><strong>What remains open.</strong> Whether the log-growth function achieves optimal regret guarantees under the multi-armed bandit formulation — including formal minimax bounds — is an open question. The analogy to UCB provides intuition and motivation, and the exploitation-dominance property is proved exactly. A formal regret analysis is deferred to future work.</p>
+<hr />
+<h3>B.8 Summary</h3>
+<p>The utility function $U = w_e E + w_c C + w_k K$ is justified as follows:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Justification</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Additive structure</td>
+<td>Debreu (1960) + linear scaling invariance (A5)</td>
+<td>Theorem (proved)</td>
+</tr>
+<tr>
+<td>Linear $\phi_i$</td>
+<td>Cauchy functional equation from A5 (continuity only, no differentiability required)</td>
+<td>Theorem (proved)</td>
+</tr>
+<tr>
+<td>Field weights $w_i(f)$</td>
+<td>Cost proportionality, calibrated to liability standards</td>
+<td>Design principle</td>
+</tr>
+<tr>
+<td>Efficacy $E(r) = r/(1+r)$</td>
+<td>Mann-Whitney probability under log-logistic model</td>
+<td>Proved under named assumption</td>
+</tr>
+<tr>
+<td>Confidence EMA, $\alpha=0.2$</td>
+<td>Kalman-optimal for $\rho=0.05$ noise ratio</td>
+<td>Theorem (proved)</td>
+</tr>
+<tr>
+<td>Curiosity structure</td>
+<td>UCB-inspired; exploitation-dominance proved</td>
+<td>Partial — regret analysis open</td>
+</tr>
+</tbody>
+</table>
+<p>The formulation is not claimed to be the unique possible design, but it is <strong>the minimal, interpretable, and theoretically grounded design</strong> consistent with the five axioms. Each component rests on an identified theoretical foundation, and the scope of each claim is stated explicitly.</p>
+<hr />
+<h3>B.5 — Theorem B.5 — Convergence of Confidence Under Repeated Calibration</h3>
+<h3>Setup</h3>
+<p>Recall the confidence update rule with contradiction penalty:</p>
+<p>$$C_{t+1} = (1-\alpha)\,C_t + \alpha\,s_t\,(1 - \lambda\mu(f))$$</p>
+<p>where:
+- $\alpha \in (0,1)$ is the EMA learning rate,
+- $s_t \in [0,1]$ is the observed test pass rate at time $t$,
+- $\lambda \in [0,1]$ is the contradiction penalty magnitude (zero when no contradiction occurs),
+- $\mu(f) \geq 1$ is the field penalty multiplier,
+- $f$ denotes the active field.</p>
+<p>Define the <strong>effective signal</strong> $\tilde{s}_t = s_t(1 - \lambda\mu(f))$. When no contradiction occurs, $\lambda = 0$ and $\tilde{s}_t = s_t$. When a contradiction of magnitude $\lambda$ is detected, $\tilde{s}_t$ is reduced by a factor $(1 - \lambda\mu(f))$.</p>
+<p>The update rule becomes:</p>
+<p>$$C_{t+1} = (1-\alpha)\,C_t + \alpha\,\tilde{s}_t$$</p>
+<hr />
+<h3>Closed-Form Solution</h3>
+<p><strong>Lemma.</strong> <em>The confidence at time $t$ is:</em></p>
+<p>$$C_t = (1-\alpha)^t\,C_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k}\,\tilde{s}_k$$</p>
+<p><strong>Proof.</strong> By induction. Base case $t=0$: $C_0 = C_0$. Inductive step: assume the formula holds for $t$. Then:</p>
+<p>$$C_{t+1} = (1-\alpha)C_t + \alpha\tilde{s}_t$$
+$$= (1-\alpha)\!\left[(1-\alpha)^t C_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k}\tilde{s}_k\right] + \alpha\tilde{s}_t$$
+$$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-k}\tilde{s}_k + \alpha\tilde{s}_t$$
+$$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t}(1-\alpha)^{t-k}\tilde{s}_k \qquad \blacksquare$$</p>
+<hr />
+<h4>B.5 — Theorem B.5 — Convergence, Uniqueness, and Recovery</h4>
+<p><strong>Theorem.</strong> <em>Let $\{\tilde{s}_t\}$ be a stationary sequence with constant expectation $\bar{s} \in [0,1]$ and noise $\sigma_{\tilde{s}} = \mathrm{Std}(\tilde{s}_t - \tilde{s}^*) \geq 0$. Assume $0 \leq \lambda\mu(f) < 1$ (the penalty regime is sub-maximal: contradictions are rare relative to the pass rate, so the effective signal retains positive mean). Let $\tilde{s}^* = \bar{s}(1 - \lambda\mu(f)) \in (0, 1]$ be the expected effective signal. Then:</em></p>
+<p><em>(<strong>Boundary note.</strong> At $\lambda\mu(f) = 1$, $C^* = 0$ and Part 3 fails: monotonicity collapses to a horizontal steady state regardless of $\bar{s}$. At $\lambda\mu(f) > 1$, $\tilde{s}^* < 0$, which is outside the natural domain of confidence and signals that the agent cannot achieve stable positive confidence — the correct response is to trigger abstention. The system design prevents this regime by construction: $\lambda$ is per-interaction contradiction magnitude, which in practice is small, and the field gate $C < C_{\min}(f)$ triggers abstention before accumulated penalties drive $C$ negative.)</em></p>
+<ol>
+<li><strong>Existence and uniqueness of steady state.</strong> There exists a unique fixed point $C^*$ of the update rule, given by:</li>
+</ol>
+<p>$$C^* = \bar{s}\,(1 - \lambda\mu(f)) = \tilde{s}^*$$</p>
+<ol>
+<li><strong>Geometric convergence in expectation.</strong> For all $t \geq 0$, letting $\sigma_{\tilde{s}} = \mathrm{Std}(\tilde{s}_t - \tilde{s}^*)$ denote the noise level of the effective signal:</li>
+</ol>
+<p>$$\mathbb{E}[|C_t - C^*|] \leq (1-\alpha)^t\,|C_0 - C^*| + \sigma_{\tilde{s}}\sqrt{\frac{\alpha}{2-\alpha}}$$</p>
+<p>The first term decays geometrically at rate $(1-\alpha)$ per interaction. The second is a constant noise floor proportional to signal variance; it is zero in the deterministic (zero-noise) case and small when $\sigma_{\tilde{s}}$ is small. For $\alpha = 0.2$: $\sqrt{\alpha/(2-\alpha)} = 1/3$, so the floor is $\sigma_{\tilde{s}}/3$. <em>Note:</em> the cleaner geometric bound without the noise floor, $\mathbb{E}[|C_t - C^*|] \leq (1-\alpha)^t|C_0 - C^*|$, holds for the bias $|\mathbb{E}[C_t - C^*]|$ but not for the mean absolute error $\mathbb{E}[|C_t - C^*|]$ when $\sigma_{\tilde{s}} > 0$, because $\mathbb{E}[|X|] \geq |\mathbb{E}[X]|$ does not provide an upper bound on $\mathbb{E}[|X|]$. With $\alpha = 0.2$ and small $\sigma_{\tilde{s}}$, the expected error halves every $\lceil\log(0.5)/\log(0.8)\rceil = 3$ interactions before hitting the noise floor.</p>
+<ol>
+<li><strong>Monotonicity</strong> (under the assumption $\lambda\mu(f) < 1$). $C^*$ is strictly increasing in $\bar{s}$:</li>
+</ol>
+<p>$$\frac{\partial C^*}{\partial \bar{s}} = 1 - \lambda\mu(f) > 0$$</p>
+<p>The strict inequality $1 - \lambda\mu(f) > 0$ follows directly from the assumption $\lambda\mu(f) < 1$. Higher agent pass rates produce higher steady-state confidence, all else equal. Without this assumption the derivative is zero (boundary case $\lambda\mu(f) = 1$) or negative (supra-maximal penalty), in which case no monotone steady state exists within $[0,1]$ and the abstention mechanism takes over.</p>
+<ol>
+<li><strong>Field sensitivity.</strong> $C^*$ is strictly decreasing in $\mu(f)$:</li>
+</ol>
+<p>$$\frac{\partial C^*}{\partial \mu(f)} = -\bar{s}\,\lambda < 0$$</p>
+<p>Higher-stakes fields (larger $\mu(f)$) impose a lower achievable steady-state confidence, correctly encoding that high-stakes domains demand stricter internal consistency standards.</p>
+<ol>
+<li><strong>Contradiction recovery time.</strong> Suppose the agent is at steady state $C^*$ and a contradiction event causes an instantaneous drop of magnitude $\delta$, so $C_{\tau} = C^* - \delta$. The number of subsequent interactions required to return to within $\varepsilon$ of $C^*$ is:</li>
+</ol>
+<p>$$t_{\text{recovery}} = \left\lceil\frac{\log(\varepsilon/\delta)}{\log(1-\alpha)}\right\rceil$$</p>
+<p><strong>Proof.</strong></p>
+<p><em>Part 1 — Existence and uniqueness.</em> The fixed point satisfies $C^* = (1-\alpha)C^* + \alpha\tilde{s}^*$, giving $\alpha C^* = \alpha\tilde{s}^*$, hence $C^* = \tilde{s}^* = \bar{s}(1-\lambda\mu(f))$. This is unique since the equation is linear in $C^*$.</p>
+<p><em>Part 2 — Geometric convergence in expectation.</em> Define the error $e_t = C_t - C^*$. Subtracting the fixed-point equation from the update rule:</p>
+<p>$$e_{t+1} = (1-\alpha)\,e_t + \alpha(\tilde{s}_t - \tilde{s}^*)$$</p>
+<p>The noise term $\eta_t \triangleq \alpha(\tilde{s}_t - \tilde{s}^*)$ has zero mean under the stationary distribution (since $\mathbb{E}[\tilde{s}_t] = \tilde{s}^*$) but does not vanish pathwise. Taking expectations:</p>
+<p>$$\mathbb{E}[e_{t+1}] = (1-\alpha)\,\mathbb{E}[e_t] + \alpha\,\mathbb{E}[\tilde{s}_t - \tilde{s}^*] = (1-\alpha)\,\mathbb{E}[e_t]$$</p>
+<p>Iterating from $t=0$ with $e_0 = C_0 - C^*$ deterministic:</p>
+<p>$$\mathbb{E}[e_t] = (1-\alpha)^t\,(C_0 - C^*)$$</p>
+<p>By Jensen's inequality $|\mathbb{E}[e_t]| \leq \mathbb{E}[|e_t|]$, and applying the triangle inequality to the closed-form solution:</p>
+<p>$$\mathbb{E}[|e_t|] \leq (1-\alpha)^t\,|C_0 - C^*| + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k}\,\mathbb{E}[|\tilde{s}_k - \tilde{s}^*|]$$</p>
+<p>The second term represents the expected accumulated noise. Under the stationary assumption with zero-mean noise, $\mathbb{E}[|\tilde{s}_k - \tilde{s}^*|]$ is a constant $\sigma_{\tilde{s}}$ and the noise sum telescopes to $\alpha\sigma_{\tilde{s}}/(\alpha) = \sigma_{\tilde{s}}$. This gives the tighter statement:</p>
+<p>$$\mathbb{E}[|e_t|] \leq (1-\alpha)^t\,|C_0 - C^*| + \sigma_{\tilde{s}}$$</p>
+<p>where $\sigma_{\tilde{s}} = \mathbb{E}[|\tilde{s}_t - \tilde{s}^*|]$ is the mean absolute deviation of the effective signal. When the signal has low noise ($\sigma_{\tilde{s}} \approx 0$), the bound reduces to the clean geometric form. <strong>The bound $\mathbb{E}[|e_t|] \leq (1-\alpha)^t |C_0 - C^*|$ holds exactly when $\sigma_{\tilde{s}} = 0$ (deterministic signal) and approximately when noise is small.</strong></p>
+<p>The half-life of the mean error is $t_{1/2} = \log(1/2)/\log(1-\alpha)$. For $\alpha = 0.2$: $t_{1/2} = \log(0.5)/\log(0.8) = 3.11$, so $\lceil t_{1/2} \rceil = 3$ interactions.</p>
+<p><em>Part 3 — Monotonicity.</em> $\partial C^*/\partial\bar{s} = (1 - \lambda\mu(f))$. Since $\lambda \in [0,1]$ and $\mu(f) \geq 1$ but $\lambda\mu(f) < 1$ for any non-degenerate field (confidence cannot be driven to zero by a single contradiction), this derivative is strictly positive.</p>
+<p><em>Part 4 — Field sensitivity.</em> $\partial C^*/\partial\mu(f) = -\bar{s}\lambda \leq 0$, with strict inequality whenever $\bar{s} > 0$ and $\lambda > 0$. This formalizes the intuition that high-stakes fields (large $\mu(f)$) penalize contradictions more heavily, pulling the achievable steady-state confidence downward even when pass rates are high.</p>
+<p><em>Part 5 — Recovery time.</em> After the contradiction, $e_{\tau} = -\delta$ (deterministic drop). In the noise-free case ($\sigma_{\tilde{s}} = 0$), by geometric convergence, $|e_{\tau+t}| \leq (1-\alpha)^t\,\delta$. We want this below $\varepsilon$:</p>
+<p>$$(1-\alpha)^t\,\delta \leq \varepsilon \implies t \geq \frac{\log(\varepsilon/\delta)}{\log(1-\alpha)}$$</p>
+<p>Since $\log(1-\alpha) < 0$ and $\varepsilon < \delta$ (we want to recover closer than the drop), $\varepsilon/\delta < 1$ and $\log(\varepsilon/\delta) < 0$, making $t$ positive. Therefore:</p>
+<p>$$t_{\text{recovery}} = \left\lceil\frac{\log(\varepsilon/\delta)}{\log(1-\alpha)}\right\rceil \qquad \blacksquare$$</p>
+<hr />
+<h3>Worked Examples</h3>
+<p><strong>Example 1 — Software engineering, no contradictions.</strong></p>
+<p>$\mu(f) = 2$, $\lambda = 0$, $\bar{s} = 0.85$, $C_0 = 0.5$, $\alpha = 0.2$.</p>
+<p>$$C^* = 0.85 \times (1 - 0 \times 2) = 0.85$$
+$$|C_t - 0.85| \leq 0.8^t \times 0.35$$</p>
+<p>After 10 interactions: $|e_{10}| \leq 0.8^{10} \times 0.35 = 0.107 \times 0.35 \approx 0.037$.
+After 20 interactions: $|e_{20}| \leq 0.8^{20} \times 0.35 \approx 0.0038$.</p>
+<p><strong>Example 2 — Surgery, boundary case.</strong></p>
+<p>$\mu(f) = 10$, $\lambda = 0.1$ (moderate per-interaction penalty), $\bar{s} = 0.90$.</p>
+<p>$$C^* = 0.90 \times (1 - 0.1 \times 10) = 0.90 \times 0 = 0$$</p>
+<p><em>This represents an extreme boundary case; in practice $\lambda$ is small per interaction (contradictions are rare events, not a sustained rate).</em> The example illustrates correct model behavior at the boundary: when $\lambda\mu(f) = 1$, the contradiction penalty exactly cancels the pass-rate signal, and the agent cannot build confidence regardless of performance. This is the intended behavior — a surgical agent that consistently contradicts itself on verified claims should be unable to achieve operating confidence and must abstain.</p>
+<p><strong>Example 3 — Recovery time.</strong></p>
+<p>Starting from a drop of $\delta = 0.15$ (a significant contradiction), recovering to within $\varepsilon = 0.01$ of $C^*$ with $\alpha = 0.2$:</p>
+<p>$$t_{\text{recovery}} = \left\lceil\frac{\log(0.01/0.15)}{\log(0.8)}\right\rceil = \left\lceil\frac{-2.708}{-0.223}\right\rceil = \lceil 12.1 \rceil = 13 \text{ interactions}$$</p>
+<p>Thirteen clean calibration interactions are sufficient to recover from a large contradiction event to within 1% of steady-state confidence. This is consistent with the simulation results in Appendix A.</p>
+<hr />
+<h3>Corollary — Steady-State Confidence Bounds by Field</h3>
+<p>Substituting typical field parameters with $\bar{s} \approx 0.85$ (a well-calibrated agent) and $\lambda \approx 0.05$ (low contradiction rate):</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>$\mu(f)$</th>
+<th>$C^* = \bar{s}(1-\lambda\mu)$</th>
+<th>$C_{\min}$</th>
+<th>Achievable?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Surgery / Aviation</td>
+<td>10</td>
+<td>$0.85 \times 0.5 = 0.425$</td>
+<td>0.95</td>
+<td>No — requires $\bar{s} > 0.95/(1-0.5) = 1.9$</td>
+</tr>
+<tr>
+<td>Law</td>
+<td>5</td>
+<td>$0.85 \times 0.75 = 0.638$</td>
+<td>0.85</td>
+<td>Borderline</td>
+</tr>
+<tr>
+<td>Software Engineering</td>
+<td>2</td>
+<td>$0.85 \times 0.9 = 0.765$</td>
+<td>0.70</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Creative Writing</td>
+<td>1</td>
+<td>$0.85 \times 0.95 = 0.808$</td>
+<td>0.05</td>
+<td>Easily</td>
+</tr>
+</tbody>
+</table>
+<p>This corollary formalizes the whitepaper's claim that high-stakes fields impose stricter confidence standards: for surgery, a typical agent with $\bar{s} = 0.85$ and any nonzero contradiction rate cannot achieve the $C_{\min} = 0.95$ threshold, and must abstain or escalate. The confidence floor is not merely a policy choice — it is above the achievable steady state, guaranteeing the abstention mechanism is triggered when the agent is not reliably correct.</p>
+<hr />
+<hr />
+<h3>B.7 — Theorem B.7 — Lyapunov Stability of the Personality System</h3>
+<h3>Corrected Claim</h3>
+<p>The personality system exhibits <strong>bounded, stable dynamics with convergence to a neighborhood of the field neutral $s^*$ under bounded drift</strong>. We do not claim a unique globally stable equilibrium, which would require the mean reversion to dominate the drift — a condition that does not hold for the parameter values $\beta = 0.01$, $\Delta_{\max} = 0.05$ used in this system. Instead we prove the three things that <em>are</em> true: invariance of the feasible set, geometric convergence to $s^*$ when drift is absent, and bounded dynamics otherwise.</p>
+<hr />
+<h3>Setup</h3>
+<p>The personality trait vector $s = (s_1, \ldots, s_n) \in \mathbb{R}^n$ evolves under:</p>
+<p>$$s_{t+1} = \Pi_B\!\left[s_t + \Delta_t - \beta(s_t - s^*)\right] = \Pi_B\!\left[(1-\beta)s_t + \beta s^* + \Delta_t\right]$$</p>
+<p>where:</p>
+<ul>
+<li>$B = \prod_{i=1}^n [s_{\min}^{i},\, s_{\max}^{i}]$ is the field-specific feasible set (a closed convex box in $\mathbb{R}^n$)</li>
+<li>$\Pi_B : \mathbb{R}^n \to B$ is the Euclidean projection onto $B$</li>
+<li>$\Delta_t \in \mathbb{R}^n$ is the raw drift from utility history, with $\|\Delta_t\|_\infty \leq \Delta_{\max}$ per component</li>
+<li>$\beta = 0.01$ is the mean reversion coefficient</li>
+<li>$s^* \in B$ is the field neutral personality (interior point of $B$ by construction)</li>
+</ul>
+<p>Define the Lyapunov function:</p>
+<p>$$V(s) = \|s - s^*\|^2 = \sum_{i=1}^n (s_i - s_i^*)^2 \geq 0$$</p>
+<p>with $V(s^*) = 0$.</p>
+<hr />
+<h4>B.7 — Theorem B.7 — Bounded Stable Dynamics with Neighborhood Convergence</h4>
+<p><strong>Theorem.</strong> <em>Under the three-layer personality evolution rule above:</em></p>
+<p><strong>(i) Invariance.</strong> $s_t \in B$ for all $t \geq 0$ whenever $s_0 \in B$.</p>
+<p><strong>(ii) Zero-drift convergence.</strong> When $\Delta_t = 0$ for all $t$, $V(s_t)$ converges geometrically to zero:</p>
+<p>$$V(s_{t+1}) \leq (1-\beta)^2\, V(s_t)$$</p>
+<p><em>so $\|s_t - s^*\| \leq (1-\beta)^t \|s_0 - s^*\|$, with convergence rate $(1-\beta)^2 = 0.9801$ per cycle.</em></p>
+<p><strong>(iii) Bounded displacement.</strong> The single-step displacement is bounded:</p>
+<p>$$\|s_{t+1} - s_t\| \leq \Delta_{\max}\sqrt{n} + \beta\,\|s_t - s^*\|$$</p>
+<p><em>so no single evolution cycle can produce a large jump.</em></p>
+<p><strong>(iv) Persistent-drift stability.</strong> Under persistent drift with $\|\Delta_t\| \leq \Delta_{\max}\sqrt{n}$, the distance to $s^*$ satisfies:</p>
+<p>$$\|s_{t+1} - s^*\| \leq (1-\beta)\|s_t - s^*\| + \Delta_{\max}\sqrt{n}$$</p>
+<p><em>The dynamics converge to and remain in the neighborhood</em></p>
+<p>$$\mathcal{N}^* = \left\{s \in B : \|s - s^*\| \leq r^*\right\}, \qquad r^* = \min\!\left(\frac{\Delta_{\max}\sqrt{n}}{\beta},\; \mathrm{diam}(B)\right)$$</p>
+<p><em>For the system parameters $\beta = 0.01$, $\Delta_{\max} = 0.05$, $n = 6$ traits: $\Delta_{\max}\sqrt{n}/\beta = 12.25$, while $\mathrm{diam}(B) \leq \sqrt{n} \approx 2.45$. Since $12.25 \gg 2.45$, the formula reduces to $r^* = \mathrm{diam}(B)$ and $\mathcal{N}^* = B$. In this parameter regime Part (iv) is therefore subsumed by Part (i): the mean reversion $\beta$ is too weak relative to $\Delta_{\max}$ to confine the dynamics to a strict sub-neighborhood of $s^*$, and the projection $\Pi_B$ (enforcing field bounds) is the operative stability mechanism. The mean reversion serves as a regularizer that produces the zero-drift convergence in Part (ii), but it is not the primary containment layer. Part (iv) becomes substantive — giving a non-trivial neighborhood strictly smaller than $B$ — only when $\Delta_{\max}\sqrt{n}/\beta < \mathrm{diam}(B)$, i.e., when either $\beta$ is increased substantially (e.g., $\beta \geq 0.05$ for these $n$ and $\Delta_{\max}$) or $\Delta_{\max}$ is correspondingly reduced.</em></p>
+<hr />
+<h3>Proof</h3>
+<p><strong>Part (i) — Invariance.</strong></p>
+<p>$\Pi_B$ is defined as the Euclidean projection onto the closed convex set $B$, so $\Pi_B(x) \in B$ for every $x \in \mathbb{R}^n$. Therefore $s_{t+1} = \Pi_B[\cdot] \in B$ for all $t \geq 0$, regardless of $\Delta_t$. $\blacksquare$</p>
+<p><strong>Part (ii) — Zero-drift convergence.</strong></p>
+<p>Set $\Delta_t = 0$. Then $s_{t+1} = \Pi_B[(1-\beta)s_t + \beta s^*]$.</p>
+<p>Since $B$ is convex and both $s_t \in B$ and $s^* \in B$, the convex combination $(1-\beta)s_t + \beta s^* \in B$, so $\Pi_B$ acts as the identity:</p>
+<p>$$s_{t+1} = (1-\beta)s_t + \beta s^*$$</p>
+<p>Therefore:</p>
+<p>$$s_{t+1} - s^* = (1-\beta)s_t + \beta s^* - s^* = (1-\beta)(s_t - s^*)$$</p>
+<p>and:</p>
+<p>$$V(s_{t+1}) = \|(1-\beta)(s_t - s^*)\|^2 = (1-\beta)^2\,V(s_t) \qquad \blacksquare$$</p>
+<p>The convergence rate per cycle is $(1-\beta)^2 = (0.99)^2 = 0.9801$. The half-life is:</p>
+<p>$$t_{1/2} = \frac{\log(1/2)}{\log(1-\beta)^2} = \frac{\log(1/2)}{2\log(0.99)} \approx \frac{-0.693}{-0.0201} \approx 34 \text{ cycles}$$</p>
+<p>With personality evolution running every $N=3$ interactions, this corresponds to approximately 102 interactions to halve the distance to $s^*$ under zero drift.</p>
+<p><strong>Part (iii) — Bounded displacement.</strong></p>
+<p>$$\|s_{t+1} - s_t\| = \|\Pi_B[(1-\beta)s_t + \beta s^* + \Delta_t] - s_t\|$$</p>
+<p>Since $\Pi_B$ is non-expansive and $s_t = \Pi_B[s_t]$:</p>
+<p>$$\|\Pi_B[x] - \Pi_B[y]\| \leq \|x - y\| \quad \text{for all } x, y$$</p>
+<p>$$\|s_{t+1} - s_t\| \leq \|(1-\beta)s_t + \beta s^* + \Delta_t - s_t\|$$
+$$= \|-\beta(s_t - s^*) + \Delta_t\| \leq \beta\|s_t - s^*\| + \|\Delta_t\| \leq \beta\,\|s_t - s^*\| + \Delta_{\max}\sqrt{n} \qquad \blacksquare$$</p>
+<p><strong>Part (iv) — Persistent-drift stability.</strong></p>
+<p>Since $s^* \in B$, the non-expansiveness of $\Pi_B$ with respect to any point in $B$ gives:</p>
+<p>$$\|s_{t+1} - s^*\| = \|\Pi_B[(1-\beta)s_t + \beta s^* + \Delta_t] - \Pi_B[s^*]\|$$
+$$\leq \|(1-\beta)s_t + \beta s^* + \Delta_t - s^*\|$$
+$$= \|(1-\beta)(s_t - s^*) + \Delta_t\|$$
+$$\leq (1-\beta)\|s_t - s^*\| + \|\Delta_t\|$$
+$$\leq (1-\beta)\|s_t - s^*\| + \Delta_{\max}\sqrt{n}$$</p>
+<p>Let $d_t = \|s_t - s^*\|$. The recurrence $d_{t+1} \leq (1-\beta)d_t + \Delta_{\max}\sqrt{n}$ has fixed point $d^* = \Delta_{\max}\sqrt{n}/\beta$. By the theory of contractive linear recurrences:</p>
+<ul>
+<li>If $d_t > d^*$: $d_{t+1} < d_t$ (distance decreasing toward $d^*$)</li>
+<li>If $d_t \leq d^*$: $d_{t+1} \leq d^*$ (distance stays within neighborhood)</li>
+</ul>
+<p>So $\limsup_{t\to\infty} d_t \leq d^* = \Delta_{\max}\sqrt{n}/\beta$.</p>
+<p>Since $d_t \leq \mathrm{diam}(B)$ always by Part (i), the binding constraint is:</p>
+<p>$$r^* = \min\!\left(\frac{\Delta_{\max}\sqrt{n}}{\beta},\; \mathrm{diam}(B)\right) \qquad \blacksquare$$</p>
+<hr />
+<h3>Why the Field Bounds Are the Binding Constraint</h3>
+<p>For the system parameters:</p>
+<p>$$\frac{\Delta_{\max}\sqrt{n}}{\beta} = \frac{0.05 \times \sqrt{6}}{0.01} = \frac{0.1225}{0.01} = 12.25$$</p>
+<p>$$\mathrm{diam}(B) = \left\|\,s_{\max} - s_{\min}\,\right\| \leq \sqrt{n} \approx 2.45 \quad \text{(since each trait is in }[0,1]\text{)}$$</p>
+<p>Since $12.25 \gg 2.45$, the mean reversion alone is insufficient to confine the dynamics to a small neighborhood of $s^*$. <strong>The projection $\Pi_B$ is the primary stability mechanism</strong> — it enforces invariance, and the field bounds define how far from $s^*$ the personality can stray. The mean reversion serves as a regularizer: without it, the system would drift to and remain at the boundary of $B$; with it, there is a gentle restoring force toward $s^*$ when drift is absent.</p>
+<p>This clarifies the design role of each stability layer:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Mechanism</th>
+<th>Guarantee</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Field bounds $[s_{\min}, s_{\max}]$</td>
+<td>Projection $\Pi_B$</td>
+<td>Hard invariance — $s_t \in B$ always</td>
+</tr>
+<tr>
+<td>Drift rate cap $\Delta_{\max}$</td>
+<td>Truncation of raw drift</td>
+<td>Bounded single-step displacement</td>
+</tr>
+<tr>
+<td>Mean reversion $\beta$</td>
+<td>Soft pull toward $s^*$</td>
+<td>Convergence to $s^*$ when drift is absent; regularization otherwise</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3>Corollary — No Oscillation</h3>
+<p><strong>Corollary.</strong> <em>The drift rate cap $\Delta_{\max}$ prevents oscillation: after any evolution step, the personality cannot cross $s^*$ in a single step.</em></p>
+<p><strong>Proof.</strong> A step crosses $s^*$ in dimension $i$ if $s_{t+1}^i - s_i^*$ and $s_t^i - s_i^*$ have opposite signs. The signed displacement in dimension $i$ is:</p>
+<p>$$s_{t+1}^i - s_i^* = \Pi_{[s_{\min}^{i}, s_{\max}^{i}]}\!\left[(1-\beta)(s_t^i - s_i^*) + \Delta_t^i\right]$$</p>
+<p>For oscillation, we need $|\Delta_t^i| > (1-\beta)|s_t^i - s_i^*|$, i.e., the drift must exceed the current displacement. Since $\Delta_t^i \leq \Delta_{\max} = 0.05$ and $s_t^i - s_i^*$ can be as large as $s_{\max}^{i} - s_i^*$ (which is at least $0.05$ by the bound structure), oscillation requires the personality to be within $\Delta_{\max}/(1-\beta) \approx 0.0505$ of $s^*$ in that dimension. This is a vanishingly small region, confirming that oscillation can only occur when the personality is already very near the neutral point. $\blacksquare$</p>
+<hr />
+<h3>Remark on Parameter Calibration</h3>
+<p>The analysis reveals a structural tension: mean reversion $\beta = 0.01$ is weaker than the maximum drift $\Delta_{\max} = 0.05$ per cycle. This is intentional — personality is meant to evolve meaningfully, not snap back to $s^*$ every few cycles. The design trades off:</p>
+<ul>
+<li><strong>Large $\beta$</strong>: fast convergence to $s^*$, but personality becomes unresponsive to experience</li>
+<li><strong>Small $\beta$</strong>: personality evolves with experience, but reverts slowly between periods of drift</li>
+</ul>
+<p>The value $\beta = 0.01$ produces a half-life of approximately 34 evolution cycles under zero drift (≈ 102 interactions), which is long enough for the personality to reflect accumulated experience over hundreds of interactions before the neutral pull becomes dominant. A field-specific $\beta(f)$ — with higher reversion rates for high-stakes fields where personality stability is more important — is a natural extension for future work.</p>
+<hr />
+</div>
+
+<h2 id="references">References</h2>
+<p><em>Note on scope:</em> This bibliography has been expanded to better match the breadth of the framework. It is still an evolving list, but now covers the main theoretical, systems, deployment, privacy, hardware, autonomy, and mechanism-design strands explicitly discussed in the paper.</p>
+
+<ul>
+<li>Auer, P., Cesa-Bianchi, N., &amp; Fischer, P. (2002). Finite-time analysis of the multiarmed bandit problem. <em>Machine Learning</em>, 47(2–3), 235–256.</li>
+<li>Blackorby, C., &amp; Donaldson, D. (1982). Ratio-scale and translation-scale full interpersonal comparability without domain restrictions. <em>International Economic Review</em>, 23(2), 249–268.</li>
+<li>Cavoukian, A. (2009). <em>Privacy by Design: The 7 Foundational Principles</em>.</li>
+<li>Clarke, E. H. (1971). Multipart pricing of public goods. <em>Public Choice</em>, 11(1), 17–33.</li>
+<li>Debreu, G. (1960). Topological methods in cardinal utility theory. In K. J. Arrow, S. Karlin, &amp; P. Suppes (Eds.), <em>Mathematical Methods in the Social Sciences, 1959</em>. Stanford University Press.</li>
+<li>Fedus, W., Zoph, B., &amp; Shazeer, N. (2021). Switch Transformers: Scaling to trillion parameter models with simple and efficient sparsity. <em>Journal of Machine Learning Research</em>, 23(120), 1–39.</li>
+<li>GDPR. (2016). Regulation (EU) 2016/679 of the European Parliament and of the Council.</li>
+<li>Groves, T. (1973). Incentives in teams. <em>Econometrica</em>, 41(4), 617–631.</li>
+<li>Harsanyi, J. C., &amp; Selten, R. (1972). A generalized Nash solution for two-person bargaining games with incomplete information. <em>Management Science</em>, 18(5-part-2), 80–106.</li>
+<li>Humble, J., &amp; Farley, D. (2010). <em>Continuous Delivery: Reliable Software Releases through Build, Test, and Deployment Automation</em>. Addison-Wesley.</li>
+<li>Hurwicz, L. (1972). On informationally decentralized systems. In C. B. McGuire &amp; R. Radner (Eds.), <em>Decision and Organization</em>. North-Holland.</li>
+<li>ISO. (2018). <em>ISO 26262 Road Vehicles — Functional Safety</em>.</li>
+<li>Johari, R., &amp; Tsitsiklis, J. N. (2004). Efficiency loss in a network resource allocation game. <em>Mathematics of Operations Research</em>, 29(3), 407–435.</li>
+<li>Kalman, R. E. (1960). A new approach to linear filtering and prediction problems. <em>Journal of Basic Engineering</em>, 82(1), 35–45.</li>
+<li>Kelly, F. P. (1997). Charging and rate control for elastic traffic. <em>European Transactions on Telecommunications</em>, 8(1), 33–37.</li>
+<li>Kindervag, J. (2010). <em>No More Chewy Centers: Introducing the Zero Trust Model of Information Security</em>. Forrester Research.</li>
+<li>Koutsoupias, E., &amp; Papadimitriou, C. H. (1999). Worst-case equilibria. In <em>STACS</em>.</li>
+<li>Lamport, L. (1998). The part-time parliament. <em>ACM Transactions on Computer Systems</em>, 16(2), 133–169.</li>
+<li>Li, X., et al. (2022). Branch-Train-Merge: Embarrassingly parallel training of expert language models. <em>arXiv preprint</em>.</li>
+<li>Mann, H. B., &amp; Whitney, D. R. (1947). On a test of whether one of two random variables is stochastically larger than the other. <em>Annals of Mathematical Statistics</em>, 18(1), 50–60.</li>
+<li>Nash, J. F. (1950). The bargaining problem. <em>Econometrica</em>, 18(2), 155–162.</li>
+<li>NHTSA. (2020). <em>Automated Vehicles 4.0: Ensuring American Leadership in Automated Vehicle Technologies</em>.</li>
+<li>NIST. (2020). <em>Special Publication 800-207: Zero Trust Architecture</em>.</li>
+<li>NVIDIA. (2024–2025). NVLink / NVSwitch and GPU interconnect technical documentation and performance materials.</li>
+<li>Ongaro, D., &amp; Ousterhout, J. (2014). In search of an understandable consensus algorithm. In <em>USENIX ATC</em>.</li>
+<li>OpenAI. (2024). Direct Preference Optimization and related preference-optimization methods. Product and technical publications.</li>
+<li>Roughgarden, T., &amp; Tardos, É. (2002). How bad is selfish routing? <em>Journal of the ACM</em>, 49(2), 236–259.</li>
+<li>Saltzer, J. H. (1974). Protection and the control of information sharing in multics. <em>Communications of the ACM</em>, 17(7), 388–402.</li>
+<li>Shazeer, N., Mirhoseini, A., Maziarz, K., et al. (2017). Outrageously large neural networks: The sparsely-gated mixture-of-experts layer. <em>ICLR</em>.</li>
+<li>Vickrey, W. (1961). Counterspeculation, auctions, and competitive sealed tenders. <em>Journal of Finance</em>, 16(1), 8–37.</li>
+<li>Wald, A. (1945). Sequential tests of statistical hypotheses. <em>Annals of Mathematical Statistics</em>, 16(2), 117–186.</li>
+<li>Wang, X., et al. (2022). Self-consistency improves chain of thought reasoning in language models. <em>arXiv preprint</em>.</li>
+<li>European Union. (2024). <em>EU AI Act</em>.</li>
+<li>Mixtral and related mixture-of-experts production-model technical reports (2023–2024).</li>
+</ul></div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>const g="rgba(0,0,0,0.07)",t="#888",L=["Cycle 1 (easy)","Cycle 2 (medium)","Cycle 3 (hard)"];
+new Chart(document.getElementById("routingChart4090"),{type:"bar",data:{labels:["A: No routing","B: Matched","C: Mismatched","D: VCG"],datasets:[
+  {label:"Accuracy (%)",data:[43.3,76.7,56.7,86.7],backgroundColor:["#c7d2fe","#1D9E75","#D85A30","#534AB7"],borderWidth:0},
+  {label:"Brier ×100 (lower=better)",data:[28.0,20.7,27.9,19.7],backgroundColor:["#e5e7eb","#a7f3d0","#fde68a","#c7d2fe"],borderWidth:0,yAxisID:"y2"}
+]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>c.dataset.label+": "+c.raw}}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:11}}},y:{min:0,max:100,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v+"%"},title:{display:true,text:"Accuracy (%)",color:t,font:{size:10}}},y2:{position:"right",min:0,max:35,grid:{display:false},ticks:{color:t,font:{size:11}},title:{display:true,text:"Brier ×100",color:t,font:{size:10}}}}}})
+new Chart(document.getElementById("appA1routingChart"),{type:"bar",data:{labels:["A: No routing","B: Matched","C: Mismatched","D: VCG"],datasets:[
+  {label:"Accuracy (%)",data:[43.3,76.7,56.7,86.7],backgroundColor:["rgba(99,102,241,.6)","rgba(29,158,117,.7)","rgba(216,90,48,.6)","rgba(83,74,183,.9)"],borderColor:["#6366f1","#1D9E75","#D85A30","#534AB7"],borderWidth:2},
+  {label:"Mean U ×100",data:[54.3,63.0,57.6,63.3],backgroundColor:["rgba(99,102,241,.25)","rgba(29,158,117,.25)","rgba(216,90,48,.25)","rgba(83,74,183,.25)"],borderColor:["#6366f1","#1D9E75","#D85A30","#534AB7"],borderWidth:1.5,borderDash:[4,2],type:"line",yAxisID:"y"},
+  {label:"Brier ×100 (lower=better)",data:[28.0,20.7,27.9,19.7],backgroundColor:"transparent",borderColor:["#6366f1","#1D9E75","#D85A30","#534AB7"],borderWidth:2,borderDash:[2,2],type:"line",pointStyle:"triangle",pointRadius:6,yAxisID:"y"}
+]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:10}}},y:{min:0,max:100,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v+""}}}}})
+new Chart(document.getElementById("appA2dpoChart"),{type:"line",data:{labels:["Run 1","Run 2","Run 3","Run 4","Run 5","Run 6","Run 7"],datasets:[
+  {label:"SWE pairs",data:[30,60,90,120,165,210,251],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:4,fill:false,tension:0.2},
+  {label:"Math pairs",data:[30,60,90,120,165,210,251],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:4,fill:false,tension:0.2,borderDash:[4,2]},
+  {label:"Total pairs",data:[60,120,180,240,330,420,502],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:3,pointRadius:5,fill:false,tension:0.2}
+]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:11}}},y:{min:0,max:520,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v+" pairs"}}}}})
+new Chart(document.getElementById("utilityChart"),{type:"line",data:{labels:L,datasets:[
+  {label:"avg U",data:[0.5128,0.5921,0.6288],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
+  {label:"avg E_ema",data:[0.5124,0.5542,0.574],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
+  {label:"avg C",data:[0.6005,0.8128,0.894],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
+  {label:"avg E_raw",data:[0.5323,0.5701,0.5809],borderColor:"#BA7517",pointBackgroundColor:"#BA7517",borderWidth:1.5,pointRadius:4,fill:false,tension:0.3,borderDash:[4,3]}
+]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:11}}},y:{min:0.45,max:0.95,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v.toFixed(2),stepSize:0.1}}}}});
+new Chart(document.getElementById("problemChart"),{type:"line",data:{labels:["Cycle 1","Cycle 2","Cycle 3"],datasets:[
+  {label:"two_sum",data:[0.4617,0.5669,0.619],borderColor:"#E24B4A",pointBackgroundColor:"#E24B4A",borderWidth:2.5,pointRadius:5,fill:false,tension:0.2},
+  {label:"is_palindrome",data:[0.4745,0.5747,0.6218],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
+  {label:"valid_p",data:[0.4888,0.5817,0.6233],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
+  {label:"max_sub",data:[0.5068,0.5901,0.6264],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
+  {label:"binary_s",data:[0.5167,0.5934,0.6269],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
+  {label:"flatten",data:[0.5349,0.6017,0.6316],borderColor:"#ccc",pointBackgroundColor:"#ccc",borderWidth:1.5,pointRadius:3,fill:false,tension:0.2,borderDash:[3,2]},
+  {label:"lru_cache",data:[0.555,0.6118,0.6391],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.2},
+  {label:"merge_int",data:[0.5641,0.6167,0.642],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.2}
+]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:11}}},y:{min:0.40,max:0.68,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v.toFixed(2),stepSize:0.05}}}}});
+new Chart(document.getElementById("efficacyChart"),{type:"line",data:{labels:L,datasets:[
+  {label:"E_ema",data:[0.5124,0.5542,0.574],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
+  {label:"E_raw",data:[0.5323,0.5701,0.5809],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[5,3]}
+]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:11}}},y:{min:0.48,max:0.62,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v.toFixed(3),stepSize:0.02}}}}});
+new Chart(document.getElementById("personalityChart"),{type:"line",data:{labels:["Initial","After C1","After C2","After C3"],datasets:[
+  {label:"curiosity",data:[0.60,0.60,0.63,0.66],borderColor:"#534AB7",pointBackgroundColor:"#534AB7",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
+  {label:"creativity",data:[0.40,0.40,0.42,0.44],borderColor:"#D85A30",pointBackgroundColor:"#D85A30",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3},
+  {label:"analytical",data:[0.60,0.60,0.60,0.60],borderColor:"#1D9E75",pointBackgroundColor:"#1D9E75",borderWidth:2.5,pointRadius:5,fill:false,tension:0.3,borderDash:[5,3]},
+  {label:"caution",data:[0.50,0.50,0.50,0.50],borderColor:"#888",pointBackgroundColor:"#888",borderWidth:1.5,pointRadius:4,fill:false,tension:0.3,borderDash:[3,3]}
+]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:g},ticks:{color:t,font:{size:11}}},y:{min:0.30,max:0.75,grid:{color:g},ticks:{color:t,font:{size:11},callback:v=>v.toFixed(2),stepSize:0.1}}}}});</script>
+<script>document.addEventListener("DOMContentLoaded", function() {
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left: "$$", right: "$$", display: true},
+      {left: "$",  right: "$",  display: false}
+    ],
+    throwOnError: false,
+    ignoredTags: ["script","noscript","style","textarea","pre","code","annotation","annotation-xml"]
+  });
+});</script>
+</body>
+</html>
+
+<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 0;border-top:1px solid #e4e1da;margin-top:3rem;font-size:.88rem;">
+<a href="whitepaper_v1_appendix_a_tmp.html">← Appendix A</a>
+<a href="whitepaper_v1_overview_tmp.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
+</div>
+<div style="padding:2rem 0;border-top:2px solid #e8e4de;margin-top:3rem;font-size:.84rem;color:#6b7280;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+<div><strong style="color:#333;">Praneeth Tota</strong> · Ph.D. Computer Science (Algorithmic Game Theory) · Illinois Institute of Technology<br>
+<a href="https://praneethtota.github.io" style="color:#4338ca;">praneethtota.github.io</a> · Whitepaper: CC BY 4.0</div>
+<div style="text-align:right;"><a href="whitepaper_v1_tmp.html" style="color:#4338ca;">Home</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" style="color:#4338ca;">GitHub</a><br>AUA Framework v1.0.0</div>
+</div>
+</div>
+</body>
+</html>
