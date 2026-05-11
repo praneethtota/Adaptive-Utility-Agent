@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Utility Agents — Production Framework v1.0</title>
+<meta name="description" content="AUA Framework v1.0: open-source production framework for multi-specialist LLM routing, self-correction, and utility-governed learning. pip install adaptive-utility-agent. 132 tests, 20 REST endpoints, 8 plugin interfaces, Prometheus + Grafana observability.">
+<meta name="author" content="Praneeth Tota">
+<meta name="keywords" content="Adaptive Utility Agents, AUA, LLM framework, multi-specialist routing, utility function, self-optimizing AI, VCG arbitration, DPO calibration, Praneeth Tota, AI systems, production LLM framework">
+<link rel="canonical" href="https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_v1_tmp.html">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f6f2;
+  --paper: #ffffff;
+  --ink: #18181b;
+  --muted: #6b7280;
+  --line: #e4e1da;
+  --accent: #4338ca;
+  --accent2: #0f766e;
+  --accent3: #c2410c;
+  --soft: #f0ede6;
+  --soft2: #ecfdf5;
+  --soft3: #fff7ed;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--ink);
+  background: var(--bg);
+  margin: 0; padding: 0;
+}
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  background: var(--paper);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  min-height: 100vh;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .85rem 2.5rem;
+  border-bottom: 1px solid var(--line);
+  background: #fafaf8;
+  font-size: .85rem;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.topbar-brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: .03em;
+}
+.topbar-links { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+.topbar-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: .83rem;
+  transition: color .15s;
+}
+.topbar-links a:hover { color: var(--accent); }
+.topbar-links a.cta {
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: .2rem .7rem;
+  border-radius: 6px;
+  font-size: .8rem;
+}
+.topbar-links a.cta:hover { background: var(--accent); color: #fff; }
+
+/* ── HERO ── */
+.hero {
+  padding: 4rem 2.5rem 3rem;
+  background: linear-gradient(170deg, #eeeaf7 0%, #f7f6f2 45%, #fff 100%);
+  border-bottom: 1px solid var(--line);
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 360px; height: 360px;
+  background: radial-gradient(circle, rgba(67,56,202,.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.v1-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .7rem;
+  font-weight: 600;
+  padding: .25rem .65rem;
+  border-radius: 999px;
+  letter-spacing: .06em;
+}
+.v1-badge::before { content: '●'; font-size: .55rem; }
+.hero h1 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: clamp(2.2rem, 4.5vw, 3.2rem);
+  line-height: 1.15;
+  margin: 0 0 1rem;
+  color: var(--ink);
+  max-width: 780px;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+.hero-lead {
+  font-size: 1.15rem;
+  color: #3a3a3a;
+  max-width: 680px;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+.hero-meta {
+  font-size: .85rem;
+  color: var(--muted);
+  margin-bottom: 2.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.5rem;
+  align-items: center;
+}
+.hero-meta a { color: var(--accent); text-decoration: none; }
+.hero-meta a:hover { text-decoration: underline; }
+.hero-meta .sep { color: #ccc; }
+
+/* ── METRICS GRID ── */
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 2rem;
+  max-width: 900px;
+}
+.hm {
+  background: rgba(255,255,255,.85);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: .85rem 1.1rem;
+  backdrop-filter: blur(4px);
+}
+.hm .hm-val {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--accent);
+  margin-bottom: .2rem;
+}
+.hm .hm-val.green { color: var(--accent2); }
+.hm .hm-val.orange { color: var(--accent3); }
+.hm .hm-label { font-size: .78rem; color: var(--muted); line-height: 1.4; }
+.hm .hm-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent2);
+  margin-bottom: .25rem;
+}
+
+/* ── HERO ACTIONS ── */
+.hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: .75rem; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .6rem 1.3rem;
+  border-radius: 8px;
+  font-size: .9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all .15s;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+}
+.btn-primary:hover { background: #3730a3; border-color: #3730a3; }
+.btn-secondary {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── SCOPE BAR ── */
+.scope-bar {
+  background: #fafaf8;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: .85rem 2.5rem;
+  font-size: .82rem;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem 1.5rem;
+  align-items: center;
+}
+.scope-bar strong { color: #444; }
+.scope-item { display: flex; align-items: center; gap: .4rem; }
+.dot-measured { width: 8px; height: 8px; background: var(--accent2); border-radius: 50%; flex-shrink: 0; }
+.dot-analytical { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; flex-shrink: 0; }
+.dot-shipped { width: 8px; height: 8px; background: #7c3aed; border-radius: 50%; flex-shrink: 0; }
+
+/* ── SECTIONS ── */
+.section { padding: 3rem 2.5rem; border-bottom: 1px solid var(--line); }
+.section:last-child { border-bottom: none; }
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+h2 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.75rem;
+  line-height: 1.25;
+  margin: 0 0 1rem;
+  color: var(--ink);
+}
+h3 { font-size: 1.05rem; font-weight: 600; margin: 1.5rem 0 .5rem; color: #222; }
+p { margin: 0 0 1rem; }
+a { color: var(--accent); }
+ul { margin: .3rem 0 1rem; padding-left: 1.3rem; }
+li { margin: .3rem 0; }
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .82rem;
+  background: #f2f0eb;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #333;
+}
+pre {
+  background: #1e1e2e;
+  border-radius: 8px;
+  padding: 1.1rem 1.25rem;
+  overflow-x: auto;
+  margin: .75rem 0 0;
+  font-size: .8rem;
+  line-height: 1.7;
+  font-family: 'JetBrains Mono', monospace;
+  color: #cdd6f4;
+}
+pre .c { color: #6c7086; }
+pre .kw { color: #cba6f7; }
+pre .str { color: #a6e3a1; }
+pre .flag { color: #89b4fa; }
+pre .cmd { color: #cba6f7; }
+pre .out { color: #6c7086; font-style: italic; }
+
+/* ── MECHANISM ── */
+.mechanism {
+  background: var(--soft);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .8rem;
+  line-height: 1.8;
+  color: #333;
+}
+
+/* ── TIMESCALES ── */
+.timescales {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.ts-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  background: #fff;
+}
+.ts-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent);
+  margin-bottom: .3rem;
+}
+.ts-card h4 { margin: 0 0 .3rem; font-size: .95rem; font-weight: 600; }
+.ts-card p { font-size: .85rem; color: #444; margin: 0; }
+
+/* ── FRAMEWORK FEATURE GRID ── */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.feature-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.25rem 1.3rem;
+  background: #fff;
+}
+.fc-icon {
+  font-size: 1.25rem;
+  margin-bottom: .5rem;
+  display: block;
+}
+.fc-title {
+  font-weight: 700;
+  font-size: .95rem;
+  margin-bottom: .3rem;
+  color: var(--ink);
+}
+.fc-desc {
+  font-size: .84rem;
+  color: #555;
+  line-height: 1.55;
+  margin: 0 0 .6rem;
+}
+.fc-stat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .74rem;
+  color: var(--accent2);
+  font-weight: 600;
+}
+
+/* ── DOMAIN CARDS ── */
+.domain-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.domain-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.4rem 1.4rem 1.1rem;
+  background: #fff;
+  text-decoration: none;
+  color: var(--ink);
+  display: block;
+  transition: border-color .15s, box-shadow .15s;
+}
+.domain-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px rgba(67,56,202,.1);
+}
+.dc-badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent);
+  background: #eef2ff;
+  padding: .18rem .55rem;
+  border-radius: 4px;
+  margin-bottom: .6rem;
+}
+.domain-card h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 400;
+  margin: 0 0 .4rem;
+  color: var(--ink);
+}
+.domain-card p {
+  font-size: .86rem;
+  color: #555;
+  margin: 0 0 .75rem;
+  line-height: 1.6;
+}
+.dc-link {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+.dc-link::after { content: '→'; }
+
+/* ── TUTORIAL CARD ── */
+.tutorial-card {
+  background: linear-gradient(135deg, #eef2ff 0%, #f0fdf4 100%);
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  padding: 2rem;
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2rem;
+  align-items: start;
+}
+.tutorial-card h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+  margin: 0 0 .5rem;
+  color: var(--ink);
+}
+.tutorial-card p { font-size: .92rem; color: #444; margin-bottom: .75rem; }
+.tutorial-pills { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.tp {
+  font-size: .78rem;
+  font-weight: 500;
+  padding: .2rem .65rem;
+  border-radius: 999px;
+  border: 1px solid #c7d2fe;
+  color: var(--accent);
+  background: rgba(255,255,255,.7);
+}
+.tutorial-side { text-align: right; min-width: 160px; }
+.tutorial-side .btn { margin-bottom: .5rem; display: block; text-align: center; }
+
+/* ── WHITEPAPER LINKS ── */
+.wp-clusters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+.wp-cluster h4 {
+  font-size: .82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin: 0 0 .75rem;
+  padding-bottom: .4rem;
+  border-bottom: 2px solid var(--line);
+}
+.wp-cluster ul { margin: 0; padding: 0; list-style: none; }
+.wp-cluster li { margin: .4rem 0; }
+.wp-cluster a {
+  font-size: .88rem;
+  color: var(--accent);
+  text-decoration: none;
+  line-height: 1.4;
+}
+.wp-cluster a:hover { text-decoration: underline; }
+.wp-cluster .wp-desc {
+  font-size: .78rem;
+  color: var(--muted);
+  display: block;
+  margin-top: .1rem;
+}
+
+/* ── QUICKSTART ── */
+.qs-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.qs-step {
+  background: var(--soft);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+.qs-step .qs-n {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: .35rem;
+}
+.qs-step h4 { margin: 0 0 .3rem; font-size: .9rem; font-weight: 600; }
+.qs-step p { font-size: .82rem; color: #555; margin: 0 0 .5rem; }
+
+/* ── CALLOUT ── */
+.callout {
+  background: var(--soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0 1.5rem;
+  border-radius: 0 8px 8px 0;
+  font-size: .92rem;
+}
+.callout p { margin: 0; }
+.callout.green { background: var(--soft2); border-left-color: var(--accent2); }
+.callout.purple { background: #f5f3ff; border-left-color: #7c3aed; }
+
+/* ── FOOTER ── */
+footer {
+  padding: 2.5rem 2.5rem;
+  border-top: 2px solid var(--line);
+  background: #fafaf8;
+  font-size: .85rem;
+  color: var(--muted);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.5rem;
+  align-items: end;
+}
+footer a { color: var(--accent); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+.footer-author { font-weight: 600; color: #333; font-size: .9rem; }
+.footer-right { text-align: right; }
+.footer-right .footer-links { display: flex; gap: 1rem; justify-content: flex-end; margin-bottom: .4rem; flex-wrap: wrap; }
+
+@media (max-width: 680px) {
+  .topbar { display: none; }
+  .hero { padding: 2.5rem 1.5rem 2rem; }
+  .section { padding: 2rem 1.5rem; }
+  .scope-bar { padding: .75rem 1.5rem; }
+  .tutorial-card { grid-template-columns: 1fr; }
+  .tutorial-side { text-align: left; min-width: auto; }
+  footer { grid-template-columns: 1fr; }
+  .footer-right { text-align: left; }
+  .footer-right .footer-links { justify-content: flex-start; }
+  .hero h1 { font-size: 1.9rem; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <span class="topbar-brand">Adaptive Utility Agents · v1.0.0</span>
+  <div class="topbar-links">
+    <a href="whitepaper_v1_overview_tmp.html">Whitepaper</a>
+    <a href="tutorial_v1_tmp.html">Tutorial</a>
+    <a href="#domains">Domains</a>
+    <a href="productionizing_v1_tmp.html">Production Design</a>
+    <a href="aua_roadmap.html">Roadmap</a>
+    <a href="#quickstart">Quick Start</a>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="cta">GitHub ↗</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">
+    <span>Praneeth Tota · May 2026</span>
+    <span class="v1-badge">v1.0.0 Shipped</span>
+  </div>
+  <h1>The production framework for<br><em>self-correcting</em> multi-specialist AI</h1>
+  <p class="hero-lead">
+    AUA is a batteries-included Python framework for routing queries to domain-expert language models, scoring outputs with a utility function, resolving contradictions through a formal arbiter, and feeding verified corrections back into training — without editing framework internals. Django for adaptive multi-model LLM systems.
+  </p>
+
+  <!-- Empirical results -->
+  <div class="hero-metrics">
+    <div class="hm">
+      <div class="hm-tag">Measured · Simulation</div>
+      <div class="hm-val green">69.6%</div>
+      <div class="hm-label">Reduction in repeated errors vs. uncalibrated baseline (cycles 2–5)</div>
+    </div>
+    <div class="hm">
+      <div class="hm-tag">Measured · RTX 4090</div>
+      <div class="hm-val green">+43.3pp</div>
+      <div class="hm-label">VCG arbitration gain over no-routing — Qwen2.5-7B AWQ (p=0.0003, d=1.02)</div>
+    </div>
+    <div class="hm">
+      <div class="hm-tag">Analytical</div>
+      <div class="hm-val green">2–6×</div>
+      <div class="hm-label">Lower cost per token vs. monolithic frontier LLMs on consumer GPU hardware</div>
+    </div>
+    <div class="hm">
+      <div class="hm-tag">v1.0 Framework</div>
+      <div class="hm-val">132</div>
+      <div class="hm-label">Tests passing across 10 CLI command groups and 20 REST API endpoints</div>
+    </div>
+    <div class="hm">
+      <div class="hm-tag">v1.0 Framework</div>
+      <div class="hm-val">8</div>
+      <div class="hm-label">Plugin Protocol interfaces — extend any layer without touching framework code</div>
+    </div>
+  </div>
+
+  <div class="hero-actions">
+    <a href="tutorial_v1_tmp.html" class="btn btn-primary">Get Started →</a>
+    <a href="whitepaper_v1_overview_tmp.html" class="btn btn-secondary">Whitepaper</a>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="btn btn-secondary">GitHub ↗</a>
+  </div>
+
+  <div class="hero-meta">
+    <span><strong>Praneeth Tota</strong></span>
+    <span class="sep">·</span>
+    <span>Ph.D. Computer Science · Algorithmic Game Theory</span>
+    <span class="sep">·</span>
+    <span>Illinois Institute of Technology</span>
+    <span class="sep">·</span>
+    <a href="https://www.linkedin.com/in/praneethtota/" target="_blank">linkedin.com/in/praneethtota</a>
+    <span class="sep">·</span>
+    <a href="https://praneethtota.github.io" target="_blank">praneethtota.github.io</a>
+  </div>
+</div>
+
+<!-- SCOPE BAR -->
+<div class="scope-bar">
+  <strong>Evidence scope:</strong>
+  <span class="scope-item"><span class="dot-measured"></span> Simulation: 69.6% error reduction, U↔quality correlation (r=0.461, p&lt;10⁻⁴⁰)</span>
+  <span class="scope-item"><span class="dot-measured"></span> RTX 4090: VCG +43.3pp routing gain, 502 DPO pairs, full blue-green pipeline (p=0.0003, d=1.02)</span>
+  <span class="scope-item"><span class="dot-analytical"></span> Analytical: 2–6× cost advantage on consumer hardware</span>
+  <span class="scope-item"><span class="dot-shipped"></span> Shipped v1.0: 132 tests · 20 endpoints · 8 plugin interfaces · 16 Prometheus metrics</span>
+</div>
+
+<!-- FRAMEWORK OVERVIEW -->
+<div class="section">
+  <div class="section-label">What's in v1.0</div>
+  <h2>A complete framework, not a prototype</h2>
+  <p style="max-width:700px;font-size:1.02rem;color:#333;">
+    v1.0 ships everything needed to run a multi-specialist LLM system in production — from local Ollama on a MacBook to a quad-GPU cluster with mTLS, encrypted state, and Grafana dashboards.
+  </p>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <span class="fc-icon">⚡</span>
+      <div class="fc-title">CLI — 10 command groups</div>
+      <div class="fc-desc">
+        <code>aua init</code>, <code>aua serve</code>, <code>aua doctor</code>, <code>aua config</code>, <code>aua models</code>, <code>aua fields</code>, <code>aua presets</code>, <code>aua token</code>, <code>aua eval</code>, <code>aua extensions</code> — 40+ subcommands with JSON output, strict mode, and correct exit codes.
+      </div>
+      <div class="fc-stat">40+ subcommands · JSON output on every command</div>
+    </div>
+
+    <div class="feature-card">
+      <span class="fc-icon">🔌</span>
+      <div class="fc-title">Plugin system — 8 Protocol interfaces</div>
+      <div class="fc-desc">
+        Replace any layer without editing AUA source. <code>FieldClassifierPlugin</code>, <code>UtilityScorerPlugin</code>, <code>ArbiterPolicyPlugin</code>, <code>PromotionPolicyPlugin</code>, <code>CorrectionStorePlugin</code>, <code>ModelBackendPlugin</code>, <code>HookPlugin</code>, <code>AUAMiddleware</code> — all with type hints, docstrings, and example implementations.
+      </div>
+      <div class="fc-stat">8 Protocol interfaces · 11 hook points · ordered middleware pipeline</div>
+    </div>
+
+    <div class="feature-card">
+      <span class="fc-icon">🔒</span>
+      <div class="fc-title">Production security</div>
+      <div class="fc-desc">
+        Bearer token auth (HMAC-SHA256) across 14 fine-grained scopes. mTLS between router, specialists, and arbiter. Secrets management via env vars, Vault, AWS SM, or GCP SM. AES-256-GCM encryption at rest. Append-only hash-chain audit log.
+      </div>
+      <div class="fc-stat">14 auth scopes · AES-256-GCM at rest · mTLS internal comms</div>
+    </div>
+
+    <div class="feature-card">
+      <span class="fc-icon">📊</span>
+      <div class="fc-title">Observability stack</div>
+      <div class="fc-desc">
+        Prometheus metrics endpoint (<code>GET /metrics</code>, 16 metrics), pre-built Grafana dashboard (20 panels), OpenTelemetry instrumentation, Datadog OTEL preset, structured JSON logging with session/trace IDs, 8 Prometheus alert rules.
+      </div>
+      <div class="fc-stat">16 Prometheus metrics · 20 Grafana panels · W3C trace propagation</div>
+    </div>
+
+    <div class="feature-card">
+      <span class="fc-icon">🧪</span>
+      <div class="fc-title">Evaluation harness</div>
+      <div class="fc-desc">
+        <code>aua eval run</code>, <code>aua eval report</code>, <code>aua eval compare --baseline blue --candidate green</code>. 6 built-in smoke datasets (coding, math, routing, correction, arbiter, safety). JSON output for CI. DPO pair export: <code>aua dpo export --format preference-pairs</code>.
+      </div>
+      <div class="fc-stat">6 smoke datasets · regression detection · DPO export</div>
+    </div>
+
+    <div class="feature-card">
+      <span class="fc-icon">💬</span>
+      <div class="fc-title">Chat UI + Session API</div>
+      <div class="fc-desc">
+        Next.js 14 reference app with three-zone layout: session sidebar, chat window, Framework Debugger. AUA Controls drawer exposes all routing parameters live. 5 Chat Session API endpoints, persistent sessions in SQLite. Start with <code>aua serve --with-ui</code>.
+      </div>
+      <div class="fc-stat">5 session endpoints · Framework Debugger · AUA Controls drawer</div>
+    </div>
+
+    <div class="feature-card">
+      <span class="fc-icon">🐳</span>
+      <div class="fc-title">Docker + hardware tiers</div>
+      <div class="fc-desc">
+        <code>docker-compose up</code> starts the full stack. Four profiles: cpu (Ollama), gpu (vLLM), observability (Prometheus + Grafana), secure. Four hardware tier templates: <code>macbook</code>, <code>single-4090</code>, <code>quad-4090</code>, <code>a100-cluster</code> — each with annotated YAML.
+      </div>
+      <div class="fc-stat">4 Docker profiles · 4 hardware tiers · hot reload via SIGHUP</div>
+    </div>
+
+    <div class="feature-card">
+      <span class="fc-icon">📋</span>
+      <div class="fc-title">Registries + presets</div>
+      <div class="fc-desc">
+        Built-in model registry with aliases (<code>qwen-coder-7b-awq</code>, <code>llama3-8b</code>, …), field registry (software_engineering, mathematics, medicine, …), and presets (<code>coding</code>, <code>math</code>, <code>research</code>, <code>medical-safe</code>, <code>legal-safe</code>, …). One-line init: <code>aua init --preset coding --tier single-4090</code>.
+      </div>
+      <div class="fc-stat">Built-in aliases · aua models list · aua presets inspect</div>
+    </div>
+  </div>
+</div>
+
+<!-- THE THEORY -->
+<div class="section">
+  <div class="section-label">The Framework</div>
+  <h2>Utility as a control law, not a monitor</h2>
+  <p style="max-width:700px;font-size:1.02rem;color:#333;">
+    The utility function <code>U = w_e(f)·E + w_c(f)·C + w_k(f)·K</code> governs everything: how strongly each error is penalized at training time, when corrections are injected into the system prompt, whether a new deployment passes acceptance, and whether the system should act or abstain. The same formula across every domain — only the field weights change.
+  </p>
+
+  <div class="mechanism">
+U = w_e(f) · E  +  w_c(f) · C  +  w_k(f) · K
+
+  E — Efficacy:    performance relative to a human baseline           [0, 1]
+  C — Confidence:  internal consistency, penalized by contradictions  [0, 1]
+  K — Curiosity:   exploration bonus for novel high-upside domains    [capped at 50%]
+  f — field: surgery / software / creative / AV / energy / ...
+
+Decision rule:
+  act     if C ≥ C_min(f)  AND  E ≥ E_min(f)
+  abstain otherwise  →  escalate to human or safe state
+
+Field-specific penalty multipliers route into DPO training:
+  Surgery contradiction   → 10× training weight
+  Software engineering    →  2× training weight
+  Creative writing        →  1× training weight
+  </div>
+
+  <p style="color:#555;font-size:.92rem;">The additive weighted structure is not a design choice — it is the unique functional form required by five behavioral axioms, proved from first principles via Debreu's representation theorem (Theorem B.1, Appendix B). Field weights are derived from professional licensing standards, not arbitrary parameters. See <a href="whitepaper_v1_theory_tmp.html#utility-function">§4–5 of the whitepaper</a>.</p>
+
+  <div class="timescales">
+    <div class="ts-card">
+      <div class="ts-label">Layer 1 · Milliseconds</div>
+      <h4>Session correction</h4>
+      <p>Contradiction detected → corrective assertion stored → injected into system prompt. Immediate, no weight change. Persists across sessions via the assertions store.</p>
+    </div>
+    <div class="ts-card">
+      <div class="ts-label">Layer 2 · Hours</div>
+      <h4>Calibration cycle</h4>
+      <p>Utility-scored pairs → field-penalty-weighted DPO fine-tuning → LoRA adapter → benchmark gate → deploy. Weight-level, permanent, generalizing. Surgical error trained 10× harder than creative writing.</p>
+    </div>
+    <div class="ts-card">
+      <div class="ts-label">Layer 3 · Monthly</div>
+      <h4>Release integration</h4>
+      <p>Accumulated adapters distilled into new base fine-tune. Full regression suite. New starting point for the next correction cycle. Wrapper-level learning baked into base weights.</p>
+    </div>
+  </div>
+
+  <p style="font-size:.9rem;color:#555;">
+    Full theory in the <a href="whitepaper_v1_overview_tmp.html">whitepaper</a>. Implementation walkthrough in the <a href="tutorial_v1_tmp.html">tutorial</a>. Framework architecture spec in the <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/docs/AUA_Framework_v1_Architecture.md" target="_blank">Architecture doc</a>.
+  </p>
+</div>
+
+<!-- DOMAIN DEEP-DIVES -->
+<div class="section" id="domains">
+  <div class="section-label">Domain Deep-Dives</div>
+  <h2>Built for the problems that actually matter</h2>
+  <p style="max-width:680px;color:#555;">Each domain page is a standalone read for a specific practitioner audience — no whitepaper prerequisite. Every page now includes a <strong>Build it with AUA v1.0</strong> section with a working <code>aua_config.yaml</code> and CLI commands for that domain.</p>
+
+  <div class="domain-grid">
+
+    <a href="domain_software_engineering_v1_tmp.html" class="domain-card">
+      <div class="dc-badge">MVP domain · Fully runnable</div>
+      <h3>Software Engineering</h3>
+      <p>The framework's strongest domain: correctness signals are automatic and unambiguous. Tests pass or fail. The entire RTX 4090 experiment ran here — 69.6% error reduction, +43.3pp VCG gain, 502 DPO pairs. Configure with <code>aua init --preset coding</code>.</p>
+      <span class="dc-link">Coding agents, dev-tools, backend / infra</span>
+    </a>
+
+    <a href="domain_ai_datacenters_v1_tmp.html" class="domain-card">
+      <div class="dc-badge">Fleet economics</div>
+      <h3>AI Data Centers</h3>
+      <p>AUA <em>is</em> the inference router. 6× cheaper per token for specialist domain queries on consumer hardware. Use hardware tier templates and <code>GET /metrics/cost</code> to track GPU hours and cost per query in real time.</p>
+      <span class="dc-link">Inference infra, GPU cloud, ML platforms</span>
+    </a>
+
+    <a href="domain_self_driving_v1_tmp.html" class="domain-card">
+      <div class="dc-badge">Safety · certification</div>
+      <h3>Self-Driving Vehicles</h3>
+      <p>Safety weights shift automatically by context (w_s=0.90 in school zones). Blue-green with T≥246 for safety-critical fields. The append-only audit log and hash chain provide the runtime evidence that safety certification requires.</p>
+      <span class="dc-link">Waymo · Cruise · Aurora · AV stack engineers</span>
+    </a>
+
+    <a href="domain_autonomous_systems_v1_tmp.html" class="domain-card">
+      <div class="dc-badge">ISO 10218:2025 · IEC 61508</div>
+      <h3>Autonomous Systems</h3>
+      <p>Industrial robots, cobots, AMRs, drones, surgical systems. AUA's utility log + assertions store + blue-green deployment log constitute the runtime evidence that living assurance documents require — not just design-time proofs.</p>
+      <span class="dc-link">Robotics, safety-case engineering, autonomy</span>
+    </a>
+
+    <a href="domain_dynamic_pricing_v1_tmp.html" class="domain-card">
+      <div class="dc-badge">Full auditability</div>
+      <h3>Dynamic Pricing</h3>
+      <p>The audit trail is no longer optional — 51 state pricing bills since Jan 2025. AUA adds per-decision utility logs, correction loop, and a structured audit chain on top of any pricing model. Configure with the pricing field preset.</p>
+      <span class="dc-link">Pricing platforms, marketplace optimisation, revenue management</span>
+    </a>
+
+    <a href="domain_energy_systems_v1_tmp.html" class="domain-card">
+      <div class="dc-badge">Grid · DER · Smart home</div>
+      <h3>Energy Systems</h3>
+      <p>The same formula — stability weight shifting from 0.40 to 0.80 under demand surge — produces correct dispatch without separate rule sets. C_min=0.95 halts automated dispatch when forecasts are unreliable. Full DER and VPP coverage.</p>
+      <span class="dc-link">Grid software, DERMS / VPP, smart-home EMS</span>
+    </a>
+
+    <a href="domain_creative_systems_v1_tmp.html" class="domain-card">
+      <div class="dc-badge">Curiosity-led · Platform signal</div>
+      <h3>Creative Systems</h3>
+      <p>The only domain where curiosity (w_k=0.15) is the primary value driver. Platform signal — saves, downloads, shares — becomes a structured quality measure that feeds the correction loop. Content Efficacy × Discoverability as geometric mean.</p>
+      <span class="dc-link">Generative media, creative tooling, content platforms</span>
+    </a>
+
+  </div>
+</div>
+
+<!-- PRODUCTION DESIGN -->
+<div class="section">
+  <div class="section-label">Production Architecture</div>
+  <h2>Staff-level systems view of the complete stack</h2>
+
+  <div class="tutorial-card">
+    <div>
+      <h3>Productionizing the Adaptive Utility Agent</h3>
+      <p>Updated for v1.0: documents the actual production control plane that shipped — not aspirational design. Covers the request lifecycle end-to-end, the plugin and hook system, all four deployment profiles, state store backends (SQLite → Postgres), observability wiring, failure modes, and scaling discipline.</p>
+      <div class="tutorial-pills">
+        <span class="tp">Request lifecycle</span>
+        <span class="tp">Plugin system</span>
+        <span class="tp">Deployment profiles</span>
+        <span class="tp">State store backends</span>
+        <span class="tp">Security wiring</span>
+        <span class="tp">Observability</span>
+        <span class="tp">Failure modes</span>
+      </div>
+      <p style="font-size:.85rem;color:#666;margin:0;">Audience: Staff / Senior SWE · AI infrastructure teams · LLM systems builders</p>
+    </div>
+    <div class="tutorial-side">
+      <a href="productionizing_v1_tmp.html" class="btn btn-primary">Read the Architecture →</a>
+      <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/docs/AUA_Framework_v1_Architecture.md" target="_blank" class="btn btn-secondary" style="font-size:.82rem;">Architecture Spec ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- TUTORIAL -->
+<div class="section">
+  <div class="section-label">Tutorial</div>
+  <h2>Quick start to advanced hooks — no prerequisites.</h2>
+
+  <div class="tutorial-card">
+    <div>
+      <h3>AUA Framework Tutorial</h3>
+      <p>Structured like Django docs: Quick Start in 5 commands, progressive Tutorial covering routing through blue-green deployment, How-To guides for plugins, security, and observability, and a CLI + API Reference. Every section runs real commands against a live framework.</p>
+      <div class="tutorial-pills">
+        <span class="tp">aua init + serve</span>
+        <span class="tp">Config &amp; presets</span>
+        <span class="tp">Routing &amp; utility</span>
+        <span class="tp">Arbiter + correction</span>
+        <span class="tp">Blue-green deploy</span>
+        <span class="tp">Plugin interfaces</span>
+        <span class="tp">Hooks &amp; middleware</span>
+        <span class="tp">Security</span>
+        <span class="tp">Observability</span>
+        <span class="tp">Eval harness</span>
+        <span class="tp">Chat UI</span>
+        <span class="tp">CLI reference</span>
+      </div>
+    </div>
+    <div class="tutorial-side">
+      <a href="tutorial_v1_tmp.html" class="btn btn-primary">Read the Tutorial →</a>
+      <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="btn btn-secondary" style="font-size:.82rem;">View on GitHub ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- WHITEPAPER -->
+<div class="section">
+  <div class="section-label">Full Whitepaper</div>
+  <h2>Theory, proofs, and empirical results</h2>
+  <p style="color:#555;max-width:680px;">The whitepaper is the complete theoretical and empirical reference — now split into focused documents for easier navigation. All original anchors are preserved.</p>
+
+  <div class="wp-clusters">
+
+    <div class="wp-cluster">
+      <h4>Theory</h4>
+      <ul>
+        <li>
+          <a href="whitepaper_v1_theory_tmp.html#utility-function">§4 — Utility Function</a>
+          <span class="wp-desc">Formal derivation of U = w_e·E + w_c·C + w_k·K from five behavioral axioms</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_theory_tmp.html#field-bounds">§5 — Field Bounds</a>
+          <span class="wp-desc">C_min and E_min from professional licensing standards; blending under ambiguity</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_architecture_tmp.html#vcg">§10.6 — VCG Arbitration</a>
+          <span class="wp-desc">Theorems S1–S3: dominant strategy truthfulness, POA=1, individual rationality</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_appendix_b_tmp.html">Appendix B — Proofs</a>
+          <span class="wp-desc">B.1 additive structure (Cauchy), B.4 Kalman-optimal EMA, B.5 confidence convergence, B.7 Lyapunov stability</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="wp-cluster">
+      <h4>Architecture</h4>
+      <ul>
+        <li>
+          <a href="whitepaper_v1_theory_tmp.html#correction-loop">§8 — Three-Layer Correction Loop</a>
+          <span class="wp-desc">Session injection, calibration DPO, release distillation — full specification</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_architecture_tmp.html#distributed-graph">§10 — Micro-Expert Architecture</a>
+          <span class="wp-desc">Model decomposition, independent deployability, catastrophic forgetting resolved</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_architecture_tmp.html#arbiter">§10.5 — Arbiter Agent</a>
+          <span class="wp-desc">4-check contradiction resolution, evidence chain, minimum disclosure, external escalation</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_architecture_tmp.html#bluegreen">§10.7 — Blue-Green Deployment</a>
+          <span class="wp-desc">Utility-deviation trigger, softmax traffic routing, T thresholds by field, rollback</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="wp-cluster">
+      <h4>Empirical</h4>
+      <ul>
+        <li>
+          <a href="whitepaper_v1_appendix_a_tmp.html">Appendix A — Simulation Results</a>
+          <span class="wp-desc">500-task two-arm study + 10-cycle stability. 69.6% error reduction, Brier 0.049 by cycle 7</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_architecture_tmp.html#routing-experiment">§10.9.5 — Routing Experiment</a>
+          <span class="wp-desc">RTX 4090 four-arm study: VCG +43.3pp (p=0.0003, d=1.02), Regime 2 fingerprinted</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_architecture_tmp.html#hardware-adaptive">§10.9 — Hardware-Adaptive Deployment</a>
+          <span class="wp-desc">Consumer GPU cost model, Jetson edge deployment, pipeline parallelism argument</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_appendix_c_tmp.html">Appendix C — Worked Examples</a>
+          <span class="wp-desc">Numerical weight derivations for AV, Drone, Energy, Pricing, Datacenters</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="wp-cluster">
+      <h4>Scope &amp; Roadmap</h4>
+      <ul>
+        <li>
+          <a href="whitepaper_v1_results_tmp.html#mvp">§11 — Code Generation MVP</a>
+          <span class="wp-desc">10-step feedback loop, success criteria, why code is the right first domain</span>
+        </li>
+        <li>
+          <a href="aua_roadmap.html">Full v1 Roadmap</a>
+          <span class="wp-desc">All 73 original items + 55 new items across 7 milestones — v1.0 complete, v2.0+ planned</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_results_tmp.html#open-questions">§13 — Open Questions</a>
+          <span class="wp-desc">Resolution status of all identified open problems; what remains future work</span>
+        </li>
+        <li>
+          <a href="whitepaper_v1_overview_tmp.html">Whitepaper Overview ↗</a>
+          <span class="wp-desc">Start here — Abstract, Introduction, Applications (§§1–3)</span>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- QUICKSTART -->
+<div class="section" id="quickstart">
+  <div class="section-label">Quick Start</div>
+  <h2>Running in under 5 minutes</h2>
+  <p style="color:#555;max-width:640px;">Standard Python install. No GPU required to start — use the <code>macbook</code> tier with Ollama, or the <code>single-4090</code> tier if you have a GPU.</p>
+
+  <div class="qs-steps">
+    <div class="qs-step">
+      <div class="qs-n">Step 1 · Install</div>
+      <h4>pip install</h4>
+      <p>Runtime only (Ollama / CPU). GPU serving and dev extras are optional.</p>
+      <pre><span class="c"># Runtime</span>
+pip install adaptive-utility-agent
+
+<span class="c"># With GPU backend (Linux + CUDA)</span>
+pip install "adaptive-utility-agent[vllm]"
+
+<span class="c"># With dev tools (tests, linting)</span>
+pip install "adaptive-utility-agent[dev]"</pre>
+    </div>
+
+    <div class="qs-step">
+      <div class="qs-n">Step 2 · Scaffold</div>
+      <h4>aua init</h4>
+      <p>Creates <code>aua_config.yaml</code> for your hardware. Presets configure field weights, models, and thresholds.</p>
+      <pre><span class="c"># Mac / CPU — uses Ollama</span>
+aua init my-project --preset coding \
+  --tier macbook
+
+<span class="c"># RTX 4090 — vLLM AWQ</span>
+aua init my-project --preset coding \
+  --tier single-4090
+
+cd my-project</pre>
+    </div>
+
+    <div class="qs-step">
+      <div class="qs-n">Step 3 · Validate</div>
+      <h4>aua doctor</h4>
+      <p>Every check shows PASS / FAIL / WARN with fix instructions. Exit 0 = all good.</p>
+      <pre>aua doctor
+<span class="out">✓ Config valid
+✓ Models reachable
+✓ Ports available
+✓ Certs generated
+✓ State store ready</span>
+
+<span class="c"># Strict mode (warnings as failures)</span>
+aua doctor --strict
+
+<span class="c"># Machine-readable</span>
+aua doctor --json</pre>
+    </div>
+
+    <div class="qs-step">
+      <div class="qs-n">Step 4 · Run</div>
+      <h4>aua serve</h4>
+      <p>Starts specialists, router, and arbiter. Add <code>--with-ui</code> for the Chat UI at <code>localhost:3000</code>.</p>
+      <pre>aua serve
+<span class="out">✓ specialists started (2)
+✓ router started :8000
+✓ arbiter started :8001</span>
+
+<span class="c"># With Chat UI (Next.js)</span>
+aua serve --with-ui
+
+<span class="c"># Dry run — print cmds only</span>
+aua serve --dry-run</pre>
+    </div>
+  </div>
+
+  <div class="callout green">
+    <p><strong>First query:</strong> <code>curl -X POST http://localhost:8000/query -H "Content-Type: application/json" -d '{"prompt": "Write a binary search in Python", "session_id": "demo"}'</code> — routes to the coding specialist, scores the response with the utility function, and returns utility score, field, and trace ID.</p>
+  </div>
+
+  <div class="callout purple">
+    <p><strong>Explore the simulation first:</strong> The original correction loop simulation still works without any setup. <code>git clone https://github.com/praneethtota/Adaptive-Utility-Agent && cd Adaptive-Utility-Agent/agent && pip install numpy scipy matplotlib && python3 simulate.py</code> — 3-cycle simulation showing 69.6% error reduction and the +0.1160 utility improvement.</p>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-author">Praneeth Tota</div>
+    <div style="margin-top:.3rem;">Ph.D. Computer Science (Algorithmic Game Theory) · Illinois Institute of Technology · May 2026</div>
+    <div style="margin-top:.3rem;">
+      <a href="https://www.linkedin.com/in/praneethtota/" target="_blank">linkedin.com/in/praneethtota</a>
+      &nbsp;·&nbsp; <a href="https://praneethtota.github.io" target="_blank">praneethtota.github.io</a>
+      &nbsp;·&nbsp; Code: GPL-3.0 &nbsp;·&nbsp; Whitepaper: CC BY 4.0
+    </div>
+  </div>
+  <div class="footer-right">
+    <div class="footer-links">
+      <a href="whitepaper_v1_overview_tmp.html">Whitepaper</a>
+      <a href="tutorial_v1_tmp.html">Tutorial</a>
+      <a href="aua_roadmap.html">Roadmap</a>
+      <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
+    </div>
+    <div>Adaptive Utility Agents v1.0.0 · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/CITATION.cff" target="_blank">Cite this work</a></div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>
