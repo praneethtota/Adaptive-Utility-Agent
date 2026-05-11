@@ -44,15 +44,16 @@ def create_session(title: str = "", metadata: dict | None = None) -> dict[str, A
     """Create a new chat session. Returns the session dict."""
     store = get_state_store()
     now = time.time()
-    session = {
-        "id": str(uuid.uuid4()),
+    session_id = str(uuid.uuid4())
+    session: dict[str, Any] = {
+        "id": session_id,
         "created_at": now,
         "updated_at": now,
         "title": title or "New Chat",
         "message_count": 0,
         "metadata": json.dumps(metadata or {}),
     }
-    store.set("chat_sessions", session["id"], session)
+    store.set("chat_sessions", session_id, session)
     return session
 
 
