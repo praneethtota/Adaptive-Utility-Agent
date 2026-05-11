@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>AUA Framework — Consolidated v1 Roadmap</title>
+<title>AUA Framework v1.0 — Release Roadmap and Validation Matrix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
@@ -121,12 +121,10 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 </nav>
 
 <div class="hero">
-  <div class="hero-tag">AUA Framework &mdash; Consolidated Roadmap</div>
-  <h1>AUA Framework v1 &mdash; Full Roadmap</h1>
+  <div class="hero-tag">AUA Framework v1.0 &mdash; Release Roadmap &amp; Validation Matrix</div>
+  <h1>AUA Framework v1.0 &mdash; Release Roadmap and Validation Matrix</h1>
   <p class="subtitle">
-    Consolidated from six planning documents. Ordered to minimize redundancy &mdash; items that unblock other items run first,
-    regardless of their original numbering. The goal: <strong>Django for adaptive multi-model LLM systems</strong> &mdash; batteries included,
-    deeply configurable, extensible without editing AUA internals.
+    This page records the v1.0 implementation contract, validation criteria, and future roadmap. Items marked <span class="badge done">done</span> are included in v1.0.0. Items marked <span class="badge wip">wip</span> or <span class="badge future">future</span> are deferred to v1.1+ or v2.0. The goal: <strong>Django for adaptive multi-model LLM systems</strong> &mdash; batteries included, deeply configurable, extensible without editing AUA internals.
   </p>
   <div class="hero-meta">
     <span><strong>Source documents:</strong> aua_roadmap.html &middot; AUA_Framework_v1_Roadmap.md &middot; objective_v1.md &middot; aua_roadmap_01_10_production_completeness.md &middot; missing_from_v1.md &middot; Front_end_for_UA_Framework_v1.md</span>
@@ -134,6 +132,11 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 </div>
 
 <div class="body">
+
+<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-left:4px solid #0f766e;border-radius:0 8px 8px 0;padding:1rem 1.25rem;margin-bottom:1.5rem;">
+  <p style="margin:0 0 .25rem;font-weight:700;color:#134e4a;font-size:1rem;">&#10003; Status: v1.0.0 shipped.</p>
+  <p style="margin:0;font-size:.88rem;color:#065f46;">All items marked <strong>done</strong> are included in v1.0.0 and validated. See <a href="docs/v1_validation_report.md" style="color:#0f766e;">docs/v1_validation_report.md</a> for the full validation record: 132 tests, 23 REST endpoints, 8 plugin protocols, 15 Prometheus metrics, CLI reference, install transcript, Docker Compose, Chat UI, security, and observability.</p>
+</div>
 
 <div class="callout purple">
   <p><strong>Reading guide.</strong> Items are ordered so each step unlocks the next with minimal rework.
@@ -149,7 +152,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
     <li><a href="#milestone-framework">v0.8-framework-beta &mdash; Django-like framework UX</a></li>
     <li><a href="#milestone-rc1">v0.9-rc1 &mdash; Security + observability</a></li>
     <li><a href="#milestone-rc2">v0.9-rc2 &mdash; Evaluation + chat UI</a></li>
-    <li><a href="#milestone-v1">v1.0-public &mdash; Production complete</a></li>
+    <li><a href="#milestone-v1">v1.0.0 &mdash; Shipped</a></li>
     <li><a href="#milestone-v2">v2.0+ &mdash; HA, distributed, advanced</a></li>
   </ol>
 </div>
@@ -158,7 +161,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
   <div class="stat"><span class="stat-num">73</span><div class="stat-label">Original roadmap items</div></div>
   <div class="stat"><span class="stat-num">55+</span><div class="stat-label">New items from planning docs</div></div>
   <div class="stat"><span class="stat-num">7</span><div class="stat-label">Release milestones</div></div>
-  <div class="stat"><span class="stat-num">v1.0</span><div class="stat-label">Target: production framework</div></div>
+  <div class="stat"><span class="stat-num">v1.0.0</span><div class="stat-label">Released: production framework v1.0.0</div></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -167,9 +170,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 <h2 id="milestone-alpha">v0.6-alpha &mdash; #01&ndash;#10 Production-Complete</h2>
 
 <p>
-  Items #01&ndash;#10 are implemented but not yet production-complete.
-  This milestone hardens them. <strong>No new features &mdash; only quality, contracts, and correctness.</strong>
-  Packaging and config strictness come first because everything else depends on them.
+  Items #01&ndash;#10 are production-complete in v1.0.0. This milestone records the hardening work completed: quality, contracts, correctness, and packaging. All items are shipped.
 </p>
 
 <div class="stage stage-1">
@@ -203,7 +204,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
         <span class="task-id">P-03</span>
         <div class="task-body">
           <span class="task-title">aua/version.py &mdash; single version source + py.typed</span>
-          <p class="task-desc">Create <code>aua/version.py</code> containing <code>__version__ = "0.5.0"</code>. All other references import from here. Create <code>aua/py.typed</code> marker file. Add version consistency test: <code>importlib.metadata.version("adaptive-utility-agent") == aua.__version__</code>.</p>
+          <p class="task-desc">Create <code>aua/version.py</code> containing <code>__version__ = "1.0.0"</code>. All other references import from here. Create <code>aua/py.typed</code> marker file. Add version consistency test: <code>importlib.metadata.version("adaptive-utility-agent") == aua.__version__</code>.</p>
           <div class="task-tags"><span class="tag code">code</span></div>
         </div>
       </div>
@@ -912,7 +913,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <!-- MILESTONE 6: v1.0-public                                               -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
-<h2 id="milestone-v1">v1.0-public &mdash; Production-Complete Framework</h2>
+<h2 id="milestone-v1">v1.0.0 &mdash; Shipped</h2>
 
 <p>
   Final polish, documentation, release discipline. Everything else is implemented; this milestone makes it shippable.
@@ -924,7 +925,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
     <div>
       <p class="stage-title">Release readiness &mdash; compatibility, deployment profiles, examples, release docs</p>
     </div>
-    <div class="stage-meta"><span class="stage-timeline">v1.0-public</span></div>
+    <div class="stage-meta"><span class="stage-timeline">v1.0.0 — Shipped</span></div>
   </div>
   <div class="stage-body">
     <div class="tasks">
@@ -965,7 +966,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 </div>
 
 <div class="callout green">
-  <p><strong>v1.0-public definition of done:</strong> The one-liner from <code>objective_v1.md</code> works &mdash; <code>pip install adaptive-utility-agent &amp;&amp; aua init --preset coding --tier single-4090 &amp;&amp; aua serve</code> &mdash; and the expert path works without editing any AUA source files.</p>
+  <p><strong>v1.0.0 — shipped:</strong> The one-liner from <code>objective_v1.md</code> works &mdash; <code>pip install adaptive-utility-agent &amp;&amp; aua init --preset coding --tier single-4090 &amp;&amp; aua serve</code> &mdash; and the expert path works without editing any AUA source files.</p>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -1106,7 +1107,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
       <td><code>aua serve --with-ui</code> + debugger panel working end-to-end</td>
     </tr>
     <tr>
-      <td><strong>v1.0-public</strong></td>
+      <td><strong>v1.0.0 &mdash; Shipped</strong></td>
       <td>D-01&ndash;D-04 (4 items)</td>
       <td>Release readiness</td>
       <td>All v1.0 definition-of-done commands pass</td>
