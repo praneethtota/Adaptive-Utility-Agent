@@ -1,0 +1,39 @@
+# AUA Framework — Prometheus alert rules
+groups:
+  - name: aua.framework
+    rules:
+      - alert: AUA_SpecialistDown
+        expr: up{job="aua-router"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AUA router is down"
+          description: "AUA router has been unreachable for more than 1 minute."
+
+      - alert: AUA_HighContradictionRate
+        expr: aua_contradiction_rate > 0.3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High contradiction rate detected"
+          description: "Contradiction rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: AUA_LowUtilityScore
+        expr: aua_utility_score < 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low utility score"
+          description: "Mean utility score is {{ $value }} — below 0.5 for 10 minutes."
+
+      - alert: AUA_ArbiterCaseFourSpike
+        expr: rate(aua_arbiter_verdict_total{case="case_4"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Arbiter inconclusive rate spike"
+          description: "Case 4 (inconclusive) verdicts spiking — check specialist quality."

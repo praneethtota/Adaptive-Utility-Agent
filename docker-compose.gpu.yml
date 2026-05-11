@@ -1,0 +1,132 @@
+# ── AUA Framework — GPU (vLLM) docker-compose overlay ─────────────────────────
+#
+# Requires: NVIDIA Container Toolkit
+#   https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml --profile obs up
+#
+# Environment:
+#   AUA_TIER=single-4090   (default) — one GPU, AWQ, 2 specialists
+#   AUA_TIER=quad-4090               — four GPUs, AWQ, 3 specialists
+#   AUA_TIER=a100-cluster            — one A100, fp16, 2 specialists
+
+name: aua
+
+x-vllm-base: &vllm-base
+  image: vllm/vllm-openai:${VLLM_VERSION:-latest}
+  runtime: nvidia
+  env_file:
+    - path: .env
+      required: false
+  volumes:
+    - ./models:/root/.cache/huggingface:ro
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "100m"
+      max-file: "3"
+
+services:
+
+  router:
+    environment:
+      - AUA_TIER=${AUA_TIER:-single-4090}
+
+  # ── SWE specialist ──────────────────────────────────────────────────────────
+  swe:
+    <<: *vllm-base
+    container_name: aua-swe
+    ports:
+      - "9001:9001"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    command:
+      - "--model=${SWE_MODEL:-Qwen/Qwen2.5-Coder-7B-Instruct-AWQ}"
+      - "--port=9001"
+      - "--gpu-memory-utilization=0.34"
+      - "--max-model-len=2048"
+      - "--quantization=awq"
+      - "--enforce-eager"
+      - "--served-model-name=swe"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/v1/models"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
+
+  # ── Math specialist ─────────────────────────────────────────────────────────
+  math:
+    <<: *vllm-base
+    container_name: aua-math
+    ports:
+      - "9002:9002"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    command:
+      - "--model=${MATH_MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}"
+      - "--port=9002"
+      - "--gpu-memory-utilization=0.34"
+      - "--max-model-len=2048"
+      - "--quantization=awq"
+      - "--enforce-eager"
+      - "--served-model-name=math"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002/v1/models"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    depends_on:
+      swe:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
+
+  # ── Arbiter ─────────────────────────────────────────────────────────────────
+  arbiter:
+    <<: *vllm-base
+    container_name: aua-arbiter
+    ports:
+      - "9003:9003"
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    command:
+      - "--model=${ARBITER_MODEL:-Qwen/Qwen2.5-3B-Instruct-AWQ}"
+      - "--port=9003"
+      - "--gpu-memory-utilization=0.18"
+      - "--max-model-len=2048"
+      - "--quantization=awq"
+      - "--enforce-eager"
+      - "--served-model-name=arbiter"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9003/v1/models"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    depends_on:
+      math:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]

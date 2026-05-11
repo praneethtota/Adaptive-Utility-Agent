@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Dev/test
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# OS
+.DS_Store
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# AUA runtime (don't bake state into image)
+.aua/
+results/
+dpo_pairs/
+logs/
+*.log
+
+# Large assets (mount as volumes)
+models/
+*.gguf
+*.awq
+
+# Docs (not needed in runtime image)
+*.html
+*.pdf
+*.md
+!README.md
+simulations/
+older\ versions/

@@ -1,0 +1,149 @@
+# ── AUA Framework — docker-compose (CPU / Ollama profile) ─────────────────────
+#
+# Profiles:
+#   default           router only (bring your own specialists)
+#   --profile ollama  router + Ollama (Mac / CPU servers)
+#   --profile obs     + Prometheus + Grafana observability stack
+#
+# Usage:
+#   docker compose up                          # router only
+#   docker compose --profile ollama up         # router + Ollama
+#   docker compose --profile obs up            # router + observability
+#   docker compose --profile ollama --profile obs up  # everything
+#
+# For GPU (vLLM) deployment see docker-compose.gpu.yml.
+
+name: aua
+
+x-aua-base: &aua-base
+  image: aua:${AUA_VERSION:-0.7.0b0}
+  build:
+    context: .
+    target: prod
+  env_file:
+    - path: .env
+      required: false
+  volumes:
+    - aua-state:/app/.aua
+    - ./aua_config.yaml:/app/aua_config.yaml:ro
+    - ./models:/app/models:ro
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "5"
+
+services:
+
+  # ── Router ─────────────────────────────────────────────────────────────────
+  router:
+    <<: *aua-base
+    container_name: aua-router
+    command: ["aua", "serve", "--router-only", "--reuse-running"]
+    ports:
+      - "${AUA_ROUTER_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    depends_on:
+      ollama:
+        condition: service_healthy
+        required: false
+
+  # ── Ollama (CPU / Apple Silicon) ────────────────────────────────────────────
+  ollama:
+    profiles: [ollama]
+    image: ollama/ollama:${OLLAMA_VERSION:-latest}
+    container_name: aua-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    restart: unless-stopped
+    # Uncomment for Apple Silicon MPS:
+    # environment:
+    #   - OLLAMA_HOST=0.0.0.0
+
+  # ── Model puller (runs once, pulls required models into Ollama) ─────────────
+  model-puller:
+    profiles: [ollama]
+    image: ollama/ollama:${OLLAMA_VERSION:-latest}
+    container_name: aua-model-puller
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ollama-models:/root/.ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      ollama pull ${SWE_MODEL:-qwen2.5-coder:7b} &&
+      ollama pull ${MATH_MODEL:-qwen2.5:7b} &&
+      ollama pull ${ARBITER_MODEL:-qwen2.5:3b} &&
+      echo 'All models ready'
+      "
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    restart: "no"
+
+  # ── Prometheus ──────────────────────────────────────────────────────────────
+  prometheus:
+    profiles: [obs]
+    image: prom/prometheus:${PROMETHEUS_VERSION:-latest}
+    container_name: aua-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Grafana ─────────────────────────────────────────────────────────────────
+  grafana:
+    profiles: [obs]
+    image: grafana/grafana:${GRAFANA_VERSION:-latest}
+    container_name: aua-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-aua-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:${GRAFANA_PORT:-3000}
+    depends_on:
+      prometheus:
+        condition: service_healthy
+        required: false
+    restart: unless-stopped
+
+volumes:
+  aua-state:
+    driver: local
+  ollama-models:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

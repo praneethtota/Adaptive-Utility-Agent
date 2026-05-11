@@ -63,6 +63,7 @@ from aua.endpoints import (
     StreamStartEvent,
 )
 from aua.field_classifier import FieldClassifier
+from aua.hot_reload import HotReloader, ReloadResult
 from aua.router import Router
 from aua.utility_scorer import DomainState, TaskScore, UtilityScorer
 from aua.version import __version__
@@ -107,6 +108,8 @@ __all__ = [
     "Router",
     # deployment & learning
     "BlueGreenDeployment",
+    "HotReloader",
+    "ReloadResult",
     "EvaluationSummary",
     "CorrectionLoop",
     "DPOPair",

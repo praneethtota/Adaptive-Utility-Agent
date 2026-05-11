@@ -387,3 +387,124 @@ def rollback(config, specialist, all_specialists, yes, no_restart):
     )
     if result != 0:
         sys.exit(1)
+
+
+# ── aua config ────────────────────────────────────────────────────────────────
+
+
+@main.group()
+def config():
+    """Manage AUA config — reload, validate, expand."""
+    pass
+
+
+@config.command("reload")
+@click.option(
+    "--config",
+    "-c",
+    default="aua_config.yaml",
+    show_default=True,
+    help="Path to aua_config.yaml.",
+)
+@click.option(
+    "--pid",
+    default=None,
+    type=int,
+    help="PID of running aua serve process to signal (auto-detected from .aua/pids/router.pid).",
+)
+def config_reload(config, pid):
+    """Hot-reload aua_config.yaml into a running aua serve process.
+
+    \b
+    Hot-reloadable (no restart):
+        routing thresholds, promotion thresholds, logging level, cors_origins
+
+    \b
+    Requires restart:
+        model, port, gpu, backend changes
+
+    \b
+    Examples:
+        aua config reload
+        aua config reload --pid 12345
+    """
+    from aua.hot_reload import HotReloader
+
+    # Auto-detect router PID if not provided
+    if pid is None:
+        pid_file = Path(".aua/pids/router.pid")
+        if pid_file.exists():
+            try:
+                pid = int(pid_file.read_text().strip())
+            except ValueError:
+                pass
+
+    # Validate config first
+    reloader = HotReloader(config)
+    result = reloader.reload()
+
+    if result.errors:
+        console.print("[red]✗ Config validation failed:[/red]")
+        for err in result.errors:
+            console.print(f"  {err}")
+        sys.exit(1)
+
+    if result.hot_reloaded:
+        console.print("[green]✓ Hot-reloadable changes detected:[/green]")
+        for field in result.hot_reloaded:
+            console.print(f"  · {field}")
+
+    if result.restart_required:
+        console.print("[yellow]⚠ Restart required for:[/yellow]")
+        for field in result.restart_required:
+            console.print(f"  · {field}")
+
+    # Send SIGHUP to running process
+    if pid:
+        try:
+            import os as _os
+            import signal as _signal
+
+            _os.kill(pid, _signal.SIGHUP)
+            console.print(f"[green]✓ SIGHUP sent to pid {pid}[/green]")
+        except ProcessLookupError:
+            console.print(f"[red]✗ No process with pid {pid}[/red]")
+            sys.exit(1)
+        except PermissionError:
+            console.print(f"[red]✗ Permission denied sending SIGHUP to pid {pid}[/red]")
+            sys.exit(1)
+    else:
+        console.print("[dim]No running process found — config validated only.[/dim]")
+        console.print("[dim]To reload a running server: aua config reload --pid <PID>[/dim]")
+
+
+@config.command("validate")
+@click.option(
+    "--config",
+    "-c",
+    default="aua_config.yaml",
+    show_default=True,
+    help="Path to aua_config.yaml.",
+)
+def config_validate(config):
+    """Validate aua_config.yaml without starting anything.
+
+    \b
+    Examples:
+        aua config validate
+        aua config validate --config /path/to/aua_config.yaml
+    """
+    try:
+        from aua.config import load_config
+
+        cfg = load_config(config)
+        console.print(
+            f"[green]✓[/green] Config valid  "
+            f"[dim]{len(cfg.specialists)} specialist(s) · backend={cfg.backend}[/dim]"
+        )
+    except FileNotFoundError as e:
+        console.print(f"[red]✗ File not found:[/red] {e}")
+        sys.exit(1)
+    except ValueError as e:
+        console.print(f"[red]✗ Validation error:[/red] {e}")
+        sys.exit(1)
