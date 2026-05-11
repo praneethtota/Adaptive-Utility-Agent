@@ -1,0 +1,46 @@
+# AUA Framework — OpenTelemetry Collector config for Datadog export
+# Usage: otelcol --config=docker/otel-collector-datadog.yml
+#
+# Requires: pip install 'adaptive-utility-agent[datadog]'
+# Env vars: DD_API_KEY, DD_SITE (default: datadoghq.com)
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 10s
+  resource:
+    attributes:
+      - key: service.framework
+        value: "aua"
+        action: insert
+      - key: service.framework.version
+        value: "0.9.0rc1"
+        action: insert
+
+exporters:
+  datadog:
+    api:
+      key: ${DD_API_KEY}
+      site: ${DD_SITE:-datadoghq.com}
+    traces:
+      span_name_as_resource_name: true
+    metrics:
+      resource_attributes_as_tags: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch, resource]
+      exporters: [datadog]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [datadog]

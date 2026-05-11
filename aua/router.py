@@ -96,6 +96,42 @@ def _sse_comment(text: str = "keep-alive") -> str:
     return f": {text}\n\n"
 
 
+def _audit_query(
+    req: QueryRequest,
+    domain: str,
+    routing_mode: str,
+    u_score: float,
+    confidence: float,
+    latency_ms: float,
+    contradictions: int,
+) -> None:
+    """Fire-and-forget: append a query event to the audit log."""
+    try:
+        from aua.session import get_current_or_none
+        from aua.state import get_state_store
+
+        ctx = get_current_or_none()
+        store = get_state_store()
+        store.append_audit(
+            {
+                "event_type": "query",
+                "session_id": ctx.session_id if ctx else getattr(req, "session_id", "unknown"),
+                "trace_id": ctx.trace_id if ctx else "",
+                "request_id": ctx.request_id if ctx else "",
+                "field": domain,
+                "routing_mode": routing_mode,
+                "u_score": u_score,
+                "confidence": confidence,
+                "latency_ms": latency_ms,
+                "details": {"contradictions": contradictions},
+            }
+        )
+    except Exception as _audit_err:
+        import logging as _log
+
+        _log.getLogger("aua.router").debug("Audit log write failed: %s", _audit_err)
+
+
 class Router:
     """
     Micro-Expert Architecture Router.
@@ -196,6 +232,11 @@ class Router:
                 },
             ],
         )
+        # Rate limiting — before CORS
+        from aua.rate_limit import RateLimitMiddleware
+
+        app.add_middleware(RateLimitMiddleware, config=self._config)
+
         app.add_middleware(
             CORSMiddleware,
             allow_origins=self._config.router.cors_origins,
@@ -1025,7 +1066,9 @@ class Router:
             self._requests_per_spec[spec.name] = self._requests_per_spec.get(spec.name, 0) + 1
         self._total_contradictions += n_contra
         self._total_dpo += n_dpo
+        latency_ms = round((time.time() - t0) * 1000, 1)
         log.info("single→%s  U=%.3f  C=%.3f  contra=%d  dpo=%d", domain, u, conf, n_contra, n_dpo)
+        _audit_query(req, domain, "single", u, conf, latency_ms, n_contra)
         return RouterResponse(
             query=req.query,
             routing_mode="single",
@@ -1036,7 +1079,7 @@ class Router:
             confidence=conf,
             contradictions_detected=n_contra,
             dpo_pairs_generated=n_dpo,
-            latency_ms=round((time.time() - t0) * 1000, 1),
+            latency_ms=latency_ms,
         )
 
     async def _handle_fanout(self, req, active_specialists, distribution, t0) -> RouterResponse:

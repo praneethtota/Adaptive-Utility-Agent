@@ -127,6 +127,7 @@ services:
       - "${GRAFANA_PORT:-3000}:3000"
     volumes:
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/aua_dashboard.json:/var/lib/grafana/dashboards/aua_dashboard.json:ro
       - grafana-data:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-aua-admin}

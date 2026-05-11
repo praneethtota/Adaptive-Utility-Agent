@@ -45,6 +45,7 @@ from aua.config import (
 )
 from aua.contradiction_detector import ContradictionDetector, ContradictionResult
 from aua.correction_loop import CollectionSummary, CorrectionLoop, DPOPair
+from aua.encryption import Encryptor, get_encryptor, init_encryptor
 from aua.endpoints import (
     BatchQueryRequest,
     BatchQueryResponse,
@@ -70,6 +71,7 @@ from aua.hot_reload import HotReloader, ReloadResult
 from aua.logging_config import configure_logging
 from aua.metrics import AUAMetrics, get_metrics
 from aua.middleware import AuditMiddleware, MiddlewarePipeline, PIIRedactionMiddleware
+from aua.otel import get_tracer, setup_otel
 from aua.plugins.errors import ALL_ERROR_CODES, AUAErrorCode, get_error_code
 from aua.plugins.interfaces import (
     ArbiterPolicyPlugin,
@@ -83,6 +85,7 @@ from aua.plugins.interfaces import (
 )
 from aua.plugins.registry import PluginLoadError, PluginRegistry, get_registry, load_plugin
 from aua.presets import AVAILABLE_PRESETS, PRESETS, PresetSpec, get_preset
+from aua.rate_limit import RateLimitMiddleware
 from aua.router import Router
 from aua.safety import SafetyConfig, SafetyPolicy
 from aua.secrets import SecretsManager, get_secrets_manager, resolve_secret
@@ -91,6 +94,7 @@ from aua.state import FilesStateStore, SQLiteStateStore, get_state_store
 from aua.templates.registry import get_template, list_templates, render_template
 from aua.utility_scorer import DomainState, TaskScore, UtilityScorer
 from aua.version import __version__
+from aua.webhooks import WebhookDispatcher, get_webhook_dispatcher, init_webhook_dispatcher
 
 # ── Aliases ────────────────────────────────────────────────────────────────────
 # Arbiter is the canonical public name; ArbiterAgent is the implementation class.
@@ -186,6 +190,19 @@ __all__ = [
     "get_metrics",
     # v0.9 — logging
     "configure_logging",
+    # v0.9 — rate limiting
+    "RateLimitMiddleware",
+    # v0.9 — encryption at rest
+    "Encryptor",
+    "get_encryptor",
+    "init_encryptor",
+    # v0.9 — webhooks
+    "WebhookDispatcher",
+    "get_webhook_dispatcher",
+    "init_webhook_dispatcher",
+    # v0.9 — OTEL
+    "setup_otel",
+    "get_tracer",
     # v0.8 — templates
     "get_template",
     "render_template",
