@@ -2,6 +2,7 @@
 tests/test_rollback.py — aua rollback logic tests.
 """
 
+import json
 import shutil
 import tempfile
 from pathlib import Path
@@ -195,3 +196,64 @@ def test_rollback_cli_no_restart(project_dir):
     raw = yaml.safe_load((project_dir / "aua_config.yaml").read_text())
     swe = next(s for s in raw["specialists"] if s["name"] == "swe")
     assert swe["model"] == "blue-model"
+
+
+# ── P-09: JSONL atomic writes + dry-run ──────────────────────────────────────
+
+
+def test_promotions_saved_as_jsonl(project_dir):
+    """Promotions are saved in JSONL format under .aua/state/."""
+    record_promotion("swe", "blue", "green", project_dir=str(project_dir))
+    state_file = project_dir / ".aua" / "state" / "promotions.jsonl"
+    assert state_file.exists()
+    lines = [ln for ln in state_file.read_text().splitlines() if ln.strip()]
+    assert len(lines) == 1
+    data = json.loads(lines[0])
+    assert data["specialist"] == "swe"
+    assert data["event"] == "promote"
+
+
+def test_promotion_id_is_uuid(project_dir):
+    """Promotion IDs must be UUID strings (not sequential promo_0001)."""
+    import re
+
+    event = record_promotion("swe", "blue", "green", project_dir=str(project_dir))
+    uuid_pattern = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+    assert uuid_pattern.match(event.id), f"Expected UUID, got: {event.id!r}"
+
+
+def test_rollback_dry_run(project_dir):
+    """--dry-run returns 0 and makes no changes to config or log."""
+    original = (project_dir / "aua_config.yaml").read_text()
+
+    record_promotion("swe", "blue-model", "green-model", project_dir=str(project_dir))
+    result = run_rollback(
+        config_path=str(project_dir / "aua_config.yaml"),
+        specialist="swe",
+        yes=True,
+        restart=False,
+        dry_run=True,
+    )
+    assert result == 0
+
+    # Config unchanged
+    assert (project_dir / "aua_config.yaml").read_text() == original
+
+    # Promotions log: still only has the original promote event (no rollback appended)
+    events = load_promotions(str(project_dir))
+    assert len(events) == 1
+    assert events[0].event == "promote"
+    assert not events[0].reverted
+
+
+def test_atomic_config_write_no_tmp_left(project_dir):
+    """After rollback, no .yaml.tmp file should remain on disk."""
+    record_promotion("swe", "blue-model", "green-model", project_dir=str(project_dir))
+    run_rollback(
+        config_path=str(project_dir / "aua_config.yaml"),
+        specialist="swe",
+        yes=True,
+        restart=False,
+    )
+    tmp = project_dir / "aua_config.yaml.tmp"
+    assert not tmp.exists(), ".yaml.tmp file was left behind (atomic write failed)"

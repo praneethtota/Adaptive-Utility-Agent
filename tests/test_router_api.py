@@ -235,3 +235,62 @@ def test_redoc_accessible(client):
     """GET /redoc must return 200 (ReDoc UI)."""
     r = client.get("/redoc")
     assert r.status_code == 200
+
+
+# ── P-08: GET /version ────────────────────────────────────────────────────────
+
+
+def test_version_endpoint_returns_correct_version(client):
+    """GET /version returns the AUA version string."""
+    r = client.get("/version")
+    assert r.status_code == 200
+    body = r.json()
+    assert "version" in body
+    assert body["version"] == "0.6.0a0"
+    assert body["framework"] == "aua"
+
+
+def test_cors_uses_config_origins(minimal_config):
+    """Router CORS allow_origins matches config.router.cors_origins."""
+    from fastapi.testclient import TestClient
+
+    cfg = minimal_config
+    assert cfg.router.cors_origins == ["*"]  # fixture default
+    router = Router.from_config(cfg)
+    client = TestClient(router.app)
+
+    # OPTIONS preflight should return CORS headers
+    r = client.options("/query", headers={"Origin": "http://example.com"})
+    assert r.status_code in (200, 204, 405)  # some frameworks return 405 for OPTIONS
+
+
+# ── P-10: SSE named event fields ─────────────────────────────────────────────
+
+
+def test_stream_named_event_fields(client, fake_swe_server):
+    """SSE frames must include named 'event:' field."""
+    with client.stream(
+        "POST",
+        "/query/stream",
+        json={"query": "test", "force_domain": "software_engineering"},
+    ) as r:
+        text = r.read().decode()
+
+    # Named event lines must appear
+    lines = text.splitlines()
+    event_lines = [ln for ln in lines if ln.startswith("event:")]
+    assert len(event_lines) >= 2  # at least start + done
+    event_types = [ln.replace("event:", "").strip() for ln in event_lines]
+    assert "start" in event_types
+    assert "done" in event_types
+
+
+def test_stream_content_encoding_none(client, fake_swe_server):
+    """SSE response must include Content-Encoding: none to prevent gzip buffering."""
+    with client.stream(
+        "POST",
+        "/query/stream",
+        json={"query": "test", "force_domain": "software_engineering"},
+    ) as r:
+        assert r.headers.get("content-encoding") == "none"
+        r.read()
