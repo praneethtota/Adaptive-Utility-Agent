@@ -1,0 +1,14 @@
+# docker-compose.local.yml — LOCAL DEVELOPMENT OVERRIDE
+# Overrides Prometheus to scrape the native aua serve process on your Mac.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml --profile obs up prometheus grafana
+
+services:
+  prometheus:
+    volumes:
+      - ./docker/prometheus/prometheus.local.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

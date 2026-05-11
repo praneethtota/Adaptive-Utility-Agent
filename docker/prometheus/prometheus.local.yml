@@ -1,0 +1,23 @@
+# Prometheus config — LOCAL DEVELOPMENT
+# Use when aua serve runs natively on Mac (not in Docker).
+# Prometheus runs in Docker and reaches the native router via host.docker.internal.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml --profile obs up prometheus grafana
+
+global:
+  scrape_interval: 10s
+  evaluation_interval: 15s
+  external_labels:
+    service: aua-framework
+    env: local-dev
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  - job_name: aua-router
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+    metrics_path: /metrics
+    scrape_interval: 10s
