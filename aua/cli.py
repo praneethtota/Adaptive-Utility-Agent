@@ -1673,8 +1673,8 @@ def _start_chat_ui(port: int = 3001) -> None:
     # (nvm, homebrew, volta, fnm, system) — shutil.which alone misses nvm paths
     extra = [
         os.path.expanduser("~/.nvm/versions/node/$(node --version 2>/dev/null)/bin"),
-        "/opt/homebrew/bin",           # Apple Silicon homebrew
-        "/usr/local/bin",              # Intel homebrew / system node
+        "/opt/homebrew/bin",  # Apple Silicon homebrew
+        "/usr/local/bin",  # Intel homebrew / system node
         os.path.expanduser("~/.volta/bin"),
         os.path.expanduser("~/.fnm/current/bin"),
     ]
@@ -1760,7 +1760,8 @@ def ui_command(port, install_only):
 
     # Resolve npm with Mac-aware PATH (nvm, homebrew, volta, fnm)
     extra = [
-        "/opt/homebrew/bin", "/usr/local/bin",
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
         os.path.expanduser("~/.volta/bin"),
         os.path.expanduser("~/.fnm/current/bin"),
     ]
