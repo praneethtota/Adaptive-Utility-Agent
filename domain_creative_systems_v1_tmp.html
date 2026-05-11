@@ -125,6 +125,7 @@ hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
     <li><a href="#applications">Applications: generative media, brand voice, content platforms</a></li>
     <li><a href="#correction">The correction loop for creative feedback</a></li>
     <li><a href="#mvp">MVP shape</a></li>
+    <li><a href="#build-with-aua">Build it with AUA v1.0</a></li>
   </ol>
 </div>
 
@@ -403,24 +404,23 @@ Example C — Balanced:
   </ul>
 </div>
 
-</div></div>
+<hr style="margin:2.5rem 0;border:none;border-top:2px solid var(--line)">
 
-<section id="build-with-aua" style="margin-top:3rem;padding-top:2rem;border-top:2px solid var(--line,#e4e1da)">
-  <div style="font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4338ca;margin-bottom:.75rem;">Build it with AUA v1.0</div>
-  <h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:1.55rem;margin:0 0 .75rem;">Configure this domain today</h2>
-  <p style="max-width:680px;color:#444;">AUA v1.0 supports curiosity-weighted fields out of the box. Configure platform signal scoring via a custom <code>UtilityScorerPlugin</code>, and let the correction loop learn from saves, downloads, and shares.</p>
+  <span class="hero-tag" style="margin-bottom:.75rem;display:inline-block;">Build it with AUA v1.0</span>
+  <h2 id="build-with-aua">Configure this domain today</h2>
+  <p>AUA v1.0 supports curiosity-weighted fields out of the box. Configure platform signal scoring via a custom <code>UtilityScorerPlugin</code>, and let the correction loop learn from saves, downloads, and shares.</p>
   
 
-  <h3 style="margin-top:1.75rem;">1. Install</h3>
-  <pre style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:1rem 1.25rem;font-family:'JetBrains Mono',monospace;font-size:.8rem;line-height:1.7;">pip install adaptive-utility-agent</pre>
+  <h3>1. Install</h3>
+  <pre>pip install adaptive-utility-agent</pre>
 
   <h3>2. Scaffold for this domain</h3>
-  <pre style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:1rem 1.25rem;font-family:'JetBrains Mono',monospace;font-size:.8rem;line-height:1.7;">aua init my-creative-systems-agent --preset generalist --tier macbook
+  <pre>aua init my-creative-systems-agent --preset generalist --tier macbook
 cd my-creative-systems-agent
 aua doctor</pre>
 
   <h3>3. Key config for this domain</h3>
-  <pre style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:1rem 1.25rem;font-family:'JetBrains Mono',monospace;font-size:.8rem;line-height:1.7;"># aua_config.yaml
+  <pre># aua_config.yaml
 specialists:
   - name: creative_writing
     model: qwen-coder-7b-awq
@@ -440,7 +440,7 @@ audit:
   hash_chain: true</pre>
 
   <h3>4. Start and query</h3>
-  <pre style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:1rem 1.25rem;font-family:'JetBrains Mono',monospace;font-size:.8rem;line-height:1.7;">aua serve
+  <pre>aua serve
 
 curl -X POST http://localhost:8000/query \
   -H "Authorization: Bearer $AUA_TOKEN" \
@@ -448,20 +448,19 @@ curl -X POST http://localhost:8000/query \
   -d '{"prompt": "...", "session_id": "demo"}'</pre>
 
   <h3>5. What AUA handles vs. what you bring</h3>
-  <table style="width:100%;border-collapse:collapse;font-size:.88rem;margin:1rem 0 1.5rem">
-    <tr style="border-bottom:2px solid #c0bab2;"><th style="text-align:left;padding:8px 12px;color:#555;font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;">AUA v1.0 provides</th><th style="text-align:left;padding:8px 12px;color:#555;font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;">You bring</th></tr>
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #e8e4de;">Multi-specialist routing + utility scoring</td><td style="padding:8px 12px;border-bottom:1px solid #e8e4de;">Domain-specific specialist models</td></tr>
-    <tr style="background:#fafaf8;"><td style="padding:8px 12px;border-bottom:1px solid #e8e4de;">Arbiter + contradiction detection</td><td style="padding:8px 12px;border-bottom:1px solid #e8e4de;">Domain-specific quality criteria</td></tr>
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #e8e4de;">Correction loop + DPO pair export</td><td style="padding:8px 12px;border-bottom:1px solid #e8e4de;">Fine-tuning infrastructure (TRL, Axolotl, …)</td></tr>
-    <tr style="background:#fafaf8;"><td style="padding:8px 12px;border-bottom:1px solid #e8e4de;">Blue-green deployment + rollback</td><td style="padding:8px 12px;border-bottom:1px solid #e8e4de;">Evaluation datasets for your domain</td></tr>
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #e8e4de;">Append-only audit log with hash chain</td><td style="padding:8px 12px;border-bottom:1px solid #e8e4de;">Platform signal ingestion (saves, downloads, …)</td></tr>
-    <tr style="background:#fafaf8;"><td style="padding:8px 12px;">Prometheus + Grafana + OTEL</td><td style="padding:8px 12px;">Your monitoring infrastructure</td></tr>
+  <table>
+    <tr><th>AUA v1.0 provides</th><th>You bring</th></tr>
+    <tr><td>Multi-specialist routing + utility scoring</td><td>Domain-specific specialist models</td></tr>
+    <tr><td>Arbiter + contradiction detection</td><td>Domain-specific quality criteria</td></tr>
+    <tr><td>Correction loop + DPO pair export</td><td>Fine-tuning infrastructure (TRL, Axolotl, …)</td></tr>
+    <tr><td>Blue-green deployment + rollback</td><td>Evaluation datasets for your domain</td></tr>
+    <tr><td>Append-only audit log with hash chain</td><td>Platform signal ingestion (saves, downloads, …)</td></tr>
+    <tr><td>Prometheus + Grafana + OTEL</td><td>Your monitoring infrastructure</td></tr>
   </table>
 
-  <p style="font-size:.9rem;color:#555;">
-    Full instructions: <a href="tutorial_v1_tmp.html">AUA Tutorial</a> · <a href="whitepaper_v1_tmp.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
+  <p class="caption">Full instructions: <a href="tutorial_v1_tmp.html">AUA Tutorial</a> · <a href="whitepaper_v1_tmp.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
   </p>
-</section>
 
+</div></div>
 </body>
 </html>
