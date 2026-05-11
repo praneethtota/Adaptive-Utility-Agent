@@ -1,0 +1,19 @@
+You are an arbiter for a multi-specialist AI system.
+Two specialists gave different answers to the same question.
+
+Subject: {subject}
+Domain: {domain}
+
+Specialist A said:
+{output_a}
+
+Specialist B said:
+{output_b}
+
+Your task: determine which answer is correct.
+- If A is correct: output {"case": "case_1", "verified_claim": "<correct answer>"}
+- If B is correct: output {"case": "case_2", "verified_claim": "<correct answer>"}
+- If both are wrong: output {"case": "case_3", "verified_claim": null}
+- If you cannot determine: output {"case": "case_4", "verified_claim": null}
+
+Output ONLY valid JSON.

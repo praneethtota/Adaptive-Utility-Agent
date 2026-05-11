@@ -862,3 +862,194 @@ def config_expand(config, as_json):
 
     console.print(f"[dim]# Expanded config — {config}[/dim]")
     console.print(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True))
+
+
+# ── aua defaults ──────────────────────────────────────────────────────────────
+
+
+@main.group()
+def defaults():
+    """Inspect the framework's built-in defaults."""
+    pass
+
+
+@defaults.command("show")
+@click.argument("category", default="", required=False)
+@click.argument("key", default="", required=False)
+@click.option("--json", "as_json", is_flag=True, default=False)
+def defaults_show(category, key, as_json):
+    """Show built-in framework defaults.
+
+    \b
+    Examples:
+        aua defaults show                  # list all categories
+        aua defaults show fields           # all field configs
+        aua defaults show models           # built-in model aliases
+        aua defaults show routing          # routing thresholds + docs
+        aua defaults show preset coding    # a specific preset
+    """
+    import json as _json
+
+    from aua.defaults.registry import get_defaults, list_categories
+
+    if not category:
+        cats = list_categories()
+        if as_json:
+            print(_json.dumps({"categories": cats}))
+        else:
+            console.print("[bold]Available categories:[/bold]")
+            for c in cats:
+                console.print(f"  [cyan]{c}[/cyan]")
+            console.print("\n[dim]Usage: aua defaults show <category>[/dim]")
+        return
+
+    try:
+        data = get_defaults(category)
+    except ValueError as e:
+        console.print(f"[red]✗[/red] {e}")
+        sys.exit(1)
+
+    if key:
+        data = data.get(key)
+        if data is None:
+            console.print(f"[red]✗[/red] Key {key!r} not found in {category!r}")
+            sys.exit(1)
+
+    if as_json:
+        print(_json.dumps(data, indent=2, default=str))
+        return
+
+    import yaml
+
+    console.print(f"[dim]# {category}{(' · ' + key) if key else ''}[/dim]")
+    console.print(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True))
+
+
+# ── aua extensions ────────────────────────────────────────────────────────────
+
+
+@main.group()
+def extensions():
+    """Manage and test AUA framework extensions (plugins, hooks, middleware)."""
+    pass
+
+
+@extensions.command("list")
+@click.option("--json", "as_json", is_flag=True, default=False)
+def extensions_list(as_json):
+    """List all registered extensions."""
+    import json as _json
+
+    from aua.hooks import get_hook_runner
+    from aua.middleware import get_middleware_pipeline
+    from aua.plugins.registry import get_registry
+
+    reg = get_registry()
+    hooks = get_hook_runner().registered_hooks()
+    mw = get_middleware_pipeline().registered()
+    data = {"plugins": list(reg._plugins.keys()), "middleware": mw, "hooks": hooks}  # type: ignore[attr-defined]
+
+    if as_json:
+        print(_json.dumps(data, indent=2))
+        return
+
+    console.print("[bold]Extensions:[/bold]")
+    console.print(f"  Plugins:    {data['plugins'] or ['(none)']}")
+    console.print(f"  Middleware: {mw or ['(none)']}")
+    if hooks:
+        for point, names in hooks.items():
+            console.print(f"  Hook [{point}]: {names}")
+    else:
+        console.print("  Hooks:      (none)")
+
+
+@extensions.command("test")
+@click.option(
+    "--kind",
+    required=True,
+    type=click.Choice(
+        [
+            "field_classifier",
+            "utility_scorer",
+            "arbiter_policy",
+            "promotion_policy",
+            "correction_store",
+            "model_backend",
+            "state_store",
+            "hook",
+            "middleware",
+        ]
+    ),
+    help="Plugin type to test.",
+)
+@click.option("--import-path", "import_path", required=True, help="'module:ClassName' format.")
+@click.option("--config-json", default="{}", show_default=True, help="JSON config dict.")
+def extensions_test(kind, import_path, config_json):
+    """Test that a plugin loads and satisfies its Protocol contract.
+
+    \b
+    Examples:
+        aua extensions test --kind utility_scorer \\
+          --import-path plugins.custom_utility:RiskWeightedUtilityScorer
+
+        aua extensions test --kind middleware \\
+          --import-path aua.middleware:PIIRedactionMiddleware
+    """
+    import json as _json
+
+    from aua.plugins.registry import PluginLoadError, load_plugin
+
+    try:
+        plugin_config = _json.loads(config_json)
+    except _json.JSONDecodeError as e:
+        console.print(f"[red]✗[/red] Invalid --config-json: {e}")
+        sys.exit(1)
+
+    console.print(f"Testing: [cyan]{import_path}[/cyan]  kind=[dim]{kind}[/dim]")
+
+    try:
+        plugin = load_plugin(import_path, kind, plugin_config)
+        console.print("[green]✓ Plugin loaded successfully[/green]")
+        console.print(f"  Type:     {type(plugin).__name__}")
+        console.print(f"  Module:   {type(plugin).__module__}")
+        console.print(f"  Protocol: {kind} — contract satisfied ✓")
+    except PluginLoadError as e:
+        console.print(f"[red]✗ Plugin test failed:[/red] {e}")
+        sys.exit(1)
+
+
+@extensions.command("inspect")
+@click.argument("import_path")
+def extensions_inspect(import_path):
+    """Show details about a plugin class.
+
+    \b
+    Examples:
+        aua extensions inspect aua.middleware:PIIRedactionMiddleware
+    """
+    import importlib
+
+    if ":" not in import_path:
+        console.print("[red]✗[/red] Format must be 'module:ClassName'")
+        sys.exit(1)
+
+    module_path, class_name = import_path.rsplit(":", 1)
+
+    try:
+        module = importlib.import_module(module_path)
+    except ImportError as e:
+        console.print(f"[red]✗[/red] Cannot import {module_path!r}: {e}")
+        sys.exit(1)
+
+    cls = getattr(module, class_name, None)
+    if cls is None:
+        console.print(f"[red]✗[/red] Class {class_name!r} not found in {module_path!r}")
+        sys.exit(1)
+
+    doc = (cls.__doc__ or "").strip().split("\n")[0]
+    methods = [m for m in dir(cls) if not m.startswith("_") and callable(getattr(cls, m))]
+
+    console.print(f"[bold]{import_path}[/bold]")
+    console.print(f"  Description: {doc or '(no docstring)'}")
+    console.print(f"  Methods:     {', '.join(methods) or '(none)'}")
+    console.print(f"  Module file: {getattr(module, '__file__', 'unknown')}")

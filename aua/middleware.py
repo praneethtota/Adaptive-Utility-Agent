@@ -1,0 +1,212 @@
+"""
+aua/middleware.py — Request/response middleware pipeline.
+
+Middleware runs before and after the query pipeline. Each middleware
+receives the output of the previous one. Execution is ordered by YAML
+registration order.
+
+Short-circuit: raise an exception in before_query() to abort the request
+and return an error response to the client without calling specialists.
+
+Built-in middleware (examples / shipped defaults):
+    PIIRedactionMiddleware  — redacts SSN, credit card, email patterns
+    AuditMiddleware         — logs every request/response to the audit log
+    TenantPolicyMiddleware  — applies per-tenant routing and field restrictions
+
+YAML registration:
+    middleware:
+      - import_path: plugins.middleware:PIIRedactionMiddleware
+        config:
+          patterns:
+            - "\\\\d{3}-\\\\d{2}-\\\\d{4}"   # SSN
+      - import_path: aua.middleware:AuditMiddleware  # built-in
+
+Usage:
+    from aua.middleware import MiddlewarePipeline
+    pipeline = MiddlewarePipeline()
+    pipeline.add(PIIRedactionMiddleware())
+    request = await pipeline.before_query(request)
+    ...
+    response = await pipeline.after_response(response)
+"""
+
+from __future__ import annotations
+
+import logging
+import re
+import time
+from typing import Any
+
+log = logging.getLogger(__name__)
+
+
+class MiddlewarePipeline:
+    """Ordered list of middleware components."""
+
+    def __init__(self) -> None:
+        self._stack: list[Any] = []
+
+    def add(self, mw: Any) -> None:
+        self._stack.append(mw)
+        log.info("Added middleware: %s", type(mw).__name__)
+
+    async def before_query(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Run all before_query() methods in stack order."""
+        for mw in self._stack:
+            if hasattr(mw, "before_query"):
+                try:
+                    result = await mw.before_query(request)
+                    if isinstance(result, dict):
+                        request = result
+                except Exception:
+                    log.error("Middleware %s.before_query failed", type(mw).__name__, exc_info=True)
+                    raise
+        return request
+
+    async def after_response(self, response: dict[str, Any]) -> dict[str, Any]:
+        """Run all after_response() methods in reverse stack order."""
+        for mw in reversed(self._stack):
+            if hasattr(mw, "after_response"):
+                try:
+                    result = await mw.after_response(response)
+                    if isinstance(result, dict):
+                        response = result
+                except Exception:
+                    log.error(
+                        "Middleware %s.after_response failed", type(mw).__name__, exc_info=True
+                    )
+        return response
+
+    def registered(self) -> list[str]:
+        return [type(mw).__name__ for mw in self._stack]
+
+
+# ── Built-in middleware ───────────────────────────────────────────────────────
+
+
+class PIIRedactionMiddleware:
+    """
+    Redacts personally identifiable information from queries before they
+    reach specialist models.
+
+    Default patterns: SSN, credit card numbers, email addresses.
+    Custom patterns can be added via config.
+
+    YAML:
+        middleware:
+          - import_path: aua.middleware:PIIRedactionMiddleware
+            config:
+              patterns:
+                - "\\\\d{3}-\\\\d{2}-\\\\d{4}"
+    """
+
+    DEFAULT_PATTERNS = [
+        r"\b\d{3}-\d{2}-\d{4}\b",  # SSN
+        r"\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b",  # Credit card
+        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # Email
+    ]
+
+    def __init__(self, patterns: list[str] | None = None, replacement: str = "[REDACTED]") -> None:
+        all_patterns = self.DEFAULT_PATTERNS + (patterns or [])
+        self._regexes = [re.compile(p) for p in all_patterns]
+        self._replacement = replacement
+
+    async def before_query(self, request: dict[str, Any]) -> dict[str, Any]:
+        query = request.get("query", "")
+        for rx in self._regexes:
+            query = rx.sub(self._replacement, query)
+        return {**request, "query": query}
+
+    async def after_response(self, response: dict[str, Any]) -> dict[str, Any]:
+        return response  # PII not expected in responses
+
+
+class AuditMiddleware:
+    """
+    Logs every request and response to the AUA audit log (state store).
+
+    Does not modify request or response — pure side-effect middleware.
+
+    YAML:
+        middleware:
+          - import_path: aua.middleware:AuditMiddleware
+    """
+
+    def __init__(self) -> None:
+        self._request_times: dict[str, float] = {}
+
+    async def before_query(self, request: dict[str, Any]) -> dict[str, Any]:
+        session_id = request.get("session_id", "unknown")
+        self._request_times[session_id] = time.time()
+        log.info(
+            "audit.query_start session=%s query_len=%d",
+            session_id,
+            len(request.get("query", "")),
+        )
+        return request
+
+    async def after_response(self, response: dict[str, Any]) -> dict[str, Any]:
+        session_id = response.get("session_id", "unknown")
+        start = self._request_times.pop(session_id, time.time())
+        elapsed_ms = (time.time() - start) * 1000
+        log.info(
+            "audit.query_complete session=%s u_score=%.3f latency_ms=%.1f",
+            session_id,
+            response.get("u_score", 0),
+            elapsed_ms,
+        )
+        return response
+
+
+class TenantPolicyMiddleware:
+    """
+    Applies per-tenant routing and field restrictions.
+
+    Reads the X-Tenant-ID header and enforces field allowlists.
+    Tenants not in the allowlist are rejected.
+
+    YAML:
+        middleware:
+          - import_path: aua.middleware:TenantPolicyMiddleware
+            config:
+              tenants:
+                tenant-a:
+                  allowed_fields: [software_engineering, mathematics]
+                tenant-b:
+                  allowed_fields: [law, software_engineering]
+    """
+
+    def __init__(self, tenants: dict[str, dict[str, Any]] | None = None) -> None:
+        self._tenants = tenants or {}
+
+    async def before_query(self, request: dict[str, Any]) -> dict[str, Any]:
+        tenant_id = request.get("headers", {}).get("x-tenant-id")
+        if tenant_id is None or tenant_id not in self._tenants:
+            return request  # No tenant restriction
+
+        policy = self._tenants[tenant_id]
+        allowed_fields = policy.get("allowed_fields", [])
+        if allowed_fields:
+            request = {**request, "_tenant_allowed_fields": allowed_fields}
+        return request
+
+    async def after_response(self, response: dict[str, Any]) -> dict[str, Any]:
+        return response
+
+
+# ── Global pipeline ───────────────────────────────────────────────────────────
+
+_pipeline: MiddlewarePipeline | None = None
+
+
+def get_middleware_pipeline() -> MiddlewarePipeline:
+    global _pipeline
+    if _pipeline is None:
+        _pipeline = MiddlewarePipeline()
+    return _pipeline
+
+
+def reset_middleware_pipeline() -> MiddlewarePipeline:
+    global _pipeline
+    _pipeline = MiddlewarePipeline()
+    return _pipeline

@@ -63,9 +63,26 @@ from aua.endpoints import (
     StreamStartEvent,
 )
 from aua.field_classifier import FieldClassifier
+from aua.hooks import HookRunner, get_hook_runner
 from aua.hot_reload import HotReloader, ReloadResult
+from aua.middleware import AuditMiddleware, MiddlewarePipeline, PIIRedactionMiddleware
+from aua.plugins.errors import ALL_ERROR_CODES, AUAErrorCode, get_error_code
+from aua.plugins.interfaces import (
+    ArbiterPolicyPlugin,
+    CorrectionStorePlugin,
+    FieldClassifierPlugin,
+    HookPlugin,
+    ModelBackendPlugin,
+    PromotionPolicyPlugin,
+    StateStorePlugin,
+    UtilityScorerPlugin,
+)
+from aua.plugins.registry import PluginLoadError, PluginRegistry, get_registry, load_plugin
 from aua.presets import AVAILABLE_PRESETS, PRESETS, PresetSpec, get_preset
 from aua.router import Router
+from aua.safety import SafetyConfig, SafetyPolicy
+from aua.state import FilesStateStore, SQLiteStateStore, get_state_store
+from aua.templates.registry import get_template, list_templates, render_template
 from aua.utility_scorer import DomainState, TaskScore, UtilityScorer
 from aua.version import __version__
 
@@ -109,6 +126,43 @@ __all__ = [
     "Router",
     # deployment & learning
     "BlueGreenDeployment",
+    # v0.8 — plugin interfaces
+    "FieldClassifierPlugin",
+    "UtilityScorerPlugin",
+    "ArbiterPolicyPlugin",
+    "PromotionPolicyPlugin",
+    "CorrectionStorePlugin",
+    "ModelBackendPlugin",
+    "StateStorePlugin",
+    "HookPlugin",
+    # v0.8 — plugin registry
+    "load_plugin",
+    "PluginRegistry",
+    "PluginLoadError",
+    "get_registry",
+    # v0.8 — error codes
+    "AUAErrorCode",
+    "ALL_ERROR_CODES",
+    "get_error_code",
+    # v0.8 — hooks
+    "HookRunner",
+    "get_hook_runner",
+    # v0.8 — middleware
+    "MiddlewarePipeline",
+    "PIIRedactionMiddleware",
+    "AuditMiddleware",
+    # v0.8 — state store
+    "SQLiteStateStore",
+    "FilesStateStore",
+    "get_state_store",
+    # v0.8 — safety
+    "SafetyPolicy",
+    "SafetyConfig",
+    # v0.8 — templates
+    "get_template",
+    "render_template",
+    "list_templates",
+    # hot reload
     "HotReloader",
     "PRESETS",
     "AVAILABLE_PRESETS",
