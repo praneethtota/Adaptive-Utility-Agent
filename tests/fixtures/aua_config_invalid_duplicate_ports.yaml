@@ -1,0 +1,24 @@
+aua:
+  version: "0.5"
+  mode: local
+  backend: vllm
+
+specialists:
+  - name: swe
+    model: fake/swe-model
+    port: 9001
+    field: software_engineering
+
+  - name: math
+    model: fake/math-model
+    port: 9001  # DUPLICATE — must be rejected
+    field: mathematics
+
+arbiter:
+  model: fake/arbiter-model
+  port: 9003
+
+router:
+  port: 8000
+
+blue_green: {}

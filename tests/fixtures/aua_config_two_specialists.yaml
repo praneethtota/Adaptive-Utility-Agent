@@ -1,0 +1,56 @@
+# Two-specialist config for fanout routing tests.
+
+aua:
+  version: "0.5"
+  mode: local
+  backend: vllm
+
+specialists:
+  - name: swe
+    model: fake/swe-model
+    port: 19001
+    field: software_engineering
+    gpu: 0
+    gpu_memory_utilization: 0.34
+    max_model_len: 2048
+    quantization: awq
+    enforce_eager: true
+
+  - name: math
+    model: fake/math-model
+    port: 19002
+    field: mathematics
+    gpu: 0
+    gpu_memory_utilization: 0.34
+    max_model_len: 2048
+    quantization: awq
+    enforce_eager: true
+
+arbiter:
+  model: fake/arbiter-model
+  port: 19003
+  gpu: 0
+  gpu_memory_utilization: 0.18
+  max_model_len: 2048
+  quantization: awq
+  enforce_eager: true
+
+router:
+  port: 19000
+  host: "127.0.0.1"
+  single_domain_threshold: 0.75
+  fanout_threshold: 0.30
+  specialist_timeout: 5.0
+
+blue_green:
+  swe:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+  math:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+
+logging:
+  level: WARNING

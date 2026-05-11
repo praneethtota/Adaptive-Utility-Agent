@@ -2,8 +2,9 @@
 aua — Adaptive Utility Agents: a deployable specialist framework.
 
 Install:
-    pip install aua                  # runtime only
-    pip install aua[train]           # + LoRA training dependencies
+    pip install adaptive-utility-agent          # runtime only
+    pip install "adaptive-utility-agent[vllm]"  # + GPU serving
+    pip install "adaptive-utility-agent[dev]"   # + dev tools
 
 Quickstart:
     from aua import Router
@@ -40,6 +41,26 @@ from aua.config import (
     load_config,
 )
 from aua.contradiction_detector import ContradictionDetector, ContradictionResult
+
+# ── REST endpoint models (#09 / #10) ──────────────────────────────────────────
+from aua.endpoints import (
+    BatchQueryRequest,
+    BatchQueryResponse,
+    ConfigResponse,
+    CorrectionRequest,
+    CorrectionResponse,
+    DeployGreenRequest,
+    DeployGreenResponse,
+    HealthLiveResponse,
+    HealthReadyResponse,
+    HealthStartupResponse,
+    QueryRequest,
+    RouterResponse,
+    StreamChunkEvent,
+    StreamDoneEvent,
+    StreamErrorEvent,
+    StreamStartEvent,
+)
 
 # ── Core pipeline components ───────────────────────────────────────────────────
 from aua.field_classifier import FieldClassifier
@@ -78,4 +99,21 @@ __all__ = [
     "ArbiterVerdict",
     # routing
     "Router",
+    # endpoint models
+    "QueryRequest",
+    "RouterResponse",
+    "BatchQueryRequest",
+    "BatchQueryResponse",
+    "StreamStartEvent",
+    "StreamChunkEvent",
+    "StreamDoneEvent",
+    "StreamErrorEvent",
+    "CorrectionRequest",
+    "CorrectionResponse",
+    "ConfigResponse",
+    "DeployGreenRequest",
+    "DeployGreenResponse",
+    "HealthLiveResponse",
+    "HealthReadyResponse",
+    "HealthStartupResponse",
 ]

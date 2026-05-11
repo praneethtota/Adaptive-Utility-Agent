@@ -10,7 +10,7 @@ Changes from v0.1 (simulation):
 
 import math
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from aua.config import FieldConfig
 
@@ -179,7 +179,7 @@ class UtilityScorer:
             curiosity_effective=round(curiosity_effective, 4),
             gap_bonus=round(gap_bonus, 4),
             utility=round(utility, 4),
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             below_minimum=below_min,
             curiosity_capped=capped,
             recommended_difficulty=recommended_difficulty,

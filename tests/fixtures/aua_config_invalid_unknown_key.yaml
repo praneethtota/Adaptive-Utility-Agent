@@ -1,0 +1,20 @@
+aua:
+  version: "0.5"
+  mode: local
+  backend: vllm
+  typo_key: "this should not be here"  # UNKNOWN KEY — must be rejected
+
+specialists:
+  - name: swe
+    model: fake/swe-model
+    port: 9001
+    field: software_engineering
+
+arbiter:
+  model: fake/arbiter-model
+  port: 9003
+
+router:
+  port: 8000
+
+blue_green: {}

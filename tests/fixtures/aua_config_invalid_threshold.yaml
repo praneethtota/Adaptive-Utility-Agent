@@ -1,0 +1,21 @@
+aua:
+  version: "0.5"
+  mode: local
+  backend: vllm
+
+specialists:
+  - name: swe
+    model: fake/swe-model
+    port: 9001
+    field: software_engineering
+    gpu_memory_utilization: 1.5  # INVALID — must be in (0, 1]
+
+arbiter:
+  model: fake/arbiter-model
+  port: 9003
+
+router:
+  port: 8000
+  single_domain_threshold: 1.5  # INVALID — must be in [0, 1]
+
+blue_green: {}
