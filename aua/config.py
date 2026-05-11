@@ -258,7 +258,7 @@ class SpecialistConfig:
         """Full chat completions URL for this specialist."""
         if self.endpoint_override:
             return self.endpoint_override
-        path = "/api/chat" if self.backend == "ollama" else "/v1/chat/completions"
+        path = "/v1/chat/completions"  # Ollama supports OpenAI-compat; /api/chat only for native streaming
         return f"{self.scheme}://{self.host}:{self.port}{path}"
 
     @property
@@ -331,7 +331,7 @@ class ArbiterConfig:
     def endpoint(self) -> str:
         if self.endpoint_override:
             return self.endpoint_override
-        path = "/api/chat" if self.backend == "ollama" else "/v1/chat/completions"
+        path = "/v1/chat/completions"  # Ollama supports OpenAI-compat; /api/chat only for native streaming
         return f"{self.scheme}://{self.host}:{self.port}{path}"
 
     @property
