@@ -64,6 +64,7 @@ from aua.endpoints import (
 )
 from aua.field_classifier import FieldClassifier
 from aua.hot_reload import HotReloader, ReloadResult
+from aua.presets import AVAILABLE_PRESETS, PRESETS, PresetSpec, get_preset
 from aua.router import Router
 from aua.utility_scorer import DomainState, TaskScore, UtilityScorer
 from aua.version import __version__
@@ -109,6 +110,10 @@ __all__ = [
     # deployment & learning
     "BlueGreenDeployment",
     "HotReloader",
+    "PRESETS",
+    "AVAILABLE_PRESETS",
+    "PresetSpec",
+    "get_preset",
     "ReloadResult",
     "EvaluationSummary",
     "CorrectionLoop",

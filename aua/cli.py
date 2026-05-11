@@ -124,13 +124,20 @@ def serve(config, dry_run, no_router, router_only, startup_timeout, tier):
     help="Hardware tier template to scaffold (rtx4090/a100 are backward-compatible aliases).",
 )
 @click.option(
+    "--preset",
+    "-p",
+    default="coding",
+    show_default=True,
+    help="Named specialist configuration to use (coding/research/legal/medical/general/creative).",
+)
+@click.option(
     "--force",
     "-f",
     is_flag=True,
     default=False,
     help="Overwrite existing aua_config.yaml if present.",
 )
-def init(project_dir, tier, force):
+def init(project_dir, tier, force, preset):
     """Scaffold a new AUA project directory.
 
     \b
@@ -154,6 +161,14 @@ def init(project_dir, tier, force):
     import shutil
 
     from aua.config import TIER_ALIASES
+    from aua.presets import get_preset
+
+    # Validate preset
+    try:
+        _preset_spec = get_preset(preset)
+    except ValueError as _preset_err:
+        console.print(f"[red]✗[/red] {_preset_err}")
+        sys.exit(1)
 
     target = Path(project_dir).resolve()
 
@@ -508,3 +523,342 @@ def config_validate(config):
     except ValueError as e:
         console.print(f"[red]✗ Validation error:[/red] {e}")
         sys.exit(1)
+
+
+# ── aua models ────────────────────────────────────────────────────────────────
+
+
+@main.group()
+def models():
+    """Manage and inspect models for the current project."""
+    pass
+
+
+@models.command("list")
+@click.option(
+    "--config",
+    "-c",
+    default="aua_config.yaml",
+    show_default=True,
+    help="Path to aua_config.yaml.",
+)
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON.")
+def models_list(config, as_json):
+    """List all models configured for this project and their pull status.
+
+    \b
+    Examples:
+        aua models list
+        aua models list --json
+    """
+    import json as _json
+    import shutil
+    import subprocess
+
+    try:
+        from aua.config import load_config
+
+        cfg = load_config(config)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Could not load config: {e}")
+        sys.exit(1)
+
+    entries = []
+    for spec in cfg.specialists:
+        entries.append(
+            {
+                "role": "specialist",
+                "name": spec.name,
+                "model": spec.model,
+                "field": spec.field,
+                "port": spec.port,
+                "backend": spec.backend,
+            }
+        )
+    entries.append(
+        {
+            "role": "arbiter",
+            "name": "arbiter",
+            "model": cfg.arbiter.model,
+            "field": "general",
+            "port": cfg.arbiter.port,
+            "backend": cfg.arbiter.backend,
+        }
+    )
+
+    # Check pull status for Ollama
+    pulled: set[str] = set()
+    if cfg.backend == "ollama" and shutil.which("ollama"):
+        try:
+            _result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5)
+            for _line in _result.stdout.splitlines()[1:]:
+                if _line.strip():
+                    pulled.add(_line.split()[0].strip())
+        except Exception:
+            pass
+
+    for entry in entries:
+        if cfg.backend == "ollama":
+            entry["pulled"] = any(entry["model"] in p or p in entry["model"] for p in pulled)
+        else:
+            entry["pulled"] = None  # vLLM: check models/ directory
+
+    if as_json:
+        print(_json.dumps(entries, indent=2))
+        return
+
+    from rich import box
+    from rich.table import Table
+
+    table = Table(box=box.SIMPLE, header_style="bold dim")
+    table.add_column("Role")
+    table.add_column("Name")
+    table.add_column("Model")
+    table.add_column("Field")
+    table.add_column("Port", justify="right")
+    table.add_column("Status")
+
+    for e in entries:  # type: ignore[misc]
+        if e["pulled"] is True:
+            status = "[green]✓ pulled[/green]"
+        elif e["pulled"] is False:
+            status = "[yellow]not pulled[/yellow]"
+        else:
+            status = "[dim]—[/dim]"
+        table.add_row(e["role"], e["name"], e["model"], e["field"], str(e["port"]), status)
+
+    console.print(table)
+
+
+# ── aua fields ────────────────────────────────────────────────────────────────
+
+
+@main.group()
+def fields():
+    """Inspect available field configurations."""
+    pass
+
+
+@fields.command("list")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON.")
+def fields_list(as_json):
+    """List all built-in fields and their utility weights.
+
+    \b
+    Fields define how U = w_e·E + w_c·C + w_k·K is evaluated
+    and how hard errors are penalized.
+
+    \b
+    Examples:
+        aua fields list
+        aua fields list --json
+    """
+    import json as _json
+
+    from aua import FIELD_CONFIGS
+
+    if as_json:
+        data = {
+            name: {
+                "w_efficacy": f.w_efficacy,
+                "w_confidence": f.w_confidence,
+                "w_curiosity": f.w_curiosity,
+                "c_min": f.c_min,
+                "e_min": f.e_min,
+                "penalty_multiplier": f.penalty_multiplier,
+            }
+            for name, f in FIELD_CONFIGS.items()
+        }
+        print(_json.dumps(data, indent=2))
+        return
+
+    from rich import box
+    from rich.table import Table
+
+    table = Table(
+        box=box.SIMPLE, header_style="bold dim", title="[bold]Built-in Field Configurations[/bold]"
+    )
+    table.add_column("Field")
+    table.add_column("w_e", justify="right")
+    table.add_column("w_c", justify="right")
+    table.add_column("w_k", justify="right")
+    table.add_column("c_min", justify="right")
+    table.add_column("Penalty", justify="right")
+
+    for name, f in FIELD_CONFIGS.items():
+        table.add_row(
+            name,
+            f"{f.w_efficacy:.2f}",
+            f"{f.w_confidence:.2f}",
+            f"{f.w_curiosity:.2f}",
+            f"{f.c_min:.2f}",
+            f"{f.penalty_multiplier:.0f}×",
+        )
+
+    console.print(table)
+    console.print("[dim]U = w_e·E + w_c·C + w_k·K  ·  c_min = minimum confidence required[/dim]")
+
+
+# ── aua presets ───────────────────────────────────────────────────────────────
+
+
+@main.group()
+def presets():
+    """List and inspect named project presets."""
+    pass
+
+
+@presets.command("list")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON.")
+def presets_list(as_json):
+    """List all available presets for aua init --preset.
+
+    \b
+    Examples:
+        aua presets list
+        aua presets list --json
+    """
+    import json as _json
+
+    from aua.presets import PRESETS
+
+    if as_json:
+        data = {
+            name: {
+                "description": p.description,
+                "specialists": p.specialists,
+                "recommended_tiers": p.recommended_tiers,
+                "notes": p.notes,
+            }
+            for name, p in PRESETS.items()
+        }
+        print(_json.dumps(data, indent=2))
+        return
+
+    from rich import box
+    from rich.table import Table
+
+    table = Table(box=box.SIMPLE, header_style="bold dim", title="[bold]Available Presets[/bold]")
+    table.add_column("Preset")
+    table.add_column("Specialists")
+    table.add_column("Description")
+
+    for name, p in PRESETS.items():
+        table.add_row(
+            f"[cyan]{name}[/cyan]",
+            ", ".join(p.specialists),
+            p.description,
+        )
+
+    console.print(table)
+    console.print("[dim]Usage: aua init --preset <name> --tier <tier>[/dim]")
+
+
+@config.command("expand")
+@click.option(
+    "--config",
+    "-c",
+    default="aua_config.yaml",
+    show_default=True,
+    help="Path to aua_config.yaml.",
+)
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON.")
+def config_expand(config, as_json):
+    """Print the fully-resolved config with all defaults filled in.
+
+    Shows exactly what AUA will use at runtime — tier defaults, computed
+    URLs, runtime paths, field weights — not just what is in the YAML file.
+
+    \b
+    Examples:
+        aua config expand
+        aua config expand --json
+        aua config expand | grep url
+    """
+    import json as _json
+
+    try:
+        from aua.config import load_config
+
+        cfg = load_config(config)
+    except Exception as e:
+        console.print(f"[red]✗[/red] {e}")
+        sys.exit(1)
+
+    data: dict = {
+        "version": cfg.version,
+        "backend": cfg.backend,
+        "mode": cfg.mode,
+        "specialists": [],
+        "arbiter": {},
+        "router": {},
+        "blue_green": {},
+        "logging": {},
+        "runtime": {},
+    }
+
+    for s in cfg.specialists:
+        data["specialists"].append(
+            {
+                "name": s.name,
+                "model": s.model,
+                "field": s.field,
+                "port": s.port,
+                "host": s.host,
+                "scheme": s.scheme,
+                "gpu": s.gpu,
+                "gpu_memory_utilization": s.gpu_memory_utilization,
+                "backend": s.backend,
+                "endpoint": s.endpoint,
+                "models_url": s.models_url,
+            }
+        )
+
+    arb = cfg.arbiter
+    data["arbiter"] = {
+        "model": arb.model,
+        "port": arb.port,
+        "host": arb.host,
+        "scheme": arb.scheme,
+        "gpu": arb.gpu,
+        "gpu_memory_utilization": arb.gpu_memory_utilization,
+        "backend": arb.backend,
+        "endpoint": arb.endpoint,
+        "models_url": arb.models_url,
+    }
+
+    rtr = cfg.router
+    data["router"] = {
+        "port": rtr.port,
+        "host": rtr.host,
+        "single_domain_threshold": rtr.single_domain_threshold,
+        "fanout_threshold": rtr.fanout_threshold,
+        "specialist_timeout": rtr.specialist_timeout,
+        "cors_origins": rtr.cors_origins,
+    }
+
+    for name, bg in cfg.blue_green.items():
+        data["blue_green"][name] = {
+            "delta": bg.delta,
+            "T_min": bg.T_min,
+            "tau": bg.tau,
+        }
+
+    data["logging"] = {"level": cfg.logging.level}
+
+    rt = cfg.runtime
+    data["runtime"] = {
+        "logs": str(rt.logs),
+        "pids": str(rt.pids),
+        "state": str(rt.state),
+        "checkpoints": str(rt.checkpoints),
+    }
+
+    if as_json:
+        print(_json.dumps(data, indent=2))
+        return
+
+    import yaml
+
+    console.print(f"[dim]# Expanded config — {config}[/dim]")
+    console.print(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True))
