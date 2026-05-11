@@ -378,18 +378,18 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 
 <!-- NAV -->
 <nav>
-  <a href="whitepaper_v1_tmp.html">Home</a>
-  <a href="whitepaper_v1_overview_tmp.html">Full Whitepaper</a>
-  <a href="tutorial_v1_tmp.html">Tutorial</a>
-  <a href="domain_ai_datacenters_v1_tmp.html" class="active">AI Data Centers</a>
-  <a href="domain_self_driving_v1_tmp.html">Self-Driving</a>
-  <a href="domain_autonomous_systems_v1_tmp.html">Autonomous Systems</a>
-  <a href="domain_software_engineering_v1_tmp.html">Software Eng</a>
-  <a href="domain_dynamic_pricing_v1_tmp.html">Dynamic Pricing</a>
-  <a href="domain_energy_systems_v1_tmp.html">Energy Systems</a>
-  <a href="domain_creative_systems_v1_tmp.html">Creative Systems</a>
-  <a href="domain_recommendation_engines_v0_5.html">Recommendation</a>
-  <a href="productionizing_v1_tmp.html">Production Design</a>
+  <a href="whitepaper.html">Home</a>
+  <a href="whitepaper_overview.html">Full Whitepaper</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="domain_ai_datacenters.html" class="active">AI Data Centers</a>
+  <a href="domain_self_driving.html">Self-Driving</a>
+  <a href="domain_autonomous_systems.html">Autonomous Systems</a>
+  <a href="domain_software_engineering.html">Software Eng</a>
+  <a href="domain_dynamic_pricing.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems.html">Energy Systems</a>
+  <a href="domain_creative_systems.html">Creative Systems</a>
+  <a href="domain_recommendation_engines.html">Recommendation</a>
+  <a href="productionizing.html">Production Design</a>
   <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
 </nav>
 
@@ -444,7 +444,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 <p>The framework addresses this by reframing the dispatch question. Instead of asking <em>can a smaller model substitute for a frontier model on all tasks?</em> — which the answer to is clearly no — it asks: <em>which specific query classes can be served at high quality at each hardware tier?</em> Efficacy becomes a per-domain, per-hardware-class signal rather than a global model-level judgment, and routing follows that signal.</p>
 
 <div class="callout">
-  <strong>Core claim for operators.</strong> A graph of domain-specialist submodels running on lower-tier hardware can match the output quality of a frontier monolith on the domain tasks where professional AI use is most valuable — at 2–6× lower cost per token — while the frontier tier is reserved for genuinely hard or cross-domain queries. See the <a href="whitepaper_full_v0_5.html#cost-model">cost model in the full whitepaper (§10.9.3)</a> for the derivation from public hardware specs.
+  <strong>Core claim for operators.</strong> A graph of domain-specialist submodels running on lower-tier hardware can match the output quality of a frontier monolith on the domain tasks where professional AI use is most valuable — at 2–6× lower cost per token — while the frontier tier is reserved for genuinely hard or cross-domain queries. See the <a href="whitepaper_overview.html#cost-model">cost model in the full whitepaper (§10.9.3)</a> for the derivation from public hardware specs.
 </div>
 
 <!-- ─────────────────────────────────────── -->
@@ -481,7 +481,7 @@ Request:  { query, context, field, confidence_floor, session_id }
 Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
 </pre>
 
-<p><strong>Why this matters for operators specifically:</strong> In a monolithic deployment, updating one domain risks regressing every other domain. Rolling back means reverting the entire model. In the Micro-Expert model, updating the coding specialist only modifies coding weights; rolling back requires swapping one model file. The blast radius of any update is bounded to one submodel. Each submodel has its own blue-green deployment cycle, and they are fully decoupled from each other. See <a href="whitepaper_full_v0_5.html#distributed-graph">§10 of the full whitepaper</a> for the full architecture specification.</p>
+<p><strong>Why this matters for operators specifically:</strong> In a monolithic deployment, updating one domain risks regressing every other domain. Rolling back means reverting the entire model. In the Micro-Expert model, updating the coding specialist only modifies coding weights; rolling back requires swapping one model file. The blast radius of any update is bounded to one submodel. Each submodel has its own blue-green deployment cycle, and they are fully decoupled from each other. See <a href="whitepaper_overview.html#distributed-graph">§10 of the full whitepaper</a> for the full architecture specification.</p>
 
 <p><strong>Catastrophic forgetting — actually solved.</strong> The standard continual learning approach (replay buffers + careful DPO weighting) slows forgetting but cannot eliminate it when weights are shared. The Micro-Expert model physically eliminates shared weights for domain-specific knowledge. Cross-domain knowledge lives exclusively in the router and a thin shared embedding layer. Domain-specific updates are contained. This is the reason the architecture is structured as a graph rather than as a larger monolith with mixture-of-experts routing — MoE routing is a compute optimization; the Micro-Expert model is an update isolation mechanism.</p>
 
@@ -558,7 +558,7 @@ Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
     </tr>
   </tbody>
 </table>
-<p class="caption">Hardware specs and pricing derived from published Lambda Labs, CoreWeave, RunPod, and Vast.ai data (2025). See <a href="whitepaper_full_v0_5.html#hardware-adaptive">§10.9.1 in the full whitepaper</a> for the derivation.</p>
+<p class="caption">Hardware specs and pricing derived from published Lambda Labs, CoreWeave, RunPod, and Vast.ai data (2025). See <a href="whitepaper_overview.html#hardware-adaptive">§10.9.1 in the full whitepaper</a> for the derivation.</p>
 
 <p><strong>Graph branching heuristics.</strong> The graph branches recursively until one of two stopping conditions is met. The <em>hardware bound</em>: stop when a single submodel fits comfortably on one GPU. The <em>statistical bound</em>: stop branching when the within-domain contradiction rate drops below a threshold — typically &lt;2% — meaning the submodel is internally consistent enough that further specialization adds noise rather than signal. In practice: branch until the hardware bound is reached for active domains, and use the statistical bound to decide which domains warrant a branch at all. This prevents over-decomposition of low-volume or already-accurate domains.</p>
 
@@ -617,7 +617,7 @@ Cost per 1,000 output tokens:
   3 specialists activated (fan-out):  3 × $0.00014 = $0.00042 — still 2× cheaper.
   Cost inversion point: ~6 activated specialists simultaneously.
 </pre>
-<p class="caption">This is an analytical result from public data. Latency measurement on physical hardware is primary future work (Phase 8, <a href="whitepaper_full_v0_5.html#roadmap">§12 in the full whitepaper</a>).</p>
+<p class="caption">This is an analytical result from public data. Latency measurement on physical hardware is primary future work (Phase 8, <a href="whitepaper_overview.html#roadmap">§12 in the full whitepaper</a>).</p>
 
 <div class="callout orange">
   <strong>The important nuance on latency.</strong> A single 7B model on a 4090 generates tokens at ~800 tok/sec versus ~2,000 tok/sec for a 70B on an H100 — slower per model. But a domain-specialist 7B model may need fewer tokens to produce an accurate, concise domain response than a general frontier model that must hedge across all possible interpretations of the query. The latency picture depends heavily on average response length per query class. Latency measurement on physical hardware is the primary item of empirical future work.
@@ -649,7 +649,7 @@ Cost per 1,000 output tokens:
     <div class="bartrack"><div class="barfill red" style="width:35%"></div></div>
     <span class="barval">~−50%</span>
   </div>
-  <p class="caption" style="margin-top:.75rem">Illustrative only. Values from the analytical cost model in <a href="whitepaper_full_v0_5.html#datacenter-economics">§10.9.4 of the full whitepaper</a>. The "stranded inventory" row represents H100-class hardware serving low-value undifferentiated workloads at low utilization — the failure mode the framework addresses.</p>
+  <p class="caption" style="margin-top:.75rem">Illustrative only. Values from the analytical cost model in <a href="whitepaper_overview.html#datacenter-economics">§10.9.4 of the full whitepaper</a>. The "stranded inventory" row represents H100-class hardware serving low-value undifferentiated workloads at low utilization — the failure mode the framework addresses.</p>
 </div>
 
 <p>The second lever is <strong>LoRA multi-tenancy</strong> (covered in detail below). A base specialist can remain resident while domain- or customer-specific adapters are rotated in, allowing several customers' specialist workloads to share one logical serving tier. Under export restrictions, supply constraints, or simply uneven access to H100-class hardware, this flexibility is strategic rather than cosmetic.</p>
@@ -657,7 +657,7 @@ Cost per 1,000 output tokens:
 <!-- ─────────────────────────────────────── -->
 <h2 id="routing">Routing quality experiment: what correct routing is actually worth</h2>
 
-<p>The claim that a specialist-graph architecture improves output quality — not just reduces cost — rests on an empirical question: how much does the routing and arbitration layer contribute to correctness, independent of model size? A controlled four-arm experiment was run using the production agent codebase to answer this directly. See <a href="whitepaper_full_v0_5.html#routing-experiment">§10.9.4 of the full whitepaper</a> for the full experimental setup and citations.</p>
+<p>The claim that a specialist-graph architecture improves output quality — not just reduces cost — rests on an empirical question: how much does the routing and arbitration layer contribute to correctness, independent of model size? A controlled four-arm experiment was run using the production agent codebase to answer this directly. See <a href="whitepaper_overview.html#routing-experiment">§10.9.4 of the full whitepaper</a> for the full experimental setup and citations.</p>
 
 <p>All four arms used identical task plans (200 tasks, 25 problem types, 11 algorithm families). The quality model for each arm was parameterized from published domain benchmarks.</p>
 
@@ -707,7 +707,7 @@ Cost per 1,000 output tokens:
     </tr>
   </tbody>
 </table>
-<p class="caption">Quality model sources: DeepSeek Coder 7B vs GPT-3.5 on HumanEval; WizardMath 7B vs Llama 2 70B on MATH; Med-PaLM 2 vs GPT-4 on MedQA. Mismatch penalty from Raval et al. (2026). Routing accuracy from Xu et al. (2024). Full citations in <a href="whitepaper_full_v0_5.html#routing-experiment">§10.9.4</a>.</p>
+<p class="caption">Quality model sources: DeepSeek Coder 7B vs GPT-3.5 on HumanEval; WizardMath 7B vs Llama 2 70B on MATH; Med-PaLM 2 vs GPT-4 on MedQA. Mismatch penalty from Raval et al. (2026). Routing accuracy from Xu et al. (2024). Full citations in <a href="whitepaper_overview.html#routing-experiment">§10.9.4</a>.</p>
 
 <div class="metricgrid">
   <div class="metric green">
@@ -788,7 +788,7 @@ Creative/low-stakes:    δ = 0.050   T ≥ 2 interactions    (fast)
 
 <h3>Auditability advantage</h3>
 
-<p>Every submodel update in this protocol has a logged trigger (which utility deviation, over which window), a logged promotion trajectory (traffic split over time), and a clear rollback path. For GPU cloud operators offering SLAs and for customers who need model behavior change audit trails, this is significantly more auditable than a monolithic model release, which has a single release event with aggregate changes that cannot be attributed to individual domain corrections. See <a href="whitepaper_full_v0_5.html#bluegreen">§10.7–10.8 in the full whitepaper</a> for the full specification.</p>
+<p>Every submodel update in this protocol has a logged trigger (which utility deviation, over which window), a logged promotion trajectory (traffic split over time), and a clear rollback path. For GPU cloud operators offering SLAs and for customers who need model behavior change audit trails, this is significantly more auditable than a monolithic model release, which has a single release event with aggregate changes that cannot be attributed to individual domain corrections. See <a href="whitepaper_overview.html#bluegreen">§10.7–10.8 in the full whitepaper</a> for the full specification.</p>
 
 <!-- ─────────────────────────────────────── -->
 <h2 id="lora">LoRA multi-tenancy and fleet utilization</h2>
@@ -908,7 +908,7 @@ f — field, determining weights and minimum competence thresholds
     <div class="step-num">1</div>
     <div class="step-body">
       <strong>Pick one specialist domain — code and developer queries</strong>
-      The strongest starting point for two reasons: validation signals are abundant and unambiguous (tests pass or fail; type checkers flag errors), and code queries are typically the highest-volume professional workload on GPU clouds. See <a href="whitepaper_full_v0_5.html#mvp">§11 in the full whitepaper</a> for the code generation MVP specification.
+      The strongest starting point for two reasons: validation signals are abundant and unambiguous (tests pass or fail; type checkers flag errors), and code queries are typically the highest-volume professional workload on GPU clouds. See <a href="whitepaper_overview.html#mvp">§11 in the full whitepaper</a> for the code generation MVP specification.
     </div>
   </div>
   <div class="step">
@@ -958,14 +958,14 @@ f — field, determining weights and minimum competence thresholds
 <div class="read-next">
   <h3>From this page</h3>
   <ul>
-    <li><a href="whitepaper_full_v0_5.html#distributed-graph">§10 — Distributed Model Graph Architecture</a> — Full Micro-Expert Architecture specification, submodel interface protocols, and catastrophic forgetting analysis</li>
-    <li><a href="whitepaper_full_v0_5.html#hardware-adaptive">§10.9 — Hardware-Adaptive Decomposition</a> — Consumer GPU argument, analytical cost model derivation, and routing quality experiment in full</li>
-    <li><a href="whitepaper_full_v0_5.html#bluegreen">§10.7–10.8 — Blue-Green Deployment</a> — Trigger conditions, deployment lifecycle, traffic split visualization, and rollback specification</li>
-    <li><a href="whitepaper_full_v0_5.html#datacenter-economics">§10.9.4 — Data Center Operator Economics</a> — Revenue per watt framing, LoRA multi-tenancy, and tiered SLA discussion</li>
-    <li><a href="whitepaper_full_v0_5.html#mvp">§11 — MVP: Code Generation Agent</a> — The recommended first specialist deployment, feedback loop, and success criteria</li>
-    <li><a href="whitepaper_full_v0_5.html#roadmap">§12 — Roadmap</a> — Phase 8 (physical hardware validation and datacenter economics) and Phase 9 (safety-critical deployment)</li>
-    <li><a href="tutorial_v1_tmp.html">Tutorial</a> — Full architecture walkthrough with code: utility function, assertions store, contradiction detector, confidence updater, Arbiter, blue-green deployment</li>    <li><a href="domain_software_engineering_v1_tmp.html">Software Engineering domain doc</a> — The recommended first specialist domain for GPU cloud MVPs, covered in full</li>
-    <li><a href="domain_autonomous_systems_v1_tmp.html">Autonomous Systems domain doc</a> — Edge and battery-constrained deployment; the Jetson-class hardware argument</li>
+    <li><a href="whitepaper_overview.html#distributed-graph">§10 — Distributed Model Graph Architecture</a> — Full Micro-Expert Architecture specification, submodel interface protocols, and catastrophic forgetting analysis</li>
+    <li><a href="whitepaper_overview.html#hardware-adaptive">§10.9 — Hardware-Adaptive Decomposition</a> — Consumer GPU argument, analytical cost model derivation, and routing quality experiment in full</li>
+    <li><a href="whitepaper_overview.html#bluegreen">§10.7–10.8 — Blue-Green Deployment</a> — Trigger conditions, deployment lifecycle, traffic split visualization, and rollback specification</li>
+    <li><a href="whitepaper_overview.html#datacenter-economics">§10.9.4 — Data Center Operator Economics</a> — Revenue per watt framing, LoRA multi-tenancy, and tiered SLA discussion</li>
+    <li><a href="whitepaper_overview.html#mvp">§11 — MVP: Code Generation Agent</a> — The recommended first specialist deployment, feedback loop, and success criteria</li>
+    <li><a href="whitepaper_overview.html#roadmap">§12 — Roadmap</a> — Phase 8 (physical hardware validation and datacenter economics) and Phase 9 (safety-critical deployment)</li>
+    <li><a href="tutorial.html">Tutorial</a> — Full architecture walkthrough with code: utility function, assertions store, contradiction detector, confidence updater, Arbiter, blue-green deployment</li>    <li><a href="domain_software_engineering.html">Software Engineering domain doc</a> — The recommended first specialist domain for GPU cloud MVPs, covered in full</li>
+    <li><a href="domain_autonomous_systems.html">Autonomous Systems domain doc</a> — Edge and battery-constrained deployment; the Jetson-class hardware argument</li>
     <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub — Adaptive-Utility-Agent</a> — Agent code, routing experiment source, and reference implementation</li>
   </ul>
 </div>
@@ -1005,7 +1005,7 @@ security:
 audit:
   enabled: true
   hash_chain: true</pre>
-  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial_v1_tmp.html#security">Tutorial §12.4</a> for key management.</p>
+  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial.html#security">Tutorial §12.4</a> for key management.</p>
 
 
   <h3>4. Start and query</h3>
@@ -1027,7 +1027,7 @@ curl -X POST http://localhost:8000/query \
     <tr><td>Prometheus + Grafana + OTEL</td><td>Your monitoring infrastructure</td></tr>
   </table>
 
-  <p class="caption">Full instructions: <a href="tutorial_v1_tmp.html">AUA Tutorial</a> · <a href="whitepaper_v1_tmp.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
+  <p class="caption">Full instructions: <a href="tutorial.html">AUA Tutorial</a> · <a href="whitepaper.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
   </p>
 
 </div></div>

@@ -74,18 +74,18 @@ hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
 <div class="page">
 
 <nav>
-  <a href="whitepaper_v1_tmp.html">Home</a>
-  <a href="whitepaper_v1_overview_tmp.html">Full Whitepaper</a>
-  <a href="tutorial_v1_tmp.html">Tutorial</a>
-  <a href="domain_ai_datacenters_v1_tmp.html">AI Data Centers</a>
-  <a href="domain_self_driving_v1_tmp.html">Self-Driving</a>
-  <a href="domain_autonomous_systems_v1_tmp.html">Autonomous Systems</a>
-  <a href="domain_software_engineering_v1_tmp.html" class="active">Software Eng</a>
-  <a href="domain_dynamic_pricing_v1_tmp.html">Dynamic Pricing</a>
-  <a href="domain_energy_systems_v1_tmp.html">Energy Systems</a>
-  <a href="domain_creative_systems_v1_tmp.html">Creative Systems</a>
-  <a href="domain_recommendation_engines_v0_5.html" >Recommendation</a>
-  <a href="productionizing_v1_tmp.html">Production Design</a>
+  <a href="whitepaper.html">Home</a>
+  <a href="whitepaper_overview.html">Full Whitepaper</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="domain_ai_datacenters.html">AI Data Centers</a>
+  <a href="domain_self_driving.html">Self-Driving</a>
+  <a href="domain_autonomous_systems.html">Autonomous Systems</a>
+  <a href="domain_software_engineering.html" class="active">Software Eng</a>
+  <a href="domain_dynamic_pricing.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems.html">Energy Systems</a>
+  <a href="domain_creative_systems.html">Creative Systems</a>
+  <a href="domain_recommendation_engines.html" >Recommendation</a>
+  <a href="productionizing.html">Production Design</a>
 <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
 </nav>
 
@@ -148,7 +148,7 @@ hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
   </div>
 </div>
 
-<p>From <a href="whitepaper_full_v0_5.html#mvp">§11.1 of the full whitepaper</a>: <em>"Code generation is the ideal MVP domain: correctness is binary and automatable, contradictions are formally detectable, human baseline cost is measurable, existing tooling handles scoring, and no human raters are needed — ground truth is free."</em></p>
+<p>From <a href="whitepaper_overview.html#mvp">§11.1 of the full whitepaper</a>: <em>"Code generation is the ideal MVP domain: correctness is binary and automatable, contradictions are formally detectable, human baseline cost is measurable, existing tooling handles scoring, and no human raters are needed — ground truth is free."</em></p>
 
 <!-- ─────────────────────────────────────── -->
 <h2 id="utility">2. Utility function configuration for SWE</h2>
@@ -222,7 +222,7 @@ Confidence update:
     C_new = 0.8 × C_prior + 0.2 × penalized_signal
 </pre>
 
-<p>The most powerful signal is the complexity contradiction check — it is formally deterministic (AST analysis is not heuristic), free to run on every output, and catches the most common class of correctness claim errors in code generation. See <a href="tutorial_v0_5.html#contradiction">§6 of the Tutorial</a> for the full implementation walkthrough.</p>
+<p>The most powerful signal is the complexity contradiction check — it is formally deterministic (AST analysis is not heuristic), free to run on every output, and catches the most common class of correctness claim errors in code generation. See <a href="tutorial.html#contradiction">§6 of the Tutorial</a> for the full implementation walkthrough.</p>
 
 <!-- ─────────────────────────────────────── -->
 <h2 id="contradiction">4. The seeded contradiction: what detection looks like in practice</h2>
@@ -280,7 +280,7 @@ Time complexity: O(n)   &lt;-- STATED IN RESPONSE
 <!-- ─────────────────────────────────────── -->
 <h2 id="results">5. Simulation results: what the framework achieves today</h2>
 
-<p>The extended simulation (500-task two-arm study, 5 cycles, 25 problem types, 11 algorithm families) is the primary empirical validation of the framework. Full data in <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/extended_output/extended_results.json" target="_blank"><code>agent/extended_output/extended_results.json</code></a>. Full analysis in <a href="whitepaper_full_v0_5.html#appendix-a">Appendix A of the full whitepaper</a>.</p>
+<p>The extended simulation (500-task two-arm study, 5 cycles, 25 problem types, 11 algorithm families) is the primary empirical validation of the framework. Full data in <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/extended_output/extended_results.json" target="_blank"><code>agent/extended_output/extended_results.json</code></a>. Full analysis in <a href="whitepaper_overview.html#appendix-a">Appendix A of the full whitepaper</a>.</p>
 
 <div class="metricgrid">
   <div class="metric green">
@@ -315,7 +315,7 @@ Time complexity: O(n)   &lt;-- STATED IN RESPONSE
     <tr><td>3</td><td>0.6288</td><td>0.5740</td><td>0.8940</td><td>0</td><td>0.2464</td><td>0.2860</td></tr>
   </tbody>
 </table>
-<p class="caption">Extended simulation: 5-cycle two-arm comparison. Full data: <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/extended_output/extended_results.json" target="_blank">extended_results.json</a>. See <a href="whitepaper_full_v0_5.html#appendix-a">Appendix A</a> for full statistical analysis.</p>
+<p class="caption">Extended simulation: 5-cycle two-arm comparison. Full data: <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/extended_output/extended_results.json" target="_blank">extended_results.json</a>. See <a href="whitepaper_overview.html#appendix-a">Appendix A</a> for full statistical analysis.</p>
 
 <p>The 10-cycle stability run confirms: contradiction rate falls from 22% to 6% (73% reduction), and Brier score reaches 0.049 by cycle 7 — well-calibrated confidence in the software engineering domain.</p>
 
@@ -363,7 +363,7 @@ Time complexity: O(n)   &lt;-- STATED IN RESPONSE
     </tr>
   </tbody>
 </table>
-<p class="caption">Run with: <code>cd agent && python3 routing_experiment.py</code>. Full data in <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/routing_output/" target="_blank">routing_output/</a>. See <a href="whitepaper_full_v0_5.html#routing-experiment">§10.9.4</a> for the full analysis.</p>
+<p class="caption">Run with: <code>cd agent && python3 routing_experiment.py</code>. Full data in <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/routing_output/" target="_blank">routing_output/</a>. See <a href="whitepaper_overview.html#routing-experiment">§10.9.4</a> for the full analysis.</p>
 
 <p>Three findings matter for coding agent builders:</p>
 
@@ -398,7 +398,7 @@ def _recommended_difficulty(self, confidence: float) -> str:
 <!-- ─────────────────────────────────────── -->
 <h2 id="loop">8. The 10-step MVP feedback loop</h2>
 
-<p>From <a href="whitepaper_full_v0_5.html#mvp">§11.2 of the full whitepaper</a> — the complete SWE feedback loop as it runs in production:</p>
+<p>From <a href="whitepaper_overview.html#mvp">§11.2 of the full whitepaper</a> — the complete SWE feedback loop as it runs in production:</p>
 
 <div class="steps">
   <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Receive coding problem</strong> — problem statement, constraints, language.</div></div>
@@ -458,20 +458,20 @@ python3 harness.py
 </pre>
 
 <div class="callout green">
-  <p><strong>Success criteria.</strong> From <a href="whitepaper_full_v0_5.html#mvp">§11.3 of the full whitepaper</a>: U improves across a dataset of 1,000+ problems across multiple calibration cycles; confidence scores calibrate with actual correctness rate (Brier score &lt; 0.15); contradiction rate decreases measurably across cycles; LoRA adapter deployment does not regress benchmark by more than 2%. The first two are already demonstrated in simulation. The third is validated on the 10-cycle stability run. The fourth requires GPU hardware to validate — Phase 6 of the roadmap.</p>
+  <p><strong>Success criteria.</strong> From <a href="whitepaper_overview.html#mvp">§11.3 of the full whitepaper</a>: U improves across a dataset of 1,000+ problems across multiple calibration cycles; confidence scores calibrate with actual correctness rate (Brier score &lt; 0.15); contradiction rate decreases measurably across cycles; LoRA adapter deployment does not regress benchmark by more than 2%. The first two are already demonstrated in simulation. The third is validated on the 10-cycle stability run. The fourth requires GPU hardware to validate — Phase 6 of the roadmap.</p>
 </div>
 
 <div class="read-next">
   <h3>Where to read next</h3>
   <ul>
-    <li><a href="tutorial_v1_tmp.html">Tutorial</a> — Full architecture walkthrough with code: utility function, assertions store, contradiction detector, confidence updater, Arbiter, blue-green deployment</li>
-    <li><a href="whitepaper_full_v0_5.html#mvp">§11 — MVP: Code Generation Agent</a> — Full 10-step feedback loop, success criteria, and simulation design</li>
-    <li><a href="whitepaper_full_v0_5.html#appendix-a">Appendix A — Extended Simulation Results</a> — 500-task two-arm study, 10-cycle stability run, full statistical analysis</li>
-    <li><a href="whitepaper_full_v0_5.html#routing-experiment">§10.9.4 — Routing Quality Experiment</a> — Four-arm study: +10.5% VCG arbitration, −17.5% Regime 2 misrouting</li>
+    <li><a href="tutorial.html">Tutorial</a> — Full architecture walkthrough with code: utility function, assertions store, contradiction detector, confidence updater, Arbiter, blue-green deployment</li>
+    <li><a href="whitepaper_overview.html#mvp">§11 — MVP: Code Generation Agent</a> — Full 10-step feedback loop, success criteria, and simulation design</li>
+    <li><a href="whitepaper_overview.html#appendix-a">Appendix A — Extended Simulation Results</a> — 500-task two-arm study, 10-cycle stability run, full statistical analysis</li>
+    <li><a href="whitepaper_overview.html#routing-experiment">§10.9.4 — Routing Quality Experiment</a> — Four-arm study: +10.5% VCG arbitration, −17.5% Regime 2 misrouting</li>
     <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/simulate.py" target="_blank">agent/simulate.py</a> — The 3-cycle simulation with the seeded two_sum contradiction</li>
     <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/routing_experiment.py" target="_blank">agent/routing_experiment.py</a> — Four-arm routing quality study source code</li>
     <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/harness.py" target="_blank">agent/harness.py</a> — Live API harness for running against Claude</li>
-    <li><a href="domain_ai_datacenters_v1_tmp.html">AI Data Centers domain doc</a> — Using software engineering as the first specialist domain in a GPU cloud MVP</li>
+    <li><a href="domain_ai_datacenters.html">AI Data Centers domain doc</a> — Using software engineering as the first specialist domain in a GPU cloud MVP</li>
   </ul>
 </div>
 
@@ -509,7 +509,7 @@ security:
 audit:
   enabled: true
   hash_chain: true</pre>
-  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial_v1_tmp.html#security">Tutorial §12.4</a> for key management.</p>
+  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial.html#security">Tutorial §12.4</a> for key management.</p>
 
 
   <h3>4. Start and query</h3>
@@ -531,7 +531,7 @@ curl -X POST http://localhost:8000/query \
     <tr><td>Prometheus + Grafana + OTEL</td><td>Your monitoring infrastructure</td></tr>
   </table>
 
-  <p class="caption">Full instructions: <a href="tutorial_v1_tmp.html">AUA Tutorial</a> · <a href="whitepaper_v1_tmp.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
+  <p class="caption">Full instructions: <a href="tutorial.html">AUA Tutorial</a> · <a href="whitepaper.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
   </p>
 
 </div></div>

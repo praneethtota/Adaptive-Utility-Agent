@@ -85,18 +85,18 @@ hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
 <div class="page">
 
 <nav>
-  <a href="whitepaper_v1_tmp.html">Home</a>
-  <a href="whitepaper_v1_overview_tmp.html">Full Whitepaper</a>
-  <a href="tutorial_v1_tmp.html">Tutorial</a>
-  <a href="domain_ai_datacenters_v1_tmp.html">AI Data Centers</a>
-  <a href="domain_self_driving_v1_tmp.html">Self-Driving</a>
-  <a href="domain_autonomous_systems_v1_tmp.html">Autonomous Systems</a>
-  <a href="domain_software_engineering_v1_tmp.html">Software Eng</a>
-  <a href="domain_dynamic_pricing_v1_tmp.html">Dynamic Pricing</a>
-  <a href="domain_energy_systems_v1_tmp.html">Energy Systems</a>
-  <a href="domain_creative_systems_v1_tmp.html" class="active">Creative Systems</a>
-  <a href="domain_recommendation_engines_v0_5.html" >Recommendation</a>
-  <a href="productionizing_v1_tmp.html">Production Design</a>
+  <a href="whitepaper.html">Home</a>
+  <a href="whitepaper_overview.html">Full Whitepaper</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="domain_ai_datacenters.html">AI Data Centers</a>
+  <a href="domain_self_driving.html">Self-Driving</a>
+  <a href="domain_autonomous_systems.html">Autonomous Systems</a>
+  <a href="domain_software_engineering.html">Software Eng</a>
+  <a href="domain_dynamic_pricing.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems.html">Energy Systems</a>
+  <a href="domain_creative_systems.html" class="active">Creative Systems</a>
+  <a href="domain_recommendation_engines.html" >Recommendation</a>
+  <a href="productionizing.html">Production Design</a>
   <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
 </nav>
 
@@ -383,7 +383,7 @@ Example C — Balanced:
 <!-- ─────────────────────────────────────── -->
 <h2 id="mvp">8. MVP shape</h2>
 
-<p>Phase 5 of the framework roadmap is dedicated to creative fields — platform signal collection pipeline and two-component efficacy measurement. See <a href="whitepaper_full_v0_5.html#roadmap">§12 of the full whitepaper</a>.</p>
+<p>Phase 5 of the framework roadmap is dedicated to creative fields — platform signal collection pipeline and two-component efficacy measurement. See <a href="whitepaper_overview.html#roadmap">§12 of the full whitepaper</a>.</p>
 
 <ol>
   <li><strong>Pick one platform and one category</strong> — Spotify ambient music, or Pinterest product photography. The category-specific baseline is what makes the efficacy score meaningful. Start narrow enough to build a robust human creator baseline.</li>
@@ -398,9 +398,9 @@ Example C — Balanced:
   <ul>
     <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/creative_efficacy.py" target="_blank">agent/creative_efficacy.py</a> — Full two-component model implementation: signal weights, platform mappings, baseline tracker, efficacy scoring</li>
     <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/agent/config.py" target="_blank">agent/config.py</a> — creative_writing and art field configs with actual weight values</li>
-    <li><a href="whitepaper_full_v0_5.html#roadmap">§12 Phase 5 — Creative Fields</a> — Platform signal collection pipeline, two-component efficacy measurement, roadmap status</li>
-    <li><a href="whitepaper_full_v0_5.html#field-bounds">§5 — Field Bounds</a> — How the curiosity cap works and why c_min=0.05 is the correct floor for creative domains</li>
-    <li><a href="tutorial_v1_tmp.html">Tutorial</a> — Utility function mechanics, EMA accumulation, and the correction loop in code</li>
+    <li><a href="whitepaper_overview.html#roadmap">§12 Phase 5 — Creative Fields</a> — Platform signal collection pipeline, two-component efficacy measurement, roadmap status</li>
+    <li><a href="whitepaper_overview.html#field-bounds">§5 — Field Bounds</a> — How the curiosity cap works and why c_min=0.05 is the correct floor for creative domains</li>
+    <li><a href="tutorial.html">Tutorial</a> — Utility function mechanics, EMA accumulation, and the correction loop in code</li>
   </ul>
 </div>
 
@@ -438,7 +438,7 @@ security:
 audit:
   enabled: true
   hash_chain: true</pre>
-  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial_v1_tmp.html#security">Tutorial §12.4</a> for key management.</p>
+  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial.html#security">Tutorial §12.4</a> for key management.</p>
 
 
   <h3>4. Start and query</h3>
@@ -460,7 +460,7 @@ curl -X POST http://localhost:8000/query \
     <tr><td>Prometheus + Grafana + OTEL</td><td>Your monitoring infrastructure</td></tr>
   </table>
 
-  <p class="caption">Full instructions: <a href="tutorial_v1_tmp.html">AUA Tutorial</a> · <a href="whitepaper_v1_tmp.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
+  <p class="caption">Full instructions: <a href="tutorial.html">AUA Tutorial</a> · <a href="whitepaper.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
   </p>
 
 </div></div>

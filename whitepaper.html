@@ -7,7 +7,7 @@
 <meta name="description" content="AUA Framework v1.0: open-source production framework for multi-specialist LLM routing, self-correction, and utility-governed learning. pip install adaptive-utility-agent. 132 tests, 20 REST endpoints, 8 plugin interfaces, Prometheus + Grafana observability.">
 <meta name="author" content="Praneeth Tota">
 <meta name="keywords" content="Adaptive Utility Agents, AUA, LLM framework, multi-specialist routing, utility function, self-optimizing AI, VCG arbitration, DPO calibration, Praneeth Tota, AI systems, production LLM framework">
-<link rel="canonical" href="https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_v1_tmp.html">
+<link rel="canonical" href="https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper.html">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -556,10 +556,10 @@ footer a:hover { text-decoration: underline; }
 <div class="topbar">
   <span class="topbar-brand">Adaptive Utility Agents · v1.0.0</span>
   <div class="topbar-links">
-    <a href="whitepaper_v1_overview_tmp.html">Whitepaper</a>
-    <a href="tutorial_v1_tmp.html">Tutorial</a>
+    <a href="whitepaper_overview.html">Whitepaper</a>
+    <a href="tutorial.html">Tutorial</a>
     <a href="#domains">Domains</a>
-    <a href="productionizing_v1_tmp.html">Production Design</a>
+    <a href="productionizing.html">Production Design</a>
     <a href="aua_roadmap.html">Roadmap</a>
     <a href="#quickstart">Quick Start</a>
     <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="cta">GitHub ↗</a>
@@ -607,8 +607,8 @@ footer a:hover { text-decoration: underline; }
   </div>
 
   <div class="hero-actions">
-    <a href="tutorial_v1_tmp.html" class="btn btn-primary">Get Started →</a>
-    <a href="whitepaper_v1_overview_tmp.html" class="btn btn-secondary">Whitepaper</a>
+    <a href="tutorial.html" class="btn btn-primary">Get Started →</a>
+    <a href="whitepaper_overview.html" class="btn btn-secondary">Whitepaper</a>
     <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="btn btn-secondary">GitHub ↗</a>
   </div>
 
@@ -743,7 +743,7 @@ Field-specific penalty multipliers route into DPO training:
   Creative writing        →  1× training weight
   </div>
 
-  <p style="color:#555;font-size:.92rem;">The additive weighted structure is not a design choice — it is the unique functional form required by five behavioral axioms, proved from first principles via Debreu's representation theorem (Theorem B.1, Appendix B). Field weights are derived from professional licensing standards, not arbitrary parameters. See <a href="whitepaper_v1_theory_tmp.html#utility-function">§4–5 of the whitepaper</a>.</p>
+  <p style="color:#555;font-size:.92rem;">The additive weighted structure is not a design choice — it is the unique functional form required by five behavioral axioms, proved from first principles via Debreu's representation theorem (Theorem B.1, Appendix B). Field weights are derived from professional licensing standards, not arbitrary parameters. See <a href="whitepaper_theory.html#utility-function">§4–5 of the whitepaper</a>.</p>
 
   <div class="timescales">
     <div class="ts-card">
@@ -764,7 +764,7 @@ Field-specific penalty multipliers route into DPO training:
   </div>
 
   <p style="font-size:.9rem;color:#555;">
-    Full theory in the <a href="whitepaper_v1_overview_tmp.html">whitepaper</a>. Implementation walkthrough in the <a href="tutorial_v1_tmp.html">tutorial</a>. Framework architecture spec in the <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/docs/AUA_Framework_v1_Architecture.md" target="_blank">Architecture doc</a>.
+    Full theory in the <a href="whitepaper_overview.html">whitepaper</a>. Implementation walkthrough in the <a href="tutorial.html">tutorial</a>. Framework architecture spec in the <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/docs/AUA_Framework_v1_Architecture.md" target="_blank">Architecture doc</a>.
   </p>
 </div>
 
@@ -776,49 +776,49 @@ Field-specific penalty multipliers route into DPO training:
 
   <div class="domain-grid">
 
-    <a href="domain_software_engineering_v1_tmp.html" class="domain-card">
+    <a href="domain_software_engineering.html" class="domain-card">
       <div class="dc-badge">MVP domain · Fully runnable</div>
       <h3>Software Engineering</h3>
       <p>The framework's strongest domain: correctness signals are automatic and unambiguous. Tests pass or fail. The entire RTX 4090 experiment ran here — 69.6% error reduction, +43.3pp VCG gain, 502 DPO pairs. Configure with <code>aua init --preset coding</code>.</p>
       <span class="dc-link">Coding agents, dev-tools, backend / infra</span>
     </a>
 
-    <a href="domain_ai_datacenters_v1_tmp.html" class="domain-card">
+    <a href="domain_ai_datacenters.html" class="domain-card">
       <div class="dc-badge">Fleet economics</div>
       <h3>AI Data Centers</h3>
       <p>AUA <em>is</em> the inference router. 6× cheaper per token for specialist domain queries on consumer hardware. Use hardware tier templates and <code>GET /metrics/cost</code> to track GPU hours and cost per query in real time.</p>
       <span class="dc-link">Inference infra, GPU cloud, ML platforms</span>
     </a>
 
-    <a href="domain_self_driving_v1_tmp.html" class="domain-card">
+    <a href="domain_self_driving.html" class="domain-card">
       <div class="dc-badge">Safety · certification</div>
       <h3>Self-Driving Vehicles</h3>
       <p>Safety weights shift automatically by context (w_s=0.90 in school zones). Blue-green with T≥246 for safety-critical fields. The append-only audit log and hash chain provide the runtime evidence that safety certification requires.</p>
       <span class="dc-link">Waymo · Cruise · Aurora · AV stack engineers</span>
     </a>
 
-    <a href="domain_autonomous_systems_v1_tmp.html" class="domain-card">
+    <a href="domain_autonomous_systems.html" class="domain-card">
       <div class="dc-badge">ISO 10218:2025 · IEC 61508</div>
       <h3>Autonomous Systems</h3>
       <p>Industrial robots, cobots, AMRs, drones, surgical systems. AUA's utility log + assertions store + blue-green deployment log constitute the runtime evidence that living assurance documents require — not just design-time proofs.</p>
       <span class="dc-link">Robotics, safety-case engineering, autonomy</span>
     </a>
 
-    <a href="domain_dynamic_pricing_v1_tmp.html" class="domain-card">
+    <a href="domain_dynamic_pricing.html" class="domain-card">
       <div class="dc-badge">Full auditability</div>
       <h3>Dynamic Pricing</h3>
       <p>The audit trail is no longer optional — 51 state pricing bills since Jan 2025. AUA adds per-decision utility logs, correction loop, and a structured audit chain on top of any pricing model. Configure with the pricing field preset.</p>
       <span class="dc-link">Pricing platforms, marketplace optimisation, revenue management</span>
     </a>
 
-    <a href="domain_energy_systems_v1_tmp.html" class="domain-card">
+    <a href="domain_energy_systems.html" class="domain-card">
       <div class="dc-badge">Grid · DER · Smart home</div>
       <h3>Energy Systems</h3>
       <p>The same formula — stability weight shifting from 0.40 to 0.80 under demand surge — produces correct dispatch without separate rule sets. C_min=0.95 halts automated dispatch when forecasts are unreliable. Full DER and VPP coverage.</p>
       <span class="dc-link">Grid software, DERMS / VPP, smart-home EMS</span>
     </a>
 
-    <a href="domain_creative_systems_v1_tmp.html" class="domain-card">
+    <a href="domain_creative_systems.html" class="domain-card">
       <div class="dc-badge">Curiosity-led · Platform signal</div>
       <h3>Creative Systems</h3>
       <p>The only domain where curiosity (w_k=0.15) is the primary value driver. Platform signal — saves, downloads, shares — becomes a structured quality measure that feeds the correction loop. Content Efficacy × Discoverability as geometric mean.</p>
@@ -849,7 +849,7 @@ Field-specific penalty multipliers route into DPO training:
       <p style="font-size:.85rem;color:#666;margin:0;">Audience: Staff / Senior SWE · AI infrastructure teams · LLM systems builders</p>
     </div>
     <div class="tutorial-side">
-      <a href="productionizing_v1_tmp.html" class="btn btn-primary">Read the Architecture →</a>
+      <a href="productionizing.html" class="btn btn-primary">Read the Architecture →</a>
       <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/docs/AUA_Framework_v1_Architecture.md" target="_blank" class="btn btn-secondary" style="font-size:.82rem;">Architecture Spec ↗</a>
     </div>
   </div>
@@ -880,7 +880,7 @@ Field-specific penalty multipliers route into DPO training:
       </div>
     </div>
     <div class="tutorial-side">
-      <a href="tutorial_v1_tmp.html" class="btn btn-primary">Read the Tutorial →</a>
+      <a href="tutorial.html" class="btn btn-primary">Read the Tutorial →</a>
       <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="btn btn-secondary" style="font-size:.82rem;">View on GitHub ↗</a>
     </div>
   </div>
@@ -898,19 +898,19 @@ Field-specific penalty multipliers route into DPO training:
       <h4>Theory</h4>
       <ul>
         <li>
-          <a href="whitepaper_v1_theory_tmp.html#utility-function">§4 — Utility Function</a>
+          <a href="whitepaper_theory.html#utility-function">§4 — Utility Function</a>
           <span class="wp-desc">Formal derivation of U = w_e·E + w_c·C + w_k·K from five behavioral axioms</span>
         </li>
         <li>
-          <a href="whitepaper_v1_theory_tmp.html#field-bounds">§5 — Field Bounds</a>
+          <a href="whitepaper_theory.html#field-bounds">§5 — Field Bounds</a>
           <span class="wp-desc">C_min and E_min from professional licensing standards; blending under ambiguity</span>
         </li>
         <li>
-          <a href="whitepaper_v1_architecture_tmp.html#vcg">§10.6 — VCG Arbitration</a>
+          <a href="whitepaper_architecture.html#vcg">§10.6 — VCG Arbitration</a>
           <span class="wp-desc">Theorems S1–S3: dominant strategy truthfulness, POA=1, individual rationality</span>
         </li>
         <li>
-          <a href="whitepaper_v1_appendix_b_tmp.html">Appendix B — Proofs</a>
+          <a href="whitepaper_appendix_b.html">Appendix B — Proofs</a>
           <span class="wp-desc">B.1 additive structure (Cauchy), B.4 Kalman-optimal EMA, B.5 confidence convergence, B.7 Lyapunov stability</span>
         </li>
       </ul>
@@ -920,19 +920,19 @@ Field-specific penalty multipliers route into DPO training:
       <h4>Architecture</h4>
       <ul>
         <li>
-          <a href="whitepaper_v1_theory_tmp.html#correction-loop">§8 — Three-Layer Correction Loop</a>
+          <a href="whitepaper_theory.html#correction-loop">§8 — Three-Layer Correction Loop</a>
           <span class="wp-desc">Session injection, calibration DPO, release distillation — full specification</span>
         </li>
         <li>
-          <a href="whitepaper_v1_architecture_tmp.html#distributed-graph">§10 — Micro-Expert Architecture</a>
+          <a href="whitepaper_architecture.html#distributed-graph">§10 — Micro-Expert Architecture</a>
           <span class="wp-desc">Model decomposition, independent deployability, catastrophic forgetting resolved</span>
         </li>
         <li>
-          <a href="whitepaper_v1_architecture_tmp.html#arbiter">§10.5 — Arbiter Agent</a>
+          <a href="whitepaper_architecture.html#arbiter">§10.5 — Arbiter Agent</a>
           <span class="wp-desc">4-check contradiction resolution, evidence chain, minimum disclosure, external escalation</span>
         </li>
         <li>
-          <a href="whitepaper_v1_architecture_tmp.html#bluegreen">§10.7 — Blue-Green Deployment</a>
+          <a href="whitepaper_architecture.html#bluegreen">§10.7 — Blue-Green Deployment</a>
           <span class="wp-desc">Utility-deviation trigger, softmax traffic routing, T thresholds by field, rollback</span>
         </li>
       </ul>
@@ -942,19 +942,19 @@ Field-specific penalty multipliers route into DPO training:
       <h4>Empirical</h4>
       <ul>
         <li>
-          <a href="whitepaper_v1_appendix_a_tmp.html">Appendix A — Simulation Results</a>
+          <a href="whitepaper_appendix_a.html">Appendix A — Simulation Results</a>
           <span class="wp-desc">500-task two-arm study + 10-cycle stability. 69.6% error reduction, Brier 0.049 by cycle 7</span>
         </li>
         <li>
-          <a href="whitepaper_v1_architecture_tmp.html#routing-experiment">§10.9.5 — Routing Experiment</a>
+          <a href="whitepaper_architecture.html#routing-experiment">§10.9.5 — Routing Experiment</a>
           <span class="wp-desc">RTX 4090 four-arm study: VCG +43.3pp (p=0.0003, d=1.02), Regime 2 fingerprinted</span>
         </li>
         <li>
-          <a href="whitepaper_v1_architecture_tmp.html#hardware-adaptive">§10.9 — Hardware-Adaptive Deployment</a>
+          <a href="whitepaper_architecture.html#hardware-adaptive">§10.9 — Hardware-Adaptive Deployment</a>
           <span class="wp-desc">Consumer GPU cost model, Jetson edge deployment, pipeline parallelism argument</span>
         </li>
         <li>
-          <a href="whitepaper_v1_appendix_c_tmp.html">Appendix C — Worked Examples</a>
+          <a href="whitepaper_appendix_c.html">Appendix C — Worked Examples</a>
           <span class="wp-desc">Numerical weight derivations for AV, Drone, Energy, Pricing, Datacenters</span>
         </li>
       </ul>
@@ -964,7 +964,7 @@ Field-specific penalty multipliers route into DPO training:
       <h4>Scope &amp; Roadmap</h4>
       <ul>
         <li>
-          <a href="whitepaper_v1_results_tmp.html#mvp">§11 — Code Generation MVP</a>
+          <a href="whitepaper_results.html#mvp">§11 — Code Generation MVP</a>
           <span class="wp-desc">10-step feedback loop, success criteria, why code is the right first domain</span>
         </li>
         <li>
@@ -972,11 +972,11 @@ Field-specific penalty multipliers route into DPO training:
           <span class="wp-desc">All 73 original items + 55 new items across 7 milestones — v1.0 complete, v2.0+ planned</span>
         </li>
         <li>
-          <a href="whitepaper_v1_results_tmp.html#open-questions">§13 — Open Questions</a>
+          <a href="whitepaper_results.html#open-questions">§13 — Open Questions</a>
           <span class="wp-desc">Resolution status of all identified open problems; what remains future work</span>
         </li>
         <li>
-          <a href="whitepaper_v1_overview_tmp.html">Whitepaper Overview ↗</a>
+          <a href="whitepaper_overview.html">Whitepaper Overview ↗</a>
           <span class="wp-desc">Start here — Abstract, Introduction, Applications (§§1–3)</span>
         </li>
       </ul>
@@ -1078,8 +1078,8 @@ aua serve --dry-run</pre>
   </div>
   <div class="footer-right">
     <div class="footer-links">
-      <a href="whitepaper_v1_overview_tmp.html">Whitepaper</a>
-      <a href="tutorial_v1_tmp.html">Tutorial</a>
+      <a href="whitepaper_overview.html">Whitepaper</a>
+      <a href="tutorial.html">Tutorial</a>
       <a href="aua_roadmap.html">Roadmap</a>
       <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
     </div>

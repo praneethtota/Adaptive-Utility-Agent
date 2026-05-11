@@ -329,18 +329,18 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 
 <!-- NAV -->
 <nav>
-  <a href="whitepaper_v1_tmp.html">Home</a>
-  <a href="whitepaper_v1_overview_tmp.html">Full Whitepaper</a>
-  <a href="tutorial_v1_tmp.html">Tutorial</a>
-  <a href="domain_ai_datacenters_v1_tmp.html">AI Data Centers</a>
-  <a href="domain_self_driving_v1_tmp.html" class="active">Self-Driving</a>
-  <a href="domain_autonomous_systems_v1_tmp.html">Autonomous Systems</a>
-  <a href="domain_software_engineering_v1_tmp.html">Software Eng</a>
-  <a href="domain_dynamic_pricing_v1_tmp.html">Dynamic Pricing</a>
-  <a href="domain_energy_systems_v1_tmp.html">Energy Systems</a>
-  <a href="domain_creative_systems_v1_tmp.html">Creative Systems</a>
-  <a href="domain_recommendation_engines_v0_5.html">Recommendation</a>
-  <a href="productionizing_v1_tmp.html">Production Design</a>
+  <a href="whitepaper.html">Home</a>
+  <a href="whitepaper_overview.html">Full Whitepaper</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="domain_ai_datacenters.html">AI Data Centers</a>
+  <a href="domain_self_driving.html" class="active">Self-Driving</a>
+  <a href="domain_autonomous_systems.html">Autonomous Systems</a>
+  <a href="domain_software_engineering.html">Software Eng</a>
+  <a href="domain_dynamic_pricing.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems.html">Energy Systems</a>
+  <a href="domain_creative_systems.html">Creative Systems</a>
+  <a href="domain_recommendation_engines.html">Recommendation</a>
+  <a href="productionizing.html">Production Design</a>
   <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
 </nav>
 
@@ -392,7 +392,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
   <li><strong>Error repetition has no mechanism to fix it.</strong> A system that makes a wrong decision on a pedestrian crossing at a specific junction will make the same decision at the same junction tomorrow, and in every vehicle in the fleet, until the next full training cycle — which may be months away. There is no feedback loop between a detected error and the system's behavior in the interval between releases.</li>
 </ul>
 
-<p>The framework addresses all three directly: specialist isolation narrows the update surface, the utility log produces attribution-grade audit trails, and the continual correction loop reduces repeated errors between releases. For AV companies, the strongest argument is not hardware cost but <strong>independent updateability, auditable behaviour, and principled abstention</strong>. See <a href="whitepaper_full_v0_5.html#self-driving">§2.7 of the full whitepaper</a> for the AV framing in context.</p>
+<p>The framework addresses all three directly: specialist isolation narrows the update surface, the utility log produces attribution-grade audit trails, and the continual correction loop reduces repeated errors between releases. For AV companies, the strongest argument is not hardware cost but <strong>independent updateability, auditable behaviour, and principled abstention</strong>. See <a href="whitepaper_overview.html#self-driving">§2.7 of the full whitepaper</a> for the AV framing in context.</p>
 
 <!-- ─────────────────────────────────────── -->
 <h2 id="weights">Context-adaptive utility weights: how and when they shift</h2>
@@ -412,7 +412,7 @@ f — context field, determining weights and minimum competence thresholds
 
 <h3>Weight profiles across AV operating scenarios</h3>
 
-<p>The following scenarios are worked examples from <a href="whitepaper_full_v0_5.html#applications">§2.1 of the full whitepaper</a>, with context-specific weight derivations:</p>
+<p>The following scenarios are worked examples from <a href="whitepaper_overview.html#applications">§2.1 of the full whitepaper</a>, with context-specific weight derivations:</p>
 
 <div class="scenario-grid">
 
@@ -473,7 +473,7 @@ f — context field, determining weights and minimum competence thresholds
     <tr><td>Creative writing</td><td>0.40</td><td>0.20</td><td>0.40</td><td>0.30</td><td>0.20</td><td>1×</td></tr>
   </tbody>
 </table>
-<p class="caption">AV operating scenarios map closest to aviation autopilot: confidence-weighted, high penalty multiplier, tight minimum competence thresholds. Source: <a href="whitepaper_full_v0_5.html#field-bounds">§5.1 of the full whitepaper</a>.</p>
+<p class="caption">AV operating scenarios map closest to aviation autopilot: confidence-weighted, high penalty multiplier, tight minimum competence thresholds. Source: <a href="whitepaper_overview.html#field-bounds">§5.1 of the full whitepaper</a>.</p>
 
 <!-- ─────────────────────────────────────── -->
 <h2 id="abstention">Confidence gates and the abstention decision rule</h2>
@@ -507,7 +507,7 @@ act = abstain      otherwise   → trigger escalation chain
     <tr><td>Sensor degradation / adverse conditions</td><td>0.85</td><td>Reduce speed; abstain from any manoeuvre above minimum-risk condition</td></tr>
   </tbody>
 </table>
-<p class="caption">Illustrative thresholds. Must be validated against the operator's specific ODD and safety case before operational deployment. See <a href="whitepaper_full_v0_5.html#field-bounds">§5.1–5.2 in the full whitepaper</a> for the threshold derivation methodology.</p>
+<p class="caption">Illustrative thresholds. Must be validated against the operator's specific ODD and safety case before operational deployment. See <a href="whitepaper_overview.html#field-bounds">§5.1–5.2 in the full whitepaper</a> for the threshold derivation methodology.</p>
 
 <div class="callout orange">
   <strong>Why this matters for regulators.</strong> The confidence gate is the mechanism that allows a certifiable fallback to be defined and tested. The NHTSA framework and ISO 26262 both expect safety-critical systems to degrade gracefully under uncertainty — to slow, stop, or transfer control rather than continuing to operate at reduced competence. The confidence gate produces that behavior formally and testably, which is what a safety case requires.
@@ -553,7 +553,7 @@ Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
 <!-- ─────────────────────────────────────── -->
 <h2 id="arbiter">The Arbiter: structured contradiction resolution between specialists</h2>
 
-<p>When two or more specialists produce contradictory outputs — for example, the perception specialist reports a pedestrian in the vehicle's path while the motion planning specialist generates a proceed decision — the Arbiter runs a structured resolution process rather than silently averaging or arbitrarily overriding. See <a href="whitepaper_full_v0_5.html#arbiter">§10.5 of the full whitepaper</a> for the full Arbiter specification.</p>
+<p>When two or more specialists produce contradictory outputs — for example, the perception specialist reports a pedestrian in the vehicle's path while the motion planning specialist generates a proceed decision — the Arbiter runs a structured resolution process rather than silently averaging or arbitrarily overriding. See <a href="whitepaper_overview.html#arbiter">§10.5 of the full whitepaper</a> for the full Arbiter specification.</p>
 
 <h3>Contradiction resolution order</h3>
 
@@ -579,7 +579,7 @@ Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
 
 <h3>The VCG arbitration mechanism</h3>
 
-<p>The Arbiter's incentive structure is formally addressed through a game-theoretic treatment in the whitepaper. Treating domain specialists as players in a cooperative game with the Arbiter as the external social planner, three theorems are proved. Under the Vickrey-Clarke-Groves (VCG) mechanism, <strong>truthful reporting of confidence values is the weakly dominant strategy for every specialist</strong> (Theorem S1) — eliminating the incentive for a specialist to overstate its confidence to "win" a contradiction. The Arbiter selects the social optimum with Price of Anarchy exactly 1 (Theorem S2), and no specialist prefers to abstain from the arbitration process (Theorem S3). See <a href="whitepaper_full_v0_5.html#vcg">§10.6 of the full whitepaper</a> for the full proofs.</p>
+<p>The Arbiter's incentive structure is formally addressed through a game-theoretic treatment in the whitepaper. Treating domain specialists as players in a cooperative game with the Arbiter as the external social planner, three theorems are proved. Under the Vickrey-Clarke-Groves (VCG) mechanism, <strong>truthful reporting of confidence values is the weakly dominant strategy for every specialist</strong> (Theorem S1) — eliminating the incentive for a specialist to overstate its confidence to "win" a contradiction. The Arbiter selects the social optimum with Price of Anarchy exactly 1 (Theorem S2), and no specialist prefers to abstain from the arbitration process (Theorem S3). See <a href="whitepaper_overview.html#vcg">§10.6 of the full whitepaper</a> for the full proofs.</p>
 
 <p>The practical implication for AV teams: the arbitration outcome is not determined by whichever specialist is loudest or most recently calibrated — it is determined by the formal mechanism that elicits honest confidence reporting and selects the outcome that maximizes the joint utility of all specialists. This is the property that makes the arbitration result defensible in a post-incident review: the Arbiter's decision follows a formally verifiable process, not a heuristic.</p>
 
@@ -657,7 +657,7 @@ Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
     <tr><td>RTX 4090</td><td>24 GB</td><td>450 W</td><td>~$1,600–2,000</td><td>Edge server / test vehicle only</td></tr>
   </tbody>
 </table>
-<p class="caption">Hardware specs and pricing from NVIDIA and published sources (2025). See <a href="whitepaper_full_v0_5.html#edge-deployment">§10.9.6 of the full whitepaper</a> for the full edge deployment analysis and Jetson-specific worked examples.</p>
+<p class="caption">Hardware specs and pricing from NVIDIA and published sources (2025). See <a href="whitepaper_overview.html#edge-deployment">§10.9.6 of the full whitepaper</a> for the full edge deployment analysis and Jetson-specific worked examples.</p>
 
 <h3>Pipeline parallelism: specialists run concurrently, not sequentially</h3>
 
@@ -728,7 +728,7 @@ Micro-Expert pipeline (parallel — actual architecture):
   <li>The utility log provides the behavioral record required for safety case evidence — utility values, confidence gates, arbitration results, and escalation events are all logged with session context.</li>
 </ul>
 
-<p>The framework is not a replacement for the full ISO 26262 process. But it is compatible with that reasoning pattern in a way that a monolithic model is not, because it produces the modular structure and the behavioral records that the standard's evidence requirements depend on. See <a href="whitepaper_full_v0_5.html#roadmap">§12 Phase 9</a> for the planned safety-critical deployment validation work.</p>
+<p>The framework is not a replacement for the full ISO 26262 process. But it is compatible with that reasoning pattern in a way that a monolithic model is not, because it produces the modular structure and the behavioral records that the standard's evidence requirements depend on. See <a href="whitepaper_overview.html#roadmap">§12 Phase 9</a> for the planned safety-critical deployment validation work.</p>
 
 <h3>Shadow mode as blue-green deployment at vehicle scale</h3>
 
@@ -744,7 +744,7 @@ Trigger when ALL of:
 T(aviation/AV)  ≥ 246 interactions  [high confidence window required before promotion]
 </pre>
 
-<p>The high T value for safety-critical fields means that a specialist must prove sustained improvement across a statistically significant sample before any traffic is shifted from the production model. This is more conservative than standard software blue-green deployment and is calibrated to the error cost of the domain. See <a href="whitepaper_full_v0_5.html#bluegreen">§10.7 of the full whitepaper</a> for the full deployment lifecycle.</p>
+<p>The high T value for safety-critical fields means that a specialist must prove sustained improvement across a statistically significant sample before any traffic is shifted from the production model. This is more conservative than standard software blue-green deployment and is calibrated to the error cost of the domain. See <a href="whitepaper_overview.html#bluegreen">§10.7 of the full whitepaper</a> for the full deployment lifecycle.</p>
 
 <!-- ─────────────────────────────────────── -->
 <h2 id="fleet">Fleet-level correction propagation from edge encounters</h2>
@@ -816,7 +816,7 @@ T(aviation/AV)  ≥ 246 interactions  [high confidence window required before pr
 </div>
 
 <div class="callout orange">
-  <strong>Phase 9 of the roadmap covers this exactly.</strong> The framework's planned Phase 9 work is shadow-mode evaluation, auditable logs, and abstention testing in autonomy-style settings — validating that the framework improves both performance and certifiability under regulatory constraints. See <a href="whitepaper_full_v0_5.html#roadmap">§12 of the full whitepaper</a> for the full roadmap.
+  <strong>Phase 9 of the roadmap covers this exactly.</strong> The framework's planned Phase 9 work is shadow-mode evaluation, auditable logs, and abstention testing in autonomy-style settings — validating that the framework improves both performance and certifiability under regulatory constraints. See <a href="whitepaper_overview.html#roadmap">§12 of the full whitepaper</a> for the full roadmap.
 </div>
 
 <!-- ─────────────────────────────────────── -->
@@ -825,16 +825,16 @@ T(aviation/AV)  ≥ 246 interactions  [high confidence window required before pr
 <div class="read-next">
   <h3>From this page</h3>
   <ul>
-    <li><a href="whitepaper_full_v0_5.html#applications">§2.1 — Autonomous Vehicles</a> — Full AV worked example with weight derivations, confidence minimum, and assertions store accumulation</li>
-    <li><a href="whitepaper_full_v0_5.html#self-driving">§2.7 — Self-Driving Platform and Regulatory Operations</a> — The AV certification and regulatory acceptance framing in full</li>
-    <li><a href="whitepaper_full_v0_5.html#field-bounds">§5.1–5.2 — Field Bounds and Minimum Competence Thresholds</a> — How C_min and E_min are derived from professional licensing standards; field weight table</li>
-    <li><a href="whitepaper_full_v0_5.html#arbiter">§10.5 — Arbiter Agent</a> — Full structured contradiction resolution specification, evidence check hierarchy, and external escalation protocol</li>
-    <li><a href="whitepaper_full_v0_5.html#vcg">§10.6 — VCG Arbitration</a> — Game-theoretic treatment of the Arbiter's incentive structure; Theorems S1–S3</li>
-    <li><a href="whitepaper_full_v0_5.html#bluegreen">§10.7 — Blue-Green Deployment</a> — Trigger conditions, T and δ thresholds per field, deployment lifecycle, and rollback specification</li>
-    <li><a href="whitepaper_full_v0_5.html#edge-deployment">§10.9.6 — Edge and Battery-Constrained Deployment</a> — Jetson hardware table, pipeline parallelism argument, power budget analysis</li>
-    <li><a href="whitepaper_full_v0_5.html#roadmap">§12 Phase 9 — Safety-Critical Deployment Validation</a> — Shadow-mode evaluation, auditable logs, and abstention testing roadmap</li>
-    <li><a href="domain_autonomous_systems_v1_tmp.html">Autonomous Systems domain doc</a> — Broader autonomy treatment: robotics, drones, safety-case engineering across all autonomous platforms</li>
-    <li><a href="tutorial_v1_tmp.html">Tutorial</a> — Full architecture walkthrough with code: utility function, assertions store, contradiction detector, confidence updater, Arbiter, blue-green deployment</li>
+    <li><a href="whitepaper_overview.html#applications">§2.1 — Autonomous Vehicles</a> — Full AV worked example with weight derivations, confidence minimum, and assertions store accumulation</li>
+    <li><a href="whitepaper_overview.html#self-driving">§2.7 — Self-Driving Platform and Regulatory Operations</a> — The AV certification and regulatory acceptance framing in full</li>
+    <li><a href="whitepaper_overview.html#field-bounds">§5.1–5.2 — Field Bounds and Minimum Competence Thresholds</a> — How C_min and E_min are derived from professional licensing standards; field weight table</li>
+    <li><a href="whitepaper_overview.html#arbiter">§10.5 — Arbiter Agent</a> — Full structured contradiction resolution specification, evidence check hierarchy, and external escalation protocol</li>
+    <li><a href="whitepaper_overview.html#vcg">§10.6 — VCG Arbitration</a> — Game-theoretic treatment of the Arbiter's incentive structure; Theorems S1–S3</li>
+    <li><a href="whitepaper_overview.html#bluegreen">§10.7 — Blue-Green Deployment</a> — Trigger conditions, T and δ thresholds per field, deployment lifecycle, and rollback specification</li>
+    <li><a href="whitepaper_overview.html#edge-deployment">§10.9.6 — Edge and Battery-Constrained Deployment</a> — Jetson hardware table, pipeline parallelism argument, power budget analysis</li>
+    <li><a href="whitepaper_overview.html#roadmap">§12 Phase 9 — Safety-Critical Deployment Validation</a> — Shadow-mode evaluation, auditable logs, and abstention testing roadmap</li>
+    <li><a href="domain_autonomous_systems.html">Autonomous Systems domain doc</a> — Broader autonomy treatment: robotics, drones, safety-case engineering across all autonomous platforms</li>
+    <li><a href="tutorial.html">Tutorial</a> — Full architecture walkthrough with code: utility function, assertions store, contradiction detector, confidence updater, Arbiter, blue-green deployment</li>
     <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub — Adaptive-Utility-Agent</a> — Agent code, routing experiment source, and reference implementation</li>
   </ul>
 </div>
@@ -876,7 +876,7 @@ security:
 audit:
   enabled: true
   hash_chain: true</pre>
-  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial_v1_tmp.html#security">Tutorial §12.4</a> for key management.</p>
+  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial.html#security">Tutorial §12.4</a> for key management.</p>
 
 
   <h3>4. Start and query</h3>
@@ -898,7 +898,7 @@ curl -X POST http://localhost:8000/query \
     <tr><td>Prometheus + Grafana + OTEL</td><td>Your monitoring infrastructure</td></tr>
   </table>
 
-  <p class="caption">Full instructions: <a href="tutorial_v1_tmp.html">AUA Tutorial</a> · <a href="whitepaper_v1_tmp.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
+  <p class="caption">Full instructions: <a href="tutorial.html">AUA Tutorial</a> · <a href="whitepaper.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
   </p>
 
 </div></div>

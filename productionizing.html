@@ -68,18 +68,18 @@ tr:nth-child(even) td{background:#fafaf8}
 <div class="page">
 
 <nav>
-  <a href="whitepaper_v1_tmp.html">Home</a>
-  <a href="whitepaper_v1_overview_tmp.html">Whitepaper</a>
-  <a href="tutorial_v1_tmp.html">Tutorial</a>
-  <a href="domain_ai_datacenters_v1_tmp.html">AI Data Centers</a>
-  <a href="domain_self_driving_v1_tmp.html">Self-Driving</a>
-  <a href="domain_autonomous_systems_v1_tmp.html">Autonomous Systems</a>
-  <a href="domain_software_engineering_v1_tmp.html">Software Eng</a>
-  <a href="domain_dynamic_pricing_v1_tmp.html">Dynamic Pricing</a>
-  <a href="domain_energy_systems_v1_tmp.html">Energy Systems</a>
-  <a href="domain_creative_systems_v1_tmp.html">Creative Systems</a>
-  <a href="domain_recommendation_engines_v0_5.html" >Recommendation</a>
-  <a href="productionizing_v1_tmp.html" class="active">Production Design</a>
+  <a href="whitepaper.html">Home</a>
+  <a href="whitepaper_overview.html">Whitepaper</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="domain_ai_datacenters.html">AI Data Centers</a>
+  <a href="domain_self_driving.html">Self-Driving</a>
+  <a href="domain_autonomous_systems.html">Autonomous Systems</a>
+  <a href="domain_software_engineering.html">Software Eng</a>
+  <a href="domain_dynamic_pricing.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems.html">Energy Systems</a>
+  <a href="domain_creative_systems.html">Creative Systems</a>
+  <a href="domain_recommendation_engines.html" >Recommendation</a>
+  <a href="productionizing.html" class="active">Production Design</a>
   <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
 </nav>
 
@@ -358,7 +358,7 @@ Prompt → LLM → Evaluate → Correct → Learn → Output
 U = w1 * correctness + w2 * consistency - w3 * latency - w4 * cost + w5 * confidence
 </pre>
 
-<p style="font-size:.88rem;color:#666;">This is a production-oriented adaptation — weights are configurable per tenant and task class, and latency/cost appear explicitly as production objectives. The canonical derivation, formal axioms, and field-specific weight values are in <a href="whitepaper_v1_overview_tmp.html#utility-function">§4 of the full whitepaper</a>.</p>
+<p style="font-size:.88rem;color:#666;">This is a production-oriented adaptation — weights are configurable per tenant and task class, and latency/cost appear explicitly as production objectives. The canonical derivation, formal axioms, and field-specific weight values are in <a href="whitepaper_overview.html#utility-function">§4 of the full whitepaper</a>.</p>
 
 <p>In production, weights should be configurable by tenant, task class, and domain. A legal assistant, a coding agent, and a creative writing system should not all optimize the same objective.</p>
 
@@ -643,7 +643,7 @@ Router (Raft HA cluster — 150–300ms failover)
 </pre>
 
 <div class="callout orange">
-  <p><strong>The routing failure risk.</strong> Misrouted queries are not merely suboptimal — the routing experiment quantifies this: mismatched routing actively worsens correctness by 17.5% and dramatically degrades confidence calibration (Brier 0.292 vs 0.160). The system becomes confidently wrong. Mitigations: probabilistic fan-out, entropy-based fallback, VCG arbitration, and the confidence gate which catches most out-of-domain answers before they are returned. Full regime analysis in <a href="whitepaper_v1_architecture_tmp.html#distributed-graph">§10.4.1 of the whitepaper</a>.</p>
+  <p><strong>The routing failure risk.</strong> Misrouted queries are not merely suboptimal — the routing experiment quantifies this: mismatched routing actively worsens correctness by 17.5% and dramatically degrades confidence calibration (Brier 0.292 vs 0.160). The system becomes confidently wrong. Mitigations: probabilistic fan-out, entropy-based fallback, VCG arbitration, and the confidence gate which catches most out-of-domain answers before they are returned. Full regime analysis in <a href="whitepaper_architecture.html#distributed-graph">§10.4.1 of the whitepaper</a>.</p>
 </div>
 
 <h2 id="bluegreen-auto">14. Utility-driven automated deployment</h2>
@@ -793,7 +793,7 @@ Traffic %
   <p><strong>The architectural payoff.</strong> In the monolithic control plane (§§1–12), the utility function governs inference behavior. In the Micro-Expert Architecture with utility-driven deployment, the utility function governs the entire system lifecycle — from the first correction injection through to the decision to retire a model version. One governing signal, operating at every timescale, from milliseconds to months.</p>
 </div>
 
-<p>Full specification — including delta derivations, T power analysis, tau field calibration, and the mathematical relationship to VCG arbitration — is in <a href="whitepaper_v1_overview_tmp.html#bluegreen">§10.7 of the full whitepaper</a>.</p>
+<p>Full specification — including delta derivations, T power analysis, tau field calibration, and the mathematical relationship to VCG arbitration — is in <a href="whitepaper_overview.html#bluegreen">§10.7 of the full whitepaper</a>.</p>
 
 <h2 id="physical-validation">15. Physical Validation — RunPod RTX 4090 (May 2026)</h2>
 
@@ -836,18 +836,18 @@ Traffic %
 
 <p>A five-query cross-domain battery was run with SWE and Math specialists called in parallel on each query. The contradiction detector flagged a logical error in the SWE specialist's gradient descent implementation (severity 0.9): the assert statement compared two slices of the same predictions array at iteration 100 instead of comparing loss before and after training. The code failed its own stated test case — a genuine internal contradiction caught by the logical check. Evidence chain committed to the repository: <code>agent/results/arbitration_evidence.json</code>.</p>
 
-<p>Full results are in <a href="whitepaper_v1_overview_tmp.html#appendix-a1">Appendix A.1 of the full whitepaper</a>.</p>
+<p>Full results are in <a href="whitepaper_overview.html#appendix-a1">Appendix A.1 of the full whitepaper</a>.</p>
 
 <div class="read-next">
   <h3>Read next</h3>
   <ul>
     <li><a href="whitepaper_v05.html">Return to the main landing page</a></li>
-    <li><a href="whitepaper_v1_overview_tmp.html">Read the full research whitepaper</a></li>
-    <li><a href="domain_software_engineering_v1_tmp.html">See the MVP domain deep-dive: software engineering</a></li>
-    <li><a href="tutorial_v1_tmp.html">Walk through the tutorial version of the framework</a></li>
-    <li><a href="whitepaper_v1_overview_tmp.html#bluegreen">§10.7 — Blue-Green Deployment (full specification)</a></li>
-    <li><a href="whitepaper_v1_architecture_tmp.html#distributed-graph">§10 — Distributed Model Graph Architecture</a></li>
-    <li><a href="whitepaper_v1_overview_tmp.html#arbiter">§10.5 — The Arbiter Agent</a></li>
+    <li><a href="whitepaper_overview.html">Read the full research whitepaper</a></li>
+    <li><a href="domain_software_engineering.html">See the MVP domain deep-dive: software engineering</a></li>
+    <li><a href="tutorial.html">Walk through the tutorial version of the framework</a></li>
+    <li><a href="whitepaper_overview.html#bluegreen">§10.7 — Blue-Green Deployment (full specification)</a></li>
+    <li><a href="whitepaper_architecture.html#distributed-graph">§10 — Distributed Model Graph Architecture</a></li>
+    <li><a href="whitepaper_overview.html#arbiter">§10.5 — The Arbiter Agent</a></li>
   </ul>
 </div>
 

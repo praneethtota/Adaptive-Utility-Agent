@@ -12,21 +12,30 @@ The full site includes the whitepaper with rendered math, an architecture-first 
 
 | Page | Audience | Link |
 |---|---|---|
-| **Landing page** | Everyone | [whitepaper_v05.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_v05.html) |
-| **Full whitepaper** | Researchers, theorists | [whitepaper_full_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_full_v0_5.html) |
-| **Builder's Tutorial** | ML engineers, agent builders | [tutorial_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/tutorial_v0_5.html) |
-| AI Data Centers | Inference infra, GPU cloud | [domain_ai_datacenters_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_ai_datacenters_v0_5.html) |
-| Self-Driving Vehicles | Waymo, Cruise, Aurora | [domain_self_driving_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_self_driving_v0_5.html) |
-| Autonomous Systems | Robotics, safety-case engineering | [domain_autonomous_systems_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_autonomous_systems_v0_5.html) |
-| Software Engineering | Coding agents, dev-tools | [domain_software_engineering_v0_5.html](https://praneethtona.github.io/Adaptive-Utility-Agent/domain_software_engineering_v0_5.html) |
-| Dynamic Pricing | Pricing platforms, marketplaces | [domain_dynamic_pricing_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_dynamic_pricing_v0_5.html) |
-| Energy Systems | Grid software, DER, smart home | [domain_energy_systems_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_energy_systems_v0_5.html) |
-| Creative Systems | Generative media, content platforms | [domain_creative_systems_v0_5.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_creative_systems_v0_5.html) |
+| **Landing page** | Everyone | [whitepaper.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper.html) |
+| **Whitepaper** (overview) | Researchers, theorists | [whitepaper_overview.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_overview.html) |
+| **Whitepaper** (theory §§4–9) | Researchers | [whitepaper_theory.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_theory.html) |
+| **Whitepaper** (architecture §10) | Engineers | [whitepaper_architecture.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_architecture.html) |
+| **Whitepaper** (results + roadmap) | Everyone | [whitepaper_results.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_results.html) |
+| **Whitepaper** (Appendix A — data) | Researchers | [whitepaper_appendix_a.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_appendix_a.html) |
+| **Whitepaper** (Appendix B — proofs) | Theorists | [whitepaper_appendix_b.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_appendix_b.html) |
+| **Whitepaper** (Appendix C — examples) | Practitioners | [whitepaper_appendix_c.html](https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_appendix_c.html) |
+| **Builder's Tutorial** | ML engineers, agent builders | [tutorial.html](https://praneethtota.github.io/Adaptive-Utility-Agent/tutorial.html) |
+| **Production Architecture** | DevOps, platform engineers | [productionizing.html](https://praneethtota.github.io/Adaptive-Utility-Agent/productionizing.html) |
+| AI Data Centers | Inference infra, GPU cloud | [domain_ai_datacenters.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_ai_datacenters.html) |
+| Self-Driving Vehicles | Waymo, Cruise, Aurora | [domain_self_driving.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_self_driving.html) |
+| Autonomous Systems | Robotics, safety-case engineering | [domain_autonomous_systems.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_autonomous_systems.html) |
+| Software Engineering | Coding agents, dev-tools | [domain_software_engineering.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_software_engineering.html) |
+| Dynamic Pricing | Pricing platforms, marketplaces | [domain_dynamic_pricing.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_dynamic_pricing.html) |
+| Energy Systems | Grid software, DER, smart home | [domain_energy_systems.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_energy_systems.html) |
+| Creative Systems | Generative media, content platforms | [domain_creative_systems.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_creative_systems.html) |
+| Recommendation Engines | RecSys, personalization platforms | [domain_recommendation_engines.html](https://praneethtota.github.io/Adaptive-Utility-Agent/domain_recommendation_engines.html) |
+| Roadmap | Everyone | [aua_roadmap.html](https://praneethtota.github.io/Adaptive-Utility-Agent/aua_roadmap.html) |
 
 
 ---
 
-## 🚀 Quickstart (v0.6-alpha)
+## 🚀 Quickstart (v1.0)
 
 ### 1. Install
 
@@ -152,7 +161,7 @@ Aliases `rtx4090` → `single-4090` and `a100` → `a100-cluster` remain for bac
 **Whitepaper:** Creative Commons Attribution 4.0 — see `LICENSE-CC-BY-4.0`
 
 If you build on this work, please cite:
-> Tota, P. (2026). *Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems* (v0.6-alpha). GitHub. https://github.com/praneethtota/Adaptive-Utility-Agent
+> Tota, P. (2026). *Adaptive Utility Agents: A Framework for Self-Optimizing AI Systems* (v1.0). GitHub. https://github.com/praneethtota/Adaptive-Utility-Agent
 
 ---
 

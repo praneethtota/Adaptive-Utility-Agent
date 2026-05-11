@@ -60,15 +60,15 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 <body>
 <div class="page">
 <nav class="site-nav">
-  <a href="whitepaper_v1_tmp.html">Home</a>
-  <a href="whitepaper_v1_overview_tmp.html">1 · Overview</a>
-  <a href="whitepaper_v1_theory_tmp.html">2 · Theory</a>
-  <a href="whitepaper_v1_architecture_tmp.html">3 · Architecture</a>
-  <a href="whitepaper_v1_results_tmp.html">4 · Results</a>
-  <a href="whitepaper_v1_appendix_a_tmp.html">App. A · Empirical</a>
-  <a href="whitepaper_v1_appendix_b_tmp.html">App. B · Proofs</a>
-  <a href="whitepaper_v1_appendix_c_tmp.html" class="active">App. C · Examples</a>
-  <a href="tutorial_v1_tmp.html">Tutorial</a>
+  <a href="whitepaper.html">Home</a>
+  <a href="whitepaper_overview.html">1 · Overview</a>
+  <a href="whitepaper_theory.html">2 · Theory</a>
+  <a href="whitepaper_architecture.html">3 · Architecture</a>
+  <a href="whitepaper_results.html">4 · Results</a>
+  <a href="whitepaper_appendix_a.html">App. A · Empirical</a>
+  <a href="whitepaper_appendix_b.html">App. B · Proofs</a>
+  <a href="whitepaper_appendix_c.html" class="active">App. C · Examples</a>
+  <a href="tutorial.html">Tutorial</a>
   <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
 </nav>
 <div style="padding:2rem 0 1.5rem">
@@ -77,9 +77,9 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 <p style="font-size:.88rem;color:#555;margin:0 0 .25rem;">Praneeth Tota &nbsp;·&nbsp; Illinois Institute of Technology &nbsp;·&nbsp; v1.0.0</p>
 </div>
 <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 0;border-top:1px solid #e4e1da;margin-top:3rem;font-size:.88rem;">
-<a href="whitepaper_v1_results_tmp.html">← Results (§§11–14)</a>
-<a href="whitepaper_v1_overview_tmp.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
-<a href="whitepaper_v1_appendix_a_tmp.html">Appendix A →</a>
+<a href="whitepaper_results.html">← Results (§§11–14)</a>
+<a href="whitepaper_overview.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
+<a href="whitepaper_appendix_a.html">Appendix A →</a>
 </div>
 <h2 id="appendix-c">Appendix C: Real-World Applications — Worked Examples</h2>
 <p>This appendix contains the full worked numerical examples for the five domains introduced in §2. Each example shows the attribute definitions, field weight tables, option comparisons, and explicit utility calculations. The condensed summaries in §2 provide the practical intuition; this appendix provides the mathematical grounding.</p>
@@ -89,7 +89,7 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 <p><strong>Calibrated uncertainty.</strong> Confidence $C$ in the utility function encodes the agent's self-assessed reliability. When $C$ falls below the field-specific minimum $C_{\min}(f)$, the agent abstains or escalates rather than producing a low-quality output. An autonomous vehicle uncertain about road conditions abstains from a lane change rather than proceeding at reduced confidence.</p>
 <hr />
 <h3 id="appendix-c1">C.1 Autonomous Vehicles — Multi-Objective Route and Manoeuvre Selection</h3>
-<p class="domain-ref">Domain deep-dive: <a href="domain_self_driving_v0_5.html">Self-Driving Vehicles</a> · <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_self_driving.html">Self-Driving Vehicles</a> · <a href="domain_autonomous_systems.html">Autonomous Systems</a></p>
 <p>An autonomous vehicle must balance safety, efficiency, and passenger comfort in real time. The utility function operates at the manoeuvre level (lane changes, following distance, speed selection) and at the route level (highway vs surface streets, rerouting around incidents).</p>
 <h4>Attributes and field weights</h4>
 <p>For the <code>autonomous_driving</code> field in standard mode:</p>
@@ -133,7 +133,7 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 <p>The three specialists run in a <strong>pipeline</strong>, not sequentially: perception runs continuously, motion planning consumes its output as it arrives, rules checks run in parallel. Total added latency is the pipeline stage depth, not the sum of all inference times. Each specialist is independently updateable via software — a traffic law update does not require revalidating the perception model.</p>
 <p>Published benchmarks confirm that domain-fine-tuned 7B specialists match or exceed general 70B models on their target tasks (§10.9.3). The Micro-Expert Architecture is therefore not merely cheaper for server deployments — for battery-constrained autonomous systems, it is the only viable architecture that achieves frontier-quality domain inference.</p>
 <h3 id="appendix-c2">C.2 Drone Delivery — Dynamic Route Selection Under Environmental Uncertainty</h3>
-<p class="domain-ref">Domain deep-dive: <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_autonomous_systems.html">Autonomous Systems</a></p>
 <p>A delivery drone must weigh delivery speed against energy consumption and collision risk — where risk is a function of current wind speed, airspace traffic, and battery state.</p>
 <h4>Attributes and field weights</h4>
 <p>$$U = w_s \cdot s + w_d \cdot d + w_\eta \cdot \eta$$</p>
@@ -164,7 +164,7 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 <p>A delivery drone's total system power budget (motors, sensors, compute, communications) is typically 200–500W. A Jetson Orin NX running a 7B specialist model consumes 10–25W — leaving the vast majority of the budget for flight. A datacenter GPU at 400–700W exceeds the entire drone power budget before any other system draws power.</p>
 <p>A single 7B routing + planning specialist on a Jetson Orin NX therefore enables on-board intelligent routing decisions that would otherwise require offloading to a ground server (adding network latency and a failure mode when connectivity drops). Battery life improves directly: reducing compute power from hypothetical 100W (GPU) to 25W (Jetson) extends flight time by a meaningful fraction of the total battery budget.</p>
 <h3 id="appendix-c3">C.3 Smart Home Energy Management — Comfort vs Cost vs Carbon</h3>
-<p class="domain-ref">Domain deep-dive: <a href="domain_energy_systems_v0_5.html">Energy Systems</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_energy_systems.html">Energy Systems</a></p>
 <p>A smart home agent controls HVAC, appliances, EV charging, and lighting to balance occupant comfort against electricity cost and carbon footprint — objectives that change moment to moment as grid prices, renewable availability, and occupant schedules shift.</p>
 <h4>Attributes and field weights</h4>
 <p>$$U = w_c \cdot c + w_k \cdot k + w_g \cdot g$$</p>
@@ -191,7 +191,7 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 <p><strong>Peak pricing:</strong> $U_A = \mathbf{0.428}$, $U_B = \mathbf{0.828}$. Gap doubles — correct, as cost efficiency weight rises to 0.65. When the occupant explicitly signals they need laundry done now, the comfort override ($w_c=0.75$) makes Option A optimal — the agent defers to expressed preference rather than optimising silently against it. Cross-session learning accumulates patterns ("Thursday 11pm reliably coincides with grid carbon dip") and future scheduling decisions retrieve this prior automatically.</p>
 <hr />
 <h3 id="appendix-c4">C.4 Energy Grid Load Balancing — Stability vs Cost vs Renewables</h3>
-<p class="domain-ref">Domain deep-dive: <a href="domain_energy_systems_v0_5.html">Energy Systems</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_energy_systems.html">Energy Systems</a></p>
 <p>A grid management agent balances load across generation sources in real time, with decisions required in seconds and errors that cascade across interconnected infrastructure. High-stakes field parameters ($C_{\min}=0.95$ under surge) ensure the agent escalates to human operators when forecast reliability drops rather than committing large generation decisions under uncertainty.</p>
 <h4>Attributes and field weights</h4>
 <p>$$U = w_\sigma \cdot \sigma + w_e \cdot e + w_r \cdot r$$</p>
@@ -217,7 +217,7 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 <p><strong>Demand surge mode</strong> ($w_\sigma=0.80$): $U_A = (0.95\times0.80)+(0.30\times0.10)+(0.10\times0.10) = \mathbf{0.800}$. $U_B = (0.75\times0.80)+(0.80\times0.10)+(0.70\times0.10) = \mathbf{0.750}$. <strong>Decision flips.</strong> The gas peaker becomes optimal because grid stability now dominates — a 5pp reversal that directly encodes the shift in $w_\sigma$ from 0.50 to 0.80. The same architecture produces the right decision in both contexts without separate rule sets for each scenario.</p>
 <hr />
 <h3 id="appendix-c5">C.5 Dynamic Pricing — Revenue vs Retention vs Market Share</h3>
-<p class="domain-ref">Domain deep-dive: <a href="domain_dynamic_pricing_v0_5.html">Dynamic Pricing</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_dynamic_pricing.html">Dynamic Pricing</a></p>
 <p>A dynamic pricing agent for a platform (ride-sharing, e-commerce, SaaS) must balance short-term revenue against customer satisfaction and long-run market share. Conventional surge pricing maximises immediate revenue but can be catastrophically bad for retention when applied without a utility trade-off framework.</p>
 <h4>Attributes and field weights</h4>
 <p>$$U = w_r \cdot r + w_s \cdot s + w_m \cdot m$$</p>
@@ -247,7 +247,7 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 
 <hr />
 <h3 id="appendix-c6">C.6 AI Data Centers — Revenue per Watt, Fleet Heterogeneity, and Specialist Serving</h3>
-<p class="domain-ref">Domain deep-dive: <a href="domain_ai_datacenters_v0_5.html">AI Data Centers</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_ai_datacenters.html">AI Data Centers</a></p>
 <p>For an AI data center or GPU cloud operator, the framework is valuable only if it improves economics. The relevant variables are not raw benchmark score alone, but <strong>cost per useful query</strong>, <strong>revenue per watt</strong>, and <strong>utilisation across a heterogeneous fleet</strong>. That makes this domain a natural fit for the Micro-Expert Architecture.</p>
 <h4>Operator objective</h4>
 <p>One useful operator-facing utility is:</p>
@@ -269,7 +269,7 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 
 <hr />
 <h3 id="appendix-c7">C.7 Self-Driving Companies — Modular Safety Cases, Shadow Mode, and Fleet Learning</h3>
-<p class="domain-ref">Domain deep-dive: <a href="domain_self_driving_v0_5.html">Self-Driving Vehicles</a> · <a href="domain_autonomous_systems_v0_5.html">Autonomous Systems</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_self_driving.html">Self-Driving Vehicles</a> · <a href="domain_autonomous_systems.html">Autonomous Systems</a></p>
 <p>For self-driving and autonomy companies, the framework’s strongest benefits are <strong>independent updateability</strong>, <strong>auditable decision traces</strong>, and <strong>formal abstention under uncertainty</strong>. Those are exactly the properties that current end-to-end black-box stacks struggle to demonstrate in certification and incident review.</p>
 <h4>Component decomposition</h4>
 <p>A natural three-way split is:</p>
@@ -334,14 +334,14 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 <hr />
 
 <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 0;border-top:1px solid #e4e1da;margin-top:3rem;font-size:.88rem;">
-<a href="whitepaper_v1_results_tmp.html">← Results (§§11–14)</a>
-<a href="whitepaper_v1_overview_tmp.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
-<a href="whitepaper_v1_appendix_a_tmp.html">Appendix A →</a>
+<a href="whitepaper_results.html">← Results (§§11–14)</a>
+<a href="whitepaper_overview.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
+<a href="whitepaper_appendix_a.html">Appendix A →</a>
 </div>
 <div style="padding:2rem 0;border-top:2px solid #e8e4de;margin-top:3rem;font-size:.84rem;color:#6b7280;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
 <div><strong style="color:#333;">Praneeth Tota</strong> · Ph.D. Computer Science (Algorithmic Game Theory) · Illinois Institute of Technology<br>
 <a href="https://praneethtota.github.io" style="color:#4338ca;">praneethtota.github.io</a> · Whitepaper: CC BY 4.0</div>
-<div style="text-align:right;"><a href="whitepaper_v1_tmp.html" style="color:#4338ca;">Home</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" style="color:#4338ca;">GitHub</a><br>AUA Framework v1.0.0</div>
+<div style="text-align:right;"><a href="whitepaper.html" style="color:#4338ca;">Home</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" style="color:#4338ca;">GitHub</a><br>AUA Framework v1.0.0</div>
 </div>
 </div>
 </body>

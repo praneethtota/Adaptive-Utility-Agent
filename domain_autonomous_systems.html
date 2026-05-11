@@ -131,18 +131,18 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 <div class="page">
 
 <nav>
-  <a href="whitepaper_v1_tmp.html">Home</a>
-  <a href="whitepaper_v1_overview_tmp.html">Full Whitepaper</a>
-  <a href="tutorial_v1_tmp.html">Tutorial</a>
-  <a href="domain_ai_datacenters_v1_tmp.html">AI Data Centers</a>
-  <a href="domain_self_driving_v1_tmp.html">Self-Driving</a>
-  <a href="domain_autonomous_systems_v1_tmp.html" class="active">Autonomous Systems</a>
-  <a href="domain_software_engineering_v1_tmp.html">Software Eng</a>
-  <a href="domain_dynamic_pricing_v1_tmp.html">Dynamic Pricing</a>
-  <a href="domain_energy_systems_v1_tmp.html">Energy Systems</a>
-  <a href="domain_creative_systems_v1_tmp.html">Creative Systems</a>
-  <a href="domain_recommendation_engines_v0_5.html">Recommendation</a>
-  <a href="productionizing_v1_tmp.html">Production Design</a>
+  <a href="whitepaper.html">Home</a>
+  <a href="whitepaper_overview.html">Full Whitepaper</a>
+  <a href="tutorial.html">Tutorial</a>
+  <a href="domain_ai_datacenters.html">AI Data Centers</a>
+  <a href="domain_self_driving.html">Self-Driving</a>
+  <a href="domain_autonomous_systems.html" class="active">Autonomous Systems</a>
+  <a href="domain_software_engineering.html">Software Eng</a>
+  <a href="domain_dynamic_pricing.html">Dynamic Pricing</a>
+  <a href="domain_energy_systems.html">Energy Systems</a>
+  <a href="domain_creative_systems.html">Creative Systems</a>
+  <a href="domain_recommendation_engines.html">Recommendation</a>
+  <a href="productionizing.html">Production Design</a>
   <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
 </nav>
 
@@ -283,7 +283,7 @@ Decision rule:
     <div class="weight-row"><span class="weight-name">Safety (w_s)</span><div class="weight-track"><div class="weight-fill fill-safety" style="width:50%"></div></div><span class="weight-val">0.50</span></div>
     <div class="weight-row"><span class="weight-name">Efficiency / speed</span><div class="weight-track"><div class="weight-fill fill-efficacy" style="width:40%"></div></div><span class="weight-val">0.40</span></div>
     <div class="weight-row"><span class="weight-name">Energy / endurance</span><div class="weight-track"><div class="weight-fill fill-comfort" style="width:10%"></div></div><span class="weight-val">0.10</span></div>
-    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Normal delivery or inspection conditions. Efficiency is a meaningful weight — on-time delivery and battery management matter. From <a href="whitepaper_full_v0_5.html#applications">§2.2 of the full whitepaper</a>.</p>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Normal delivery or inspection conditions. Efficiency is a meaningful weight — on-time delivery and battery management matter. From <a href="whitepaper_overview.html#applications">§2.2 of the full whitepaper</a>.</p>
   </div>
 
   <div class="scenario">
@@ -292,7 +292,7 @@ Decision rule:
     <div class="weight-row"><span class="weight-name">Safety (w_s)</span><div class="weight-track"><div class="weight-fill fill-safety" style="width:80%"></div></div><span class="weight-val">0.80</span></div>
     <div class="weight-row"><span class="weight-name">Efficiency / speed</span><div class="weight-track"><div class="weight-fill fill-efficacy" style="width:15%"></div></div><span class="weight-val">0.15</span></div>
     <div class="weight-row"><span class="weight-name">Energy / endurance</span><div class="weight-track"><div class="weight-fill fill-comfort" style="width:5%"></div></div><span class="weight-val">0.05</span></div>
-    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Storm front detected, battery below 25%, or sensor uncertainty above threshold. Safety rises to 0.80 — longer route, lower altitude, or abort-and-return selected automatically. The same formula, different weights. From <a href="whitepaper_full_v0_5.html#applications">§2.2</a>.</p>
+    <p style="font-size:.82rem;color:#555;margin-top:.75rem;margin-bottom:0">Storm front detected, battery below 25%, or sensor uncertainty above threshold. Safety rises to 0.80 — longer route, lower altitude, or abort-and-return selected automatically. The same formula, different weights. From <a href="whitepaper_overview.html#applications">§2.2</a>.</p>
   </div>
 
 </div>
@@ -330,7 +330,7 @@ safe-state if  C &lt; C_min(f)  OR   E &lt; E_min(f)
     <tr><td>Industrial robot (free zone)</td><td>0.70</td><td>Stop cycle; request human review before resuming</td><td>ISO 10218:2025 PL d</td></tr>
   </tbody>
 </table>
-<p class="caption">Illustrative thresholds. Must be validated against the specific ODD and risk assessment for each application. See <a href="whitepaper_full_v0_5.html#field-bounds">§5.1 of the full whitepaper</a> for the C_min derivation methodology from professional licensing standards.</p>
+<p class="caption">Illustrative thresholds. Must be validated against the specific ODD and risk assessment for each application. See <a href="whitepaper_overview.html#field-bounds">§5.1 of the full whitepaper</a> for the C_min derivation methodology from professional licensing standards.</p>
 
 <div class="callout orange">
   <p><strong>Why this matters for functional safety certification.</strong> ISO 10218:2025's shift to explicit, application-specific Performance Level determination means that "the robot stops when it should" must be provable, not assumed. The confidence gate is a directly testable safety function: given any test case that drives measured confidence below C_min, the system must produce a safe-state transition. This maps cleanly to the functional safety requirement structure — it is a defined input-output safety function with a verifiable boundary condition.</p>
@@ -530,7 +530,7 @@ Response: { answer, confidence, assertions[], uncertainty_flags, U_score }
     <tr><td>H100 SXM5</td><td>80 GB</td><td>700 W</td><td>~$30,000–35,000</td><td>Datacenter only — physically impossible on any mobile platform</td></tr>
   </tbody>
 </table>
-<p class="caption">Hardware specs from NVIDIA (2025). See <a href="whitepaper_full_v0_5.html#edge-deployment">§10.9.6 of the full whitepaper</a> for the full edge deployment analysis and worked power budget examples.</p>
+<p class="caption">Hardware specs from NVIDIA (2025). See <a href="whitepaper_overview.html#edge-deployment">§10.9.6 of the full whitepaper</a> for the full edge deployment analysis and worked power budget examples.</p>
 
 <h3>Pipeline parallelism: specialists run concurrently, not sequentially</h3>
 
@@ -742,15 +742,15 @@ before any traffic shifts.
 <div class="read-next">
   <h3>Where to read next</h3>
   <ul>
-    <li><a href="whitepaper_full_v0_5.html#applications">§2.1–2.2 — Autonomous Vehicles &amp; Drone Delivery</a> — Full weight-shifting worked examples with numerical derivations</li>
-    <li><a href="whitepaper_full_v0_5.html#field-bounds">§5.1–5.2 — Field Bounds</a> — How C_min and E_min are derived from professional licensing and safety standards</li>
-    <li><a href="whitepaper_full_v0_5.html#arbiter">§10.5 — Arbiter Agent</a> — Full 4-check contradiction resolution, conservation-first policy, and escalation protocol</li>
-    <li><a href="whitepaper_full_v0_5.html#bluegreen">§10.7–10.8 — Blue-Green Deployment</a> — Trigger conditions, T thresholds for safety-critical fields, and rollback specification</li>
-    <li><a href="whitepaper_full_v0_5.html#edge-deployment">§10.9.6 — Edge and Battery-Constrained Deployment</a> — Jetson hardware table, pipeline parallelism argument, power budget analysis, drone examples</li>
-    <li><a href="whitepaper_full_v0_5.html#roadmap">§12 Phase 9 — Safety-Critical Deployment Validation</a> — Shadow-mode evaluation, auditable logs, and abstention testing roadmap</li>
-    <li><a href="domain_self_driving_v1_tmp.html">Self-Driving domain doc</a> — Road vehicles in depth: Waymo/Cruise/Aurora audience, ISO 26262, NHTSA, blue-green at vehicle scale</li>
-    <li><a href="domain_ai_datacenters_v1_tmp.html">AI Data Centers domain doc</a> — Fleet economics and LoRA multi-tenancy for operators running mixed hardware tiers</li>
-    <li><a href="tutorial_v1_tmp.html">Tutorial</a> — Architecture walkthrough, confidence updater, Arbiter code, and the blue-green deployment spec</li>
+    <li><a href="whitepaper_overview.html#applications">§2.1–2.2 — Autonomous Vehicles &amp; Drone Delivery</a> — Full weight-shifting worked examples with numerical derivations</li>
+    <li><a href="whitepaper_overview.html#field-bounds">§5.1–5.2 — Field Bounds</a> — How C_min and E_min are derived from professional licensing and safety standards</li>
+    <li><a href="whitepaper_overview.html#arbiter">§10.5 — Arbiter Agent</a> — Full 4-check contradiction resolution, conservation-first policy, and escalation protocol</li>
+    <li><a href="whitepaper_overview.html#bluegreen">§10.7–10.8 — Blue-Green Deployment</a> — Trigger conditions, T thresholds for safety-critical fields, and rollback specification</li>
+    <li><a href="whitepaper_overview.html#edge-deployment">§10.9.6 — Edge and Battery-Constrained Deployment</a> — Jetson hardware table, pipeline parallelism argument, power budget analysis, drone examples</li>
+    <li><a href="whitepaper_overview.html#roadmap">§12 Phase 9 — Safety-Critical Deployment Validation</a> — Shadow-mode evaluation, auditable logs, and abstention testing roadmap</li>
+    <li><a href="domain_self_driving.html">Self-Driving domain doc</a> — Road vehicles in depth: Waymo/Cruise/Aurora audience, ISO 26262, NHTSA, blue-green at vehicle scale</li>
+    <li><a href="domain_ai_datacenters.html">AI Data Centers domain doc</a> — Fleet economics and LoRA multi-tenancy for operators running mixed hardware tiers</li>
+    <li><a href="tutorial.html">Tutorial</a> — Architecture walkthrough, confidence updater, Arbiter code, and the blue-green deployment spec</li>
     <li><a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub — Adaptive-Utility-Agent</a> — Agent code, routing experiment, and reference implementation</li>
   </ul>
 </div>
@@ -792,7 +792,7 @@ security:
 audit:
   enabled: true
   hash_chain: true</pre>
-  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial_v1_tmp.html#security">Tutorial §12.4</a> for key management.</p>
+  <p class="caption">Generate your encryption key: <code>python3 -c &quot;import os; print(os.urandom(32).hex())&quot;</code> or <code>openssl rand -hex 32</code> — 64-char hex string. See <a href="tutorial.html#security">Tutorial §12.4</a> for key management.</p>
 
 
   <h3>4. Start and query</h3>
@@ -814,7 +814,7 @@ curl -X POST http://localhost:8000/query \
     <tr><td>Prometheus + Grafana + OTEL</td><td>Your monitoring infrastructure</td></tr>
   </table>
 
-  <p class="caption">Full instructions: <a href="tutorial_v1_tmp.html">AUA Tutorial</a> · <a href="whitepaper_v1_tmp.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
+  <p class="caption">Full instructions: <a href="tutorial.html">AUA Tutorial</a> · <a href="whitepaper.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
   </p>
 
 </div></div>

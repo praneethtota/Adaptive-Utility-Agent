@@ -60,15 +60,15 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 <body>
 <div class="page">
 <nav class="site-nav">
-  <a href="whitepaper_v1_tmp.html">Home</a>
-  <a href="whitepaper_v1_overview_tmp.html">1 · Overview</a>
-  <a href="whitepaper_v1_theory_tmp.html">2 · Theory</a>
-  <a href="whitepaper_v1_architecture_tmp.html" class="active">3 · Architecture</a>
-  <a href="whitepaper_v1_results_tmp.html">4 · Results</a>
-  <a href="whitepaper_v1_appendix_a_tmp.html">App. A · Empirical</a>
-  <a href="whitepaper_v1_appendix_b_tmp.html">App. B · Proofs</a>
-  <a href="whitepaper_v1_appendix_c_tmp.html">App. C · Examples</a>
-  <a href="tutorial_v1_tmp.html">Tutorial</a>
+  <a href="whitepaper.html">Home</a>
+  <a href="whitepaper_overview.html">1 · Overview</a>
+  <a href="whitepaper_theory.html">2 · Theory</a>
+  <a href="whitepaper_architecture.html" class="active">3 · Architecture</a>
+  <a href="whitepaper_results.html">4 · Results</a>
+  <a href="whitepaper_appendix_a.html">App. A · Empirical</a>
+  <a href="whitepaper_appendix_b.html">App. B · Proofs</a>
+  <a href="whitepaper_appendix_c.html">App. C · Examples</a>
+  <a href="tutorial.html">Tutorial</a>
   <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
 </nav>
 <div style="padding:2rem 0 1.5rem">
@@ -77,9 +77,9 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 <p style="font-size:.88rem;color:#555;margin:0 0 .25rem;">Praneeth Tota &nbsp;·&nbsp; Illinois Institute of Technology &nbsp;·&nbsp; v1.0.0</p>
 </div>
 <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 0;border-top:1px solid #e4e1da;margin-top:3rem;font-size:.88rem;">
-<a href="whitepaper_v1_theory_tmp.html">← Theory (§§4–9)</a>
-<a href="whitepaper_v1_overview_tmp.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
-<a href="whitepaper_v1_results_tmp.html">Results (§§11–14) →</a>
+<a href="whitepaper_theory.html">← Theory (§§4–9)</a>
+<a href="whitepaper_overview.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
+<a href="whitepaper_results.html">Results (§§11–14) →</a>
 </div>
 <h2 id="distributed-graph">10. Distributed Model Graph Architecture</h2>
 <h3>10.1 Motivation: Catastrophic Forgetting at Scale</h3>
@@ -182,7 +182,7 @@ Regime 2 — Wrong submodel, high confidence (dangerous)
 
 
 <h3 id="arbiter">10.5 The Arbiter Agent</h3>
-<p class="domain-ref">Builder walkthrough: <a href="tutorial_v1_tmp.html#arbiter">Tutorial §11 — The Arbiter Agent</a></p>
+<p class="domain-ref">Builder walkthrough: <a href="tutorial.html#arbiter">Tutorial §11 — The Arbiter Agent</a></p>
 <p>When two submodels produce conflicting answers to the same query, the system does not escalate to a human or fall back to a parent model — both of which are slow and expensive. Instead, a dedicated <strong>Arbiter Agent</strong> resolves the conflict using the same structured contradiction detection pipeline already built into the system, determines which submodel is correct (or whether both are wrong), and feeds verified corrections back into both submodels simultaneously via the blue-green update mechanism.</p>
 <p><strong>The Arbiter Agent is not a general-purpose reasoner.</strong> It has a single job: given two conflicting outputs A and B on subject S in domain D, determine ground truth and issue correction signals. Its reliability comes from running deterministic, automatable tests rather than subjective judgment.</p>
 <p><strong>Arbitration pipeline:</strong></p>
@@ -631,7 +631,7 @@ s_5 = hedged claim: "X in context Y, but Z in context W"
 <hr />
 
 <h3 id="bluegreen">10.7 Blue-Green Deployment for Submodel Updates</h3>
-<p class="domain-ref">Builder walkthrough: <a href="tutorial_v1_tmp.html#bluegreen">Tutorial §12 — Blue-Green Deployment</a></p>
+<p class="domain-ref">Builder walkthrough: <a href="tutorial.html#bluegreen">Tutorial §12 — Blue-Green Deployment</a></p>
 <p>This is the mechanism by which individual submodels update without disrupting the rest of the graph, and without waiting for a monolithic release cycle.</p>
 <p><strong>Trigger condition:</strong></p>
 <p>A submodel monitors its own utility score over a sliding window. An update cycle is triggered when deviation from baseline is both significant and sustained:</p>
@@ -726,7 +726,7 @@ Rollback (any phase):
 <p><strong>Cost:</strong> Only the relevant 1–3 submodels activate per query. Total inference cost scales with query complexity, not total graph size. The 20-model graph costs roughly the same per query as a single-domain model.</p>
 <p><strong>Auditability:</strong> Every submodel update has a logged trigger (which utility deviation, over which window), a logged promotion trajectory (traffic split over time), and a clear rollback path. This is significantly more auditable than a monolithic model release.</p>
 <h3 id="hardware-adaptive">10.9 Hardware-Adaptive Decomposition and the Consumer GPU Argument</h3>
-<p class="domain-ref">Domain deep-dive: <a href="domain_ai_datacenters_v0_5.html#hardware">AI Data Centers — Hardware-Adaptive Decomposition</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_ai_datacenters.html#hardware">AI Data Centers — Hardware-Adaptive Decomposition</a></p>
 <h4>10.9.1 The Core Architectural Property</h4>
 <p>The granularity of the model graph is not fixed — it is relative to the hardware it runs on. This is a deliberate design property, not a constraint.</p>
 <p><strong>The core principle: intra-GPU compute is orders of magnitude faster than inter-GPU communication.</strong></p>
@@ -772,14 +772,14 @@ Cost per 1,000 output tokens:
 
 <p>The cost inversion argument holds across all fan-out widths up to 5 activated specialists. This is an analytical result from public data, not a measured experiment. The latency picture is more nuanced: a single 7B model on a 4090 generates tokens at 800 tok/sec versus 2,000 tok/sec for a 70B model on an H100 — slower per model, but the specialist 7B model may require fewer tokens because its domain-specific response is more concise and accurate. Latency measurement on physical hardware is the primary item of empirical future work.</p>
 <h4 id="datacenter-economics">10.9.4 Data Center Operator Economics</h4>
-<p class="domain-ref">Domain deep-dive: <a href="domain_ai_datacenters_v0_5.html#cost">AI Data Centers — Cost Model &amp; Revenue per Watt</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_ai_datacenters.html#cost">AI Data Centers — Cost Model &amp; Revenue per Watt</a></p>
 <p>For infrastructure operators the practical implication is best understood through <strong>revenue per watt</strong> and <strong>fleet utilisation</strong>, not abstract model size. A routed specialist architecture lets an operator reserve H100-class capacity for general-purpose premium workloads while serving a large class of professional domain queries on cheaper hardware with higher margin. In that setting the relevant comparison is not “can a 4090 beat an H100 on everything?” but “can a lower-tier GPU serve a specialist workload well enough that the operator earns more per useful query and per watt consumed?”</p>
 <p>This matters most for mixed fleets. Providers such as CoreWeave and other GPU clouds often hold inventory across generations: H100s, A100s, A40s, L40S-class parts, and consumer-adjacent hardware. Without routing, lower-tier inventory risks being stranded in the product catalogue — too weak for frontier monoliths, too expensive for trivial workloads. A specialist-graph architecture gives those GPUs a high-value role. The fleet becomes heterogeneous by design rather than by accident.</p>
 <p>A second lever is <strong>LoRA multi-tenancy</strong>. A base specialist can remain resident while domain- or customer-specific adapters are rotated in, allowing several customers’ specialist workloads to share one logical serving tier. This improves utilisation, lowers cold-start overhead, and creates room for tiered SLAs: premium broad-model inference on scarce frontier hardware, and lower-cost but still high-quality specialist inference on cheaper GPU pools. Under export restrictions, supply constraints, or simply uneven access to H100-class hardware, this flexibility is strategic rather than cosmetic.</p>
 
 
 <h4 id="routing-experiment">10.9.5 Routing Quality Experiment — Physical Hardware (RTX 4090)</h4>
-<p class="domain-ref">Domain deep-dive: <a href="domain_ai_datacenters_v0_5.html#routing">AI Data Centers — Routing Quality Experiment</a> · <a href="domain_software_engineering_v0_5.html#routing">Software Engineering — Routing Results</a> · Full data: <a href="#appendix-a1">Appendix A.1</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_ai_datacenters.html#routing">AI Data Centers — Routing Quality Experiment</a> · <a href="domain_software_engineering.html#routing">Software Engineering — Routing Results</a> · Full data: <a href="#appendix-a1">Appendix A.1</a></p>
 <p>A controlled four-arm routing experiment was run on physical hardware: a single NVIDIA RTX 4090 (24,564 MiB VRAM) via RunPod at $0.69/hr. Three Qwen2.5 AWQ specialists ran concurrently — SWE (7B, port 9001), Math (7B, port 9002), and a 3B Arbiter (port 9003) — at 90.4% VRAM utilization. 120 calls total, 30 per arm, over 41 minutes at $0.47. This replaces the earlier simulation-based estimate in this section.</p>
 <p><strong>Arms:</strong></p>
 <ul>
@@ -873,7 +873,7 @@ Cost per 1,000 output tokens:
 # Full instructions in routing_experiment.py module docstring</code></pre>
 <hr />
 <h4 id="edge-deployment">10.9.6 Edge and Battery-Constrained Deployment</h4>
-<p class="domain-ref">Domain deep-dive: <a href="domain_autonomous_systems_v0_5.html#hardware">Autonomous Systems — Edge Hardware</a> · <a href="domain_self_driving_v0_5.html#hardware">Self-Driving — Jetson Deployment</a></p>
+<p class="domain-ref">Domain deep-dive: <a href="domain_autonomous_systems.html#hardware">Autonomous Systems — Edge Hardware</a> · <a href="domain_self_driving.html#hardware">Self-Driving — Jetson Deployment</a></p>
 <p>The hardware-adaptive decomposition argument has a dimension beyond cost that matters for autonomous vehicles, drones, and other battery-constrained edge systems: for these applications, a monolithic frontier model is not merely more expensive than a Micro-Expert graph — it is physically impossible to deploy within the available power envelope.</p>
 <table>
 <thead><tr><th>Hardware</th><th>VRAM</th><th>TDP (power draw)</th><th>Approx cost (2025)</th><th>Deployment context</th></tr></thead>
@@ -933,14 +933,14 @@ Split brain prevention:
 <p>During the leader election window (~150–300ms), incoming queries are queued at the load balancer rather than dropped. The queue depth is bounded by the election timeout — after a new leader is elected, the queue drains immediately. For fields with tight latency requirements (surgery, aviation), the escalation fallback can be pre-configured to route to a cached last-known-good response during this window rather than queuing.</p>
 
 <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 0;border-top:1px solid #e4e1da;margin-top:3rem;font-size:.88rem;">
-<a href="whitepaper_v1_theory_tmp.html">← Theory (§§4–9)</a>
-<a href="whitepaper_v1_overview_tmp.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
-<a href="whitepaper_v1_results_tmp.html">Results (§§11–14) →</a>
+<a href="whitepaper_theory.html">← Theory (§§4–9)</a>
+<a href="whitepaper_overview.html#toc" style="color:var(--muted,#6b7280);">Table of Contents</a>
+<a href="whitepaper_results.html">Results (§§11–14) →</a>
 </div>
 <div style="padding:2rem 0;border-top:2px solid #e8e4de;margin-top:3rem;font-size:.84rem;color:#6b7280;display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
 <div><strong style="color:#333;">Praneeth Tota</strong> · Ph.D. Computer Science (Algorithmic Game Theory) · Illinois Institute of Technology<br>
 <a href="https://praneethtota.github.io" style="color:#4338ca;">praneethtota.github.io</a> · Whitepaper: CC BY 4.0</div>
-<div style="text-align:right;"><a href="whitepaper_v1_tmp.html" style="color:#4338ca;">Home</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" style="color:#4338ca;">GitHub</a><br>AUA Framework v1.0.0</div>
+<div style="text-align:right;"><a href="whitepaper.html" style="color:#4338ca;">Home</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" style="color:#4338ca;">GitHub</a><br>AUA Framework v1.0.0</div>
 </div>
 </div>
 </body>
