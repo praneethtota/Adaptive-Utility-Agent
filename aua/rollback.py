@@ -23,42 +23,37 @@ import json
 import os
 import signal
 import subprocess
-import sys
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
 
-import httpx
 import yaml
 from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
-from rich import box
 
 console = Console()
 
 PROMOTIONS_FILE = "results/aua_promotions.json"
-HEALTH_TIMEOUT  = 120
-POLL_INTERVAL   = 3.0
+HEALTH_TIMEOUT = 120
+POLL_INTERVAL = 3.0
 
 
 # ── Data model ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class PromotionEvent:
     """One entry in the promotions log."""
-    id:           str
-    timestamp:    str
-    specialist:   str
-    from_model:   str          # model before promotion (the BLUE model)
-    to_model:     str          # model after promotion (the GREEN model)
-    event:        str          # "promote" | "rollback"
-    u_delta:      float = 0.0  # U improvement that triggered promotion
-    reverted:     bool  = False
-    reverted_at:  Optional[str] = None
+
+    id: str
+    timestamp: str
+    specialist: str
+    from_model: str  # model before promotion (the BLUE model)
+    to_model: str  # model after promotion (the GREEN model)
+    event: str  # "promote" | "rollback"
+    u_delta: float = 0.0  # U improvement that triggered promotion
+    reverted: bool = False
+    reverted_at: str | None = None
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -66,7 +61,8 @@ class PromotionEvent:
 
 # ── Promotions log ────────────────────────────────────────────────────────────
 
-def load_promotions(project_dir: str = ".") -> List[PromotionEvent]:
+
+def load_promotions(project_dir: str = ".") -> list[PromotionEvent]:
     """Load the promotions log from results/aua_promotions.json."""
     path = Path(project_dir) / PROMOTIONS_FILE
     if not path.exists():
@@ -79,7 +75,7 @@ def load_promotions(project_dir: str = ".") -> List[PromotionEvent]:
         return []
 
 
-def save_promotions(events: List[PromotionEvent], project_dir: str = ".") -> None:
+def save_promotions(events: list[PromotionEvent], project_dir: str = ".") -> None:
     """Write the promotions log, creating results/ if needed."""
     path = Path(project_dir) / PROMOTIONS_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -87,11 +83,11 @@ def save_promotions(events: List[PromotionEvent], project_dir: str = ".") -> Non
 
 
 def record_promotion(
-    specialist:  str,
-    from_model:  str,
-    to_model:    str,
-    u_delta:     float = 0.0,
-    project_dir: str   = ".",
+    specialist: str,
+    from_model: str,
+    to_model: str,
+    u_delta: float = 0.0,
+    project_dir: str = ".",
 ) -> PromotionEvent:
     """
     Record a blue-green promotion. Called by the promotion checker after a
@@ -99,14 +95,14 @@ def record_promotion(
     """
     events = load_promotions(project_dir)
     event = PromotionEvent(
-        id          = f"promo_{len(events)+1:04d}",
-        timestamp   = datetime.now(timezone.utc).isoformat(),
-        specialist  = specialist,
-        from_model  = from_model,
-        to_model    = to_model,
-        event       = "promote",
-        u_delta     = u_delta,
-        reverted    = False,
+        id=f"promo_{len(events)+1:04d}",
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        specialist=specialist,
+        from_model=from_model,
+        to_model=to_model,
+        event="promote",
+        u_delta=u_delta,
+        reverted=False,
     )
     events.append(event)
     save_promotions(events, project_dir)
@@ -115,12 +111,13 @@ def record_promotion(
 
 # ── Core rollback logic ───────────────────────────────────────────────────────
 
+
 def run_rollback(
-    config_path:    str  = "aua_config.yaml",
-    specialist:     Optional[str] = None,
+    config_path: str = "aua_config.yaml",
+    specialist: str | None = None,
     all_specialists: bool = False,
-    yes:            bool  = False,
-    restart:        bool  = True,
+    yes: bool = False,
+    restart: bool = True,
 ) -> int:
     """
     Revert specialist(s) to their previous BLUE model.
@@ -153,8 +150,7 @@ def run_rollback(
         known = [s.name for s in cfg.specialists]
         if specialist not in known:
             console.print(
-                f"[red]✗  Unknown specialist '[bold]{specialist}[/bold]'.[/red]  "
-                f"Known: {known}"
+                f"[red]✗  Unknown specialist '[bold]{specialist}[/bold]'.[/red]  " f"Known: {known}"
             )
             return 1
         targets = [specialist]
@@ -170,20 +166,16 @@ def run_rollback(
     for target_name in targets:
         # Check if there's anything to roll back before attempting
         promotions = [
-            e for e in events
+            e
+            for e in events
             if e.specialist == target_name and e.event == "promote" and not e.reverted
         ]
         if not promotions:
             if all_specialists:
                 # --all: silently skip specialists with no history
-                console.print(
-                    f"  [dim]{target_name}: no un-reverted promotions — skipping[/dim]"
-                )
+                console.print(f"  [dim]{target_name}: no un-reverted promotions — skipping[/dim]")
                 continue
-        result = _rollback_one(
-            target_name, cfg, config_path, project_dir,
-            events, yes, restart
-        )
+        result = _rollback_one(target_name, cfg, config_path, project_dir, events, yes, restart)
         if result != 0:
             n_errors += 1
 
@@ -191,13 +183,13 @@ def run_rollback(
 
 
 def _rollback_one(
-    name:        str,
+    name: str,
     cfg,
     config_path: str,
     project_dir: str,
-    events:      List[PromotionEvent],
-    yes:         bool,
-    restart:     bool,
+    events: list[PromotionEvent],
+    yes: bool,
+    restart: bool,
 ) -> int:
     """Roll back a single specialist. Returns 0 on success, 1 on failure."""
 
@@ -208,8 +200,7 @@ def _rollback_one(
 
     # ── Find the last non-reverted promotion for this specialist ──────────
     promotions = [
-        e for e in events
-        if e.specialist == name and e.event == "promote" and not e.reverted
+        e for e in events if e.specialist == name and e.event == "promote" and not e.reverted
     ]
 
     if not promotions:
@@ -217,55 +208,59 @@ def _rollback_one(
         return 1
 
     last = promotions[-1]
-    blue_model  = last.from_model   # what we're rolling back TO
-    green_model = last.to_model     # what's currently deployed
+    blue_model = last.from_model  # what we're rolling back TO
+    green_model = last.to_model  # what's currently deployed
 
     # ── Confirm ───────────────────────────────────────────────────────────
     if not yes:
         console.print(f"\n[bold]Rollback plan for [cyan]{name}[/cyan]:[/bold]")
         console.print(f"  Current model : [red]{green_model}[/red]")
         console.print(f"  Restore to    : [green]{blue_model}[/green]")
-        console.print(f"  Promoted at   : [dim]{last.timestamp}[/dim]  "
-                      f"U_delta={last.u_delta:+.4f}")
+        console.print(
+            f"  Promoted at   : [dim]{last.timestamp}[/dim]  " f"U_delta={last.u_delta:+.4f}"
+        )
         if not _confirm("Proceed with rollback?"):
             console.print("[dim]Rollback cancelled.[/dim]")
             return 0
 
-    console.print(f"\n[bold]Rolling back [cyan]{name}[/cyan][/bold]  "
-                  f"[dim]{green_model} → {blue_model}[/dim]")
+    console.print(
+        f"\n[bold]Rolling back [cyan]{name}[/cyan][/bold]  "
+        f"[dim]{green_model} → {blue_model}[/dim]"
+    )
 
     # ── 1. Update aua_config.yaml ─────────────────────────────────────────
     _update_config_model(config_path, name, blue_model)
-    console.print(f"  [green]✓[/green] aua_config.yaml updated  "
-                  f"[dim]({name}.model = {blue_model})[/dim]")
+    console.print(
+        f"  [green]✓[/green] aua_config.yaml updated  " f"[dim]({name}.model = {blue_model})[/dim]"
+    )
 
     # ── 2. Restart server (vLLM only; Ollama is self-managing) ───────────
     if restart and cfg.backend == "vllm":
         _restart_specialist(spec, blue_model)
     elif cfg.backend == "ollama":
-        console.print(f"  [dim]Ollama backend — no restart needed (model change takes effect on next query)[/dim]")
+        console.print(
+            "  [dim]Ollama backend — no restart needed (model change takes effect on next query)[/dim]"
+        )
 
     # ── 3. Mark promotion as reverted in log ──────────────────────────────
-    last.reverted    = True
+    last.reverted = True
     last.reverted_at = datetime.now(timezone.utc).isoformat()
 
     # Record rollback event
     rollback_event = PromotionEvent(
-        id          = f"rollback_{len(events)+1:04d}",
-        timestamp   = last.reverted_at,
-        specialist  = name,
-        from_model  = green_model,
-        to_model    = blue_model,
-        event       = "rollback",
-        reverted    = False,
+        id=f"rollback_{len(events)+1:04d}",
+        timestamp=last.reverted_at,
+        specialist=name,
+        from_model=green_model,
+        to_model=blue_model,
+        event="rollback",
+        reverted=False,
     )
     events.append(rollback_event)
     save_promotions(events, project_dir)
-    console.print(f"  [green]✓[/green] Promotions log updated")
+    console.print("  [green]✓[/green] Promotions log updated")
 
-    console.print(
-        f"\n[bold green]✓ {name} rolled back to {blue_model}[/bold green]"
-    )
+    console.print(f"\n[bold green]✓ {name} rolled back to {blue_model}[/bold green]")
     return 0
 
 
@@ -285,7 +280,7 @@ def _restart_specialist(spec, blue_model: str) -> None:
             for _ in range(15):
                 time.sleep(1)
                 try:
-                    os.kill(pid, 0)   # check if still alive
+                    os.kill(pid, 0)  # check if still alive
                 except ProcessLookupError:
                     break
             else:
@@ -306,6 +301,7 @@ def _restart_specialist(spec, blue_model: str) -> None:
 
     # Rebuild the vllm command with the blue model
     import copy
+
     spec_copy = copy.copy(spec)
     spec_copy.model = blue_model
     cmd = spec_copy.vllm_command()
@@ -318,7 +314,8 @@ def _restart_specialist(spec, blue_model: str) -> None:
         env["CUDA_VISIBLE_DEVICES"] = str(spec.gpu)
 
     p = subprocess.Popen(
-        cmd, env=env,
+        cmd,
+        env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
     )
@@ -327,6 +324,7 @@ def _restart_specialist(spec, blue_model: str) -> None:
 
 
 # ── Config patching ───────────────────────────────────────────────────────────
+
 
 def _update_config_model(config_path: str, specialist_name: str, new_model: str) -> None:
     """
@@ -350,12 +348,12 @@ def _update_config_model(config_path: str, specialist_name: str, new_model: str)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _find_pid_on_port(port: int) -> Optional[int]:
+
+def _find_pid_on_port(port: int) -> int | None:
     """Return the PID listening on port, or None."""
     try:
         result = subprocess.run(
-            ["lsof", "-ti", f"tcp:{port}"],
-            capture_output=True, text=True, timeout=3
+            ["lsof", "-ti", f"tcp:{port}"], capture_output=True, text=True, timeout=3
         )
         pids = result.stdout.strip().splitlines()
         return int(pids[0]) if pids else None
@@ -377,11 +375,12 @@ def _print_no_promotion(name: str, spec, project_dir: str) -> None:
     log_path = Path(project_dir) / PROMOTIONS_FILE
     blue_json = Path(project_dir) / "results" / "blue_baseline.json"
 
-    console.print(f"\n[yellow]⚠[/yellow]  No promotion history found for "
-                  f"[bold]{name}[/bold].")
+    console.print(f"\n[yellow]⚠[/yellow]  No promotion history found for " f"[bold]{name}[/bold].")
     console.print()
-    console.print(f"  Promotions log: [dim]{log_path}[/dim]  "
-                  f"({'exists' if log_path.exists() else 'not found'})")
+    console.print(
+        f"  Promotions log: [dim]{log_path}[/dim]  "
+        f"({'exists' if log_path.exists() else 'not found'})"
+    )
 
     if blue_json.exists():
         try:
@@ -396,7 +395,7 @@ def _print_no_promotion(name: str, spec, project_dir: str) -> None:
             pass
 
     console.print(
-        f"\n  [dim]aua rollback only works after a successful promotion.\n"
-        f"  If GREEN was never promoted, there is nothing to roll back.\n"
-        f"  To manually revert, update model: in aua_config.yaml and run aua serve.[/dim]"
+        "\n  [dim]aua rollback only works after a successful promotion.\n"
+        "  If GREEN was never promoted, there is nothing to roll back.\n"
+        "  To manually revert, update model: in aua_config.yaml and run aua serve.[/dim]"
     )

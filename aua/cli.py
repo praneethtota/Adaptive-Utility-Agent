@@ -4,13 +4,14 @@ aua/cli.py — Command-line interface.
 Commands:
     aua serve     #04 ✓  start all specialists + router
     aua init      #05 ✓  scaffold a new project
-    aua status    #06 ✓  live terminal dashboard
-    aua doctor    #07 ✓  pre-flight diagnostics
-    aua rollback  #08 ✓  one-command revert to BLUE model
+    aua status    #06 —  stub
+    aua doctor    #07 —  stub
+    aua rollback  #08 —  stub
 """
 
 import sys
 from pathlib import Path
+
 import click
 from rich.console import Console
 
@@ -33,20 +34,40 @@ def main():
 
 # ── aua serve ─────────────────────────────────────────────────────────────────
 
+
 @main.command()
-@click.option("--config", "-c", default="aua_config.yaml", show_default=True,
-              help="Path to aua_config.yaml.")
-@click.option("--dry-run", is_flag=True, default=False,
-              help="Print startup commands without executing them.")
-@click.option("--no-router", is_flag=True, default=False,
-              help="Start specialists only — skip the FastAPI router.")
-@click.option("--router-only", is_flag=True, default=False,
-              help="Start the FastAPI router only (assume specialists already running).")
-@click.option("--startup-timeout", default=120, show_default=True, type=int,
-              help="Seconds to wait for each specialist to become healthy.")
-@click.option("--tier", "-t", default=None,
-              type=click.Choice(["macbook", "rtx4090", "a100"], case_sensitive=False),
-              help="Use a built-in hardware-tier template instead of aua_config.yaml.")
+@click.option(
+    "--config", "-c", default="aua_config.yaml", show_default=True, help="Path to aua_config.yaml."
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False, help="Print startup commands without executing them."
+)
+@click.option(
+    "--no-router",
+    is_flag=True,
+    default=False,
+    help="Start specialists only — skip the FastAPI router.",
+)
+@click.option(
+    "--router-only",
+    is_flag=True,
+    default=False,
+    help="Start the FastAPI router only (assume specialists already running).",
+)
+@click.option(
+    "--startup-timeout",
+    default=120,
+    show_default=True,
+    type=int,
+    help="Seconds to wait for each specialist to become healthy.",
+)
+@click.option(
+    "--tier",
+    "-t",
+    default=None,
+    type=click.Choice(["macbook", "rtx4090", "a100"], case_sensitive=False),
+    help="Use a built-in hardware-tier template instead of aua_config.yaml.",
+)
 def serve(config, dry_run, no_router, router_only, startup_timeout, tier):
     """Start all specialists + router from aua_config.yaml.
 
@@ -72,19 +93,35 @@ def serve(config, dry_run, no_router, router_only, startup_timeout, tier):
         console.print(f"[red]Config error:[/red] {e}")
         sys.exit(1)
 
-    _serve(config=cfg, dry_run=dry_run, no_router=no_router,
-           router_only=router_only, startup_timeout=startup_timeout)
+    _serve(
+        config=cfg,
+        dry_run=dry_run,
+        no_router=no_router,
+        router_only=router_only,
+        startup_timeout=startup_timeout,
+    )
 
 
 # ── aua init ──────────────────────────────────────────────────────────────────
 
+
 @main.command()
 @click.argument("project_dir", default=".")
-@click.option("--tier", "-t", default="rtx4090", show_default=True,
-              type=click.Choice(["macbook", "rtx4090", "a100"], case_sensitive=False),
-              help="Hardware tier template to scaffold.")
-@click.option("--force", "-f", is_flag=True, default=False,
-              help="Overwrite existing aua_config.yaml if present.")
+@click.option(
+    "--tier",
+    "-t",
+    default="rtx4090",
+    show_default=True,
+    type=click.Choice(["macbook", "rtx4090", "a100"], case_sensitive=False),
+    help="Hardware tier template to scaffold.",
+)
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    default=False,
+    help="Overwrite existing aua_config.yaml if present.",
+)
 def init(project_dir, tier, force):
     """Scaffold a new AUA project directory.
 
@@ -119,23 +156,22 @@ def init(project_dir, tier, force):
     config_path = target / "aua_config.yaml"
     if config_path.exists() and not force:
         console.print(
-            f"[yellow]⚠[/yellow]  [cyan]aua_config.yaml[/cyan] already exists. "
-            f"Use [bold]--force[/bold] to overwrite."
+            "[yellow]⚠[/yellow]  [cyan]aua_config.yaml[/cyan] already exists. "
+            "Use [bold]--force[/bold] to overwrite."
         )
     else:
         tier_src = Path(__file__).parent / "tiers" / f"{tier}.yaml"
         shutil.copy(tier_src, config_path)
         action = "Overwrote" if force else "Created"
         console.print(
-            f"[green]✓[/green] {action} [cyan]aua_config.yaml[/cyan]  "
-            f"[dim](tier: {tier})[/dim]"
+            f"[green]✓[/green] {action} [cyan]aua_config.yaml[/cyan]  " f"[dim](tier: {tier})[/dim]"
         )
 
     for name, note in [
-        ("models",    "put downloaded AWQ / Ollama models here"),
+        ("models", "put downloaded AWQ / Ollama models here"),
         ("dpo_pairs", "accumulated automatically — do not edit manually"),
-        ("results",   "experiment outputs, baselines, and promotion logs"),
-        ("logs",      "runtime logs from aua serve"),
+        ("results", "experiment outputs, baselines, and promotion logs"),
+        ("logs", "runtime logs from aua serve"),
     ]:
         d = target / name
         if not d.exists():
@@ -149,7 +185,7 @@ def init(project_dir, tier, force):
         gitignore_path.write_text(
             "# AUA project\nmodels/\nresults/\nlogs/\n*.log\n__pycache__/\n*.pyc\n.DS_Store\n"
         )
-        console.print(f"[green]✓[/green] Created [cyan].gitignore[/cyan]")
+        console.print("[green]✓[/green] Created [cyan].gitignore[/cyan]")
 
     from rich.panel import Panel
     from rich.text import Text
@@ -164,21 +200,26 @@ def init(project_dir, tier, force):
     cd_str = f"cd {project_dir}  &&  " if project_dir != "." else ""
     next_steps = Text()
     next_steps.append(f"  1.  {cd_str}aua doctor\n", style="white")
-    next_steps.append(f"  2.  {step2}\n",             style="white")
-    next_steps.append(f"  3.  {step3}\n",             style="bold green")
+    next_steps.append(f"  2.  {step2}\n", style="white")
+    next_steps.append(f"  3.  {step3}\n", style="bold green")
 
-    console.print(Panel(
-        next_steps,
-        title=f"[bold green]✓ Project scaffolded[/bold green]  [dim]{tier} tier[/dim]",
-        border_style="green", padding=(0, 1),
-    ))
+    console.print(
+        Panel(
+            next_steps,
+            title=f"[bold green]✓ Project scaffolded[/bold green]  [dim]{tier} tier[/dim]",
+            border_style="green",
+            padding=(0, 1),
+        )
+    )
 
 
 # ── aua doctor ────────────────────────────────────────────────────────────────
 
+
 @main.command()
-@click.option("--config", "-c", default="aua_config.yaml", show_default=True,
-              help="Path to aua_config.yaml.")
+@click.option(
+    "--config", "-c", default="aua_config.yaml", show_default=True, help="Path to aua_config.yaml."
+)
 def doctor(config):
     """Check the entire setup before running aua serve.
 
@@ -186,10 +227,11 @@ def doctor(config):
     Check groups (in order):
         1. Config       file found · YAML syntax · schema valid
         2. Dependencies required packages · backend binary (vllm / ollama)
-        3. Hardware     GPU/CPU/Apple Silicon · memory · ports free
+        3. Hardware     CUDA · VRAM projection · ports free
         4. Models       local paths exist · HuggingFace IDs flagged
         5. Specialists  live ping (warns, not fails, if not yet started)
 
+    Each check outputs PASS / FAIL / WARN with a fix instruction.
     Returns exit code 1 if any check fails.
 
     \b
@@ -198,6 +240,7 @@ def doctor(config):
         aua doctor --config /path/to/aua_config.yaml
     """
     from aua.doctor import run_doctor
+
     n_failures = run_doctor(config)
     if n_failures > 0:
         sys.exit(1)
@@ -205,19 +248,25 @@ def doctor(config):
 
 # ── aua status ────────────────────────────────────────────────────────────────
 
+
 @main.command()
-@click.option("--config", "-c", default="aua_config.yaml", show_default=True,
-              help="Path to aua_config.yaml (used to read router port).")
-@click.option("--interval", default=2, show_default=True, type=int,
-              help="Refresh interval in seconds.")
-@click.option("--url", default=None,
-              help="Router URL override (default: read from config).")
+@click.option(
+    "--config",
+    "-c",
+    default="aua_config.yaml",
+    show_default=True,
+    help="Path to aua_config.yaml (used to read router port).",
+)
+@click.option(
+    "--interval", default=2, show_default=True, type=int, help="Refresh interval in seconds."
+)
+@click.option("--url", default=None, help="Router URL override (default: read from config).")
 def status(config, interval, url):
     """Live terminal dashboard — specialist health, U scores, and more.
 
     \b
     Displays (auto-refreshes every --interval seconds):
-        - Specialists  up/down · p50/p95 latency · requests · Memory
+        - Specialists  up/down · p50/p95 latency · requests · VRAM
         - Routing      single / fan-out / arbiter fallback breakdown
         - Utility      mean U · last U · confidence per domain
         - Corrections  contradictions · DPO pairs · assertions stored
@@ -236,6 +285,7 @@ def status(config, interval, url):
     else:
         try:
             from aua.config import load_config
+
             cfg = load_config(config)
             host = "localhost" if cfg.router.host == "0.0.0.0" else cfg.router.host
             router_url = f"http://{host}:{cfg.router.port}"
@@ -247,19 +297,36 @@ def status(config, interval, url):
 
 # ── aua rollback ──────────────────────────────────────────────────────────────
 
+
 @main.command()
-@click.option("--config", "-c", default="aua_config.yaml", show_default=True,
-              help="Path to aua_config.yaml.")
-@click.option("--specialist", "-s", default=None,
-              help="Name of the specialist to roll back (e.g. swe, math).")
-@click.option("--all", "all_specialists", is_flag=True, default=False,
-              help="Roll back all specialists that have promotion history.")
-@click.option("--yes", "-y", is_flag=True, default=False,
-              help="Skip confirmation prompt.")
-@click.option("--no-restart", "no_restart", is_flag=True, default=False,
-              help="Update aua_config.yaml only — do not restart the server.")
+@click.option(
+    "--config", "-c", default="aua_config.yaml", show_default=True, help="Path to aua_config.yaml."
+)
+@click.option(
+    "--specialist", "-s", default=None, help="Name of the specialist to roll back (e.g. swe, math)."
+)
+@click.option(
+    "--all",
+    "all_specialists",
+    is_flag=True,
+    default=False,
+    help="Roll back all specialists that have promotion history.",
+)
+@click.option("--yes", "-y", is_flag=True, default=False, help="Skip confirmation prompt.")
+@click.option(
+    "--no-restart",
+    "no_restart",
+    is_flag=True,
+    default=False,
+    help="Update aua_config.yaml only — do not restart the server.",
+)
 def rollback(config, specialist, all_specialists, yes, no_restart):
     """Revert specialist(s) to their previous BLUE model.
+
+    \b
+    Reads results/aua_promotions.json, finds the last non-reverted promotion
+    for the target specialist, reverts aua_config.yaml to the BLUE model,
+    restarts the server, and marks the promotion as reverted.
 
     \b
     Steps:
@@ -275,7 +342,7 @@ def rollback(config, specialist, all_specialists, yes, no_restart):
         aua rollback --specialist swe
         aua rollback --specialist swe --yes
         aua rollback --all
-        aua rollback --specialist swe --no-restart
+        aua rollback --specialist swe --no-restart   # config only
     """
     from aua.rollback import run_rollback
 
@@ -288,11 +355,11 @@ def rollback(config, specialist, all_specialists, yes, no_restart):
         sys.exit(1)
 
     result = run_rollback(
-        config_path     = config,
-        specialist      = specialist,
-        all_specialists = all_specialists,
-        yes             = yes,
-        restart         = not no_restart,
+        config_path=config,
+        specialist=specialist,
+        all_specialists=all_specialists,
+        yes=yes,
+        restart=not no_restart,
     )
     if result != 0:
         sys.exit(1)

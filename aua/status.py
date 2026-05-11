@@ -23,28 +23,26 @@ CLI:
 from __future__ import annotations
 
 import time
-from typing import Optional
 
 import httpx
-from rich.columns import Columns
+from rich import box
 from rich.console import Console
-from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from rich import box
 
 console = Console()
 
 STATUS_POLL_TIMEOUT = 3.0
-_UP_STYLE   = "bold green"
+_UP_STYLE = "bold green"
 _DOWN_STYLE = "bold red"
-_DIM        = "dim"
-_ACCENT     = "bold cyan"
+_DIM = "dim"
+_ACCENT = "bold cyan"
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def run_status(
     router_url: str = "http://localhost:8000",
@@ -54,9 +52,7 @@ def run_status(
     Poll the router's /status endpoint and render a live dashboard.
     Blocks until Ctrl+C.
     """
-    console.print(
-        f"[dim]Connecting to router at [cyan]{router_url}[/cyan]…[/dim]"
-    )
+    console.print(f"[dim]Connecting to router at [cyan]{router_url}[/cyan]…[/dim]")
 
     with Live(
         _render(None, router_url),
@@ -77,7 +73,8 @@ def run_status(
 
 # ── Fetch ─────────────────────────────────────────────────────────────────────
 
-def _fetch(router_url: str) -> Optional[dict]:
+
+def _fetch(router_url: str) -> dict | None:
     """Fetch /status; return None if unreachable."""
     try:
         with httpx.Client(timeout=STATUS_POLL_TIMEOUT) as client:
@@ -91,7 +88,8 @@ def _fetch(router_url: str) -> Optional[dict]:
 
 # ── Render ────────────────────────────────────────────────────────────────────
 
-def _render(data: Optional[dict], router_url: str):
+
+def _render(data: dict | None, router_url: str):
     """Build the full dashboard from a /status response (or an error panel)."""
     ts = time.strftime("%H:%M:%S")
 
@@ -124,6 +122,7 @@ def _render(data: Optional[dict], router_url: str):
 
     # Stack all sections, filtered to non-None
     from rich.console import Group as RichGroup
+
     body = RichGroup(*[s for s in sections if s is not None])
 
     return Panel(
@@ -140,11 +139,11 @@ def _render(data: Optional[dict], router_url: str):
 
 # ── Section builders ──────────────────────────────────────────────────────────
 
+
 def _specialists_table(data: dict):
-    health    = data.get("health", {})
-    latency   = data.get("latency", {})
-    memory    = data.get("memory", {})
-    req_count = data.get("routing", {}).get("by_mode", {})
+    health = data.get("health", {})
+    latency = data.get("latency", {})
+    memory = data.get("memory", {})
 
     t = Table(
         title="Specialists",
@@ -155,12 +154,12 @@ def _specialists_table(data: dict):
         header_style="bold dim",
         padding=(0, 1),
     )
-    t.add_column("Name",     style=_ACCENT, min_width=10)
-    t.add_column("Status",   min_width=8)
-    t.add_column("p50 ms",   justify="right", min_width=8)
-    t.add_column("p95 ms",   justify="right", min_width=8)
+    t.add_column("Name", style=_ACCENT, min_width=10)
+    t.add_column("Status", min_width=8)
+    t.add_column("p50 ms", justify="right", min_width=8)
+    t.add_column("p95 ms", justify="right", min_width=8)
     t.add_column("Requests", justify="right", min_width=9)
-    t.add_column("Memory",   min_width=22)
+    t.add_column("Memory", min_width=22)
 
     for name, status in health.items():
         ok = status == "ok"
@@ -171,9 +170,7 @@ def _specialists_table(data: dict):
         samples = str(lat.get("samples", 0))
 
         # Memory: try gpu0 first, then system, then first available key
-        vram_str = (memory.get("gpu0")
-                    or memory.get("system")
-                    or next(iter(memory.values()), "—"))
+        vram_str = memory.get("gpu0") or memory.get("system") or next(iter(memory.values()), "—")
 
         t.add_row(name, status_str, p50, p95, samples, Text(str(vram_str), style=_DIM))
 
@@ -182,8 +179,8 @@ def _specialists_table(data: dict):
 
 def _routing_table(data: dict) -> Table:
     routing = data.get("routing", {})
-    total   = routing.get("total_queries", 0)
-    modes   = routing.get("by_mode", {})
+    total = routing.get("total_queries", 0)
+    modes = routing.get("by_mode", {})
 
     t = Table(
         title="Routing",
@@ -194,30 +191,31 @@ def _routing_table(data: dict) -> Table:
         header_style="bold dim",
         padding=(0, 1),
     )
-    t.add_column("Mode",    min_width=20)
-    t.add_column("Count",   justify="right", min_width=7)
-    t.add_column("Share",   justify="right", min_width=7)
-    t.add_column("",        min_width=22)
+    t.add_column("Mode", min_width=20)
+    t.add_column("Count", justify="right", min_width=7)
+    t.add_column("Share", justify="right", min_width=7)
+    t.add_column("", min_width=22)
 
     for mode, label in [
-        ("single",  "Single domain"),
-        ("fanout",  "Fan-out (cross-domain)"),
+        ("single", "Single domain"),
+        ("fanout", "Fan-out (cross-domain)"),
         ("arbiter", "Arbiter fallback"),
     ]:
         count = modes.get(mode, 0)
-        pct   = count / total * 100 if total > 0 else 0.0
-        bar   = _mini_bar(pct / 100, width=20)
+        pct = count / total * 100 if total > 0 else 0.0
+        bar = _mini_bar(pct / 100, width=20)
         t.add_row(label, str(count), f"{pct:.1f}%", bar)
 
     t.add_row(
-        Text(f"Total queries", style="bold"),
+        Text("Total queries", style="bold"),
         Text(str(total), style="bold"),
-        "", "",
+        "",
+        "",
     )
     return t
 
 
-def _utility_table(data: dict) -> Optional[Table]:
+def _utility_table(data: dict) -> Table | None:
     utility = data.get("utility", {})
     if not utility:
         return None
@@ -231,17 +229,17 @@ def _utility_table(data: dict) -> Optional[Table]:
         header_style="bold dim",
         padding=(0, 1),
     )
-    t.add_column("Domain",     min_width=22)
-    t.add_column("Mean U",     justify="right", min_width=8)
-    t.add_column("Last U",     justify="right", min_width=8)
+    t.add_column("Domain", min_width=22)
+    t.add_column("Mean U", justify="right", min_width=8)
+    t.add_column("Last U", justify="right", min_width=8)
     t.add_column("Confidence", justify="right", min_width=11)
-    t.add_column("Queries",    justify="right", min_width=8)
+    t.add_column("Queries", justify="right", min_width=8)
 
     for domain, stats in utility.items():
         mean_u = f"{stats['mean_u']:.4f}" if stats.get("mean_u") is not None else "—"
         last_u = f"{stats['last_u']:.4f}" if stats.get("last_u") is not None else "—"
-        conf   = f"{stats['confidence']:.4f}" if stats.get("confidence") is not None else "—"
-        q      = str(stats.get("queries", 0))
+        conf = f"{stats['confidence']:.4f}" if stats.get("confidence") is not None else "—"
+        q = str(stats.get("queries", 0))
         t.add_row(domain, mean_u, last_u, conf, q)
 
     return t
@@ -258,27 +256,27 @@ def _corrections_table(data: dict) -> Table:
         show_header=False,
         padding=(0, 1),
     )
-    t.add_column("Metric",  min_width=28)
-    t.add_column("Value",   justify="right", min_width=8)
+    t.add_column("Metric", min_width=28)
+    t.add_column("Value", justify="right", min_width=8)
 
-    total_q = data.get("routing", {}).get("total_queries", 0)
-    contra  = corr.get("total_contradictions", 0)
-    rate    = corr.get("contradiction_rate", 0.0)
+    contra = corr.get("total_contradictions", 0)
+    rate = corr.get("contradiction_rate", 0.0)
 
-    t.add_row("Contradictions detected",  str(contra))
-    t.add_row("DPO pairs accumulated",    str(corr.get("dpo_pairs", 0)))
-    t.add_row("Assertions stored",        str(corr.get("assertions_stored", 0)))
+    t.add_row("Contradictions detected", str(contra))
+    t.add_row("DPO pairs accumulated", str(corr.get("dpo_pairs", 0)))
+    t.add_row("Assertions stored", str(corr.get("assertions_stored", 0)))
     t.add_row(
         "Contradiction rate",
-        Text(f"{rate*100:.1f}%",
-             style="red" if rate > 0.3 else "yellow" if rate > 0.1 else "green")
+        Text(
+            f"{rate*100:.1f}%", style="red" if rate > 0.3 else "yellow" if rate > 0.1 else "green"
+        ),
     )
     return t
 
 
-def _arbiter_table(data: dict) -> Optional[Table]:
+def _arbiter_table(data: dict) -> Table | None:
     verdicts = data.get("arbiter_verdicts", {})
-    total    = sum(verdicts.values())
+    total = sum(verdicts.values())
     if total == 0:
         return None
 
@@ -291,10 +289,10 @@ def _arbiter_table(data: dict) -> Optional[Table]:
         header_style="bold dim",
         padding=(0, 1),
     )
-    t.add_column("Case",    min_width=24)
-    t.add_column("Count",   justify="right", min_width=6)
-    t.add_column("Share",   justify="right", min_width=7)
-    t.add_column("",        min_width=20)
+    t.add_column("Case", min_width=24)
+    t.add_column("Count", justify="right", min_width=6)
+    t.add_column("Share", justify="right", min_width=7)
+    t.add_column("", min_width=20)
 
     labels = {
         "case_1": "Case 1 — A correct, B wrong",
@@ -302,14 +300,11 @@ def _arbiter_table(data: dict) -> Optional[Table]:
         "case_3": "Case 3 — both wrong",
         "case_4": "Case 4 — inconclusive (escalate)",
     }
-    styles = {
-        "case_1": "green", "case_2": "green",
-        "case_3": "yellow", "case_4": "red"
-    }
+    styles = {"case_1": "green", "case_2": "green", "case_3": "yellow", "case_4": "red"}
     for key, label in labels.items():
         count = verdicts.get(key, 0)
-        pct   = count / total * 100 if total > 0 else 0.0
-        bar   = _mini_bar(pct / 100, width=20)
+        pct = count / total * 100 if total > 0 else 0.0
+        bar = _mini_bar(pct / 100, width=20)
         t.add_row(
             Text(label, style=styles[key]),
             str(count),
@@ -321,6 +316,7 @@ def _arbiter_table(data: dict) -> Optional[Table]:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _mini_bar(fraction: float, width: int = 20) -> Text:
     """Render a mini horizontal bar: ██████░░░░░░░░  (filled / empty)."""

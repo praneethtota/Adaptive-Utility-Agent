@@ -23,21 +23,20 @@ Usage (CLI — preferred):
 from __future__ import annotations
 
 import os
+import shutil
 import signal
 import subprocess
 import sys
 import time
-from typing import List, Optional
 
 import httpx
-import shutil
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich import box
 from rich.text import Text
 
-from aua.config import AUAConfig, SpecialistConfig, ArbiterConfig
+from aua.config import ArbiterConfig, AUAConfig, SpecialistConfig
 
 console = Console()
 
@@ -51,6 +50,7 @@ POST_HEALTH_SLEEP = 5.0
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def serve(
     config: AUAConfig,
@@ -71,7 +71,7 @@ def serve(
     """
     _print_banner(config, dry_run, no_router, router_only)
 
-    processes: List[subprocess.Popen] = []
+    processes: list[subprocess.Popen] = []
 
     # Register cleanup on Ctrl+C and SIGTERM
     def _shutdown(sig=None, frame=None):
@@ -87,7 +87,7 @@ def serve(
         console.print("[yellow]All processes stopped.[/yellow]")
         sys.exit(0)
 
-    signal.signal(signal.SIGINT,  _shutdown)
+    signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)
 
     # ── Start specialists ──────────────────────────────────────────────────
@@ -120,16 +120,17 @@ def serve(
     # If we reach here without starting uvicorn (--no-router), just wait.
     if no_router:
         console.print(
-            "\n[green]All specialists running.[/green] "
-            "[dim]Press Ctrl+C to stop.[/dim]"
+            "\n[green]All specialists running.[/green] " "[dim]Press Ctrl+C to stop.[/dim]"
         )
         try:
             while True:
                 # Check any specialist died unexpectedly
                 for p in processes:
                     if p.poll() is not None:
-                        console.print(f"\n[red]A specialist process exited unexpectedly "
-                                      f"(pid={p.pid}, code={p.returncode}).[/red]")
+                        console.print(
+                            f"\n[red]A specialist process exited unexpectedly "
+                            f"(pid={p.pid}, code={p.returncode}).[/red]"
+                        )
                         _shutdown()
                 time.sleep(5)
         except KeyboardInterrupt:
@@ -138,28 +139,31 @@ def serve(
 
 # ── Specialist startup ────────────────────────────────────────────────────────
 
+
 def _start_specialist(
     spec: SpecialistConfig,
     dry_run: bool,
     timeout: int,
-) -> Optional[subprocess.Popen]:
+) -> subprocess.Popen | None:
     cmd = spec.vllm_command()
-    env = _build_env(spec.gpu)
 
     hw_detail = (
         f"GPU {spec.gpu} ({spec.gpu_memory_utilization*100:.0f}% VRAM)"
         if spec.backend == "vllm"
         else "Ollama"
     )
-    console.print(f"\n[bold]Starting specialist:[/bold] [cyan]{spec.name}[/cyan]  "
-                  f"[dim]{spec.field} · port {spec.port} · {hw_detail}[/dim]")
+    console.print(
+        f"\n[bold]Starting specialist:[/bold] [cyan]{spec.name}[/cyan]  "
+        f"[dim]{spec.field} · port {spec.port} · {hw_detail}[/dim]"
+    )
     console.print(f"  [dim]$ {' '.join(cmd)}[/dim]")
 
     if dry_run:
         return None
 
     p = subprocess.Popen(
-        cmd, env=_build_env(spec.gpu, spec.backend),
+        cmd,
+        env=_build_env(spec.gpu, spec.backend),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
     )
@@ -171,24 +175,26 @@ def _start_arbiter(
     arb: ArbiterConfig,
     dry_run: bool,
     timeout: int,
-) -> Optional[subprocess.Popen]:
+) -> subprocess.Popen | None:
     cmd = arb.vllm_command()
-    env = _build_env(arb.gpu)
 
     hw_detail_arb = (
         f"GPU {arb.gpu} ({arb.gpu_memory_utilization*100:.0f}% VRAM)"
         if arb.backend == "vllm"
         else "Ollama"
     )
-    console.print(f"\n[bold]Starting arbiter:[/bold] [magenta]arbiter[/magenta]  "
-                  f"[dim]port {arb.port} · {hw_detail_arb}[/dim]")
+    console.print(
+        f"\n[bold]Starting arbiter:[/bold] [magenta]arbiter[/magenta]  "
+        f"[dim]port {arb.port} · {hw_detail_arb}[/dim]"
+    )
     console.print(f"  [dim]$ {' '.join(cmd)}[/dim]")
 
     if dry_run:
         return None
 
     p = subprocess.Popen(
-        cmd, env=_build_env(arb.gpu, arb.backend),
+        cmd,
+        env=_build_env(arb.gpu, arb.backend),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
     )
@@ -207,8 +213,7 @@ def _wait_healthy(
     attempt = 0
 
     with console.status(
-        f"[dim]Waiting for [cyan]{name}[/cyan] to become healthy "
-        f"(timeout {timeout}s)...[/dim]",
+        f"[dim]Waiting for [cyan]{name}[/cyan] to become healthy " f"(timeout {timeout}s)...[/dim]",
         spinner="dots",
     ) as status:
         while time.time() < deadline:
@@ -232,8 +237,7 @@ def _wait_healthy(
                     if r.status_code == 200:
                         elapsed = timeout - (deadline - time.time())
                         console.print(
-                            f"  [green]✓ {name} healthy[/green] "
-                            f"[dim]({elapsed:.0f}s)[/dim]"
+                            f"  [green]✓ {name} healthy[/green] " f"[dim]({elapsed:.0f}s)[/dim]"
                         )
                         time.sleep(POST_HEALTH_SLEEP)
                         return
@@ -243,8 +247,7 @@ def _wait_healthy(
             attempt += 1
             elapsed_s = attempt * POLL_INTERVAL
             status.update(
-                f"[dim]Waiting for [cyan]{name}[/cyan] "
-                f"({elapsed_s:.0f}s / {timeout}s)...[/dim]"
+                f"[dim]Waiting for [cyan]{name}[/cyan] " f"({elapsed_s:.0f}s / {timeout}s)...[/dim]"
             )
             time.sleep(POLL_INTERVAL)
 
@@ -256,14 +259,14 @@ def _wait_healthy(
     sys.exit(1)
 
 
-
 # ── Ollama startup ────────────────────────────────────────────────────────────
+
 
 def _start_ollama(
     config: AUAConfig,
     dry_run: bool,
     timeout: int,
-) -> Optional[subprocess.Popen]:
+) -> subprocess.Popen | None:
     """
     Ensure Ollama is running and all required models are pulled.
 
@@ -310,9 +313,7 @@ def _start_ollama(
         _wait_healthy("ollama", ollama_url, proc, timeout)
 
     # ── Pull models ───────────────────────────────────────────────────────
-    all_models = list(dict.fromkeys(
-        [s.model for s in config.specialists] + [config.arbiter.model]
-    ))
+    all_models = list(dict.fromkeys([s.model for s in config.specialists] + [config.arbiter.model]))
     for model in all_models:
         _ollama_pull(model)
 
@@ -324,7 +325,8 @@ def _ollama_pull(model: str) -> None:
     console.print(f"  Checking model [cyan]{model}[/cyan]...")
     result = subprocess.run(
         ["ollama", "list"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if model in result.stdout:
         console.print(f"  [green]✓ {model} already pulled[/green]")
@@ -333,7 +335,7 @@ def _ollama_pull(model: str) -> None:
     console.print(f"  Pulling [cyan]{model}[/cyan] (this may take a while)...")
     pull = subprocess.run(
         ["ollama", "pull", model],
-        capture_output=False,   # show progress to terminal
+        capture_output=False,  # show progress to terminal
     )
     if pull.returncode != 0:
         console.print(f"  [red]✗ Failed to pull {model}[/red]")
@@ -343,27 +345,24 @@ def _ollama_pull(model: str) -> None:
 
 # ── Router startup ────────────────────────────────────────────────────────────
 
+
 def _start_router(
     config: AUAConfig,
     dry_run: bool,
-    specialist_procs: List[subprocess.Popen],
+    specialist_procs: list[subprocess.Popen],
 ) -> None:
     """Start the FastAPI router with uvicorn (runs in the current process)."""
     import uvicorn
+
     from aua.router import Router
 
     host = config.router.host
     port = config.router.port
 
-    console.print(
-        f"\n[bold]Starting router[/bold]  "
-        f"[dim]http://{host}:{port}[/dim]"
-    )
+    console.print(f"\n[bold]Starting router[/bold]  " f"[dim]http://{host}:{port}[/dim]")
 
     if dry_run:
-        console.print(
-            f"  [dim]$ uvicorn aua.router:app --host {host} --port {port}[/dim]"
-        )
+        console.print(f"  [dim]$ uvicorn aua.router:app --host {host} --port {port}[/dim]")
         return
 
     # Print the ready panel
@@ -381,6 +380,7 @@ def _start_router(
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _build_env(gpu_index: int, backend: str = "vllm") -> dict:
     """Build environment, setting CUDA_VISIBLE_DEVICES for vLLM/ROCm only."""
@@ -428,7 +428,11 @@ def _print_banner(
         config.arbiter.model.split("/")[-1],
         str(config.arbiter.port),
         str(config.arbiter.gpu),
-        f"{config.arbiter.gpu_memory_utilization*100:.0f}%" if config.arbiter.backend == "vllm" else "—",
+        (
+            f"{config.arbiter.gpu_memory_utilization*100:.0f}%"
+            if config.arbiter.backend == "vllm"
+            else "—"
+        ),
         "general",
     )
     table.add_row(
@@ -440,17 +444,19 @@ def _print_banner(
         "—",
     )
 
-    console.print(Panel(
-        table,
-        title=f"[bold]aua serve[/bold]  v{config.version}{mode_str}",
-        subtitle=(
-            "[dim]Sequential startup · --enforce-eager · Ctrl+C to stop[/dim]"
-            if config.backend == "vllm"
-            else "[dim]Ollama backend · Ctrl+C to stop[/dim]"
-        ),
-        border_style="blue",
-        padding=(0, 1),
-    ))
+    console.print(
+        Panel(
+            table,
+            title=f"[bold]aua serve[/bold]  v{config.version}{mode_str}",
+            subtitle=(
+                "[dim]Sequential startup · --enforce-eager · Ctrl+C to stop[/dim]"
+                if config.backend == "vllm"
+                else "[dim]Ollama backend · Ctrl+C to stop[/dim]"
+            ),
+            border_style="blue",
+            padding=(0, 1),
+        )
+    )
 
 
 def _print_ready(config: AUAConfig) -> None:
@@ -459,14 +465,16 @@ def _print_ready(config: AUAConfig) -> None:
     port = config.router.port
 
     lines = Text()
-    lines.append(f"  POST  http://{display_host}:{port}/query\n",   style="green")
-    lines.append(f"  GET   http://{display_host}:{port}/health\n",   style="dim")
-    lines.append(f"  GET   http://{display_host}:{port}/stats\n",    style="dim")
-    lines.append(f"  GET   http://{display_host}:{port}/docs\n",     style="dim")
+    lines.append(f"  POST  http://{display_host}:{port}/query\n", style="green")
+    lines.append(f"  GET   http://{display_host}:{port}/health\n", style="dim")
+    lines.append(f"  GET   http://{display_host}:{port}/stats\n", style="dim")
+    lines.append(f"  GET   http://{display_host}:{port}/docs\n", style="dim")
 
-    console.print(Panel(
-        lines,
-        title="[bold green]✓ All specialists ready — router starting[/bold green]",
-        border_style="green",
-        padding=(0, 1),
-    ))
+    console.print(
+        Panel(
+            lines,
+            title="[bold green]✓ All specialists ready — router starting[/bold green]",
+            border_style="green",
+            padding=(0, 1),
+        )
+    )

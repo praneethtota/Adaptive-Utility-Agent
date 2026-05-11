@@ -1,11 +1,11 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.21"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aua"
+name = "adaptive-utility-agent"
 version = "0.5.0"
-description = "Adaptive Utility Agents — a deployable specialist framework for self-optimizing AI systems"
+description = "Adaptive Utility Agents — a Django-like framework for adaptive multi-model LLM systems."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0" }
@@ -22,7 +22,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-# Runtime deps — always required
 dependencies = [
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.30.0",
@@ -32,10 +31,11 @@ dependencies = [
     "click>=8.1.0",
     "rich>=13.0.0",
     "scipy>=1.11.0",
+    "filelock>=3.13.0",
 ]
 
 [project.optional-dependencies]
-# pip install aua[train]
+vllm = ["vllm>=0.4.0"]
 train = [
     "peft>=0.9.0",
     "trl>=0.8.0",
@@ -43,14 +43,71 @@ train = [
     "torch>=2.1.0",
     "accelerate>=0.28.0",
 ]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.4",
+    "black>=24.0",
+    "isort>=5.0",
+    "mypy>=1.8",
+    "types-PyYAML",
+    "build>=1.2",
+]
+ui = []
+postgres = ["asyncpg>=0.29"]
+otel = [
+    "opentelemetry-api>=1.20",
+    "opentelemetry-sdk>=1.20",
+    "opentelemetry-exporter-otlp>=1.20",
+]
 
 [project.scripts]
 aua = "aua.cli:main"
 
 [project.urls]
-Homepage    = "https://praneethtota.github.io/Adaptive-Utility-Agent"
-Repository  = "https://github.com/praneethtota/Adaptive-Utility-Agent"
-Whitepaper  = "https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_v05.html"
+Homepage   = "https://praneethtota.github.io/Adaptive-Utility-Agent"
+Repository = "https://github.com/praneethtota/Adaptive-Utility-Agent"
+Whitepaper = "https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper_v05.html"
 
 [tool.hatch.build.targets.wheel]
 packages = ["aua"]
+
+[tool.hatch.build]
+include = [
+    "aua/**/*.py",
+    "aua/tiers/*.yaml",
+    "aua/py.typed",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501", "UP007"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E402"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = false
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

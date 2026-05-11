@@ -26,49 +26,54 @@ import importlib
 import shutil
 import socket
 import subprocess
-import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
 import httpx
 from rich.console import Console
-from rich.table import Table
 from rich.text import Text
-from rich import box
 
 console = Console()
 
-PASS  = ("✓", "bold green")
-FAIL  = ("✗", "bold red")
-WARN  = ("⚠", "yellow")
-SKIP  = ("–", "dim")
-INFO  = ("·", "dim")
+PASS = ("✓", "bold green")
+FAIL = ("✗", "bold red")
+WARN = ("⚠", "yellow")
+SKIP = ("–", "dim")
+INFO = ("·", "dim")
 
 REQUIRED_PACKAGES = [
-    "fastapi", "uvicorn", "httpx", "pydantic",
-    "yaml",    "click",   "rich",  "scipy",
+    "fastapi",
+    "uvicorn",
+    "httpx",
+    "pydantic",
+    "yaml",
+    "click",
+    "rich",
+    "scipy",
 ]
 
 
 # ── Data model ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Check:
-    group:  str
-    name:   str
-    status: str          # "pass" | "fail" | "warn" | "skip" | "info"
+    group: str
+    name: str
+    status: str  # "pass" | "fail" | "warn" | "skip" | "info"
     detail: str
-    fix:    Optional[str] = None
+    fix: str | None = None
 
     @property
     def symbol(self):
-        return {"pass": PASS, "fail": FAIL, "warn": WARN,
-                "skip": SKIP, "info": INFO}.get(self.status, INFO)
+        return {"pass": PASS, "fail": FAIL, "warn": WARN, "skip": SKIP, "info": INFO}.get(
+            self.status, INFO
+        )
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def run_doctor(config_path: str = "aua_config.yaml") -> int:
     """
@@ -77,7 +82,7 @@ def run_doctor(config_path: str = "aua_config.yaml") -> int:
     Returns:
         Number of FAIL checks (0 = all good).
     """
-    checks: List[Check] = []
+    checks: list[Check] = []
 
     # ── Group 1: Config ───────────────────────────────────────────────────
     cfg = None
@@ -85,6 +90,7 @@ def run_doctor(config_path: str = "aua_config.yaml") -> int:
     # Try to load config for subsequent groups
     try:
         from aua.config import load_config
+
         cfg = load_config(config_path)
     except Exception:
         pass  # later groups will gracefully degrade
@@ -111,53 +117,73 @@ def run_doctor(config_path: str = "aua_config.yaml") -> int:
 
 # ── Check groups ──────────────────────────────────────────────────────────────
 
-def _check_config(config_path: str) -> List[Check]:
+
+def _check_config(config_path: str) -> list[Check]:
     checks = []
     p = Path(config_path)
 
     # File exists
     if p.exists():
-        checks.append(Check("Config", "Config file found",
-                             "pass", str(p.resolve())))
+        checks.append(Check("Config", "Config file found", "pass", str(p.resolve())))
     else:
-        checks.append(Check("Config", "Config file found", "fail",
-                             f"{config_path} not found",
-                             fix=f"Run 'aua init' to scaffold a starter config, "
-                                 f"or copy a tier template:\n"
-                                 f"    aua init --tier rtx4090"))
+        checks.append(
+            Check(
+                "Config",
+                "Config file found",
+                "fail",
+                f"{config_path} not found",
+                fix="Run 'aua init' to scaffold a starter config, "
+                "or copy a tier template:\n"
+                "    aua init --tier rtx4090",
+            )
+        )
         return checks  # no point continuing config checks
 
     # Parse and validate
     try:
         import yaml
+
         raw = yaml.safe_load(p.read_text())
         if not isinstance(raw, dict):
             raise ValueError("YAML root must be a mapping")
         checks.append(Check("Config", "YAML syntax valid", "pass", ""))
     except Exception as e:
-        checks.append(Check("Config", "YAML syntax valid", "fail", str(e),
-                             fix="Fix the YAML syntax error shown above"))
+        checks.append(
+            Check(
+                "Config",
+                "YAML syntax valid",
+                "fail",
+                str(e),
+                fix="Fix the YAML syntax error shown above",
+            )
+        )
         return checks
 
     # Schema validation via load_config
     try:
         from aua.config import load_config
+
         cfg = load_config(config_path)
         n_spec = len(cfg.specialists)
-        checks.append(Check(
-            "Config", "Schema valid", "pass",
-            f"{n_spec} specialist(s) · 1 arbiter · backend={cfg.backend}"
-        ))
+        checks.append(
+            Check(
+                "Config",
+                "Schema valid",
+                "pass",
+                f"{n_spec} specialist(s) · 1 arbiter · backend={cfg.backend}",
+            )
+        )
     except ValueError as e:
-        checks.append(Check("Config", "Schema valid", "fail", str(e),
-                             fix="Fix the config error shown above"))
+        checks.append(
+            Check("Config", "Schema valid", "fail", str(e), fix="Fix the config error shown above")
+        )
     except Exception as e:
         checks.append(Check("Config", "Schema valid", "warn", str(e)))
 
     return checks
 
 
-def _check_dependencies(cfg) -> List[Check]:
+def _check_dependencies(cfg) -> list[Check]:
     checks = []
     backend = cfg.backend if cfg else "vllm"
 
@@ -169,48 +195,53 @@ def _check_dependencies(cfg) -> List[Check]:
             checks.append(Check("Dependencies", pkg, "pass", ver))
         except ImportError:
             fix = f"pip install {pkg}" if pkg != "yaml" else "pip install pyyaml"
-            checks.append(Check("Dependencies", pkg, "fail",
-                                 "not installed", fix=fix))
+            checks.append(Check("Dependencies", pkg, "fail", "not installed", fix=fix))
 
     # Backend binary
     if backend == "ollama":
         if shutil.which("ollama"):
-            result = subprocess.run(
-                ["ollama", "--version"], capture_output=True, text=True
-            )
+            result = subprocess.run(["ollama", "--version"], capture_output=True, text=True)
             ver = result.stdout.strip() or "installed"
             checks.append(Check("Dependencies", "ollama binary", "pass", ver))
         else:
-            checks.append(Check(
-                "Dependencies", "ollama binary", "fail",
-                "not found in PATH",
-                fix="brew install ollama  (macOS)\n"
-                    "    or: curl -fsSL https://ollama.com/install.sh | sh  (Linux)"
-            ))
+            checks.append(
+                Check(
+                    "Dependencies",
+                    "ollama binary",
+                    "fail",
+                    "not found in PATH",
+                    fix="brew install ollama  (macOS)\n"
+                    "    or: curl -fsSL https://ollama.com/install.sh | sh  (Linux)",
+                )
+            )
     else:  # vllm
         try:
             import vllm
+
             ver = getattr(vllm, "__version__", "?")
             checks.append(Check("Dependencies", "vllm", "pass", ver))
         except ImportError:
-            checks.append(Check(
-                "Dependencies", "vllm", "fail", "not installed",
-                fix="pip install vllm  (requires CUDA; install on Linux GPU host)"
-            ))
+            checks.append(
+                Check(
+                    "Dependencies",
+                    "vllm",
+                    "fail",
+                    "not installed",
+                    fix="pip install vllm  (requires CUDA; install on Linux GPU host)",
+                )
+            )
 
     return checks
 
 
 # ── Hardware detection ────────────────────────────────────────────────────────
 
-from dataclasses import dataclass as _dc
-from typing import Optional as _Opt
 
-@_dc
+@dataclass
 class _HWInfo:
-    kind: str                          # "nvidia" | "amd_rocm" | "apple_silicon" | "cpu"
-    devices: list                      # list of {"index": int, "name": str, "vram_mib": int or None}
-    system_ram_mib: _Opt[int] = None   # total system RAM (all platforms)
+    kind: str  # "nvidia" | "amd_rocm" | "apple_silicon" | "cpu"
+    devices: list  # list of {"index": int, "name": str, "vram_mib": int or None}
+    system_ram_mib: int | None = None  # total system RAM (all platforms)
 
 
 def _detect_hardware() -> _HWInfo:
@@ -223,20 +254,26 @@ def _detect_hardware() -> _HWInfo:
       3. Apple Silicon → macOS arm64 (sysctl hw.memsize + system_profiler)
       4. CPU fallback  → no dedicated GPU found
     """
-    import platform, subprocess, shutil
+    import platform
+    import shutil
+    import subprocess
 
-    system     = platform.system()       # "Darwin" | "Linux" | "Windows"
-    machine    = platform.machine()      # "arm64" | "x86_64" | "AMD64"
-    ram_mib    = _system_ram_mib()
+    system = platform.system()  # "Darwin" | "Linux" | "Windows"
+    machine = platform.machine()  # "arm64" | "x86_64" | "AMD64"
+    ram_mib = _system_ram_mib()
 
     # ── 1. NVIDIA ─────────────────────────────────────────────────────────
     if shutil.which("nvidia-smi"):
         try:
             r = subprocess.run(
-                ["nvidia-smi",
-                 "--query-gpu=index,name,memory.total",
-                 "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=5
+                [
+                    "nvidia-smi",
+                    "--query-gpu=index,name,memory.total",
+                    "--format=csv,noheader,nounits",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if r.returncode == 0:
                 devices = []
@@ -244,11 +281,13 @@ def _detect_hardware() -> _HWInfo:
                     if not line.strip():
                         continue
                     parts = [p.strip() for p in line.split(", ")]
-                    devices.append({
-                        "index":    int(parts[0]),
-                        "name":     parts[1],
-                        "vram_mib": int(parts[2]) if len(parts) > 2 else None,
-                    })
+                    devices.append(
+                        {
+                            "index": int(parts[0]),
+                            "name": parts[1],
+                            "vram_mib": int(parts[2]) if len(parts) > 2 else None,
+                        }
+                    )
                 if devices:
                     return _HWInfo(kind="nvidia", devices=devices, system_ram_mib=ram_mib)
         except Exception:
@@ -259,7 +298,9 @@ def _detect_hardware() -> _HWInfo:
         try:
             r = subprocess.run(
                 ["rocm-smi", "--showmeminfo", "vram", "--noheader"],
-                capture_output=True, text=True, timeout=5
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             if r.returncode == 0:
                 devices = []
@@ -267,6 +308,7 @@ def _detect_hardware() -> _HWInfo:
                     # rocm-smi output: "GPU[N] : VRAM Total: XXXX MiB"
                     mib = None
                     import re as _re
+
                     m = _re.search(r"(\d+)\s+MiB", line)
                     if m:
                         mib = int(m.group(1))
@@ -277,8 +319,13 @@ def _detect_hardware() -> _HWInfo:
             pass
     # Also check for ROCm without rocm-smi (newer ROCm uses amdgpu_info)
     import os as _os
+
     if _os.path.exists("/sys/class/kfd/kfd"):
-        return _HWInfo(kind="amd_rocm", devices=[{"index": 0, "name": "AMD GPU (ROCm)", "vram_mib": None}], system_ram_mib=ram_mib)
+        return _HWInfo(
+            kind="amd_rocm",
+            devices=[{"index": 0, "name": "AMD GPU (ROCm)", "vram_mib": None}],
+            system_ram_mib=ram_mib,
+        )
 
     # ── 3. Apple Silicon ─────────────────────────────────────────────────
     if system == "Darwin" and machine in ("arm64", "arm"):
@@ -287,16 +334,20 @@ def _detect_hardware() -> _HWInfo:
         try:
             r = subprocess.run(
                 ["system_profiler", "SPDisplaysDataType", "-json"],
-                capture_output=True, text=True, timeout=8
+                capture_output=True,
+                text=True,
+                timeout=8,
             )
             import json as _json
+
             sp_data = _json.loads(r.stdout)
             for entry in sp_data.get("SPDisplaysDataType", []):
-                name     = entry.get("sppci_model", "Apple GPU")
+                name = entry.get("sppci_model", "Apple GPU")
                 vram_str = entry.get("spdisplays_vram", "")
                 vram_mib = None
                 if vram_str:
                     import re as _re
+
                     m = _re.search(r"(\d+)\s*(GB|MB|MiB|GiB)", vram_str, _re.IGNORECASE)
                     if m:
                         v = int(m.group(1))
@@ -313,15 +364,15 @@ def _detect_hardware() -> _HWInfo:
     return _HWInfo(kind="cpu", devices=[], system_ram_mib=ram_mib)
 
 
-def _system_ram_mib() -> _Opt[int]:
+def _system_ram_mib() -> int | None:
     """Read total system RAM in MiB, platform-agnostic."""
-    import platform, subprocess
+    import platform
+    import subprocess
+
     system = platform.system()
     try:
         if system == "Darwin":
-            r = subprocess.run(
-                ["sysctl", "hw.memsize"], capture_output=True, text=True, timeout=3
-            )
+            r = subprocess.run(["sysctl", "hw.memsize"], capture_output=True, text=True, timeout=3)
             if r.returncode == 0:
                 return int(r.stdout.split(":")[1].strip()) // (1024 * 1024)
         else:
@@ -334,72 +385,105 @@ def _system_ram_mib() -> _Opt[int]:
     return None
 
 
-def _check_hardware(cfg) -> List[Check]:
+def _check_hardware(cfg) -> list[Check]:
     checks = []
     hw = _detect_hardware()
 
     # ── Report detected hardware ──────────────────────────────────────────
     kind_labels = {
-        "nvidia":        "NVIDIA GPU",
-        "amd_rocm":      "AMD GPU (ROCm)",
+        "nvidia": "NVIDIA GPU",
+        "amd_rocm": "AMD GPU (ROCm)",
         "apple_silicon": "Apple Silicon (MPS / Metal)",
-        "cpu":           "CPU only",
+        "cpu": "CPU only",
     }
     kind_label = kind_labels.get(hw.kind, hw.kind)
 
     if hw.kind == "cpu":
         if cfg and cfg.backend == "vllm":
-            checks.append(Check(
-                "Hardware", "GPU detection", "fail",
-                "No GPU detected — vLLM requires CUDA or ROCm",
-                fix="Switch to the Ollama backend for CPU / Apple Silicon:\n"
+            checks.append(
+                Check(
+                    "Hardware",
+                    "GPU detection",
+                    "fail",
+                    "No GPU detected — vLLM requires CUDA or ROCm",
+                    fix="Switch to the Ollama backend for CPU / Apple Silicon:\n"
                     "    aua init --tier macbook\n"
-                    "    aua serve --tier macbook"
-            ))
+                    "    aua serve --tier macbook",
+                )
+            )
         else:
-            checks.append(Check(
-                "Hardware", "GPU detection", "warn",
-                "No GPU detected — Ollama will use CPU (slow for large models)"
-            ))
+            checks.append(
+                Check(
+                    "Hardware",
+                    "GPU detection",
+                    "warn",
+                    "No GPU detected — Ollama will use CPU (slow for large models)",
+                )
+            )
     elif hw.kind == "apple_silicon":
         for dev in hw.devices:
-            checks.append(Check(
-                "Hardware", f"Apple Silicon GPU",
-                "pass",
-                f"{dev['name']}  ·  {dev['vram_mib']} MiB unified memory" if dev.get("vram_mib") else dev["name"],
-            ))
+            checks.append(
+                Check(
+                    "Hardware",
+                    "Apple Silicon GPU",
+                    "pass",
+                    (
+                        f"{dev['name']}  ·  {dev['vram_mib']} MiB unified memory"
+                        if dev.get("vram_mib")
+                        else dev["name"]
+                    ),
+                )
+            )
         if cfg and cfg.backend == "vllm":
-            checks.append(Check(
-                "Hardware", "Backend compatibility", "fail",
-                "vLLM does not support Apple Silicon",
-                fix="Use the Ollama backend instead:\n"
+            checks.append(
+                Check(
+                    "Hardware",
+                    "Backend compatibility",
+                    "fail",
+                    "vLLM does not support Apple Silicon",
+                    fix="Use the Ollama backend instead:\n"
                     "    aua init --tier macbook\n"
-                    "    aua serve --tier macbook"
-            ))
+                    "    aua serve --tier macbook",
+                )
+            )
         else:
             # Check MPS is available via torch if installed
             try:
                 import torch
+
                 mps_ok = torch.backends.mps.is_available()
-                checks.append(Check(
-                    "Hardware", "MPS (Metal Performance Shaders)",
-                    "pass" if mps_ok else "warn",
-                    "available" if mps_ok else "not available — Ollama will use CPU",
-                ))
+                checks.append(
+                    Check(
+                        "Hardware",
+                        "MPS (Metal Performance Shaders)",
+                        "pass" if mps_ok else "warn",
+                        "available" if mps_ok else "not available — Ollama will use CPU",
+                    )
+                )
             except ImportError:
-                checks.append(Check(
-                    "Hardware", "MPS (Metal Performance Shaders)", "info",
-                    "torch not installed — Ollama manages Metal acceleration directly"
-                ))
+                checks.append(
+                    Check(
+                        "Hardware",
+                        "MPS (Metal Performance Shaders)",
+                        "info",
+                        "torch not installed — Ollama manages Metal acceleration directly",
+                    )
+                )
     else:
         # NVIDIA or AMD ROCm
         for dev in hw.devices:
-            checks.append(Check(
-                "Hardware", f"GPU {dev['index']} ({kind_label})",
-                "pass",
-                f"{dev['name']}  ·  {dev.get('vram_mib', '?')} MiB VRAM"
-                    if dev.get("vram_mib") else dev["name"],
-            ))
+            checks.append(
+                Check(
+                    "Hardware",
+                    f"GPU {dev['index']} ({kind_label})",
+                    "pass",
+                    (
+                        f"{dev['name']}  ·  {dev.get('vram_mib', '?')} MiB VRAM"
+                        if dev.get("vram_mib")
+                        else dev["name"]
+                    ),
+                )
+            )
 
         # VRAM projection for vLLM
         if cfg and cfg.backend == "vllm" and hw.devices:
@@ -411,29 +495,44 @@ def _check_hardware(cfg) -> List[Check]:
                 util_by_gpu[g] = util_by_gpu.get(g, 0.0) + u
 
             for gpu_idx, total_util in util_by_gpu.items():
-                pct       = total_util * 100
+                pct = total_util * 100
                 avail_mib = vram_by_gpu.get(gpu_idx)
-                proj_mib  = int(avail_mib * total_util) if avail_mib else None
-                detail    = (
+                proj_mib = int(avail_mib * total_util) if avail_mib else None
+                detail = (
                     f"{pct:.0f}% projected ({proj_mib} / {avail_mib} MiB)"
-                    if proj_mib else f"{pct:.0f}% projected"
+                    if proj_mib
+                    else f"{pct:.0f}% projected"
                 )
                 if total_util > 0.95:
-                    checks.append(Check("Hardware", f"VRAM gpu{gpu_idx}", "fail", detail,
-                        fix="Reduce gpu_memory_utilization in aua_config.yaml, or split across GPUs"))
+                    checks.append(
+                        Check(
+                            "Hardware",
+                            f"VRAM gpu{gpu_idx}",
+                            "fail",
+                            detail,
+                            fix="Reduce gpu_memory_utilization in aua_config.yaml, or split across GPUs",
+                        )
+                    )
                 elif total_util > 0.90:
-                    checks.append(Check("Hardware", f"VRAM gpu{gpu_idx}", "warn",
-                        detail + " — tight, may work"))
+                    checks.append(
+                        Check(
+                            "Hardware", f"VRAM gpu{gpu_idx}", "warn", detail + " — tight, may work"
+                        )
+                    )
                 else:
                     checks.append(Check("Hardware", f"VRAM gpu{gpu_idx}", "pass", detail))
 
         # AMD ROCm: warn if backend is vllm — needs ROCm-specific vllm build
         if hw.kind == "amd_rocm" and cfg and cfg.backend == "vllm":
-            checks.append(Check(
-                "Hardware", "ROCm vLLM", "warn",
-                "AMD GPU detected — ensure you have the ROCm vLLM build",
-                fix="pip install vllm --extra-index-url https://download.pytorch.org/whl/rocm5.6"
-            ))
+            checks.append(
+                Check(
+                    "Hardware",
+                    "ROCm vLLM",
+                    "warn",
+                    "AMD GPU detected — ensure you have the ROCm vLLM build",
+                    fix="pip install vllm --extra-index-url https://download.pytorch.org/whl/rocm5.6",
+                )
+            )
 
     # ── RAM check for Ollama / CPU backends ───────────────────────────────
     if cfg and cfg.backend == "ollama" and hw.system_ram_mib:
@@ -445,7 +544,7 @@ def _check_hardware(cfg) -> List[Check]:
             elif "7b" in s.model.lower() or "7B" in s.model:
                 needed_mib += 8192
             else:
-                needed_mib += 6144   # conservative default
+                needed_mib += 6144  # conservative default
         # Add arbiter
         arb = cfg.arbiter
         if "3b" in arb.model.lower():
@@ -455,17 +554,25 @@ def _check_hardware(cfg) -> List[Check]:
 
         avail_mib = hw.system_ram_mib
         if needed_mib > avail_mib:
-            checks.append(Check(
-                "Hardware", "RAM (Ollama)", "warn",
-                f"~{needed_mib//1024} GiB needed, {avail_mib//1024} GiB available "
-                f"— models may be slow or fail to load",
-                fix="Reduce model size (use :3b variants) or add more RAM"
-            ))
+            checks.append(
+                Check(
+                    "Hardware",
+                    "RAM (Ollama)",
+                    "warn",
+                    f"~{needed_mib//1024} GiB needed, {avail_mib//1024} GiB available "
+                    f"— models may be slow or fail to load",
+                    fix="Reduce model size (use :3b variants) or add more RAM",
+                )
+            )
         else:
-            checks.append(Check(
-                "Hardware", "RAM (Ollama)", "pass",
-                f"~{needed_mib//1024} GiB needed, {avail_mib//1024} GiB available"
-            ))
+            checks.append(
+                Check(
+                    "Hardware",
+                    "RAM (Ollama)",
+                    "pass",
+                    f"~{needed_mib//1024} GiB needed, {avail_mib//1024} GiB available",
+                )
+            )
 
     # ── Port availability ─────────────────────────────────────────────────
     if cfg:
@@ -474,30 +581,33 @@ def _check_hardware(cfg) -> List[Check]:
     return checks
 
 
-def _add_port_checks(cfg, checks: List[Check]):
+def _add_port_checks(cfg, checks: list[Check]):
     """Check that all configured ports are free (not already bound)."""
     ports_to_check = (
         [(s.name, s.port) for s in cfg.specialists]
         + [("arbiter", cfg.arbiter.port)]
-        + [("router",  cfg.router.port)]
+        + [("router", cfg.router.port)]
     )
     for name, port in ports_to_check:
         in_use, pid = _port_in_use(port)
         if in_use:
-            checks.append(Check(
-                "Hardware", f"Port {port} ({name})", "warn",
-                f"already in use (pid {pid})" if pid else "already in use",
-                fix=f"Either a server is already running on port {port}, "
+            checks.append(
+                Check(
+                    "Hardware",
+                    f"Port {port} ({name})",
+                    "warn",
+                    f"already in use (pid {pid})" if pid else "already in use",
+                    fix=f"Either a server is already running on port {port}, "
                     f"or another process is using it.\n"
                     f"    kill {pid}  (if you want to restart)  "
-                    f"or change the port in aua_config.yaml"
-            ))
+                    f"or change the port in aua_config.yaml",
+                )
+            )
         else:
-            checks.append(Check("Hardware", f"Port {port} ({name})",
-                                 "pass", "free"))
+            checks.append(Check("Hardware", f"Port {port} ({name})", "pass", "free"))
 
 
-def _check_models(cfg) -> List[Check]:
+def _check_models(cfg) -> list[Check]:
     checks = []
     all_servers = list(cfg.specialists) + [cfg.arbiter]
 
@@ -512,20 +622,28 @@ def _check_models(cfg) -> List[Check]:
                     ["ollama", "list"], capture_output=True, text=True, timeout=5
                 )
                 if model in result.stdout:
-                    checks.append(Check("Models", f"{name} ({model})",
-                                         "pass", "pulled"))
+                    checks.append(Check("Models", f"{name} ({model})", "pass", "pulled"))
                 else:
-                    checks.append(Check(
-                        "Models", f"{name} ({model})", "warn",
-                        "not yet pulled — will be pulled on aua serve",
-                        fix=f"ollama pull {model}"
-                    ))
+                    checks.append(
+                        Check(
+                            "Models",
+                            f"{name} ({model})",
+                            "warn",
+                            "not yet pulled — will be pulled on aua serve",
+                            fix=f"ollama pull {model}",
+                        )
+                    )
             except FileNotFoundError:
-                checks.append(Check("Models", f"{name} ({model})", "skip",
-                                     "ollama not installed — skipping model check"))
+                checks.append(
+                    Check(
+                        "Models",
+                        f"{name} ({model})",
+                        "skip",
+                        "ollama not installed — skipping model check",
+                    )
+                )
             except Exception as e:
-                checks.append(Check("Models", f"{name} ({model})",
-                                     "warn", f"could not check: {e}"))
+                checks.append(Check("Models", f"{name} ({model})", "warn", f"could not check: {e}"))
         else:
             # vLLM: check if it's a local path or a HuggingFace ID
             model_path = Path(model)
@@ -533,67 +651,80 @@ def _check_models(cfg) -> List[Check]:
                 # Local path — must exist
                 if model_path.exists():
                     size = _dir_size_str(model_path)
-                    checks.append(Check("Models", f"{name}", "pass",
-                                         f"{model}  ({size})"))
+                    checks.append(Check("Models", f"{name}", "pass", f"{model}  ({size})"))
                 else:
-                    checks.append(Check(
-                        "Models", f"{name}", "fail",
-                        f"{model} — path does not exist",
-                        fix=f"Download the model or fix the path in aua_config.yaml.\n"
-                            f"    vllm download {model}  (or use a HuggingFace ID)"
-                    ))
+                    checks.append(
+                        Check(
+                            "Models",
+                            f"{name}",
+                            "fail",
+                            f"{model} — path does not exist",
+                            fix=f"Download the model or fix the path in aua_config.yaml.\n"
+                            f"    vllm download {model}  (or use a HuggingFace ID)",
+                        )
+                    )
             else:
                 # HuggingFace ID — will be downloaded on first run
-                checks.append(Check(
-                    "Models", f"{name} ({model})", "warn",
-                    "HuggingFace ID — will download on first aua serve run (~5–15 min)",
-                    fix=f"Pre-download with:\n"
-                        f"    huggingface-cli download {model}"
-                ))
+                checks.append(
+                    Check(
+                        "Models",
+                        f"{name} ({model})",
+                        "warn",
+                        "HuggingFace ID — will download on first aua serve run (~5–15 min)",
+                        fix=f"Pre-download with:\n" f"    huggingface-cli download {model}",
+                    )
+                )
 
     return checks
 
 
-def _check_specialists_live(cfg) -> List[Check]:
+def _check_specialists_live(cfg) -> list[Check]:
     """Ping each specialist. Warn (not fail) if not running — they may not be started yet."""
     checks = []
-    all_servers = (
-        [(s.name, s.models_url) for s in cfg.specialists]
-        + [("arbiter", cfg.arbiter.models_url)]
-    )
+    all_servers = [(s.name, s.models_url) for s in cfg.specialists] + [
+        ("arbiter", cfg.arbiter.models_url)
+    ]
     for name, url in all_servers:
         try:
             with httpx.Client(timeout=2.0) as client:
                 r = client.get(url)
                 if r.status_code == 200:
-                    checks.append(Check("Specialists", f"{name}", "pass",
-                                         f"reachable at {url}"))
+                    checks.append(Check("Specialists", f"{name}", "pass", f"reachable at {url}"))
                 else:
-                    checks.append(Check("Specialists", f"{name}", "warn",
-                                         f"HTTP {r.status_code} at {url}",
-                                         fix="Restart the specialist server"))
+                    checks.append(
+                        Check(
+                            "Specialists",
+                            f"{name}",
+                            "warn",
+                            f"HTTP {r.status_code} at {url}",
+                            fix="Restart the specialist server",
+                        )
+                    )
         except Exception:
-            checks.append(Check(
-                "Specialists", f"{name}", "warn",
-                f"not reachable at {url}",
-                fix="Start with:  aua serve\n"
-                    "    (this is expected if you haven't started the framework yet)"
-            ))
+            checks.append(
+                Check(
+                    "Specialists",
+                    f"{name}",
+                    "warn",
+                    f"not reachable at {url}",
+                    fix="Start with:  aua serve\n"
+                    "    (this is expected if you haven't started the framework yet)",
+                )
+            )
     return checks
 
 
 # ── Output ────────────────────────────────────────────────────────────────────
 
-def _print_results(checks: List[Check], config_path: str):
+
+def _print_results(checks: list[Check], config_path: str):
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     n_pass = sum(1 for c in checks if c.status == "pass")
     n_fail = sum(1 for c in checks if c.status == "fail")
     n_warn = sum(1 for c in checks if c.status == "warn")
 
     console.print()
-    console.print(
-        f"[bold]aua doctor[/bold]  [dim]{config_path} · {ts}[/dim]"
-    )
+    console.print(f"[bold]aua doctor[/bold]  [dim]{config_path} · {ts}[/dim]")
     console.print("─" * 64)
 
     current_group = None
@@ -607,10 +738,7 @@ def _print_results(checks: List[Check], config_path: str):
         name = check.name[:name_w].ljust(name_w)
         detail = Text(check.detail, style="dim") if check.detail else Text("")
 
-        console.print(
-            f"  [{ style}]{sym}[/{style}]  {name}  ",
-            detail, end="\n"
-        )
+        console.print(f"  [{ style}]{sym}[/{style}]  {name}  ", detail, end="\n")
         if check.fix and check.status in ("fail", "warn"):
             for line in check.fix.splitlines():
                 console.print(f"[dim]       {line}[/dim]")
@@ -632,19 +760,17 @@ def _print_results(checks: List[Check], config_path: str):
         console.print("  [bold green]✓ All checks passed — ready to run aua serve[/bold green]")
     elif n_fail == 0:
         console.print(
-            "  [yellow]⚠ Warnings above are non-blocking — "
-            "aua serve may still work[/yellow]"
+            "  [yellow]⚠ Warnings above are non-blocking — " "aua serve may still work[/yellow]"
         )
     else:
-        console.print(
-            f"  [red]✗ Fix {n_fail} issue(s) before running aua serve[/red]"
-        )
+        console.print(f"  [red]✗ Fix {n_fail} issue(s) before running aua serve[/red]")
     console.print()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _port_in_use(port: int) -> tuple[bool, Optional[int]]:
+
+def _port_in_use(port: int) -> tuple[bool, int | None]:
     """Return (in_use, pid_or_None)."""
     # Try to bind — if it fails, port is in use
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -659,8 +785,7 @@ def _port_in_use(port: int) -> tuple[bool, Optional[int]]:
     pid = None
     try:
         result = subprocess.run(
-            ["lsof", "-ti", f"tcp:{port}"],
-            capture_output=True, text=True, timeout=3
+            ["lsof", "-ti", f"tcp:{port}"], capture_output=True, text=True, timeout=3
         )
         pids = result.stdout.strip().splitlines()
         pid = int(pids[0]) if pids else None

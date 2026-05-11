@@ -24,51 +24,31 @@ CLI:
 # ── Version ────────────────────────────────────────────────────────────────────
 __version__ = "0.5.0"
 
-# ── Core pipeline components ───────────────────────────────────────────────────
-from aua.field_classifier import FieldClassifier
-from aua.utility_scorer import UtilityScorer, TaskScore, DomainState
-from aua.contradiction_detector import ContradictionDetector, ContradictionResult
-from aua.assertions_store import AssertionsStore, AssertionMatch
-from aua.confidence_updater import ConfidenceUpdater
-
 # ── Arbitration ────────────────────────────────────────────────────────────────
-from aua.arbiter import ArbiterAgent, VerdictCase, ArbiterVerdict
-
-# ── Routing ────────────────────────────────────────────────────────────────────
-from aua.router import Router
+from aua.arbiter import ArbiterAgent, ArbiterVerdict, VerdictCase
+from aua.assertions_store import AssertionMatch, AssertionsStore
+from aua.confidence_updater import ConfidenceUpdater
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 from aua.config import (
-    load_config,
-    AUAConfig,
-    SpecialistConfig,
+    FIELD_CONFIGS,
     ArbiterConfig,
-    RouterConfig,
+    AUAConfig,
     BlueGreenFieldConfig,
     FieldConfig,
-    FIELD_CONFIGS,
+    RouterConfig,
+    SpecialistConfig,
     get_effective_config,
+    load_config,
 )
+from aua.contradiction_detector import ContradictionDetector, ContradictionResult
 
-# ── REST endpoint models (#09) ─────────────────────────────────────────────────
-from aua.endpoints import (
-    QueryRequest,
-    RouterResponse,
-    BatchQueryRequest,
-    BatchQueryResponse,
-    StreamStartEvent,      # #10
-    StreamChunkEvent,      # #10
-    StreamDoneEvent,       # #10
-    StreamErrorEvent,      # #10
-    CorrectionRequest,
-    CorrectionResponse,
-    ConfigResponse,
-    DeployGreenRequest,
-    DeployGreenResponse,
-    HealthLiveResponse,
-    HealthReadyResponse,
-    HealthStartupResponse,
-)
+# ── Core pipeline components ───────────────────────────────────────────────────
+from aua.field_classifier import FieldClassifier
+
+# ── Routing ────────────────────────────────────────────────────────────────────
+from aua.router import Router
+from aua.utility_scorer import DomainState, TaskScore, UtilityScorer
 
 __all__ = [
     # version
@@ -99,21 +79,4 @@ __all__ = [
     "ArbiterVerdict",
     # routing
     "Router",
-    # endpoint models
-    "QueryRequest",
-    "RouterResponse",
-    "BatchQueryRequest",
-    "BatchQueryResponse",
-    "CorrectionRequest",
-    "CorrectionResponse",
-    "ConfigResponse",
-    "DeployGreenRequest",
-    "DeployGreenResponse",
-    "HealthLiveResponse",
-    "HealthReadyResponse",
-    "HealthStartupResponse",
-     "StreamStartEvent",
-    "StreamChunkEvent",
-    "StreamDoneEvent",
-    "StreamErrorEvent",
 ]
