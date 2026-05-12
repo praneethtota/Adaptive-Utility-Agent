@@ -1,12 +1,8 @@
 """Tests for aua/policy.py — policy system."""
 
-import tempfile
-from pathlib import Path
-
 import pytest
 import yaml
 
-from aua.guard import AssertionFn, AssertionLevel, assertion
 from aua.policy import Policy, load_policy, validate_policy_yaml
 
 

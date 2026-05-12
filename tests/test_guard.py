@@ -5,7 +5,6 @@ import pytest
 from aua.guard import (
     AssertionFn,
     AssertionLevel,
-    AssertionResult,
     analogy_bonus,
     assertion,
     list_assertions,
