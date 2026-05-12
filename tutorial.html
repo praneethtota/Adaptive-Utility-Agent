@@ -1565,35 +1565,196 @@ aua corrections export --format jsonl</pre>
 <div class="next-part"><p><strong>Part 12 done.</strong> Part 13 covers observability — Prometheus, Grafana, OTEL, and structured logging.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 16 -->
-<h2 id="part-16" class="part-heading"><span class="how-badge">How-to 16</span> Observability <span class="time-badge">~20 min</span></h2>
+<h2 id="part-16" class="part-heading"><span class="how-badge">How-to 16</span> Observability <span class="time-badge">~25 min</span></h2>
 
-<h3>13.1 Prometheus metrics</h3>
+<p>AUA emits three observability streams out of the box: structured JSON logs (every query, assertion, and error), Prometheus metrics (18 gauges/counters/histograms), and optional OpenTelemetry distributed traces. All three are designed to ship directly to ELK, Splunk, Grafana, or any OTEL-compatible backend — no code changes required.</p>
+
+<h3>13.1 Structured JSON logging</h3>
+
+<p>Every log line the framework emits is a single-line JSON object. Every line automatically includes the current request's <code>session_id</code>, <code>trace_id</code>, and <code>request_id</code> — so a Kibana or Splunk search on a session ID returns the complete picture of everything that happened in that request.</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>logging:
+  level: INFO          <span class="c"># DEBUG | INFO | WARNING | ERROR</span>
+  format: json         <span class="c"># "json" (default) | "text" (human-readable dev mode)</span>
+  output: stdout       <span class="c"># "stdout" | "stderr" | "/var/log/aua/router.log"</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Example log output — one query</div>
+<pre>{"ts":1747000000.12,"level":"INFO","logger":"aua.router","msg":"single→software_engineering  U=0.731","session_id":"s_abc123","trace_id":"01HX...","field":"software_engineering","routing_mode":"single","latency_ms":312.4,"utility_score":0.731,"confidence":0.823}
+{"ts":1747000000.43,"level":"INFO","logger":"aua.router","msg":"Query routed","session_id":"s_abc123","trace_id":"01HX...","domain":"software_engineering","u_score":0.731,"latency_ms":315.1}
+</pre>
+</div>
+
+<p>Fields included in every structured log line:</p>
+
+<table>
+<tr><th>Field</th><th>Description</th></tr>
+<tr><td><code>ts</code></td><td>Unix timestamp (float)</td></tr>
+<tr><td><code>level</code></td><td>DEBUG / INFO / WARNING / ERROR</td></tr>
+<tr><td><code>logger</code></td><td>Module name (aua.router, aua.arbiter, aua.auth, ...)</td></tr>
+<tr><td><code>session_id</code></td><td>Chat session identifier — auto-injected from request context</td></tr>
+<tr><td><code>trace_id</code></td><td>W3C-compatible trace ID — links to OTEL spans if enabled</td></tr>
+<tr><td><code>request_id</code></td><td>Per-request unique ID</td></tr>
+<tr><td><code>field</code></td><td>Routed domain (software_engineering, mathematics, ...)</td></tr>
+<tr><td><code>specialist</code></td><td>Specialist name that handled the query</td></tr>
+<tr><td><code>routing_mode</code></td><td>single / fanout / arbiter</td></tr>
+<tr><td><code>utility_score</code></td><td>Final U score for this response</td></tr>
+<tr><td><code>confidence</code></td><td>Kalman-filtered confidence estimate</td></tr>
+<tr><td><code>latency_ms</code></td><td>End-to-end latency in milliseconds</td></tr>
+<tr><td><code>error_code</code></td><td>HTTP status on errors</td></tr>
+<tr><td><code>verdict</code></td><td>Arbiter verdict case (A/B/C/D) when arbiter fires</td></tr>
+</table>
+
+<h3>13.2 Shipping logs to ELK (Elasticsearch / Kibana)</h3>
+
+<p>AUA's JSON output is Filebeat-native. No parsing config needed — all fields are already top-level JSON keys that become indexed Elasticsearch fields automatically.</p>
+
+<div class="code-block">
+<div class="code-header">Step 1 — write logs to file</div>
+<pre>logging:
+  format: json
+  output: /var/log/aua/router.log    <span class="c"># Filebeat monitors this path</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Step 2 — filebeat.yml</div>
+<pre>filebeat.inputs:
+  - type: log
+    paths: ["/var/log/aua/router.log"]
+    json.keys_under_root: true     <span class="c"># promote JSON fields to top-level</span>
+    json.add_error_key: true
+
+processors:
+  - timestamp:
+      field: ts
+      layouts: ["UNIX"]
+      target_field: "@timestamp"
+
+output.elasticsearch:
+  hosts: ["https://your-elastic:9200"]
+  index: "aua-logs-%{+yyyy.MM.dd}"
+  api_key: "your-api-key"</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Step 3 — useful Kibana queries</div>
+<pre><span class="c"># All failed assertions in the last 24h</span>
+logger: "aua.router" AND level: "WARNING" AND msg: "assertion"
+
+<span class="c"># Low U-score sessions (worth reviewing)</span>
+utility_score < 0.4
+
+<span class="c"># All events for a specific session</span>
+session_id: "s_abc123"
+
+<span class="c"># High latency queries</span>
+latency_ms > 5000
+
+<span class="c"># Authentication failures</span>
+logger: "aua.auth" AND level: "WARNING"
+
+<span class="c"># Arbiter fired</span>
+routing_mode: "arbiter" AND verdict: *</pre>
+</div>
+
+<div class="callout">
+  <p><strong>Logstash pipeline alternative.</strong> If you're using Logstash instead of Filebeat, pipe <code>aua serve</code> stdout directly: <code>aua serve 2>&amp;1 | logstash -f aua.conf</code>. In the pipeline filter: <code>json { source =&gt; "message" }</code> then <code>date { match =&gt; ["ts", "UNIX"] }</code>. The JSON structure needs no grok patterns.</p>
+</div>
+
+<h3>13.3 Shipping logs to Splunk</h3>
+
+<p>Two options depending on your Splunk setup:</p>
+
+<h4>Option A — Universal Forwarder (file-based)</h4>
+
+<div class="code-block">
+<div class="code-header">inputs.conf</div>
+<pre>[monitor:///var/log/aua/router.log]
+index = aua
+sourcetype = aua_json</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">props.conf</div>
+<pre>[aua_json]
+KV_MODE = json
+TIME_FORMAT = %s%3N
+TIME_PREFIX = "ts":
+MAX_TIMESTAMP_LOOKAHEAD = 20</pre>
+</div>
+
+<h4>Option B — HTTP Event Collector (HEC, no file needed)</h4>
+
+<div class="code-block">
+<div class="code-header">bash — install Splunk handler</div>
+<pre>pip install splunk-handler</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — add to your startup script or hook</div>
+<pre>from splunk_handler import SplunkHandler
+import logging
+
+logging.getLogger("aua").addHandler(
+    SplunkHandler(
+        host="splunk.yourcompany.com",
+        port=8088,
+        token="your-hec-token",
+        index="aua",
+        sourcetype="aua_json",
+    )
+)</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Useful Splunk searches</div>
+<pre><span class="c"># Failed assertions over time</span>
+index=aua sourcetype=aua_json logger="aua.router" "assertion"
+| timechart count by assertion_name
+
+<span class="c"># U-score trend per domain</span>
+index=aua sourcetype=aua_json utility_score=*
+| timechart avg(utility_score) by field
+
+<span class="c"># P95 latency by routing mode</span>
+index=aua sourcetype=aua_json latency_ms=*
+| stats perc95(latency_ms) by routing_mode</pre>
+</div>
+
+<h3>13.4 Prometheus metrics</h3>
+
 <div class="code-block">
 <div class="code-header">bash</div>
 <pre>curl http://localhost:8000/metrics | head -30</pre>
 </div>
 
 <table>
-<tr><th>Metric</th><th>What it measures</th></tr>
-<tr><td><code>aua_query_total</code></td><td>Total queries by field and routing mode</td></tr>
-<tr><td><code>aua_query_latency_seconds</code></td><td>Latency histogram (p50/p95/p99)</td></tr>
-<tr><td><code>aua_utility_score</code></td><td>U score gauge per specialist</td></tr>
-<tr><td><code>aua_contradiction_rate</code></td><td>Contradiction events per time window</td></tr>
-<tr><td><code>aua_routing_field_distribution</code></td><td>Query distribution across fields</td></tr>
-<tr><td><code>aua_specialist_confidence</code></td><td>Confidence per specialist</td></tr>
-<tr><td><code>aua_bluegreen_traffic_split</code></td><td>Blue vs green traffic fraction</td></tr>
-<tr><td><code>aua_correction_count</code></td><td>Corrections accumulated</td></tr>
-<tr><td><code>aua_abstention_rate</code></td><td>Rate at which framework abstains</td></tr>
-<tr><td><code>aua_arbiter_verdict_distribution</code></td><td>Case 1/2/3/4 breakdown</td></tr>
-<tr><td><code>aua_token_requests_total</code></td><td>Total token-gated requests</td></tr>
-<tr><td><code>aua_token_requests_rejected</code></td><td>Auth failures (429, 401, 403)</td></tr>
-<tr><td><code>aua_specialist_vram_utilization</code></td><td>GPU VRAM % per specialist</td></tr>
-<tr><td><code>aua_plugin_execution_seconds</code></td><td>Plugin latency histogram</td></tr>
-<tr><td><code>aua_hook_failures_total</code></td><td>Hook execution failures</td></tr>
-<tr><td><code>aua_cost_total_usd</code></td><td>Cumulative cost estimate</td></tr>
+<tr><th>Metric</th><th>Type</th><th>What it measures</th></tr>
+<tr><td><code>aua_queries_total</code></td><td>Counter</td><td>Total queries by field, routing mode, status</td></tr>
+<tr><td><code>aua_query_latency_seconds</code></td><td>Histogram</td><td>Latency (p50/p95/p99)</td></tr>
+<tr><td><code>aua_utility_score</code></td><td>Gauge</td><td>Last U score per domain</td></tr>
+<tr><td><code>aua_contradiction_rate</code></td><td>Gauge</td><td>Contradiction rate per domain</td></tr>
+<tr><td><code>aua_routing_field_distribution</code></td><td>Counter</td><td>Query distribution across fields</td></tr>
+<tr><td><code>aua_specialist_confidence</code></td><td>Gauge</td><td>Confidence per specialist</td></tr>
+<tr><td><code>aua_correction_count</code></td><td>Counter</td><td>Corrections accumulated</td></tr>
+<tr><td><code>aua_arbiter_verdict_distribution</code></td><td>Counter</td><td>Case 1/2/3/4 breakdown</td></tr>
+<tr><td><code>aua_dpo_pairs_accumulated</code></td><td>Gauge</td><td>Total DPO pairs in store</td></tr>
+<tr><td><code>aua_token_requests_total</code></td><td>Counter</td><td>Token-gated requests by scope</td></tr>
+<tr><td><code>aua_hook_failures_total</code></td><td>Counter</td><td>Hook execution failures</td></tr>
+<tr><td><code>aua_plugin_execution_seconds</code></td><td>Histogram</td><td>Plugin latency</td></tr>
+<tr><td><code>aua_specialist_vram_utilization</code></td><td>Gauge</td><td>GPU VRAM % per specialist</td></tr>
+<tr><td><code>aua_cost_gpu_hours_total</code></td><td>Counter</td><td>Cumulative GPU hours per specialist</td></tr>
+<tr><td><code>aua_cost_usd_total</code></td><td>Counter</td><td>Cumulative USD cost per specialist</td></tr>
+<tr><td><code>aua_assertion_results_total</code></td><td>Counter</td><td>Assertion pass/fail by name, level, domain</td></tr>
+<tr><td><code>aua_assertion_retries_total</code></td><td>Counter</td><td>BLOCKING assertion retry count</td></tr>
+<tr><td><code>aua_assertion_bonus_applied</code></td><td>Histogram</td><td>E-score bonus applied by INFO assertions</td></tr>
 </table>
 
-<h3>13.2 Cost tracking</h3>
+<h3>13.5 Cost tracking</h3>
+
 <div class="code-block">
 <div class="code-header">bash</div>
 <pre>curl http://localhost:8000/metrics/cost | python3 -m json.tool</pre>
@@ -1601,47 +1762,91 @@ aua corrections export --format jsonl</pre>
 <div class="code-block">
 <div class="code-header">Response</div>
 <pre>{
-  "swe": {"queries": 42, "gpu_hours": 0.012, "cost_usd": 0.0083},
+  "swe":  {"queries": 42, "gpu_hours": 0.012, "cost_usd": 0.0083},
   "math": {"queries": 18, "gpu_hours": 0.005, "cost_usd": 0.0034},
   "total_cost_usd": 0.0117
 }</pre>
 </div>
 
-<h3>13.3 Grafana dashboard</h3>
+<h3>13.6 Grafana dashboard</h3>
+
 <div class="code-block">
 <div class="code-header">bash — start with observability profile</div>
 <pre>docker compose --profile obs up
 
-<span class="c"># Grafana at http://localhost:3000
+<span class="c"># Grafana at http://localhost:3000 (admin / aua-admin)
 # Dashboard pre-loaded: 20 panels covering query volume, latency p50/p95/p99,
 # routing distribution, U score trends, contradiction rate, arbiter verdicts,
-# specialist health, VRAM usage, blue-green split, auth failures, cost</span></pre>
+# specialist health, VRAM usage, blue-green split, assertion fail rate,
+# DPO pairs accumulated, auth failures, cost per specialist</span></pre>
 </div>
 
-<h3>13.4 OpenTelemetry</h3>
+<h3>13.7 OpenTelemetry — distributed traces</h3>
+
+<p>Optional. Sends full request traces to Jaeger, Tempo, Elastic APM, Splunk Observability, or any OTLP-compatible backend. Each trace covers the complete request path: router → classifier → routing decision → specialist calls → utility scoring → arbiter → hooks → policy assertions → response.</p>
+
 <div class="code-block">
 <div class="code-header">bash</div>
 <pre>pip install "adaptive-utility-agent[otel]"</pre>
 </div>
 
 <div class="code-block">
-<div class="code-header">aua_config.yaml</div>
-<pre>otel:
-  enabled: true
-  endpoint: http://otel-collector:4317
-  service_name: aua-router</pre>
+<div class="code-header">aua_config.yaml — OTEL to Jaeger/Tempo</div>
+<pre>observability:
+  otel:
+    enabled: true
+    endpoint: http://localhost:4317   <span class="c"># OTLP gRPC collector</span>
+    service_name: aua-router</pre>
 </div>
-<p>Every query emits a complete W3C trace: router → field classifier → routing decision → specialist calls → utility scoring → arbiter → hooks → response. Trace ID is returned in every API response and logged in structured JSON.</p>
-
-<h3>13.5 Structured logging</h3>
-<p>All log lines are JSON. Every log line includes <code>session_id</code>, <code>trace_id</code>, <code>request_id</code>, <code>field</code>, <code>specialist</code>, <code>u_score</code>, <code>confidence</code>, and <code>latency_ms</code>. ELK / Splunk / Loki compatible.</p>
 
 <div class="code-block">
-<div class="code-header">aua_config.yaml</div>
-<pre>logging:
-  level: INFO         <span class="c"># DEBUG | INFO | WARNING | ERROR</span>
-  format: json
-  output: stdout      <span class="c"># or: .aua/logs/router.log</span></pre>
+<div class="code-header">aua_config.yaml — OTEL to Splunk Observability Cloud</div>
+<pre>observability:
+  otel:
+    enabled: true
+    endpoint: https://ingest.us1.signalfx.com:443
+    service_name: aua-router
+    headers:
+      X-SF-Token: "your-splunk-o11y-token"</pre>
+</div>
+
+<div class="callout green">
+  <p><strong>Log + trace correlation.</strong> The <code>trace_id</code> in every JSON log line is W3C-compatible. When OTEL is enabled, clicking a log line in Kibana or Splunk and following its <code>trace_id</code> jumps directly to the corresponding distributed trace in Jaeger or Elastic APM — showing the exact specialist calls, latencies, and assertion checks for that request.</p>
+</div>
+
+<h3>13.8 Structured logging in Docker / Kubernetes</h3>
+
+<div class="code-block">
+<div class="code-header">docker-compose.yml — ship stdout to Loki via Grafana Alloy</div>
+<pre>services:
+  aua-router:
+    logging:
+      driver: json-file    <span class="c"># Docker captures stdout as JSON</span>
+    labels:
+      logging: "aua"
+
+  alloy:
+    image: grafana/alloy
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    <span class="c"># Alloy → Loki → Grafana: full log + metric correlation</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Kubernetes — fluent-bit to Elasticsearch</div>
+<pre><span class="c"># fluent-bit ConfigMap snippet</span>
+[INPUT]
+    Name              tail
+    Path              /var/log/containers/aua-*.log
+    Parser            json
+    Tag               aua.*
+
+[OUTPUT]
+    Name              es
+    Match             aua.*
+    Host              elasticsearch.logging.svc
+    Index             aua-logs
+    Type              _doc</pre>
 </div>
 
 <div class="next-part"><p><strong>Part 13 done.</strong> Part 14 covers Docker deployment profiles.</p></div>
