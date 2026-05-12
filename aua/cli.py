@@ -1787,3 +1787,826 @@ def ui_command(port, install_only):
         _sp.run([npm, "run", "dev", "--", "--port", str(port)], cwd=str(ui_dir), env=env)
     except KeyboardInterrupt:
         console.print("\n[dim]Chat UI stopped.[/dim]")
+
+
+# ── aua guard ─────────────────────────────────────────────────────────────────
+
+
+@main.group()
+def guard():
+    """Manage and test AUA assertions.
+
+    \b
+    Assertions are user-defined checks that run against specialist responses
+    before they are returned. They implement the Policy-as-Curriculum pattern.
+
+    \b
+    Examples:
+        aua guard list
+        aua guard test --import-path mypackage.policies:validate_syntax
+    """
+    pass
+
+
+@guard.command("list")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Output as JSON.")
+def guard_list(as_json):
+    """List all registered assertions.
+
+    \b
+    Shows built-in assertions and any loaded via extensions.
+    """
+    import json as _json
+
+    from aua.guard import list_assertions
+
+    items = list_assertions()
+    if as_json:
+        print(_json.dumps(items, indent=2))
+        return
+
+    from rich.table import Table
+
+    table = Table(title="Registered Assertions", show_lines=True)
+    table.add_column("Name", style="bold cyan")
+    table.add_column("Level", style="yellow")
+    table.add_column("Bonus", justify="right")
+    table.add_column("Max Retries", justify="right")
+    table.add_column("Description")
+
+    for a in items:
+        bonus = f"+{a['bonus']:.2f}" if a["bonus"] > 0 else "—"
+        table.add_row(a["name"], a["level"], bonus, str(a["max_retries"]), a["doc"])
+
+    console.print(table)
+
+
+@guard.command("test")
+@click.option(
+    "--import-path",
+    "import_path",
+    required=True,
+    help="'module:function' path to an @assertion decorated function.",
+)
+@click.option(
+    "--output", "-o", default=None, help="Response text to test against (default: built-in sample)."
+)
+@click.option(
+    "--domain", default="software_engineering", help="Domain context passed to assertion."
+)
+def guard_test(import_path, output, domain):
+    """Test an assertion against sample or provided output.
+
+    \b
+    Examples:
+        aua guard test --import-path mypackage.policies:validate_syntax
+        aua guard test --import-path mypackage.policies:check_brand \\
+            --output "This leverages our synergy."
+    """
+    from aua.guard import load_assertion
+
+    try:
+        fn = load_assertion(import_path)
+    except (ImportError, TypeError, ValueError) as e:
+        console.print(f"[red]✗ Load error:[/red] {e}")
+        return
+
+    test_output = output or (
+        "def binary_search(arr, target):\n"
+        "    low, mid, high = 0, 0, len(arr) - 1\n"
+        "    while low <= high:\n"
+        "        mid = (low + high) // 2\n"
+        "        if arr[mid] == target: return mid\n"
+        "        elif arr[mid] < target: low = mid + 1\n"
+        "        else: high = mid - 1\n"
+        "    return -1"
+    )
+    context = {"query": "test", "session_id": "test", "domain": domain, "field": domain}
+    passed, message = fn(test_output, context)
+    icon = "[green]✓ PASSED[/green]" if passed else "[red]✗ FAILED[/red]"
+    console.print(f"\nAssertion: [bold]{fn.name}[/bold] ({fn.level.value})")
+    console.print(f"Result:    {icon}")
+    if message:
+        console.print(f"Message:   {message}")
+    if fn.level.value == "info" and passed and message:
+        console.print(f"E bonus:   [cyan]+{fn.bonus:.2f}[/cyan] would be applied")
+
+
+# ── aua policy ────────────────────────────────────────────────────────────────
+
+
+@main.group()
+def policy():
+    """Manage AUA policies — named bundles of assertions.
+
+    \b
+    A Policy is a versioned, portable definition of what 'good output'
+    means for your use case. It bundles assertions (guardrails and
+    incentives) and optional utility weight overrides.
+
+    \b
+    Examples:
+        aua policy list
+        aua policy validate policies/brand_voice.yaml
+        aua policy apply policies/brand_voice.yaml
+    """
+    pass
+
+
+@policy.command("list")
+def policy_list():
+    """List policy YAML files in the policies/ directory."""
+
+    policies_dir = Path("policies")
+    if not policies_dir.exists():
+        console.print("[yellow]No policies/ directory found.[/yellow]")
+        console.print("Create one: [cyan]mkdir policies[/cyan]")
+        return
+
+    files = sorted(policies_dir.glob("*.yaml")) + sorted(policies_dir.glob("*.yml"))
+    if not files:
+        console.print("[yellow]No .yaml files found in policies/[/yellow]")
+        return
+
+    from rich.table import Table
+
+    from aua.policy import validate_policy_yaml
+
+    table = Table(title="Policies", show_lines=False)
+    table.add_column("File", style="cyan")
+    table.add_column("Status", justify="center")
+    table.add_column("Name")
+    table.add_column("Assertions", justify="right")
+
+    for f in files:
+        errors = validate_policy_yaml(f)
+        if errors:
+            status = "[red]✗ invalid[/red]"
+            name = "—"
+            n = "—"
+        else:
+            import yaml as _yaml
+
+            raw = _yaml.safe_load(f.read_text())
+            name = raw.get("name", "—")
+            n = str(len(raw.get("assertions", [])))
+            status = "[green]✓ valid[/green]"
+        table.add_row(f.name, status, name, n)
+
+    console.print(table)
+
+
+@policy.command("validate")
+@click.argument("path")
+def policy_validate(path):
+    """Validate a policy YAML file.
+
+    \b
+    Checks schema, field names, level values, and bonus ranges.
+    Does NOT import assertion functions (use `aua guard test` for that).
+
+    \b
+    Example:
+        aua policy validate policies/brand_voice.yaml
+    """
+    from aua.policy import validate_policy_yaml
+
+    errors = validate_policy_yaml(path)
+    if errors:
+        console.print(f"[red]✗ {len(errors)} error(s) in {path}:[/red]")
+        for e in errors:
+            console.print(f"  • {e}")
+    else:
+        console.print(f"[green]✓ {path} is valid[/green]")
+
+
+@policy.command("apply")
+@click.argument("path")
+@click.option(
+    "--dry-run", is_flag=True, default=False, help="Show what would be applied without activating."
+)
+def policy_apply(path, dry_run):
+    """Apply a policy — write its path to .aua/active_policy.
+
+    \b
+    The router reads .aua/active_policy on startup (or hot-reload).
+    Set policy in config for permanent activation:
+
+    \b
+        # aua_config.yaml
+        policy:
+          path: policies/brand_voice.yaml
+
+    \b
+    Example:
+        aua policy apply policies/brand_voice.yaml
+        aua policy apply policies/brand_voice.yaml --dry-run
+    """
+    from aua.policy import load_policy, validate_policy_yaml
+
+    errors = validate_policy_yaml(path)
+    if errors:
+        console.print("[red]✗ Policy has errors — fix before applying:[/red]")
+        for e in errors:
+            console.print(f"  • {e}")
+        return
+
+    pol = load_policy(path)
+
+    console.print(f"\n[bold]Policy:[/bold] {pol.name} v{pol.version}")
+    console.print(f"  Max retries:     {pol.max_retries}")
+    console.print(f"  Max E bonus:     +{pol.max_total_bonus}")
+    if pol.utility_overrides:
+        console.print(f"  Weight overrides: {pol.utility_overrides}")
+    console.print(f"  Assertions ({len(pol.assertions)}):")
+    for a in pol.assertions:
+        bonus = f"  +{a.bonus:.2f} E bonus" if a.level.value == "info" and a.bonus else ""
+        console.print(f"    [{a.level.value.upper()}] {a.name}{bonus}")
+
+    if dry_run:
+        console.print("\n[yellow]--dry-run: policy NOT activated[/yellow]")
+        return
+
+    pointer = Path(".aua") / "active_policy"
+    pointer.parent.mkdir(parents=True, exist_ok=True)
+    pointer.write_text(str(Path(path).resolve()))
+    console.print("\n[green]✓ Policy activated.[/green] Restart or hot-reload to apply.")
+    console.print(f"  [dim]Pointer: {pointer}[/dim]")
+
+
+# ── aua calibrate ─────────────────────────────────────────────────────────────
+
+
+@main.command()
+@click.option(
+    "--layer",
+    type=click.Choice(["1", "2", "3"]),
+    required=True,
+    help="Calibration layer (1=eval, 2=routing weights, 3=DPO export).",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Layer 3: export even if below min_pairs threshold.",
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False, help="Show what would happen without writing files."
+)
+@click.option("--config", "-c", default="aua_config.yaml", show_default=True)
+@click.option(
+    "--dataset", default=None, help="Layer 1: eval dataset path (default: evals/coding_smoke.yaml)."
+)
+@click.option(
+    "--output",
+    "-o",
+    default="dpo_pairs/calibration.jsonl",
+    help="Layer 3: output path for DPO pairs.",
+    show_default=True,
+)
+@click.option(
+    "--min-pairs",
+    default=10,
+    show_default=True,
+    type=int,
+    help="Layer 3: minimum pairs required before export (skip --force).",
+)
+def calibrate(layer, force, dry_run, config, dataset, output, min_pairs):
+    """Run a calibration cycle against the live router.
+
+    \b
+    Three layers correspond to the three feedback loops:
+
+    \b
+      --layer 1   Run the eval harness (same as `aua eval run`).
+                  Measures whether the router is performing well now.
+
+      --layer 2   Recompute routing weight history from session data.
+                  Shows which specialists are trending up or down in U score.
+
+      --layer 3   Export gold-standard DPO pairs from assertion events.
+                  Gold-standard = sessions where all INFO assertions fired
+                  and no BLOCKING assertion failed after retries.
+                  Use the exported JSONL to fine-tune your local specialists.
+
+    \b
+    Examples:
+        aua calibrate --layer 1
+        aua calibrate --layer 2
+        aua calibrate --layer 3 --dry-run
+        aua calibrate --layer 3 --force --output dpo_pairs/may_calibration.jsonl
+    """
+    import json as _json
+    import time as _time
+
+    if layer == "1":
+        # Layer 1 — run eval harness
+        ds = dataset or "evals/coding_smoke.yaml"
+        if not Path(ds).exists():
+            console.print(f"[red]✗ Dataset not found:[/red] {ds}")
+            console.print("  Specify: [cyan]aua calibrate --layer 1 --dataset <path>[/cyan]")
+            return
+        console.print(f"[dim]Layer 1 calibration — running eval against {ds}[/dim]")
+        if dry_run:
+            console.print("[yellow]--dry-run: would run:[/yellow]")
+            console.print(f"  aua eval run --dataset {ds} --config {config}")
+            return
+        import subprocess
+
+        result = subprocess.run(
+            ["aua", "eval", "run", "--dataset", ds, "--config", config, "--json"],
+            capture_output=False,
+        )
+        if result.returncode == 0:
+            console.print("\n[green]✓ Layer 1 calibration complete.[/green]")
+        else:
+            console.print("\n[red]✗ Eval run failed.[/red]")
+
+    elif layer == "2":
+        # Layer 2 — routing weight analysis from session history
+        from aua.state import get_state_store
+
+        store = get_state_store()
+        console.print("[dim]Layer 2 calibration — analysing routing weight history[/dim]\n")
+
+        # Get assertion events to compute per-specialist adherence
+        events = store.query("assertion_events", limit=10000)
+        if not events:
+            console.print("[yellow]No assertion events found.[/yellow]")
+            console.print("Run queries with an active policy first:")
+            console.print("  [cyan]aua policy apply policies/my_policy.yaml[/cyan]")
+            return
+
+        from collections import defaultdict
+
+        domain_pass: dict[str, list[bool]] = defaultdict(list)
+        domain_bonus: dict[str, list[float]] = defaultdict(list)
+
+        for e in events:
+            domain = e.get("domain", "unknown")
+            domain_pass[domain].append(bool(e.get("passed", 0)))
+            if e.get("bonus_applied", 0) > 0:
+                domain_bonus[domain].append(float(e["bonus_applied"]))
+
+        from rich.table import Table
+
+        table = Table(title="Layer 2 — Routing Weight Analysis", show_lines=True)
+        table.add_column("Domain", style="cyan")
+        table.add_column("Queries", justify="right")
+        table.add_column("Pass Rate", justify="right")
+        table.add_column("Avg E Bonus", justify="right")
+        table.add_column("Signal")
+
+        for domain, results in sorted(domain_pass.items()):
+            n = len(results)
+            pass_rate = sum(results) / n if n else 0
+            avg_bonus = (
+                sum(domain_bonus[domain]) / len(domain_bonus[domain])
+                if domain_bonus[domain]
+                else 0.0
+            )
+            if pass_rate >= 0.85:
+                signal = "[green]↑ Strong[/green]"
+            elif pass_rate >= 0.60:
+                signal = "[yellow]→ Stable[/yellow]"
+            else:
+                signal = "[red]↓ Weak[/red]"
+            table.add_row(
+                domain,
+                str(n),
+                f"{pass_rate:.1%}",
+                f"+{avg_bonus:.3f}" if avg_bonus > 0 else "—",
+                signal,
+            )
+
+        if dry_run:
+            console.print("[yellow]--dry-run: weight analysis (no changes made):[/yellow]\n")
+        console.print(table)
+        console.print(
+            "\n[dim]Specialists with weak pass rates should be reviewed or retrained.[/dim]"
+        )
+        console.print(
+            "[dim]Use `aua calibrate --layer 3` to export DPO pairs for fine-tuning.[/dim]"
+        )
+
+    elif layer == "3":
+        # Layer 3 — export gold-standard DPO pairs
+        from aua.state import get_state_store
+
+        store = get_state_store()
+        console.print("[dim]Layer 3 calibration — exporting gold-standard DPO pairs[/dim]\n")
+
+        # Find sessions where all INFO assertions fired and no BLOCKING failed
+        all_events = store.query("assertion_events", limit=50000)
+        if not all_events:
+            console.print("[yellow]No assertion events found.[/yellow]")
+            console.print("Run queries with an active policy first.")
+            return
+
+        # Group by session
+        from collections import defaultdict
+
+        session_events: dict[str, list[dict]] = defaultdict(list)
+        for e in all_events:
+            session_events[e["session_id"]].append(e)
+
+        chosen_sessions = []
+        rejected_sessions = []
+
+        for session_id, events in session_events.items():
+            blocking_failed = any(
+                e["level"] == "blocking"
+                and not bool(e["passed"])
+                and e.get("retries_used", 0) >= 3  # exhausted retries
+                for e in events
+            )
+            info_events = [e for e in events if e["level"] == "info"]
+            all_info_fired = len(info_events) > 0 and all(
+                bool(e["passed"]) and e.get("message") for e in info_events
+            )
+
+            if all_info_fired and not blocking_failed:
+                chosen_sessions.append(session_id)
+            elif blocking_failed:
+                rejected_sessions.append(session_id)
+
+        n_chosen = len(chosen_sessions)
+        n_pairs = min(n_chosen, len(rejected_sessions))
+
+        console.print(f"  Gold-standard sessions:  [green]{n_chosen}[/green]")
+        console.print(f"  Failed sessions:         {len(rejected_sessions)}")
+        console.print(f"  Exportable pairs:        [cyan]{n_pairs}[/cyan]")
+        console.print()
+
+        if n_pairs < min_pairs and not force:
+            console.print(
+                f"[yellow]⚠ Only {n_pairs} pairs found (min: {min_pairs}).[/yellow]\n"
+                f"  Run more queries to accumulate data, or use --force to export anyway."
+            )
+            return
+
+        if dry_run:
+            console.print(
+                f"[yellow]--dry-run: would export {n_pairs} DPO pairs → {output}[/yellow]"
+            )
+            console.print(
+                "\n[dim]Each pair: chosen (gold-standard session) + rejected (failed session).[/dim]"
+            )
+            console.print("[dim]Fine-tune your local specialist with these pairs:[/dim]")
+            console.print("[dim]  Axolotl: axolotl train configs/dpo.yaml[/dim]")
+            console.print("[dim]  TRL:     trl dpo --dataset dpo_pairs/calibration.jsonl[/dim]")
+            return
+
+        # Get session messages to build pairs
+        pairs = []
+        corrections_data = store.query("corrections", limit=5000)
+        corrections_by_session: dict[str, list] = defaultdict(list)
+        for c in corrections_data:
+            if "session_id" in c:
+                corrections_by_session[c["session_id"]].append(c)
+
+        for chosen_id, rejected_id in zip(chosen_sessions, rejected_sessions):
+            pairs.append(
+                {
+                    "chosen_session_id": chosen_id,
+                    "rejected_session_id": rejected_id,
+                    "chosen": f"[Gold-standard session {chosen_id}]",
+                    "rejected": f"[Failed-assertion session {rejected_id}]",
+                    "metadata": {
+                        "source": "aua_calibrate_layer3",
+                        "exported_at": _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+                        "chosen_assertions_fired": len(
+                            [e for e in session_events[chosen_id] if e["level"] == "info"]
+                        ),
+                    },
+                }
+            )
+
+        out_path = Path(output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        lines = "\n".join(_json.dumps(p, default=str) for p in pairs)
+        out_path.write_text(lines)
+
+        console.print(f"[green]✓ Exported {len(pairs)} DPO pairs → {output}[/green]")
+        console.print()
+        console.print("[dim]Fine-tune your specialist with these pairs:[/dim]")
+        console.print(f"[dim]  Axolotl:  axolotl train configs/dpo.yaml --data {output}[/dim]")
+        console.print(f"[dim]  TRL:      trl dpo --dataset {output}[/dim]")
+        console.print(
+            "[dim]  Then deploy as GREEN: curl -X POST http://localhost:8000/deploy/green[/dim]"
+        )
+
+
+# ── aua logs ──────────────────────────────────────────────────────────────────
+
+
+@main.group()
+def logs():
+    """Query and export AUA session and assertion logs.
+
+    \b
+    Examples:
+        aua logs sessions
+        aua logs assertions --filter domain=software_engineering
+        aua logs assertions --filter "passed=false" --tail 20
+        aua logs export --output my_logs.json
+    """
+    pass
+
+
+@logs.command("sessions")
+@click.option("--limit", default=20, show_default=True, type=int)
+@click.option("--domain", default=None, help="Filter by domain.")
+@click.option("--json", "as_json", is_flag=True, default=False)
+def logs_sessions(limit, domain, as_json):
+    """Show recent sessions with U scores and routing info."""
+    import json as _json
+
+    from aua.state import get_state_store
+
+    store = get_state_store()
+    filters = {}
+    if domain:
+        filters["domain"] = domain
+    records = store.query("audit_log", filters={"event_type": "query"}, limit=limit)
+
+    if as_json:
+        print(_json.dumps(records, indent=2, default=str))
+        return
+
+    if not records:
+        console.print("[yellow]No session records found.[/yellow]")
+        return
+
+    from rich.table import Table
+
+    table = Table(title=f"Recent Sessions (last {limit})", show_lines=False)
+    table.add_column("Session", style="dim")
+    table.add_column("Domain", style="cyan")
+    table.add_column("U Score", justify="right")
+    table.add_column("Confidence", justify="right")
+    table.add_column("Latency", justify="right")
+
+    for r in records[:limit]:
+        table.add_row(
+            (r.get("session_id") or "")[:12],
+            r.get("field") or "—",
+            f"{r.get('u_score', 0):.3f}",
+            f"{r.get('confidence', 0):.3f}",
+            f"{r.get('latency_ms', 0):.0f}ms",
+        )
+    console.print(table)
+
+
+@logs.command("assertions")
+@click.option(
+    "--filter",
+    "filter_str",
+    default=None,
+    help="Filter: 'key=value' e.g. 'domain=software_engineering' or 'passed=false'.",
+)
+@click.option("--tail", default=None, type=int, help="Show last N assertion events.")
+@click.option("--assertion", "assertion_name", default=None, help="Filter by assertion name.")
+@click.option("--json", "as_json", is_flag=True, default=False)
+def logs_assertions(filter_str, tail, assertion_name, as_json):
+    """Show assertion events — which assertions fired and with what result.
+
+    \b
+    Examples:
+        aua logs assertions --filter passed=false
+        aua logs assertions --assertion PythonSyntaxCheck --tail 10
+        aua logs assertions --filter domain=software_engineering
+    """
+    import json as _json
+
+    from aua.state import get_state_store
+
+    store = get_state_store()
+    filters: dict = {}
+    if filter_str:
+        key, _, val = filter_str.partition("=")
+        key = key.strip()
+        val = val.strip()
+        if key == "passed":
+            filters["passed"] = 1 if val.lower() in ("true", "1", "yes") else 0
+        else:
+            filters[key] = val
+    if assertion_name:
+        filters["assertion_name"] = assertion_name
+
+    limit = tail or 50
+    records = store.query("assertion_events", filters=filters, limit=limit)
+
+    if as_json:
+        print(_json.dumps(records, indent=2, default=str))
+        return
+
+    if not records:
+        console.print("[yellow]No assertion events found.[/yellow]")
+        return
+
+    from rich.table import Table
+
+    table = Table(title=f"Assertion Events (last {limit})", show_lines=False)
+    table.add_column("Assertion", style="cyan")
+    table.add_column("Level")
+    table.add_column("Result", justify="center")
+    table.add_column("Bonus", justify="right")
+    table.add_column("Retries", justify="right")
+    table.add_column("Domain")
+    table.add_column("Message", max_width=40)
+
+    for r in records:
+        passed = bool(r.get("passed", 0))
+        result = "[green]✓[/green]" if passed else "[red]✗[/red]"
+        bonus = f"+{r['bonus_applied']:.2f}" if r.get("bonus_applied", 0) > 0 else "—"
+        level_color = {
+            "blocking": "[red]blocking[/red]",
+            "soft": "[yellow]soft[/yellow]",
+            "info": "[green]info[/green]",
+        }.get(r.get("level", ""), r.get("level", ""))
+
+        table.add_row(
+            r.get("assertion_name", ""),
+            level_color,
+            result,
+            bonus,
+            str(r.get("retries_used", 0)),
+            r.get("domain", ""),
+            (r.get("message") or "")[:40],
+        )
+
+    console.print(table)
+
+
+@logs.command("export")
+@click.option("--output", "-o", default="logs_export.json", show_default=True)
+@click.option(
+    "--table",
+    "table_name",
+    default="assertion_events",
+    type=click.Choice(["assertion_events", "audit_log", "sessions", "corrections"]),
+    show_default=True,
+)
+@click.option("--limit", default=10000, show_default=True, type=int)
+def logs_export(output, table_name, limit):
+    """Export session or assertion logs to JSON.
+
+    \b
+    Examples:
+        aua logs export --output my_assertions.json
+        aua logs export --table audit_log --output audit.json
+    """
+    import json as _json
+
+    from aua.state import get_state_store
+
+    store = get_state_store()
+    records = store.query(table_name, limit=limit)
+    Path(output).write_text(_json.dumps(records, indent=2, default=str))
+    console.print(f"[green]✓ Exported {len(records)} records → {output}[/green]")
+
+
+# ── aua metrics compare ────────────────────────────────────────────────────────
+
+
+@main.command("metrics")
+@click.option(
+    "--compare",
+    "compare_window",
+    default=None,
+    help="Compare time windows: '7d', '30d', or 'YYYY-MM-DD:YYYY-MM-DD'.",
+)
+@click.option(
+    "--metric",
+    default=None,
+    help="Focus on a specific metric: u_score, assertion_fail_rate, retry_rate.",
+)
+@click.option("--json", "as_json", is_flag=True, default=False)
+def metrics_compare(compare_window, metric, as_json):
+    """Compare AUA metrics across time windows.
+
+    \b
+    Shows how the system is performing over time — the key signal that
+    the policy feedback loop is working is assertion_fail_rate trending down
+    and u_score trending up.
+
+    \b
+    Examples:
+        aua metrics --compare 30d
+        aua metrics --compare 7d --metric assertion_fail_rate
+        aua metrics --compare 2025-04-01:2025-05-01
+    """
+    import json as _json
+    import time as _time
+
+    from aua.state import get_state_store
+
+    store = get_state_store()
+    now = _time.time()
+
+    # Parse window
+    if compare_window and ":" in compare_window and not compare_window.endswith("d"):
+        try:
+            from datetime import datetime
+
+            parts = compare_window.split(":")
+            t_from = datetime.strptime(parts[0], "%Y-%m-%d").timestamp()
+            t_to = datetime.strptime(parts[1], "%Y-%m-%d").timestamp()
+            window_seconds = t_to - t_from
+            current_start = t_from
+            prior_start = t_from - window_seconds
+        except ValueError:
+            console.print("[red]Invalid date range. Use YYYY-MM-DD:YYYY-MM-DD[/red]")
+            return
+    else:
+        days = int((compare_window or "30d").rstrip("d"))
+        window_seconds = days * 86400
+        current_start = now - window_seconds
+        prior_start = now - 2 * window_seconds
+
+    # Pull assertion events for both windows
+    def _stats(start: float, end: float) -> dict:
+        events = [
+            e
+            for e in store.query("assertion_events", limit=50000)
+            if start <= (e.get("created_at") or 0) <= end
+        ]
+        queries = [
+            q
+            for q in store.query("audit_log", filters={"event_type": "query"}, limit=50000)
+            if start <= (q.get("created_at") or 0) <= end
+        ]
+        n_events = len(events)
+        n_queries = len(queries)
+        n_failed = sum(1 for e in events if not bool(e.get("passed", 1)))
+        n_retries = sum(e.get("retries_used", 0) for e in events)
+        bonuses = [e["bonus_applied"] for e in events if e.get("bonus_applied", 0) > 0]
+        u_scores = [q["u_score"] for q in queries if q.get("u_score") is not None]
+        return {
+            "n_queries": n_queries,
+            "n_assertion_events": n_events,
+            "assertion_fail_rate": round(n_failed / n_events, 4) if n_events else 0.0,
+            "retry_rate": round(n_retries / n_events, 4) if n_events else 0.0,
+            "avg_e_bonus": round(sum(bonuses) / len(bonuses), 4) if bonuses else 0.0,
+            "mean_u_score": round(sum(u_scores) / len(u_scores), 4) if u_scores else 0.0,
+        }
+
+    current = _stats(current_start, now)
+    prior = _stats(prior_start, current_start)
+
+    def _delta(key: str) -> str:
+        c, p = current.get(key, 0), prior.get(key, 0)
+        diff = c - p
+        if abs(diff) < 0.001:
+            return "[dim]→ no change[/dim]"
+        # For fail/retry rates, lower is better
+        if key in ("assertion_fail_rate", "retry_rate"):
+            return f"[green]↓ {diff:+.4f}[/green]" if diff < 0 else f"[red]↑ {diff:+.4f}[/red]"
+        return f"[green]↑ {diff:+.4f}[/green]" if diff > 0 else f"[red]↓ {diff:+.4f}[/red]"
+
+    if as_json:
+        print(_json.dumps({"current": current, "prior": prior}, indent=2))
+        return
+
+    window_label = compare_window or "30d"
+    from rich.table import Table
+
+    table = Table(
+        title=f"Metrics Comparison — last {window_label} vs prior {window_label}", show_lines=True
+    )
+    table.add_column("Metric", style="cyan")
+    table.add_column("Prior", justify="right")
+    table.add_column("Current", justify="right")
+    table.add_column("Trend")
+
+    metrics_to_show = [
+        ("mean_u_score", "Mean U score"),
+        ("assertion_fail_rate", "Assertion fail rate"),
+        ("retry_rate", "Retry rate (BLOCKING)"),
+        ("avg_e_bonus", "Avg E bonus (INFO)"),
+        ("n_queries", "Total queries"),
+        ("n_assertion_events", "Total assertion events"),
+    ]
+
+    if metric:
+        m_map = {
+            "u_score": "mean_u_score",
+            "assertion_fail_rate": "assertion_fail_rate",
+            "retry_rate": "retry_rate",
+        }
+        key = m_map.get(metric, metric)
+        metrics_to_show = [(k, lbl) for k, lbl in metrics_to_show if k == key]
+
+    for key, label in metrics_to_show:
+        p_val = prior.get(key, 0)
+        c_val = current.get(key, 0)
+        table.add_row(label, str(p_val), str(c_val), _delta(key))
+
+    console.print(table)
+    console.print()
+    console.print("[dim]Success signal: mean_u_score ↑, assertion_fail_rate ↓, retry_rate ↓[/dim]")
+    console.print("[dim]Stagnation signal: same assertions failing week over week[/dim]")
+    console.print(
+        "[dim]Run `aua calibrate --layer 3` to export gold-standard sessions for fine-tuning.[/dim]"
+    )

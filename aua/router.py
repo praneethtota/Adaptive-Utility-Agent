@@ -28,6 +28,7 @@ import time
 import uuid
 from collections import defaultdict, deque
 from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -147,6 +148,57 @@ def _audit_query(
         import logging as _log
 
         _log.getLogger("aua.router").debug("Audit log write failed: %s", _audit_err)
+
+
+def _persist_assertion_results(
+    policy_result: Any,
+    session_id: str,
+    domain: str,
+    policy_name: str,
+) -> None:
+    """
+    Persist assertion results to the state store and fire Prometheus metrics.
+
+    Called after policy.run() on every query that has an active policy.
+    Results are stored in the assertion_events table with timestamps so
+    ``aua logs`` and ``aua calibrate --layer 3`` can query them.
+    """
+    try:
+        from aua.metrics import get_metrics
+        from aua.state import get_state_store
+
+        store = get_state_store()
+        metrics = get_metrics()
+
+        for r in policy_result.results:
+            store.append(
+                "assertion_events",
+                {
+                    "session_id": session_id,
+                    "assertion_name": r.assertion_name,
+                    "level": r.level.value,
+                    "passed": 1 if r.passed else 0,
+                    "bonus_applied": r.bonus_applied,
+                    "retries_used": r.retries_used,
+                    "message": r.message or "",
+                    "domain": domain,
+                    "policy_name": policy_name,
+                    "latency_ms": r.latency_ms,
+                },
+            )
+            metrics.record_assertion(
+                assertion_name=r.assertion_name,
+                level=r.level.value,
+                passed=r.passed,
+                domain=domain,
+                retries=r.retries_used,
+                bonus=r.bonus_applied,
+                policy_name=policy_name,
+            )
+    except Exception as _err:
+        import logging as _log
+
+        _log.getLogger("aua.router").debug("Assertion persist failed: %s", _err)
 
 
 class Router:
@@ -1162,7 +1214,43 @@ class Router:
         response, base_conf = await self._call(
             url, req.query, domain, req.conversation_history, model_name=model_name
         )
-        u, conf, n_contra, n_dpo = await self._score(req.query, response, domain, base_conf)
+
+        # ── Policy / assertion layer ──────────────────────────────────────
+        e_bonus, u_penalty, gold = 0.0, 0.0, False
+        policy = getattr(self, "_active_policy", None)
+        if policy is not None:
+            context = {
+                "query": req.query,
+                "session_id": req.session_id,
+                "domain": domain,
+                "field": domain,
+                "conversation_history": req.conversation_history or [],
+            }
+
+            def _sync_retry(error_msg: str) -> str | None:
+                import asyncio as _aio
+
+                try:
+                    augmented = req.query + f"\n\n[Feedback: {error_msg}]"
+                    return _aio.get_event_loop().run_until_complete(
+                        self._call(
+                            url, augmented, domain, req.conversation_history, model_name=model_name
+                        )
+                    )[0]
+                except Exception:
+                    return None
+
+            policy_result = policy.run(response, context, retry_fn=_sync_retry)
+            e_bonus = policy_result.e_bonus
+            u_penalty = policy_result.u_penalty
+            gold = policy_result.gold_standard
+            _persist_assertion_results(policy_result, req.session_id or "", domain, policy.name)
+
+        u, conf, n_contra, n_dpo = await self._score(
+            req.query, response, domain, base_conf, e_bonus=e_bonus, u_penalty=u_penalty
+        )
+        # ── end policy layer ──────────────────────────────────────────────
+
         self._queries_by_mode["single"] = self._queries_by_mode.get("single", 0) + 1
         self._latencies_ms["router"].append((time.time() - t0) * 1000)
         if spec:
@@ -1170,7 +1258,15 @@ class Router:
         self._total_contradictions += n_contra
         self._total_dpo += n_dpo
         latency_ms = round((time.time() - t0) * 1000, 1)
-        log.info("single→%s  U=%.3f  C=%.3f  contra=%d  dpo=%d", domain, u, conf, n_contra, n_dpo)
+        log.info(
+            "single→%s  U=%.3f  C=%.3f  contra=%d  dpo=%d  gold=%s",
+            domain,
+            u,
+            conf,
+            n_contra,
+            n_dpo,
+            gold,
+        )
         _audit_query(req, domain, "single", u, conf, latency_ms, n_contra)
         from aua.metrics import get_metrics
 
@@ -1369,7 +1465,13 @@ class Router:
     # ── Scoring ───────────────────────────────────────────────────────────────
 
     async def _score(
-        self, query: str, response: str, domain: str, base_conf: float
+        self,
+        query: str,
+        response: str,
+        domain: str,
+        base_conf: float,
+        e_bonus: float = 0.0,
+        u_penalty: float = 0.0,
     ) -> tuple[float, float, int, int]:
         field_cfg = FIELD_CONFIGS.get(domain, FIELD_CONFIGS["general"])
         result = self._detector.check(problem=query, solution=response)
@@ -1403,7 +1505,21 @@ class Router:
                 )
                 n_dpo += 1
             log.info("[%s] %d contradiction(s) → %d DPO pair(s)", domain, n_contra, n_dpo)
-        return task_score.utility, updated_conf, n_contra, n_dpo
+
+        # Apply policy bonus/penalty to final U score
+        base_u = task_score.utility
+        if e_bonus > 0.0:
+            # Boost E component: U = w_e*(E+bonus) + rest
+            from aua.config import FIELD_CONFIGS as _FC
+
+            fc = _FC.get(domain, _FC["general"])
+            u_adjusted = min(1.0, base_u + fc.w_efficacy * e_bonus)
+        else:
+            u_adjusted = base_u
+        if u_penalty > 0.0:
+            u_adjusted = max(0.0, u_adjusted - u_penalty)
+
+        return round(u_adjusted, 4), updated_conf, n_contra, n_dpo
 
     # ── Arbitration ───────────────────────────────────────────────────────────
 

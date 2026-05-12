@@ -76,6 +76,7 @@ from aua.endpoints import (
 )
 from aua.eval import EvalReport, run_dataset, save_report
 from aua.field_classifier import FieldClassifier
+from aua.guard import AssertionFn, AssertionLevel, AssertionResult, PolicyResult, assertion
 from aua.hooks import HookRunner, get_hook_runner
 from aua.hot_reload import HotReloader, ReloadResult
 from aua.logging_config import configure_logging
@@ -94,6 +95,7 @@ from aua.plugins.interfaces import (
     UtilityScorerPlugin,
 )
 from aua.plugins.registry import PluginLoadError, PluginRegistry, get_registry, load_plugin
+from aua.policy import Policy, load_policy, validate_policy_yaml
 from aua.presets import AVAILABLE_PRESETS, PRESETS, PresetSpec, get_preset
 from aua.rate_limit import RateLimitMiddleware
 from aua.router import Router
@@ -135,6 +137,15 @@ __all__ = [
     "ContradictionDetector",
     "ContradictionResult",
     "AssertionsStore",
+    # Guard & Policy
+    "assertion",
+    "AssertionLevel",
+    "AssertionFn",
+    "AssertionResult",
+    "PolicyResult",
+    "Policy",
+    "load_policy",
+    "validate_policy_yaml",
     "AssertionMatch",
     "ConfidenceUpdater",
     # arbitration

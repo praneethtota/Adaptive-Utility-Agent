@@ -155,6 +155,49 @@ class AUAMetrics:
             "Accumulated USD cost by specialist",
             ["specialist"],
         )
+        # ── Assertion / policy metrics ────────────────────────────────────
+        self.assertion_results = Counter(
+            "aua_assertion_results_total",
+            "Assertion results by name, level, and outcome",
+            ["assertion_name", "level", "passed", "domain"],
+        )
+        self.assertion_retries = Counter(
+            "aua_assertion_retries_total",
+            "Retry attempts triggered by BLOCKING assertions",
+            ["assertion_name"],
+        )
+        self.assertion_bonus = Histogram(
+            "aua_assertion_bonus_applied",
+            "E-score bonus applied by INFO assertions per session",
+            ["policy_name"],
+            buckets=[0.0, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50],
+        )
+
+    def record_assertion(
+        self,
+        assertion_name: str,
+        level: str,
+        passed: bool,
+        domain: str = "unknown",
+        retries: int = 0,
+        bonus: float = 0.0,
+        policy_name: str = "",
+    ) -> None:
+        """Record an assertion result to Prometheus."""
+        if not self._available:
+            key = f"assertions.{assertion_name}.{'pass' if passed else 'fail'}"
+            self._counts[key] = self._counts.get(key, 0) + 1
+            return
+        self.assertion_results.labels(
+            assertion_name=assertion_name,
+            level=level,
+            passed="true" if passed else "false",
+            domain=domain,
+        ).inc()
+        if retries > 0:
+            self.assertion_retries.labels(assertion_name=assertion_name).inc(retries)
+        if bonus > 0 and policy_name:
+            self.assertion_bonus.labels(policy_name=policy_name).observe(bonus)
 
     def configure_cost(self, gpu_hour_rates: dict[str, float]) -> None:
         """Set GPU hour rates: {tier: usd_per_hour}"""

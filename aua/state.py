@@ -89,9 +89,27 @@ CREATE TABLE IF NOT EXISTS audit_log (
     curr_hash TEXT
 );
 
+CREATE TABLE IF NOT EXISTS assertion_events (
+    id TEXT PRIMARY KEY,
+    created_at REAL NOT NULL,
+    session_id TEXT NOT NULL,
+    assertion_name TEXT NOT NULL,
+    level TEXT NOT NULL,       -- "blocking" | "soft" | "info"
+    passed INTEGER NOT NULL,   -- 1 = passed, 0 = failed
+    bonus_applied REAL DEFAULT 0.0,
+    retries_used INTEGER DEFAULT 0,
+    message TEXT,
+    domain TEXT,
+    policy_name TEXT,
+    latency_ms REAL DEFAULT 0.0
+);
+
 CREATE INDEX IF NOT EXISTS idx_corrections_domain ON corrections(domain);
 CREATE INDEX IF NOT EXISTS idx_promotions_specialist ON promotions(specialist);
 CREATE INDEX IF NOT EXISTS idx_audit_session ON audit_log(session_id);
+CREATE INDEX IF NOT EXISTS idx_assertion_events_session ON assertion_events(session_id);
+CREATE INDEX IF NOT EXISTS idx_assertion_events_name ON assertion_events(assertion_name);
+CREATE INDEX IF NOT EXISTS idx_assertion_events_created ON assertion_events(created_at);
 """
 
 

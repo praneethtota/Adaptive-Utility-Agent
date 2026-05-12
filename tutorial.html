@@ -99,15 +99,18 @@ tr:nth-child(even) td{background:#fafaf8}
     <a href="#part-7">7 · Correction loop &amp; DPO</a>
     <a href="#part-8">8 · Eval harness</a>
     <a href="#part-9">9 · Chat UI</a>
+    <a href="#part-10-policy">10 · Policies &amp; assertions</a>
+    <a href="#part-11-calibrate">11 · Calibration cycles</a>
+    <a href="#part-12-logs">12 · Logs &amp; metrics</a>
   </nav>
 
   <div class="sb-section">How-to guides</div>
   <nav>
-    <a href="#part-10">10 · Write a plugin</a>
-    <a href="#part-11">11 · Hooks &amp; middleware</a>
-    <a href="#part-12">12 · Security</a>
-    <a href="#part-13">13 · Observability</a>
-    <a href="#part-14">14 · Docker deployment</a>
+    <a href="#part-13">13 · Write a plugin</a>
+    <a href="#part-14">14 · Hooks &amp; middleware</a>
+    <a href="#part-15">15 · Security</a>
+    <a href="#part-16">16 · Observability</a>
+    <a href="#part-17">17 · Docker deployment</a>
   </nav>
 
   <div class="sb-section">Reference</div>
@@ -140,7 +143,7 @@ tr:nth-child(even) td{background:#fafaf8}
   <p class="subtitle">From a 5-command quickstart to advanced plugins, security, and the eval harness. Every section runs real commands against a live framework instance.</p>
   <div class="hero-pills">
     <span class="pill">Quick Start</span>
-    <span class="pill">Tutorial (9 parts)</span>
+    <span class="pill">Tutorial (12 parts)</span>
     <span class="pill">How-to guides (5 topics)</span>
     <span class="pill">CLI reference</span>
     <span class="pill">REST API reference</span>
@@ -842,11 +845,379 @@ curl http://localhost:8000/sessions \
 </div>
 
 <hr class="section-divider">
+
+<!-- ═══════════════════════════════════════════ PART 10 — POLICY & ASSERTIONS -->
+<h2 id="part-10-policy" class="part-heading"><span class="part-badge">Part 10</span> Policies &amp; Assertions — Design your AI over time <span class="time-badge">~25 min</span></h2>
+
+<p>This is the most powerful section of the tutorial. By the end, you'll understand how to teach the framework what "good output" means — and how it uses that definition to block bad responses in real-time, track model reputation over sessions, and automatically identify gold-standard training data for fine-tuning.</p>
+
+<div class="callout">
+  <p><strong>The core idea.</strong> Instead of writing a long system prompt and hoping the model follows it, you write a Policy — a versioned, portable definition of what good output looks like. The framework enforces it in real-time, tracks adherence over every session, and eventually makes the defined behavior permanent through fine-tuning. Your policy becomes the model's curriculum.</p>
+</div>
+
+<h3>10.1 The three assertion levels</h3>
+
+<p>Every assertion has a level that determines what happens when it fires:</p>
+
+<table>
+<tr><th>Level</th><th>What it does</th><th>Effect on U score</th></tr>
+<tr><td><code>BLOCKING</code></td><td>Fails → error injected back into prompt → specialist retried up to <code>max_retries</code> (default 3). User never sees a response that violates this.</td><td>U penalty if all retries exhausted</td></tr>
+<tr><td><code>SOFT</code></td><td>Fails → logged to assertion_events, response passes through. Use for guardrails you want to track without enforcing.</td><td>No U change — logged only</td></tr>
+<tr><td><code>INFO</code></td><td>Always passes. When condition fires (returns a message), adds <code>+bonus</code> to the Efficacy (E) score. Use for positive/incentive assertions.</td><td><code>E_final = min(1.0, E_base + bonus)</code></td></tr>
+</table>
+
+<h3>10.2 Writing your first assertion</h3>
+
+<div class="code-block">
+<div class="code-header">mypackage/policies.py</div>
+<pre>from aua.guard import assertion, AssertionLevel
+
+# ── Guardrail: block syntax errors from ever reaching the user ─────────────
+@assertion(name="PythonSyntaxCheck", level=AssertionLevel.BLOCKING)
+def validate_python_syntax(output: str, context: dict) -> tuple[bool, str | None]:
+    """Blocks output if any Python code block contains syntax errors."""
+    import ast, re
+    blocks = re.findall(r"```python(.*?)```", output, re.DOTALL)
+    if not blocks:
+        return True, None   # no code block — pass through
+    for block in blocks:
+        try:
+            ast.parse(block)
+        except SyntaxError as e:
+            return False, f"Syntax error at line {e.lineno}: {e.msg}"
+    return True, None
+
+# ── Guardrail: soft-flag refusals without blocking ─────────────────────────
+@assertion(name="NoAIisms", level=AssertionLevel.SOFT)
+def no_ai_isms(output: str, context: dict) -> tuple[bool, str | None]:
+    """Soft-flags common 'AI-isms' like 'as an AI language model'."""
+    phrases = ["as an ai", "as a language model", "i cannot help with"]
+    found = next((p for p in phrases if p in output.lower()), None)
+    if found:
+        return False, f"AI-ism detected: '{found}'"
+    return True, None</pre>
+</div>
+
+<h3>10.3 Positive assertions — rewarding gold-standard behaviour</h3>
+
+<p>Negative assertions block bad output. Positive assertions reward exceptional output — and this is what feeds the fine-tuning pipeline. Sessions where positive assertions fire get the highest U scores and are automatically selected as "chosen" in your DPO export.</p>
+
+<div class="code-block">
+<div class="code-header">mypackage/policies.py (continued)</div>
+<pre>@assertion(name="AnalogyBonus", level=AssertionLevel.INFO, bonus=0.10)
+def reward_analogy(output: str, context: dict) -> tuple[bool, str | None]:
+    """Rewards responses that use analogies to explain concepts."""
+    phrases = ["like a", "similar to", "imagine a", "think of it as", "just like"]
+    if any(p in output.lower() for p in phrases):
+        return True, "Positive: analogy used for clarity"
+    return True, None   # neutral — no bonus if condition not met
+
+@assertion(name="SocraticEnding", level=AssertionLevel.INFO, bonus=0.08)
+def reward_question_ending(output: str, context: dict) -> tuple[bool, str | None]:
+    """Rewards responses that end with an engaging question."""
+    if output.strip().endswith("?"):
+        return True, "Positive: Socratic engagement"
+    return True, None
+
+@assertion(name="PythonSyntaxBonus", level=AssertionLevel.INFO, bonus=0.12)
+def reward_clean_code(output: str, context: dict) -> tuple[bool, str | None]:
+    """Rewards syntactically clean Python with a bonus (stack with syntax check)."""
+    import ast, re
+    blocks = re.findall(r"```python(.*?)```", output, re.DOTALL)
+    if blocks:
+        try:
+            for b in blocks:
+                ast.parse(b)
+            return True, "Positive: clean executable Python"
+        except SyntaxError:
+            pass
+    return True, None</pre>
+</div>
+
+<div class="callout green">
+  <p><strong>Option B bonus cap.</strong> Each INFO assertion contributes its declared bonus independently. The sum is capped by <code>max_total_bonus</code> on the Policy (default 0.30), then hard-capped at 0.50. A session where all three INFO assertions above fire adds up to 0.30 to E — a meaningful signal that this session is gold-standard.</p>
+</div>
+
+<h3>10.4 Bundling into a Policy</h3>
+
+<p>A Policy is a versioned bundle that groups assertions, sets retry limits, and optionally shifts utility weights when active. Think of it as a Django <code>settings.py</code> for your AI's behaviour.</p>
+
+<div class="code-block">
+<div class="code-header">Python</div>
+<pre>from aua.policy import Policy
+
+# Bundle guardrails + incentives into one named Policy
+coding_policy = Policy(
+    name="SafeCoding",
+    version="1.0",
+    max_retries=3,          # BLOCKING retries before giving up
+    max_total_bonus=0.30,   # cap on total E bonus (Option B)
+    utility_overrides={
+        "w_k": 0.30,        # slightly raise curiosity weight for this policy
+    }
+)
+
+# Add assertions — chaining supported
+coding_policy.add(validate_python_syntax)   # BLOCKING
+coding_policy.add(no_ai_isms)               # SOFT
+coding_policy.add(reward_analogy)           # INFO +0.10
+coding_policy.add(reward_clean_code)        # INFO +0.12
+
+# Inspect before applying
+print(coding_policy.summary())</pre>
+</div>
+
+<h3>10.5 YAML policy file (recommended for production)</h3>
+
+<div class="code-block">
+<div class="code-header">policies/safe_coding.yaml</div>
+<pre>name: SafeCoding
+version: "1.0"
+max_retries: 3
+max_total_bonus: 0.30
+assertions:
+  - import_path: mypackage.policies:validate_python_syntax
+    # level defaults to what's declared on the @assertion decorator
+  - import_path: mypackage.policies:no_ai_isms
+  - import_path: mypackage.policies:reward_analogy
+    bonus: 0.10          # override decorator default
+  - import_path: mypackage.policies:reward_clean_code
+    bonus: 0.12
+utility_overrides:
+  w_k: 0.30</pre>
+</div>
+
+<h3>10.6 Applying a policy via CLI</h3>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre># Validate schema before applying
+aua policy validate policies/safe_coding.yaml
+# ✓ policies/safe_coding.yaml is valid
+
+# Preview — see what would be activated
+aua policy apply policies/safe_coding.yaml --dry-run
+
+# Activate — writes pointer to .aua/active_policy
+aua policy apply policies/safe_coding.yaml
+# ✓ Policy activated. Restart or hot-reload to apply.
+
+# List all policies in policies/
+aua policy list
+
+# Test a single assertion against sample output
+aua guard list
+aua guard test --import-path mypackage.policies:validate_python_syntax
+aua guard test --import-path mypackage.policies:reward_analogy \
+    --output "Think of it as a balanced binary tree."</pre>
+</div>
+
+<h3>10.7 The three-layer learning loop</h3>
+
+<p>Once a policy is active, the framework creates a feedback loop that progressively shapes model behaviour — no manual intervention required:</p>
+
+<div class="callout">
+  <p><strong>Layer 1 — Immediate (milliseconds).</strong> BLOCKING assertions fire on every response. If <code>PythonSyntaxCheck</code> fails, the error is injected back into the prompt and the specialist retries. The user only ever sees syntactically valid code.</p>
+</div>
+
+<div class="callout green">
+  <p><strong>Layer 2 — Session-by-session.</strong> Every assertion result is stored in <code>assertion_events</code> with a timestamp. Specialists that consistently fail assertions accumulate lower mean U scores. Lower U scores mean they don't meet the blue-green promotion delta threshold — a model that can't follow your policy doesn't advance to BLUE.</p>
+</div>
+
+<div class="callout orange">
+  <p><strong>Layer 3 — Calibration (on demand).</strong> Run <code>aua calibrate --layer 3</code> to export sessions where all INFO assertions fired and no BLOCKING assertion exhausted retries. These are your gold-standard sessions — ready as DPO "chosen" examples for fine-tuning. After fine-tuning, the defined behaviours are baked into the model weights, and the assertions become less necessary over time.</p>
+</div>
+
+<div class="next-part"><p><strong>Part 10 done.</strong> Part 11 covers triggering calibration cycles to export training data and analyse routing weight health.</p></div>
+
+<!-- ═══════════════════════════════════════════ PART 11 — CALIBRATE -->
+<h2 id="part-11-calibrate" class="part-heading"><span class="part-badge">Part 11</span> Calibration cycles <span class="time-badge">~15 min</span></h2>
+
+<p>The <code>aua calibrate</code> command surfaces the three feedback loops as explicit, triggerable operations. You choose when to run each one — the framework handles the analysis.</p>
+
+<h3>11.1 Layer 1 — Measure current performance</h3>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre># Run the eval harness — same as `aua eval run` but surfaced as a calibration step
+aua calibrate --layer 1 --dataset evals/coding_smoke.yaml
+
+# Use the default dataset if it exists
+aua calibrate --layer 1</pre>
+</div>
+
+<h3>11.2 Layer 2 — Routing weight analysis</h3>
+
+<p>Layer 2 reads assertion event history and shows which domains are healthy vs. degrading — the signal that tells you which specialists need attention.</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua calibrate --layer 2
+
+# Example output:
+# ┌──────────────────────────┬─────────┬───────────┬───────────┬──────────────┐
+# │ Domain                   │ Queries │ Pass Rate │ Avg Bonus │ Signal       │
+# ├──────────────────────────┼─────────┼───────────┼───────────┼──────────────┤
+# │ software_engineering     │     312 │    91.3%  │  +0.087   │ ↑ Strong     │
+# │ mathematics              │     148 │    83.1%  │  +0.041   │ → Stable     │
+# │ general                  │      44 │    56.2%  │     —     │ ↓ Weak       │
+# └──────────────────────────┴─────────┴───────────┴───────────┴──────────────┘
+# Stagnation signal: same assertions failing week over week
+# → Check: is the assertion too strict? Is the model too small?
+
+aua calibrate --layer 2 --dry-run  # preview only</pre>
+</div>
+
+<h3>11.3 Layer 3 — Export gold-standard DPO pairs</h3>
+
+<p>This is the calibration cycle that closes the loop. The framework identifies your best sessions — where the model followed your policy perfectly — and exports them as DPO training pairs.</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre># See what would be exported without writing files
+aua calibrate --layer 3 --dry-run
+
+# Example dry-run output:
+# Gold-standard sessions:   47
+# Failed sessions:          12
+# Exportable pairs:         12
+# --dry-run: would export 12 DPO pairs → dpo_pairs/calibration.jsonl
+
+# Export when ready
+aua calibrate --layer 3 --output dpo_pairs/may_calibration.jsonl
+
+# Force export even if below min-pairs threshold
+aua calibrate --layer 3 --force --output dpo_pairs/early_export.jsonl
+
+# Fine-tune your specialist with the exported pairs:
+# Axolotl:  axolotl train configs/dpo.yaml --data dpo_pairs/may_calibration.jsonl
+# TRL:      trl dpo --dataset dpo_pairs/may_calibration.jsonl
+# Then deploy as GREEN: curl -X POST http://localhost:8000/deploy/green</pre>
+</div>
+
+<div class="callout orange">
+  <p><strong>What Layer 3 does (and doesn't do).</strong> <code>aua calibrate --layer 3</code> identifies gold-standard sessions and exports DPO pairs in the format your fine-tuning framework expects. It does not fine-tune models automatically — that step runs via Axolotl, TRL, or LLaMA-Factory using the exported JSONL. After fine-tuning, deploy the new model as a GREEN candidate and let blue-green handle promotion.</p>
+</div>
+
+<div class="next-part"><p><strong>Part 11 done.</strong> Part 12 covers querying session and assertion logs and comparing metrics over time.</p></div>
+
+<!-- ═══════════════════════════════════════════ PART 12 — LOGS & METRICS -->
+<h2 id="part-12-logs" class="part-heading"><span class="part-badge">Part 12</span> Logs &amp; metrics over time <span class="time-badge">~15 min</span></h2>
+
+<p>The assertion events store gives you a time-series view of how your policy is performing. These commands let you answer "is my AI actually getting better at following my policy?"</p>
+
+<h3>12.1 Viewing assertion events</h3>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre># All recent assertion events
+aua logs assertions
+
+# Filter to failures only — the assertions that need attention
+aua logs assertions --filter passed=false
+
+# Filter by assertion name
+aua logs assertions --assertion PythonSyntaxCheck --tail 20
+
+# Filter by domain
+aua logs assertions --filter domain=software_engineering
+
+# Export for offline analysis
+aua logs assertions --json > my_assertions.json</pre>
+</div>
+
+<h3>12.2 Viewing session history</h3>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre># Recent sessions with U scores
+aua logs sessions
+
+# Export sessions to JSON
+aua logs export --table audit_log --output sessions.json</pre>
+</div>
+
+<h3>12.3 Comparing metrics over time</h3>
+
+<p>This is the "is it working?" command. It compares the current window against the prior window of the same length and shows whether the key signals are moving in the right direction.</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre"># Compare last 30 days vs prior 30 days
+aua metrics --compare 30d
+
+# Example output (after a few weeks with an active policy):
+# ┌─────────────────────────────┬──────────┬──────────┬──────────────────┐
+# │ Metric                      │ Prior    │ Current  │ Trend            │
+# ├─────────────────────────────┼──────────┼──────────┼──────────────────┤
+# │ Mean U score                │  0.6213  │  0.6891  │ ↑ +0.0678        │
+# │ Assertion fail rate         │  0.2341  │  0.1102  │ ↓ -0.1239        │ ← good
+# │ Retry rate (BLOCKING)       │  0.1820  │  0.0890  │ ↓ -0.0930        │ ← good
+# │ Avg E bonus (INFO)          │  0.0120  │  0.0654  │ ↑ +0.0534        │
+# │ Total queries               │      312 │      481 │ ↑ +0.0000        │
+# └─────────────────────────────┴──────────┴──────────┴──────────────────┘
+# Success signal: mean_u_score ↑, assertion_fail_rate ↓, retry_rate ↓
+# Stagnation signal: same assertions failing week over week
+
+# Focus on a single metric
+aua metrics --compare 7d --metric assertion_fail_rate
+
+# Date range
+aua metrics --compare 2025-04-01:2025-05-01
+
+# JSON output for charting
+aua metrics --compare 30d --json</pre>
+</div>
+
+<div class="callout green">
+  <p><strong>What success looks like.</strong> Mean U score trending up. Assertion fail rate trending down. Retry rate (BLOCKING) falling — meaning the model is learning to get it right on the first try. After a fine-tuning cycle, you may see a step-change drop in fail rate as the trained behaviour is baked into the weights.</p>
+  <p style="margin-top:.5rem;margin-bottom:0;"><strong>What stagnation looks like.</strong> The same assertions failing week over week. This means either the assertion is too strict for the model's capability, or the model isn't receiving enough signal to learn. Check: is <code>max_retries</code> too low? Is the policy active on enough queries to accumulate data?</p>
+</div>
+
+<h3>12.4 The full policy workflow in practice</h3>
+
+<p>Putting it all together — this is the cycle for designing and refining your AI over time:</p>
+
+<div class="code-block">
+<div class="code-header">bash — Monthly calibration cycle</div>
+<pre># 1. Week 1-4: run queries with policy active, accumulate assertion events
+
+# 2. Check Layer 2 health at any point
+aua calibrate --layer 2
+
+# 3. Review failures — add/refine assertions if the same things keep failing
+aua logs assertions --filter passed=false --tail 50
+
+# 4. End of month: export gold-standard sessions
+aua calibrate --layer 3 --dry-run      # preview
+aua calibrate --layer 3                # export to dpo_pairs/calibration.jsonl
+
+# 5. Fine-tune your specialist on the exported pairs (external step)
+# trl dpo --dataset dpo_pairs/calibration.jsonl
+
+# 6. Deploy the fine-tuned model as GREEN
+curl -X POST http://localhost:8000/deploy/green \
+  -d '{"specialist": "swe", "new_model": "qwen2.5-coder:14b-finetuned"}'
+
+# 7. Blue-green evaluates and promotes if U score delta passes threshold
+aua status --once    # watch the promotion
+
+# 8. Compare metrics to confirm improvement
+aua metrics --compare 30d
+
+# Repeat — each cycle, the model gets better at following your policy.
+# After a few cycles, the assertions become less necessary because the
+# defined behaviours are baked into the model weights.</pre>
+</div>
+
+<div class="next-part"><p><strong>Part 12 done.</strong> How-to guides follow — plugins, hooks, security, observability, and Docker deployment.</p></div>
+
+<hr class="section-divider">
 <h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:1.4rem;color:#444;margin:1.5rem 0 .5rem;">How-to guides</h2>
 <p style="color:#555;margin-bottom:2rem;">Task-oriented guides for specific things you need to accomplish.</p>
 
-<!-- ═══════════════════════════════════════════ PART 10 -->
-<h2 id="part-10" class="part-heading"><span class="how-badge">How-to 10</span> Write a plugin <span class="time-badge">~25 min</span></h2>
+<!-- ═══════════════════════════════════════════ PART 13 (was 10) -->
+<h2 id="part-13" class="part-heading"><span class="how-badge">How-to 13</span> Write a plugin <span class="time-badge">~25 min</span></h2>
 
 <p>AUA defines 8 Protocol interfaces. Implement any of them to replace the corresponding framework layer — without editing AUA source. Register via <code>import_path</code> in <code>aua_config.yaml</code>.</p>
 
@@ -961,8 +1332,8 @@ aua extensions test --kind utility_scorer --import-path mypackage.myplugin:MyPlu
 
 <div class="next-part"><p><strong>Part 10 done.</strong> Part 11 covers hooks and middleware — intercepting the query lifecycle.</p></div>
 
-<!-- ═══════════════════════════════════════════ PART 11 -->
-<h2 id="part-11" class="part-heading"><span class="how-badge">How-to 11</span> Hooks &amp; middleware <span class="time-badge">~20 min</span></h2>
+<!-- ═══════════════════════════════════════════ PART 14 -->
+<h2 id="part-14" class="part-heading"><span class="how-badge">How-to 14</span> Hooks &amp; middleware <span class="time-badge">~20 min</span></h2>
 
 <h3>11.1 The 11 hook points</h3>
 <table>
@@ -1039,8 +1410,8 @@ class PIIRedactionMiddleware(AUAMiddleware):
 
 <div class="next-part"><p><strong>Part 11 done.</strong> Part 12 covers production security — tokens, mTLS, secrets, and audit log.</p></div>
 
-<!-- ═══════════════════════════════════════════ PART 12 -->
-<h2 id="part-12" class="part-heading"><span class="how-badge">How-to 12</span> Security <span class="time-badge">~25 min</span></h2>
+<!-- ═══════════════════════════════════════════ PART 15 -->
+<h2 id="part-15" class="part-heading"><span class="how-badge">How-to 15</span> Security <span class="time-badge">~25 min</span></h2>
 
 <h3>12.1 Bearer tokens and scopes</h3>
 <p>AUA uses HMAC-SHA256 bearer tokens with 15 fine-grained scopes. Create tokens with the CLI:</p>
@@ -1156,8 +1527,8 @@ aua corrections export --format jsonl</pre>
 
 <div class="next-part"><p><strong>Part 12 done.</strong> Part 13 covers observability — Prometheus, Grafana, OTEL, and structured logging.</p></div>
 
-<!-- ═══════════════════════════════════════════ PART 13 -->
-<h2 id="part-13" class="part-heading"><span class="how-badge">How-to 13</span> Observability <span class="time-badge">~20 min</span></h2>
+<!-- ═══════════════════════════════════════════ PART 16 -->
+<h2 id="part-16" class="part-heading"><span class="how-badge">How-to 16</span> Observability <span class="time-badge">~20 min</span></h2>
 
 <h3>13.1 Prometheus metrics</h3>
 <div class="code-block">
@@ -1238,8 +1609,8 @@ aua corrections export --format jsonl</pre>
 
 <div class="next-part"><p><strong>Part 13 done.</strong> Part 14 covers Docker deployment profiles.</p></div>
 
-<!-- ═══════════════════════════════════════════ PART 14 -->
-<h2 id="part-14" class="part-heading"><span class="how-badge">How-to 14</span> Docker deployment <span class="time-badge">~20 min</span></h2>
+<!-- ═══════════════════════════════════════════ PART 17 -->
+<h2 id="part-17" class="part-heading"><span class="how-badge">How-to 17</span> Docker deployment <span class="time-badge">~20 min</span></h2>
 
 <h3>14.1 Docker Compose profiles</h3>
 <p class="caption">All examples use the modern <code>docker compose</code> (V2) command. If your system only has the legacy binary, replace with <code>docker-compose</code>.</p>
@@ -1397,6 +1768,46 @@ aua extensions test --kind &lt;type&gt; --import-path &lt;path&gt;
 <div class="code-header">bash</div>
 <pre>aua status [--once] [--json] [--url &lt;url&gt;] [--refresh &lt;seconds&gt;]
 aua rollback [--specialist &lt;name&gt;] [--all] [--yes] [--no-restart]</pre>
+</div>
+
+<h3>aua guard</h3>
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua guard list [--json]
+aua guard test --import-path &lt;module:function&gt; [--output &lt;text&gt;] [--domain &lt;name&gt;]</pre>
+</div>
+
+<h3>aua policy</h3>
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua policy list
+aua policy validate &lt;path.yaml&gt;
+aua policy apply &lt;path.yaml&gt; [--dry-run]</pre>
+</div>
+
+<h3>aua calibrate</h3>
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua calibrate --layer &lt;1|2|3&gt; [--force] [--dry-run] [--config &lt;path&gt;]
+              [--dataset &lt;path&gt;]          # layer 1 only
+              [--output &lt;path.jsonl&gt;]     # layer 3 only
+              [--min-pairs &lt;N&gt;]           # layer 3 only (default: 10)</pre>
+</div>
+
+<h3>aua logs</h3>
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua logs sessions [--limit &lt;N&gt;] [--domain &lt;name&gt;] [--json]
+aua logs assertions [--filter &lt;key=value&gt;] [--assertion &lt;name&gt;] [--tail &lt;N&gt;] [--json]
+aua logs export [--output &lt;path&gt;] [--table &lt;table&gt;] [--limit &lt;N&gt;]</pre>
+</div>
+
+<h3>aua metrics</h3>
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>aua metrics --compare &lt;window&gt;   # 7d, 30d, or YYYY-MM-DD:YYYY-MM-DD
+            [--metric &lt;name&gt;]   # u_score | assertion_fail_rate | retry_rate
+            [--json]</pre>
 </div>
 
 <!-- ═══════════════════════════════════════════ API REF -->
