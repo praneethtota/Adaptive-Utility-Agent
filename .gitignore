@@ -10,3 +10,20 @@ models/
 .DS_Store
 .idea/
 agent/.claude/
+# Runtime state
+
+.aua/state/
+
+.aua/logs/
+
+.aua/pids/
+
+.aua/checkpoints/
+
+# Python build artifacts
+
+dist/
+
+build/
+
+*.egg-info/
