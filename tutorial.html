@@ -139,18 +139,55 @@ tr:nth-child(even) td{background:#fafaf8}
 <!-- HERO -->
 <div class="hero">
   <div class="hero-tag">Tutorial · v1.0.0</div>
-  <h1>AUA Framework Tutorial</h1>
-  <p class="subtitle">From a 5-command quickstart to advanced plugins, security, and the eval harness. Every section runs real commands against a live framework instance.</p>
-  <div class="hero-pills">
+  <h1>Your LLM makes the same mistake twice.<br>AUA makes sure it doesn't make it three times.</h1>
+  <p class="subtitle">Most frameworks give you a model call. AUA gives you a <em>control layer</em> around that call — routing, scoring, correction, and policy enforcement that runs on every query and gets smarter over time.</p>
+</div>
+
+<!-- INTRO HOOK -->
+<div class="body" style="padding-bottom:0;">
+
+<div style="border-bottom:1px solid var(--line);padding-bottom:2.5rem;margin-bottom:2.5rem;">
+
+<p style="font-size:1.05rem;line-height:1.8;color:#333;max-width:760px;">Here's the problem this framework exists to solve. You deploy an LLM. It gives a wrong answer on Tuesday. You notice on Thursday. You add it to the system prompt on Friday. Next Tuesday — different user, same wrong answer. The prompt didn't stick, or the context window dropped it, or a slightly different phrasing triggered a different path. The error lives.</p>
+
+<p style="font-size:1.05rem;line-height:1.8;color:#333;max-width:760px;">AUA closes that loop without waiting for a new model release:</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin:1.5rem 0 2rem;">
+
+  <div style="border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:1.1rem 1.25rem;background:#fff;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem;">Right now — every query</div>
+    <p style="margin:0;font-size:.9rem;line-height:1.65;color:#333;">Routes to the right specialist. Scores the response with a utility function. Injects prior verified corrections into the context so past mistakes don't repeat. Enforces your policy — blocking bad output and retrying before the user ever sees it.</p>
+  </div>
+
+  <div style="border:1px solid var(--line);border-left:3px solid var(--accent2);border-radius:0 8px 8px 0;padding:1.1rem 1.25rem;background:#fff;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent2);margin-bottom:.5rem;">Over time — across sessions</div>
+    <p style="margin:0;font-size:.9rem;line-height:1.65;color:#333;">Accumulates what the model consistently gets wrong. Tracks which sessions followed your policy perfectly. Exports those gold-standard sessions as DPO training pairs — ready to fine-tune the model so the corrections become permanent.</p>
+  </div>
+
+  <div style="border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:0 8px 8px 0;padding:1.1rem 1.25rem;background:#fff;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent3);margin-bottom:.5rem;">You define — what good means</div>
+    <p style="margin:0;font-size:.9rem;line-height:1.65;color:#333;">Write a Policy. Say what must never appear (BLOCKING). Say what you want to see rewarded (INFO, with an E-score bonus). The framework enforces it on every call, tracks adherence over every session, and uses your policy as a curriculum for the next fine-tuning cycle.</p>
+  </div>
+
+</div>
+
+<p style="font-size:.95rem;line-height:1.75;color:#555;max-width:760px;">It's designed like Django — you get a working system in five commands, and you can customise routing thresholds, utility weights, arbiter behaviour, correction stores, model backends, hooks, middleware, and deployment policy without touching framework internals. The quickstart below takes ten minutes. Parts 10–12 show how to teach the framework what good output looks like and watch it improve over time.</p>
+
+<div style="display:flex;flex-wrap:wrap;gap:.65rem;margin-top:1.5rem;">
+  <a href="#qs" style="display:inline-block;padding:.4rem 1rem;background:var(--accent);color:#fff;border-radius:7px;font-size:.85rem;font-weight:500;text-decoration:none;">Start in 5 minutes →</a>
+  <a href="#part-10-policy" style="display:inline-block;padding:.4rem 1rem;background:var(--soft);color:var(--accent);border:1px solid var(--line);border-radius:7px;font-size:.85rem;font-weight:500;text-decoration:none;">Skip to Policies &amp; Assertions →</a>
+  <a href="#ref-cli" style="display:inline-block;padding:.4rem 1rem;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:7px;font-size:.85rem;font-weight:500;text-decoration:none;">CLI reference →</a>
+</div>
+
+</div>
+
+  <div class="hero-pills" style="margin-bottom:2rem;">
     <span class="pill">Quick Start</span>
     <span class="pill">Tutorial (12 parts)</span>
     <span class="pill">How-to guides (5 topics)</span>
     <span class="pill">CLI reference</span>
     <span class="pill">REST API reference</span>
   </div>
-</div>
-
-<div class="body">
 
 <!-- ═══════════════════════════════════════════ QUICKSTART -->
 <h2 id="qs">5-minute quickstart</h2>
