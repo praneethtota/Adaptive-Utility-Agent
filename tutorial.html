@@ -1468,7 +1468,7 @@ aua metrics --compare 30d
 
 <p>AUA defines 8 Protocol interfaces. Implement any of them to replace the corresponding framework layer — without editing AUA source. Register via <code>import_path</code> in <code>aua_config.yaml</code>.</p>
 
-<h3>10.1 The 8 Plugin Protocol interfaces</h3>
+<h3>13.1 The 8 Plugin Protocol interfaces</h3>
 <table>
 <tr><th>Interface</th><th>What it replaces</th></tr>
 <tr><td><code>FieldClassifierPlugin</code></td><td>Field classification for incoming queries</td></tr>
@@ -1481,7 +1481,7 @@ aua metrics --compare 30d
 <tr><td><code>AUAMiddleware</code></td><td>Before/after pipeline for every request (see Part 11)</td></tr>
 </table>
 
-<h3>10.2 Example — custom utility scorer</h3>
+<h3>13.2 Example — custom utility scorer</h3>
 <div class="code-block">
 <div class="code-header">plugins/risk_scorer.py</div>
 <pre>from aua.plugins.interfaces import UtilityScorerPlugin
@@ -1530,7 +1530,7 @@ class RiskWeightedUtilityScorer(UtilityScorerPlugin):
 <span class="ok">✓ Test vector passed (U=0.612)</span></pre>
 </div>
 
-<h3>10.3 Example — custom model backend</h3>
+<h3>13.3 Example — custom model backend</h3>
 <div class="code-block">
 <div class="code-header">plugins/gateway_backend.py</div>
 <pre>from aua.plugins.interfaces import ModelBackendPlugin
@@ -1568,7 +1568,7 @@ class GatewayBackend(ModelBackendPlugin):
     api_key_secret: MY_GATEWAY_KEY  <span class="c"># resolved from secrets provider</span></pre>
 </div>
 
-<h3>10.4 Listing and inspecting registered plugins</h3>
+<h3>13.4 Listing and inspecting registered plugins</h3>
 <div class="code-block">
 <div class="code-header">bash</div>
 <pre>aua extensions list
@@ -1577,12 +1577,12 @@ aua extensions test --kind utility_scorer --import-path mypackage.myplugin:MyPlu
 <span class="c"># To pick up plugin changes: restart aua serve</span></pre>
 </div>
 
-<div class="next-part"><p><strong>Part 10 done.</strong> Part 11 covers hooks and middleware — intercepting the query lifecycle.</p></div>
+<div class="next-part"><p><strong>Part 13 done.</strong> Part 14 covers hooks and middleware — intercepting the query lifecycle.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 14 -->
 <h2 id="part-14" class="part-heading"><span class="how-badge">How-to 14</span> Hooks &amp; middleware <span class="time-badge">~20 min</span></h2>
 
-<h3>11.1 The 11 hook points</h3>
+<h3>14.1 The 11 hook points</h3>
 <table>
 <tr><th>Hook</th><th>Fires when</th></tr>
 <tr><td><code>pre_query</code></td><td>Before field classification</td></tr>
@@ -1598,7 +1598,7 @@ aua extensions test --kind utility_scorer --import-path mypackage.myplugin:MyPlu
 <tr><td><code>on_rollback</code></td><td>When a rollback completes</td></tr>
 </table>
 
-<h3>11.2 Writing a hook</h3>
+<h3>14.2 Writing a hook</h3>
 <div class="code-block">
 <div class="code-header">plugins/audit_hook.py</div>
 <pre>from aua.plugins.interfaces import HookPlugin
@@ -1625,7 +1625,7 @@ class AuditHook(HookPlugin):
     order: 10  <span class="c"># lower number runs first</span></pre>
 </div>
 
-<h3>11.3 Middleware — before/after every request</h3>
+<h3>14.3 Middleware — before/after every request</h3>
 <div class="code-block">
 <div class="code-header">plugins/pii_middleware.py</div>
 <pre>from aua.plugins.interfaces import AUAMiddleware
@@ -1655,12 +1655,12 @@ class PIIRedactionMiddleware(AUAMiddleware):
   <p><strong>Error policy:</strong> <code>fail_open</code> — hook failure is logged but does not block the response. <code>fail_closed</code> — hook failure returns an error to the client. Configure per hook in YAML. Middleware failures are always <code>fail_open</code> by default.</p>
 </div>
 
-<div class="next-part"><p><strong>Part 11 done.</strong> Part 12 covers production security — tokens, mTLS, secrets, and audit log.</p></div>
+<div class="next-part"><p><strong>Part 14 done.</strong> Part 15 covers production security — tokens, mTLS, secrets, and audit log.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 15 -->
 <h2 id="part-15" class="part-heading"><span class="how-badge">How-to 15</span> Security <span class="time-badge">~25 min</span></h2>
 
-<h3>12.1 Bearer tokens and scopes</h3>
+<h3>15.1 Bearer tokens and scopes</h3>
 <p>AUA uses HMAC-SHA256 bearer tokens with 15 fine-grained scopes. Create tokens with the CLI:</p>
 
 <div class="code-block">
@@ -1702,7 +1702,7 @@ curl -X POST http://localhost:8000/query \
   -d '{"query": "Explain quicksort", "session_id": "s1"}'</pre>
 </div>
 
-<h3>12.2 mTLS — encrypted internal communication</h3>
+<h3>15.2 mTLS — encrypted internal communication</h3>
 <div class="code-block">
 <div class="code-header">bash</div>
 <pre><span class="c"># Generate dev certs (self-signed, router + specialists + arbiter)</span>
@@ -1723,7 +1723,7 @@ aua certs inspect
     auto_generate: true    <span class="c"># false in production — bring your own CA</span></pre>
 </div>
 
-<h3>12.3 Secrets management</h3>
+<h3>15.3 Secrets management</h3>
 <p>AUA never stores plaintext secrets in config. Instead, config references a secret name, and the secrets provider resolves it at startup:</p>
 
 <div class="code-block">
@@ -1745,7 +1745,7 @@ specialists:
   vault_path_prefix: secret/aua</pre>
 </div>
 
-<h3>12.4 Encryption at rest</h3>
+<h3>15.4 Encryption at rest</h3>
 <p>Correction payloads, assertions, DPO pairs, token metadata, and sensitive audit fields are encrypted at rest with AES-256-GCM:</p>
 
 <div class="code-block">
@@ -1756,7 +1756,7 @@ specialists:
     key_secret: AUA_ENCRYPTION_KEY   <span class="c"># 64-char hex key — see §14.3 for generation</span></pre>
 </div>
 
-<h3>12.5 Audit log</h3>
+<h3>15.5 Audit log</h3>
 <p>The audit log is append-only with a tamper-evident SHA-256 hash chain. Every security-relevant event is recorded:</p>
 
 <div class="code-block">
@@ -1772,14 +1772,14 @@ aua corrections export --format jsonl</pre>
   <p><strong>Production checklist:</strong> <code>aua doctor --strict</code> validates that if <code>cors_origins</code> is <code>*</code> <em>and</em> the host is <code>0.0.0.0</code> <em>and</em> auth is disabled, a loud warning is emitted. Use the Team Server or Enterprise deployment profile to enforce auth + mTLS requirements.</p>
 </div>
 
-<div class="next-part"><p><strong>Part 12 done.</strong> Part 13 covers observability — Prometheus, Grafana, OTEL, and structured logging.</p></div>
+<div class="next-part"><p><strong>Part 15 done.</strong> Part 16 covers observability — Prometheus, Grafana, OTEL, and structured logging.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 16 -->
 <h2 id="part-16" class="part-heading"><span class="how-badge">How-to 16</span> Observability <span class="time-badge">~25 min</span></h2>
 
 <p>AUA emits three observability streams out of the box: structured JSON logs (every query, assertion, and error), Prometheus metrics (18 gauges/counters/histograms), and optional OpenTelemetry distributed traces. All three are designed to ship directly to ELK, Splunk, Grafana, or any OTEL-compatible backend — no code changes required.</p>
 
-<h3>13.1 Structured JSON logging</h3>
+<h3>16.1 Structured JSON logging</h3>
 
 <p>Every log line the framework emits is a single-line JSON object. Every line automatically includes the current request's <code>session_id</code>, <code>trace_id</code>, and <code>request_id</code> — so a Kibana or Splunk search on a session ID returns the complete picture of everything that happened in that request.</p>
 
@@ -1818,7 +1818,7 @@ aua corrections export --format jsonl</pre>
 <tr><td><code>verdict</code></td><td>Arbiter verdict case (A/B/C/D) when arbiter fires</td></tr>
 </table>
 
-<h3>13.2 Shipping logs to ELK (Elasticsearch / Kibana)</h3>
+<h3>16.2 Shipping logs to ELK (Elasticsearch / Kibana)</h3>
 
 <p>AUA's JSON output is Filebeat-native. No parsing config needed — all fields are already top-level JSON keys that become indexed Elasticsearch fields automatically.</p>
 
@@ -1874,7 +1874,7 @@ routing_mode: "arbiter" AND verdict: *</pre>
   <p><strong>Logstash pipeline alternative.</strong> If you're using Logstash instead of Filebeat, pipe <code>aua serve</code> stdout directly: <code>aua serve 2>&amp;1 | logstash -f aua.conf</code>. In the pipeline filter: <code>json { source =&gt; "message" }</code> then <code>date { match =&gt; ["ts", "UNIX"] }</code>. The JSON structure needs no grok patterns.</p>
 </div>
 
-<h3>13.3 Shipping logs to Splunk</h3>
+<h3>16.3 Shipping logs to Splunk</h3>
 
 <p>Two options depending on your Splunk setup:</p>
 
@@ -1934,7 +1934,7 @@ index=aua sourcetype=aua_json latency_ms=*
 | stats perc95(latency_ms) by routing_mode</pre>
 </div>
 
-<h3>13.4 Prometheus metrics</h3>
+<h3>16.4 Prometheus metrics</h3>
 
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -1963,7 +1963,7 @@ index=aua sourcetype=aua_json latency_ms=*
 <tr><td><code>aua_assertion_bonus_applied</code></td><td>Histogram</td><td>E-score bonus applied by INFO assertions</td></tr>
 </table>
 
-<h3>13.5 Cost tracking</h3>
+<h3>16.5 Cost tracking</h3>
 
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -1991,7 +1991,7 @@ index=aua sourcetype=aua_json latency_ms=*
 # DPO pairs accumulated, auth failures, cost per specialist</span></pre>
 </div>
 
-<h3>13.7 OpenTelemetry — distributed traces</h3>
+<h3>16.7 OpenTelemetry — distributed traces</h3>
 
 <p>Optional. Sends full request traces to Jaeger, Tempo, Elastic APM, Splunk Observability, or any OTLP-compatible backend. Each trace covers the complete request path: router → classifier → routing decision → specialist calls → utility scoring → arbiter → hooks → policy assertions → response.</p>
 
@@ -2024,7 +2024,7 @@ index=aua sourcetype=aua_json latency_ms=*
   <p><strong>Log + trace correlation.</strong> The <code>trace_id</code> in every JSON log line is W3C-compatible. When OTEL is enabled, clicking a log line in Kibana or Splunk and following its <code>trace_id</code> jumps directly to the corresponding distributed trace in Jaeger or Elastic APM — showing the exact specialist calls, latencies, and assertion checks for that request.</p>
 </div>
 
-<h3>13.8 Structured logging in Docker / Kubernetes</h3>
+<h3>16.8 Structured logging in Docker / Kubernetes</h3>
 
 <div class="code-block">
 <div class="code-header">docker-compose.yml — ship stdout to Loki via Grafana Alloy</div>
@@ -2059,12 +2059,12 @@ index=aua sourcetype=aua_json latency_ms=*
     Type              _doc</pre>
 </div>
 
-<div class="next-part"><p><strong>Part 13 done.</strong> Part 14 covers Docker deployment profiles.</p></div>
+<div class="next-part"><p><strong>Part 16 done.</strong> Part 17 covers Docker deployment profiles.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 17 -->
 <h2 id="part-17" class="part-heading"><span class="how-badge">How-to 17</span> Docker deployment <span class="time-badge">~20 min</span></h2>
 
-<h3>14.1 Docker Compose profiles</h3>
+<h3>17.1 Docker Compose profiles</h3>
 <p class="caption">All examples use the modern <code>docker compose</code> (V2) command. If your system only has the legacy binary, replace with <code>docker-compose</code>.</p>
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -2084,7 +2084,7 @@ docker compose --profile ollama --profile obs up
 docker compose -f docker compose.gpu.yml up</pre>
 </div>
 
-<h3>14.2 Deployment profiles</h3>
+<h3>17.2 Deployment profiles</h3>
 <table>
 <tr><th>Profile</th><th>Auth</th><th>mTLS</th><th>State</th><th>Use for</th></tr>
 <tr><td>Local Developer</td><td>Optional</td><td>No</td><td>SQLite</td><td>localhost only</td></tr>
@@ -2093,7 +2093,7 @@ docker compose -f docker compose.gpu.yml up</pre>
 <tr><td>Enterprise</td><td>IAM + scopes</td><td>Required</td><td>Postgres</td><td>Custom backends, strict audit</td></tr>
 </table>
 
-<h3>14.3 Environment configuration</h3>
+<h3>17.3 Environment configuration</h3>
 
 <p>Generate your encryption key before deploying — it must be a 32-byte value encoded as 64 hex characters. Run either command once and store the output:</p>
 <div class="code-block">
