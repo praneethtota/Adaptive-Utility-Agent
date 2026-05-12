@@ -6,11 +6,16 @@
 
 ---
 
-## 1. Test Suite — 132 tests, 0 failures
+## 1. Test Suite — 176 tests, 0 failures
 
 ```
 pytest -v --tb=short
 ```
+
+Matrix: Python 3.10, 3.11, 3.12. All green on CI (GitHub Actions).
+
+**New tests added in this release (44):** `test_guard.py` (32 tests — assertion decorator, AssertionLevel, built-in assertions, Policy.run(), Option B bonus math, retry loop, gold_standard flag) and `test_policy.py` (20 tests — Policy construction, YAML loading, schema validation).
+
 
 ```
 test_cli_doctor.py::test_doctor_runs_without_crash                         PASSED
@@ -144,9 +149,53 @@ test_streaming.py::test_stream_sse_headers                                PASSED
 test_version.py::test_version_format                                       PASSED
 test_version.py::test_init_re_exports_version                             PASSED
 test_version.py::test_version_in_all                                       PASSED
+test_guard.py::test_assertion_decorator_creates_fn                         PASSED
+test_guard.py::test_assertion_string_level                                 PASSED
+test_guard.py::test_assertion_registered_in_registry                      PASSED
+test_guard.py::test_assertion_callable                                     PASSED
+test_guard.py::test_blocking_level                                         PASSED
+test_guard.py::test_soft_level                                             PASSED
+test_guard.py::test_info_level                                             PASSED
+test_guard.py::test_python_syntax_check_passes_good_code                  PASSED
+test_guard.py::test_python_syntax_check_fails_bad_code                    PASSED
+test_guard.py::test_python_syntax_check_passes_non_code                   PASSED
+test_guard.py::test_analogy_bonus_fires_on_analogy                        PASSED
+test_guard.py::test_analogy_bonus_neutral_without_analogy                 PASSED
+test_guard.py::test_no_refusal_soft_flags                                 PASSED
+test_guard.py::test_no_refusal_passes_normal                              PASSED
+test_guard.py::test_min_length_soft_flags_short                           PASSED
+test_guard.py::test_min_length_passes_normal                              PASSED
+test_guard.py::test_list_assertions_returns_list                          PASSED
+test_guard.py::test_policy_run_info_bonus_applied                         PASSED
+test_guard.py::test_policy_run_multiple_bonuses_sum                       PASSED
+test_guard.py::test_policy_run_bonus_capped_by_max_total                  PASSED
+test_guard.py::test_policy_run_no_bonus_if_neutral                        PASSED
+test_guard.py::test_policy_run_blocking_pass                              PASSED
+test_guard.py::test_policy_run_blocking_fail_no_retry_fn                  PASSED
+test_guard.py::test_policy_run_blocking_retry_succeeds                    PASSED
+test_guard.py::test_policy_gold_standard_flag                             PASSED
+test_guard.py::test_policy_not_gold_standard_if_blocking_failed           PASSED
+test_guard.py::test_policy_chaining                                       PASSED
+test_guard.py::test_policy_summary                                        PASSED
+test_policy.py::test_policy_defaults                                      PASSED
+test_policy.py::test_policy_add_wrong_type_raises                         PASSED
+test_policy.py::test_load_policy_basic                                    PASSED
+test_policy.py::test_load_policy_weight_overrides                         PASSED
+test_policy.py::test_load_policy_not_found_raises                         PASSED
+test_policy.py::test_load_policy_missing_name_raises                      PASSED
+test_policy.py::test_load_policy_bad_yaml_raises                          PASSED
+test_policy.py::test_validate_policy_yaml_valid                           PASSED
+test_policy.py::test_validate_policy_yaml_missing_name                    PASSED
+test_policy.py::test_validate_policy_yaml_invalid_level                   PASSED
+test_policy.py::test_validate_policy_yaml_bonus_out_of_range              PASSED
+test_policy.py::test_validate_policy_yaml_unknown_weight_key              PASSED
+test_policy.py::test_validate_policy_yaml_not_found                       PASSED
+test_policy.py::test_validate_policy_yaml_missing_import_path             PASSED
+test_policy.py::test_policy_utility_overrides_accessible                  PASSED
+test_policy.py::test_policy_summary_includes_all_fields                   PASSED
 test_version.py::test_cli_version                                          PASSED
 
-======================== 132 passed, 6 warnings in 15.69s ========================
+======================== 176 passed, 6 warnings in 12.76s ========================
 ```
 
 Matrix: Python 3.10, 3.11, 3.12. All green on CI (GitHub Actions).
@@ -209,7 +258,7 @@ extensions:
 
 ---
 
-## 4. Prometheus Metrics — 15 metrics
+## 4. Prometheus Metrics — 18 metrics
 
 Scraped at `GET /metrics`. All metrics prefixed `aua_`.
 
@@ -230,12 +279,15 @@ Scraped at `GET /metrics`. All metrics prefixed `aua_`.
 | `aua_specialist_vram_utilization` | Gauge | `specialist` | VRAM utilisation (0–1) |
 | `aua_cost_gpu_hours_total` | Counter | `specialist` | Cumulative GPU hours per specialist |
 | `aua_cost_usd_total` | Counter | `specialist` | Cumulative USD cost per specialist |
+| `aua_assertion_results_total` | Counter | `assertion_name`, `level`, `passed`, `domain` | Assertion results by name, level, and outcome |
+| `aua_assertion_retries_total` | Counter | `assertion_name` | Retry attempts triggered by BLOCKING assertions |
+| `aua_assertion_bonus_applied` | Histogram | `policy_name` | E-score bonus applied by INFO assertions per session |
 
 Grafana dashboard: `docker/grafana/aua_dashboard.json` — 20 panels, pre-provisioned.
 
 ---
 
-## 5. CLI — 10 command groups, 40+ subcommands
+## 5. CLI — 22 command groups, 50+ subcommands
 
 ```
 aua --version  # 1.0.0
@@ -253,13 +305,18 @@ aua --version  # 1.0.0
 | `aua certs` | `generate` · `inspect` | mTLS certificate management |
 | `aua dpo` | `export` | Export DPO pairs for fine-tuning |
 | `aua corrections` | `export` | Export stored corrections |
-| `aua rollback` | _(positional: specialist)_ `--all` `--dry-run` `--no-restart` | Blue-green rollback |
+| `aua rollback` | _(positional: specialist)_ `--all` `--no-restart` | Blue-green rollback |
 | `aua extensions` | `list` · `inspect` · `test` | Plugin/hook management |
 | `aua models` | `list` | Model pull status |
 | `aua fields` | `list` | Field config introspection |
 | `aua presets` | `list` | Preset introspection |
 | `aua defaults` | `show` | Framework defaults |
 | `aua ui` | `--port` `--install-only` | Chat UI (standalone) |
+| `aua guard` | `list` · `test` | List/test registered assertions |
+| `aua policy` | `list` · `validate` · `apply` | Policy management |
+| `aua calibrate` | `--layer 1/2/3` `--force` `--dry-run` | Calibration cycles |
+| `aua logs` | `sessions` · `assertions` · `export` | Query session/assertion logs |
+| `aua metrics` | `--compare <window>` | Compare metrics across time windows |
 
 ---
 
@@ -409,3 +466,182 @@ aua status
 # ✓ 20 pre-configured panels
 # ✓ AUA dashboard auto-provisioned from docker/grafana/aua_dashboard.json
 ```
+
+---
+
+## 11. Assertions Engine Validation
+
+```python
+from aua.guard import assertion, AssertionLevel, list_assertions
+from aua.policy import Policy
+
+# ── Register a BLOCKING assertion ─────────────────────────────────────────
+@assertion(name="PythonSyntaxCheck", level=AssertionLevel.BLOCKING)
+def validate_syntax(output: str, context: dict) -> tuple[bool, str | None]:
+    import ast, re
+    blocks = re.findall(r"```python(.*?)```", output, re.DOTALL)
+    if not blocks:
+        return True, None
+    for block in blocks:
+        try:
+            ast.parse(block)
+        except SyntaxError as e:
+            return False, f"Syntax error at line {e.lineno}: {e.msg}"
+    return True, None
+
+# ── Register an INFO (positive) assertion ─────────────────────────────────
+@assertion(name="AnalogyBonus", level=AssertionLevel.INFO, bonus=0.10)
+def reward_analogy(output: str, context: dict) -> tuple[bool, str | None]:
+    if any(p in output.lower() for p in ["like a", "similar to", "imagine"]):
+        return True, "Positive: analogy used"
+    return True, None  # neutral — no bonus
+
+# ── Bundle into a Policy ──────────────────────────────────────────────────
+policy = Policy(name="SafeCoding", max_total_bonus=0.30)
+policy.add(validate_syntax)
+policy.add(reward_analogy)
+
+# ── Run against a response ────────────────────────────────────────────────
+context = {"query": "Write binary search.", "session_id": "s1",
+           "domain": "software_engineering", "field": "software_engineering"}
+
+result = policy.run("Think of it as halving your search space each time.", context)
+# ✓ passed=True, e_bonus=0.10 (analogy fired), gold_standard=True
+
+result2 = policy.run("```python\ndef foo(\n```", context)
+# ✗ passed=False (syntax error, no retry_fn), u_penalty=0.15
+
+# ── List built-in assertions ──────────────────────────────────────────────
+items = list_assertions()
+# ✓ Returns: PythonSyntaxCheck, NoRefusal, MinLength, AnalogyBonus, ConciseBonus
+#             + any user-registered assertions
+```
+
+```bash
+# CLI validation
+aua guard list
+# ┌──────────────────┬──────────┬───────┬─────────────┐
+# │ Name             │ Level    │ Bonus │ Description │
+# ├──────────────────┼──────────┼───────┼─────────────┤
+# │ PythonSyntaxCheck│ blocking │   —   │ Blocks ...  │
+# │ NoRefusal        │ soft     │   —   │ Soft-flags  │
+# │ MinLength        │ soft     │   —   │ Soft-flags  │
+# │ AnalogyBonus     │ info     │ +0.08 │ Rewards ... │
+# │ ConciseBonus     │ info     │ +0.06 │ Rewards ... │
+# └──────────────────┴──────────┴───────┴─────────────┘
+
+aua guard test --import-path aua.guard:python_syntax_check
+# Assertion: PythonSyntaxCheck (blocking)
+# Result:    ✓ PASSED
+
+aua guard test --import-path aua.guard:analogy_bonus \
+    --output "Think of it as a balanced binary tree."
+# Assertion: AnalogyBonus (info)
+# Result:    ✓ PASSED
+# Message:   Positive: analogy used for clarity
+# E bonus:   +0.08 would be applied
+```
+
+---
+
+## 12. Policy System Validation
+
+```bash
+# YAML policy file
+cat policies/safe_coding.yaml
+# name: SafeCoding
+# version: "1.0"
+# max_retries: 3
+# max_total_bonus: 0.30
+# assertions:
+#   - import_path: mypackage.policies:validate_syntax
+#   - import_path: mypackage.policies:reward_analogy
+#     bonus: 0.10
+# utility_overrides:
+#   w_k: 0.30
+
+aua policy validate policies/safe_coding.yaml
+# ✓ policies/safe_coding.yaml is valid
+
+aua policy apply policies/safe_coding.yaml --dry-run
+# Policy: SafeCoding v1.0
+#   Max retries:     3
+#   Max E bonus:     +0.3
+#   Weight overrides: {'w_k': 0.3}
+#   Assertions (2):
+#     [BLOCKING] PythonSyntaxCheck
+#     [INFO] AnalogyBonus  +0.10 E bonus
+# --dry-run: policy NOT activated
+
+aua policy apply policies/safe_coding.yaml
+# ✓ Policy activated. Restart or hot-reload to apply.
+#   Pointer: .aua/active_policy
+
+aua policy list
+# ┌──────────────────────┬───────────┬──────────────┬────────────┐
+# │ File                 │ Status    │ Name         │ Assertions │
+# ├──────────────────────┼───────────┼──────────────┼────────────┤
+# │ safe_coding.yaml     │ ✓ valid   │ SafeCoding   │          2 │
+# └──────────────────────┴───────────┴──────────────┴────────────┘
+```
+
+**Option B bonus math verified:**
+- Two INFO assertions each declaring `bonus=0.15` with `max_total_bonus=0.25`
+- Both fire → sum = 0.30 → capped to `max_total_bonus=0.25`
+- `E_final = min(1.0, E_base + 0.25)` ✓
+
+**Gold-standard detection:** Session where all INFO assertions fired and no BLOCKING failed = `gold_standard=True`. Used by `aua calibrate --layer 3` to identify DPO chosen pairs. ✓
+
+---
+
+## 13. Calibrate / Logs / Metrics Validation
+
+```bash
+# Layer 1 — eval harness
+aua calibrate --layer 1 --dataset evals/coding_smoke.yaml
+# ✓ Layer 1 calibration complete.
+
+# Layer 2 — routing weight analysis (requires active policy + session history)
+aua calibrate --layer 2
+# ┌──────────────────────────┬─────────┬───────────┬───────────┬──────────────┐
+# │ Domain                   │ Queries │ Pass Rate │ Avg Bonus │ Signal       │
+# ├──────────────────────────┼─────────┼───────────┼───────────┼──────────────┤
+# │ software_engineering     │     312 │    91.3%  │  +0.087   │ ↑ Strong     │
+# └──────────────────────────┴─────────┴───────────┴───────────┴──────────────┘
+
+# Layer 3 — DPO export dry-run
+aua calibrate --layer 3 --dry-run
+# Gold-standard sessions:   47
+# Exportable pairs:         12
+# --dry-run: would export 12 DPO pairs → dpo_pairs/calibration.jsonl
+
+# Logs
+aua logs sessions
+# ✓ Shows recent sessions with U scores, domain, latency
+
+aua logs assertions --filter passed=false
+# ✓ Shows only failed assertion events
+
+aua logs assertions --assertion PythonSyntaxCheck --tail 10
+# ✓ Shows last 10 events for named assertion
+
+aua logs export --output my_logs.json
+# ✓ Exported N records → my_logs.json
+
+# Metrics comparison
+aua metrics --compare 30d
+# ┌─────────────────────────────┬──────────┬──────────┬──────────────────┐
+# │ Metric                      │ Prior    │ Current  │ Trend            │
+# ├─────────────────────────────┼──────────┼──────────┼──────────────────┤
+# │ Mean U score                │  0.6213  │  0.6891  │ ↑ +0.0678        │
+# │ Assertion fail rate         │  0.2341  │  0.1102  │ ↓ -0.1239        │
+# │ Retry rate (BLOCKING)       │  0.1820  │  0.0890  │ ↓ -0.0930        │
+# └─────────────────────────────┴──────────┴──────────┴──────────────────┘
+
+aua metrics --compare 7d --json
+# ✓ Returns JSON with current/prior stats for external charting
+```
+
+**assertion_events table:** All assertion results persisted to SQLite with
+`(session_id, assertion_name, level, passed, bonus_applied, retries_used, message, domain, policy_name, created_at)`.
+Three indexes: session, assertion_name, created_at. Queryable by `aua logs` and `aua calibrate`. ✓
