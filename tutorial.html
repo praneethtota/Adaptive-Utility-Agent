@@ -73,6 +73,57 @@ tr:nth-child(even) td{background:#fafaf8}
 .endpoint-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;padding:.15rem .5rem;border-radius:4px;margin-right:.5rem;color:#fff}
 .get{background:#0f766e}.post{background:#1d4ed8}.delete{background:#b91c1c}
 @media(max-width:800px){.layout{grid-template-columns:1fr}.sidebar{display:none}.main{max-width:100%}}
+
+.build-details {
+  margin: 1.5rem 0 .5rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent2);
+  border-radius: 0 8px 8px 0;
+  background: var(--soft2);
+}
+.build-details summary {
+  padding: .75rem 1.1rem;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--accent2);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  user-select: none;
+}
+.build-details summary::-webkit-details-marker { display: none; }
+.build-details summary::before {
+  content: '▶';
+  font-size: .7rem;
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.build-details[open] summary::before { transform: rotate(90deg); }
+.build-details summary:hover { color: var(--accent); }
+.build-details .build-body {
+  padding: 0 1.25rem 1.1rem;
+  border-top: 1px solid #a7f3d0;
+}
+.build-details .build-body ul {
+  margin: .75rem 0 0;
+  padding-left: 1.2rem;
+}
+.build-details .build-body li {
+  font-size: .88rem;
+  line-height: 1.7;
+  color: #134e4a;
+  margin: .3rem 0;
+}
+.build-details .build-hook {
+  margin: .75rem 0 0;
+  font-size: .82rem;
+  color: var(--muted);
+  font-style: italic;
+  padding-top: .6rem;
+  border-top: 1px solid #a7f3d0;
+}
 </style>
 </head>
 <body>
@@ -304,6 +355,18 @@ aua serve --with-ui        <span class="c"># also start Chat UI at :3001 (see no
 aua serve --dry-run        <span class="c"># print commands without executing</span></pre>
 </div>
 
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>A working multi-model AI system running locally in under ten minutes — one command to scaffold, one to serve.</li>
+          <li>A project that's ready to customise: config, eval folder, and .gitignore all in place.</li>
+          <li>A pre-flight check (<code>aua doctor</code>) you can drop into CI to catch config problems before they reach production.</li>
+    </ul>
+        <p class="build-hook">Part 2 shows how to wire in any model — from a frontier API to a 1.5B model on a laptop — and tell the framework what you want it to optimize for.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 1 done.</strong> You have a running AUA router. Part 2 explains specialists and fields.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 2 -->
@@ -372,6 +435,19 @@ aua fields inspect software_engineering</pre>
 <tr><td><code>creative_writing</code></td><td>0.80</td><td>0.05</td><td>0.15</td><td>0.05</td><td>1×</td></tr>
 </table>
 
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>Swap any model in or out without changing application code — frontier API, 7B local, or a tiny 1.5B model for fast low-stakes queries.</li>
+          <li>Tell the framework what matters for your domain: accuracy (<code>w_c</code>), output quality (<code>w_e</code>), or exploration (<code>w_k</code>).</li>
+          <li>Set how fast domain knowledge decays — fast for security practices, slow for physics principles — so the system stays calibrated over time.</li>
+          <li>Turn off exploration entirely for safety-critical domains so routing is always consistent and predictable.</li>
+    </ul>
+        <p class="build-hook">Part 3 shows how the routing decision actually gets made — and gives you the knobs to control how aggressively the system compares specialists.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 2 done.</strong> You understand specialists and fields. Part 3 shows how routing decisions are made.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 3 -->
@@ -444,6 +520,19 @@ aua status --json          <span class="c"># machine-readable</span>
 curl http://localhost:8000/status | python3 -m json.tool</pre>
 </div>
 
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>A system that routes each question to the right specialist, scores every answer with a real number, and shows you exactly why — not vibes.</li>
+          <li>Tune how aggressively the system compares multiple specialists vs. committing fast to a single one.</li>
+          <li>Force a specific specialist for known query types — useful for dedicated deployments where you already know the domain.</li>
+          <li>Read U scores in API responses to build your own routing analytics — low scores on a domain are an early signal the specialist needs attention.</li>
+    </ul>
+        <p class="build-hook">Part 4 adds persistent memory: the framework learns from its mistakes and stops making the same error twice.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 3 done.</strong> You understand routing and utility scoring. Part 4 covers the Arbiter.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 4 -->
@@ -515,6 +604,23 @@ print(verdict.external_response) <span class="c"># safe to return to user</span>
   }'</pre>
 </div>
 
+<div class="callout orange">
+  <p><strong>Corrections are global in v1.0.</strong> A correction stored via <code>POST /corrections</code> is a verified fact about the world — it is injected into every future query on that subject, across all users and sessions. For internal tools, dedicated agents, and single-tenant deployments this is the intended behaviour. For multi-tenant products where users need isolated correction contexts, per-user scoping is a v1.1 roadmap item.</p>
+</div>
+
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>A system that catches its own contradictions, stores what it learns, and injects that knowledge into every future query on that subject.</li>
+          <li>A verified fact store for your domain — inject something once and every user benefits from it on every future query.</li>
+          <li>Audit what the system currently 'knows' with <code>GET /corrections</code> — a clear, exportable record of every stored fact.</li>
+          <li>Control how long knowledge lives: permanent for proved facts (Class A), months for fast-moving fields like security (Class D).</li>
+    </ul>
+        <p class="build-hook">Note: in v1.0, corrections are global across all users — intentional for internal tools, per-user scoping is coming in v1.1. Part 5 shows how to upgrade models safely without breaking what's working.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 4 done.</strong> You understand the Arbiter and corrections. Part 5 shows how U scores gate model promotion.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 5 -->
@@ -575,6 +681,19 @@ if bg.should_promote(summary):
 <h3>5.4 The promotions log</h3>
 <p>Every promotion is recorded atomically to <code>.aua/state/promotions.jsonl</code> with a UUID, timestamp, and U scores. File-locked to prevent concurrent corruption.</p>
 
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>Upgrade your AI models the way you upgrade software — safely, with a rollback button and a promotion gate.</li>
+          <li>Test a new model on real traffic before it touches production: deploy as GREEN, evaluate, promote only if U score delta passes the threshold.</li>
+          <li>Revert a bad upgrade in one command — no redeployment, no config archaeology.</li>
+          <li>Set different promotion thresholds per specialist — conservative for customer-facing models, aggressive for internal experimental ones.</li>
+    </ul>
+        <p class="build-hook">Part 6 makes the whole system easier to operate — config changes that take effect in seconds without restarting anything.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 5 done.</strong> Part 6 covers the config system — hot reload, validation, and config commands.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 6 -->
@@ -624,6 +743,19 @@ aua config validate   <span class="c"># validates your config against the curren
 aua config expand     <span class="c"># shows full resolved config with all defaults applied</span></pre>
 </div>
 
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>Change routing thresholds, utility weights, and CORS settings on a live system — no downtime, no restarts.</li>
+          <li>Version your config in git and use <code>aua config validate</code> as a pre-commit hook so schema errors never reach production.</li>
+          <li>See exactly what the running system is doing with <code>aua config expand</code> — no surprises from implicit defaults.</li>
+          <li>A config-driven system your whole team can modify safely, not one that lives in a single engineer's head.</li>
+    </ul>
+        <p class="build-hook">Part 7 shows how every mistake the system makes in production automatically becomes training material for the next version.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 6 done.</strong> Part 7 covers the correction loop and DPO pair export.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 7 -->
@@ -693,6 +825,19 @@ for pair in pairs:
     <span class="c"># pass loss_weight to your DPO trainer's per-sample weight</span></pre>
 </div>
 
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>Every mistake your AI makes in production is automatically becoming training data for the next version — without manual labelling.</li>
+          <li>A fine-tuning dataset built from real traffic: the things your actual users asked, and what the right answer was.</li>
+          <li>Domain-filtered DPO pairs so coding corrections train the coding specialist and don't pollute math training data.</li>
+          <li>A closed loop: production error → correction stored → DPO pair exported → model fine-tuned → mistake doesn't recur.</li>
+    </ul>
+        <p class="build-hook">Part 8 adds a quality gate — catch regressions automatically before a new model ever reaches users.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 7 done.</strong> Part 8 covers the evaluation harness — automated quality measurement and regression detection.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 8 -->
@@ -778,6 +923,19 @@ FAILED:
   <span class="c"># check exit code: 0 = pass, 1 = failure</span></pre>
 </div>
 
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>A quality gate that catches AI regressions the same way unit tests catch code bugs — automatically, on every model change.</li>
+          <li>Promote new models with a number, not a feeling: <code>aua eval compare</code> gives you a quantitative diff between baseline and candidate.</li>
+          <li>Custom eval datasets for your domain — not generic benchmarks, but the exact questions and quality criteria that matter to your users.</li>
+          <li>CI integration so any model change that causes a quality drop fails the pipeline before it touches anyone.</li>
+    </ul>
+        <p class="build-hook">Part 9 gives you a full UI to demo all of this — a private ChatGPT-like product backed entirely by your own models.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 8 done.</strong> Part 9 covers the Chat UI and how to use the Framework Debugger.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 9 -->
@@ -880,6 +1038,19 @@ curl http://localhost:8000/sessions \
 <div class="callout green">
   <p><strong>Framework Debugger tip:</strong> Every query in the UI shows the full routing trace — which specialist was called, intermediate U scores, whether the Arbiter fired, and a link to the OTEL trace in Jaeger or Tempo if observability is configured.</p>
 </div>
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+      <li>A complete, private AI product — a chat interface backed entirely by your own models, no data leaving your environment.</li>
+      <li>A way to show stakeholders every routing decision in plain language: which specialist answered, what score it got, whether the Arbiter stepped in.</li>
+      <li>Adjust routing and config from the UI — no terminal, no restarts.</li>
+      <li>Everything from Parts 1–9 in a single interface: routing, corrections, blue-green status, and U scores, all visible at once.</li>
+    </ul>
+    <p class="build-hook">Part 10 is where the framework starts shaping itself to your definition of good output — and your definition becomes a curriculum.</p>
+  </div>
+</details>
 
 <hr class="section-divider">
 
@@ -1065,6 +1236,19 @@ aua guard test --import-path mypackage.policies:reward_analogy \
   <p><strong>Layer 3 — Calibration (on demand).</strong> Run <code>aua calibrate --layer 3</code> to export sessions where all INFO assertions fired and no BLOCKING assertion exhausted retries. These are your gold-standard sessions — ready as DPO "chosen" examples for fine-tuning. After fine-tuning, the defined behaviours are baked into the model weights, and the assertions become less necessary over time.</p>
 </div>
 
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>Bad output blocked before users ever see it — your guardrails run on every response, automatically.</li>
+          <li>A system that rewards the behaviours you want: every session that meets your gold standard is automatically flagged as training data.</li>
+          <li>Domain-specific personalities: strict and cautious for legal queries, curious and expressive for creative ones — all from one YAML file.</li>
+          <li>The start of a feedback loop: every failure you define an assertion for is a failure that gets corrected, tracked, and eventually eliminated.</li>
+    </ul>
+        <p class="build-hook">Part 11 shows how to close the loop — take those gold-standard sessions and turn them into the next version of your model.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 10 done.</strong> Part 11 covers triggering calibration cycles to export training data and analyse routing weight health.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 11 — CALIBRATE -->
@@ -1136,6 +1320,19 @@ aua calibrate --layer 3 --force --output dpo_pairs/early_export.jsonl
   <p><strong>What Layer 3 does (and doesn't do).</strong> <code>aua calibrate --layer 3</code> identifies gold-standard sessions and exports DPO pairs in the format your fine-tuning framework expects. It does not fine-tune models automatically — that step runs via Axolotl, TRL, or LLaMA-Factory using the exported JSONL. After fine-tuning, deploy the new model as a GREEN candidate and let blue-green handle promotion.</p>
 </div>
 
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>A model that gets measurably better over time — not by accident, but because you've defined what better means and built a pipeline that teaches it.</li>
+          <li>Training data you didn't have to label: the framework identified which sessions were gold-standard based on your policy.</li>
+          <li>A clear picture of which domains are healthy and which specialists need attention — before users notice.</li>
+          <li>The complete loop: define what good looks like → run queries → identify the best sessions → export training pairs → fine-tune → repeat.</li>
+    </ul>
+        <p class="build-hook">Part 12 gives you the visibility layer — so you can actually see the improvement happening over time.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 11 done.</strong> Part 12 covers querying session and assertion logs and comparing metrics over time.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 12 — LOGS & METRICS -->
@@ -1247,6 +1444,19 @@ aua metrics --compare 30d
 # defined behaviours are baked into the model weights.</pre>
 </div>
 
+
+<details class="build-details">
+  <summary>What you can build with this</summary>
+  <div class="build-body">
+    <ul>
+          <li>Full visibility into whether your AI is improving — assertion fail rate trending down, U score trending up, in whatever monitoring stack you use.</li>
+          <li>One <code>trace_id</code> that links a specific response to its log line, its Prometheus metrics, and its distributed trace — the full story of what happened.</li>
+          <li>Alerts before users notice: U score drops, assertion failure spikes, latency regressions — all triggerable from the same metrics.</li>
+          <li>A system you can hand to an ops team: ELK, Splunk, Grafana, Loki — whatever they already use, with working configs and the right fields already in every log line.</li>
+    </ul>
+        <p class="build-hook">The how-to guides cover everything you need for production: plugins, security, Docker, and full observability setup.</p>
+  </div>
+</details>
 <div class="next-part"><p><strong>Part 12 done.</strong> How-to guides follow — plugins, hooks, security, observability, and Docker deployment.</p></div>
 
 <hr class="section-divider">
