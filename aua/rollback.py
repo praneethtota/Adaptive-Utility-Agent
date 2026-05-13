@@ -329,6 +329,25 @@ def _rollback_one(
     console.print("  [green]✓[/green] Promotions log updated")
 
     console.print(f"\n[bold green]✓ {name} rolled back to {blue_model}[/bold green]")
+
+    # ── on_rollback hook (background — non-blocking) ──────────────────────
+    try:
+        from aua.hooks import get_hook_runner
+
+        get_hook_runner().fire_background(
+            "on_rollback",
+            {
+                "session_id": "",
+                "trace_id": "",
+                "specialist": name,
+                "rolled_back_from": green_model,
+                "rolled_back_to": blue_model,
+                "project_dir": project_dir,
+            },
+        )
+    except Exception:
+        pass  # hooks are always fail-open
+
     return 0
 
 

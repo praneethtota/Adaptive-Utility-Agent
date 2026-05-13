@@ -65,6 +65,7 @@ from aua.endpoints import (
     StreamStartEvent,
 )
 from aua.field_classifier import FieldClassifier
+from aua.hooks import get_hook_runner
 from aua.utility_scorer import UtilityScorer
 
 log = logging.getLogger("aua.router")
@@ -504,6 +505,20 @@ class Router:
                 claim=req.claim,
                 confidence=req.confidence,
                 source=req.source or "manual",
+            )
+            # ── on_correction hook (background — non-blocking) ────────────────
+            get_hook_runner().fire_background(
+                "on_correction",
+                {
+                    "session_id": "",
+                    "trace_id": "",
+                    "subject": assertion.subject,
+                    "domain": assertion.domain,
+                    "claim": assertion.claim,
+                    "confidence": round(assertion.effective_confidence(), 4),
+                    "decay_class": assertion.decay_class.value,
+                    "source": req.source or "manual",
+                },
             )
             return CorrectionResponse(
                 stored=True,
@@ -1184,6 +1199,21 @@ class Router:
     async def _handle(self, req: QueryRequest) -> RouterResponse:
         t0 = time.time()
         log.info("Query: %.80s", req.query)
+        _hooks = get_hook_runner()
+        _sid = req.session_id or ""
+        _tid = str(uuid.uuid4())
+
+        # ── pre_query: before field classification ────────────────────────────
+        await _hooks.fire(
+            "pre_query",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "query": req.query,
+                "conversation_history": req.conversation_history or [],
+                "force_domain": req.force_domain,
+            },
+        )
 
         distribution = (
             {req.force_domain: 1.0}
@@ -1200,19 +1230,70 @@ class Router:
             if distribution.get(s.field, 0) >= self._fanout_threshold
         ]
 
-        if len(active) >= 2:
-            return await self._handle_fanout(req, active, distribution, t0)
-        elif top_prob >= self._single_threshold:
-            return await self._handle_single(req, top_domain, distribution, t0)
-        else:
-            return await self._handle_arbiter(req, distribution, t0)
+        routing_mode = (
+            "fanout"
+            if len(active) >= 2
+            else "single" if top_prob >= self._single_threshold else "arbiter"
+        )
 
-    async def _handle_single(self, req, domain, distribution, t0) -> RouterResponse:
+        # ── post_route: after routing decision, before specialist calls ───────
+        await _hooks.fire(
+            "post_route",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "query": req.query,
+                "domain_distribution": distribution,
+                "top_domain": top_domain,
+                "routing_mode": routing_mode,
+                "active_specialists": [s.name for s in active],
+            },
+        )
+
+        if len(active) >= 2:
+            return await self._handle_fanout(req, active, distribution, t0, _sid, _tid)
+        elif top_prob >= self._single_threshold:
+            return await self._handle_single(req, top_domain, distribution, t0, _sid, _tid)
+        else:
+            return await self._handle_arbiter(req, distribution, t0, _sid, _tid)
+
+    async def _handle_single(
+        self, req, domain, distribution, t0, _sid="", _tid=""
+    ) -> RouterResponse:
         url = self._field_to_url.get(domain, self._arbiter_url)
         spec = self._config.specialist_for_field(domain)
         model_name = spec.serve_model_name if spec else "default_model"
+        _hooks = get_hook_runner()
+
+        # ── pre_specialist_call ───────────────────────────────────────────────
+        await _hooks.fire(
+            "pre_specialist_call",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "query": req.query,
+                "domain": domain,
+                "specialist": spec.name if spec else "default",
+                "model": model_name,
+                "endpoint": url,
+            },
+        )
+
         response, base_conf = await self._call(
             url, req.query, domain, req.conversation_history, model_name=model_name
+        )
+
+        # ── post_specialist_call ──────────────────────────────────────────────
+        await _hooks.fire(
+            "post_specialist_call",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "domain": domain,
+                "specialist": spec.name if spec else "default",
+                "response_preview": response[:200],
+                "confidence": base_conf,
+            },
         )
 
         # ── Policy / assertion layer ──────────────────────────────────────
@@ -1277,7 +1358,7 @@ class Router:
             u_score=u,
             status="ok",
         )
-        return RouterResponse(
+        resp = RouterResponse(
             query=req.query,
             routing_mode="single",
             domain_distribution=distribution,
@@ -1289,9 +1370,69 @@ class Router:
             dpo_pairs_generated=n_dpo,
             latency_ms=latency_ms,
         )
+        # ── pre_response / post_response ──────────────────────────────────────
+        pre_event = await _hooks.fire(
+            "pre_response",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "domain": domain,
+                "routing_mode": "single",
+                "u_score": u,
+                "confidence": conf,
+                "latency_ms": latency_ms,
+                "response": response,
+            },
+        )
+        # Allow pre_response hook to modify the response text
+        if pre_event.get("response") and pre_event["response"] != response:
+            resp = RouterResponse(
+                query=req.query,
+                routing_mode="single",
+                domain_distribution=distribution,
+                primary_domain=domain,
+                response=pre_event["response"],
+                u_score=u,
+                confidence=conf,
+                contradictions_detected=n_contra,
+                dpo_pairs_generated=n_dpo,
+                latency_ms=latency_ms,
+            )
+        _hooks.fire_background(
+            "post_response",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "domain": domain,
+                "routing_mode": "single",
+                "u_score": u,
+                "latency_ms": latency_ms,
+                "gold_standard": gold,
+            },
+        )
+        return resp
 
-    async def _handle_fanout(self, req, active_specialists, distribution, t0) -> RouterResponse:
+    async def _handle_fanout(
+        self, req, active_specialists, distribution, t0, _sid="", _tid=""
+    ) -> RouterResponse:
         log.info("fanout → %s", [s.name for s in active_specialists])
+        _hooks = get_hook_runner()
+
+        # ── pre_specialist_call per specialist (sequential fire, parallel calls) ─
+        for s in active_specialists:
+            await _hooks.fire(
+                "pre_specialist_call",
+                {
+                    "session_id": _sid,
+                    "trace_id": _tid,
+                    "query": req.query,
+                    "domain": s.field,
+                    "specialist": s.name,
+                    "model": s.serve_model_name,
+                    "endpoint": s.endpoint,
+                },
+            )
+
         calls = [
             self._call(
                 s.endpoint,
@@ -1310,13 +1451,54 @@ class Router:
             else:
                 text, conf = result  # type: ignore[misc]
                 responses.append((spec, text, conf))
+                # ── post_specialist_call per specialist ───────────────────────
+                await _hooks.fire(
+                    "post_specialist_call",
+                    {
+                        "session_id": _sid,
+                        "trace_id": _tid,
+                        "domain": spec.field,
+                        "specialist": spec.name,
+                        "response_preview": text[:200],
+                        "confidence": conf,
+                    },
+                )
 
         if not responses:
             raise HTTPException(503, "All specialists unreachable during fanout")
 
         if len(responses) >= 2:
             (spec_a, text_a, conf_a), (spec_b, text_b, conf_b) = responses[0], responses[1]
+
+            # ── pre_arbiter ───────────────────────────────────────────────────
+            await _hooks.fire(
+                "pre_arbiter",
+                {
+                    "session_id": _sid,
+                    "trace_id": _tid,
+                    "query": req.query,
+                    "specialist_a": spec_a.name,
+                    "response_a": text_a[:200],
+                    "specialist_b": spec_b.name,
+                    "response_b": text_b[:200],
+                },
+            )
+
             verdict, winner_field = await self._arbitrate(req.query, spec_a, text_a, spec_b, text_b)
+
+            # ── post_arbiter ──────────────────────────────────────────────────
+            await _hooks.fire(
+                "post_arbiter",
+                {
+                    "session_id": _sid,
+                    "trace_id": _tid,
+                    "verdict": verdict[:200] if isinstance(verdict, str) else str(verdict)[:200],
+                    "winner_field": winner_field,
+                    "specialist_a": spec_a.name,
+                    "specialist_b": spec_b.name,
+                },
+            )
+
             if winner_field == spec_b.field:
                 final_text, final_conf, primary_domain = text_b, conf_b, spec_b.field
                 losing_text, losing_domain = text_a, spec_a.field
@@ -1359,6 +1541,31 @@ class Router:
             u_score=u,
             status="ok",
         )
+
+        # ── pre_response / post_response ──────────────────────────────────────
+        await _hooks.fire(
+            "pre_response",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "domain": primary_domain,
+                "routing_mode": "fanout",
+                "u_score": u,
+                "latency_ms": _fanout_ms,
+            },
+        )
+        _hooks.fire_background(
+            "post_response",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "domain": primary_domain,
+                "routing_mode": "fanout",
+                "u_score": u,
+                "latency_ms": _fanout_ms,
+            },
+        )
+
         return RouterResponse(
             query=req.query,
             routing_mode="fanout",
@@ -1373,8 +1580,24 @@ class Router:
             specialist_responses=spec_responses,
         )
 
-    async def _handle_arbiter(self, req, distribution, t0) -> RouterResponse:
+    async def _handle_arbiter(self, req, distribution, t0, _sid="", _tid="") -> RouterResponse:
         log.info("arbiter fallback (low confidence)")
+        _hooks = get_hook_runner()
+
+        # ── pre_specialist_call (arbiter as specialist) ───────────────────────
+        await _hooks.fire(
+            "pre_specialist_call",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "query": req.query,
+                "domain": "general",
+                "specialist": "arbiter",
+                "model": self._config.arbiter.serve_model_name,
+                "endpoint": self._arbiter_url,
+            },
+        )
+
         response, base_conf = await self._call(
             self._arbiter_url,
             req.query,
@@ -1382,6 +1605,20 @@ class Router:
             req.conversation_history,
             model_name=self._config.arbiter.serve_model_name,
         )
+
+        # ── post_specialist_call ──────────────────────────────────────────────
+        await _hooks.fire(
+            "post_specialist_call",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "domain": "general",
+                "specialist": "arbiter",
+                "response_preview": response[:200],
+                "confidence": base_conf,
+            },
+        )
+
         u, conf, n_contra, n_dpo = await self._score(req.query, response, "general", base_conf)
         self._queries_by_mode["arbiter"] = self._queries_by_mode.get("arbiter", 0) + 1
         self._latencies_ms["router"].append((time.time() - t0) * 1000)
@@ -1398,6 +1635,31 @@ class Router:
             u_score=u,
             status="ok",
         )
+
+        # ── pre_response / post_response ──────────────────────────────────────
+        await _hooks.fire(
+            "pre_response",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "domain": "general",
+                "routing_mode": "arbiter",
+                "u_score": u,
+                "latency_ms": _arb_ms,
+            },
+        )
+        _hooks.fire_background(
+            "post_response",
+            {
+                "session_id": _sid,
+                "trace_id": _tid,
+                "domain": "general",
+                "routing_mode": "arbiter",
+                "u_score": u,
+                "latency_ms": _arb_ms,
+            },
+        )
+
         return RouterResponse(
             query=req.query,
             routing_mode="arbiter",

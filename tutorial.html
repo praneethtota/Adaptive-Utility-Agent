@@ -1464,203 +1464,875 @@ aua metrics --compare 30d
 <p style="color:#555;margin-bottom:2rem;">Task-oriented guides for specific things you need to accomplish.</p>
 
 <!-- ═══════════════════════════════════════════ PART 13 (was 10) -->
-<h2 id="part-13" class="part-heading"><span class="how-badge">How-to 13</span> Write a plugin <span class="time-badge">~25 min</span></h2>
+<h2 id="part-13" class="part-heading"><span class="how-badge">How-to 13</span> Write a plugin <span class="time-badge">~40 min</span></h2>
 
-<p>AUA defines 8 Protocol interfaces. Implement any of them to replace the corresponding framework layer — without editing AUA source. Register via <code>import_path</code> in <code>aua_config.yaml</code>.</p>
+<p>AUA has 8 plugin interfaces and 1 middleware interface. Each one replaces a specific internal layer. No inheritance required — implement the methods, register in YAML, and the framework uses your version instead of the built-in.</p>
 
-<h3>13.1 The 8 Plugin Protocol interfaces</h3>
-<table>
-<tr><th>Interface</th><th>What it replaces</th></tr>
-<tr><td><code>FieldClassifierPlugin</code></td><td>Field classification for incoming queries</td></tr>
-<tr><td><code>UtilityScorerPlugin</code></td><td>Utility function U = f(response, field)</td></tr>
-<tr><td><code>ArbiterPolicyPlugin</code></td><td>Contradiction arbitration verdict logic</td></tr>
-<tr><td><code>PromotionPolicyPlugin</code></td><td>Should GREEN promote? Logic</td></tr>
-<tr><td><code>CorrectionStorePlugin</code></td><td>Storage backend for assertions and corrections</td></tr>
-<tr><td><code>ModelBackendPlugin</code></td><td>Custom LLM backend (not vLLM or Ollama)</td></tr>
-<tr><td><code>HookPlugin</code></td><td>Lifecycle event handler (see Part 11)</td></tr>
-<tr><td><code>AUAMiddleware</code></td><td>Before/after pipeline for every request (see Part 11)</td></tr>
-</table>
+<p>The pattern is always the same: <strong>minimum viable</strong> (implement only the required method with the minimum signature), then <strong>full version</strong> (using all available parameters). Like Python's <code>sorted()</code> — one argument works, but <code>key=</code> and <code>reverse=</code> give you more control.</p>
 
-<h3>13.2 Example — custom utility scorer</h3>
+<div class="callout">
+  <p><strong>No base class, no inheritance.</strong> AUA uses Python <code>Protocol</code> for structural subtyping. Your class just needs the right method names and signatures. If it has them, it satisfies the interface — the framework verifies this at load time with <code>isinstance()</code> check.</p>
+</div>
+
+<!-- anchor for quick nav -->
+<p style="font-size:.85rem;margin-bottom:1.5rem;">
+  Jump to:
+  <a href="#plugin-fieldclassifier">FieldClassifier</a> ·
+  <a href="#plugin-utilityscorer">UtilityScorer</a> ·
+  <a href="#plugin-arbiter">ArbiterPolicy</a> ·
+  <a href="#plugin-promotion">PromotionPolicy</a> ·
+  <a href="#plugin-correctionstore">CorrectionStore</a> ·
+  <a href="#plugin-modelbackend">ModelBackend</a> ·
+  <a href="#plugin-statestore">StateStore</a> ·
+  <a href="#plugin-middleware">Middleware</a>
+</p>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<!-- ── 1. FieldClassifierPlugin ──────────────────────────────────────── -->
+<h3 id="plugin-fieldclassifier">1. FieldClassifierPlugin — custom query routing logic</h3>
+
+<p><strong>What it replaces:</strong> The built-in TF-IDF/embedding field classifier that decides which specialist handles each query.</p>
+<p><strong>When to write one:</strong> You have a proprietary taxonomy, an existing intent classifier, or domain-specific routing rules that the built-in classifier doesn't know about.</p>
+
+<p><strong>Required method:</strong> <code>classify(query: str) → dict[str, float]</code></p>
+
 <div class="code-block">
-<div class="code-header">plugins/risk_scorer.py</div>
-<pre>from aua.plugins.interfaces import UtilityScorerPlugin
+<div class="code-header">plugins/my_classifier.py — minimum viable</div>
+<pre>class KeywordClassifier:
+    def classify(self, query: str) -> dict[str, float]:
+        """Route based on keywords. Probabilities must sum to ≤ 1.0."""
+        q = query.lower()
+        if any(w in q for w in ["sort", "binary", "algorithm", "complexity"]):
+            return {"software_engineering": 0.9, "mathematics": 0.1}
+        if any(w in q for w in ["integral", "derivative", "proof"]):
+            return {"mathematics": 0.95}
+        return {"general": 1.0}    <span class="c"># fallback</span></pre>
+</div>
 
-class RiskWeightedUtilityScorer(UtilityScorerPlugin):
-    """Weights efficacy down when confidence is below threshold."""
-
+<div class="code-block">
+<div class="code-header">plugins/my_classifier.py — full version (with config + confidence calibration)</div>
+<pre>class KeywordClassifier:
     def __init__(self, config: dict):
-        self.risk_threshold = config.get("risk_threshold", 0.80)
+        <span class="c"># config dict comes from aua_config.yaml → plugins.field_classifier.config</span>
+        self.boost = float(config.get("confidence_boost", 1.0))
 
+    def classify(self, query: str) -> dict[str, float]:
+        """
+        query: str — raw user query text (pre-processed, no conversation history)
+
+        Returns: dict[field_name → probability]
+          - field names must match specialist 'field' values in aua_config.yaml
+          - probabilities should sum to ≤ 1.0 (remainder is implicitly 'unknown')
+          - returning {} triggers arbiter fallback
+        """
+        q = query.lower()
+        scores: dict[str, float] = {}
+        if any(w in q for w in ["sort", "binary", "algorithm", "def ", "class "]):
+            scores["software_engineering"] = 0.85 * self.boost
+        if any(w in q for w in ["integral", "derivative", "theorem", "proof"]):
+            scores["mathematics"] = 0.90 * self.boost
+        <span class="c"># Normalise so probabilities sum to 1.0</span>
+        total = sum(scores.values())
+        if total > 1.0:
+            scores = {k: v / total for k, v in scores.items()}
+        return scores or {"general": 1.0}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — register</div>
+<pre>plugins:
+  field_classifier:
+    import_path: plugins.my_classifier:KeywordClassifier
+    config:
+      confidence_boost: 1.1</pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<!-- ── 2. UtilityScorerPlugin ─────────────────────────────────────────── -->
+<h3 id="plugin-utilityscorer">2. UtilityScorerPlugin — custom U score</h3>
+
+<p><strong>What it replaces:</strong> The built-in <code>U = w_e·E + w_c·C + w_k·K</code> scorer.</p>
+<p><strong>When to write one:</strong> You want domain-specific scoring logic — e.g. penalise hallucinations more in a medical domain, or reward shorter answers in a support context.</p>
+
+<p><strong>Required method:</strong> <code>score(response, field, prior_u, confidence, metadata) → float</code></p>
+
+<div class="code-block">
+<div class="code-header">plugins/risk_scorer.py — minimum viable</div>
+<pre>class RiskWeightedScorer:
     def score(
         self,
-        response: str,
-        field: str,
-        efficacy: float,
-        confidence: float,
-        curiosity: float,
-        weights: dict,
-    ) -> float:
-        if confidence < self.risk_threshold:
-            weights = {**weights, "efficacy": weights["efficacy"] * 0.6}
-        return (
-            weights["efficacy"] * efficacy
-            + weights["confidence"] * confidence
-            + weights["curiosity"] * curiosity
-        )</pre>
+        response: str,       <span class="c"># the specialist's text output</span>
+        field: str,          <span class="c"># field name e.g. "software_engineering"</span>
+        prior_u: float,      <span class="c"># running mean U for this specialist (0.0–1.0)</span>
+        confidence: float,   <span class="c"># Kalman-filtered confidence (0.0–1.0)</span>
+        metadata: dict,      <span class="c"># {"session_id", "query", "latency_ms", ...}</span>
+    ) -> float:              <span class="c"># return U score in [0.0, 1.0]</span>
+        return 0.5 * confidence + 0.5 * prior_u</pre>
 </div>
 
 <div class="code-block">
-<div class="code-header">aua_config.yaml — register the plugin</div>
+<div class="code-header">plugins/risk_scorer.py — full version</div>
+<pre>class RiskWeightedScorer:
+    def __init__(self, config: dict):
+        self.risk_threshold = float(config.get("risk_threshold", 0.80))
+        self.length_penalty = float(config.get("length_penalty", 0.0))
+
+    def score(self, response: str, field: str, prior_u: float,
+              confidence: float, metadata: dict) -> float:
+        <span class="c"># metadata keys available: session_id, query, latency_ms, specialist</span>
+        <span class="c"># Lower efficacy when confidence is below threshold</span>
+        efficacy = prior_u
+        if confidence < self.risk_threshold:
+            efficacy *= 0.6
+
+        <span class="c"># Penalise very long responses (optional)</span>
+        word_count = len(response.split())
+        length_factor = max(0.7, 1.0 - self.length_penalty * (word_count / 1000))
+
+        u = 0.5 * efficacy + 0.4 * confidence + 0.1 * (prior_u * length_factor)
+        return round(min(1.0, max(0.0, u)), 4)</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
 <pre>plugins:
   utility_scorer:
-    import_path: plugins.risk_scorer:RiskWeightedUtilityScorer
+    import_path: plugins.risk_scorer:RiskWeightedScorer
     config:
-      risk_threshold: 0.85</pre>
+      risk_threshold: 0.85
+      length_penalty: 0.1</pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<!-- ── 3. ArbiterPolicyPlugin ─────────────────────────────────────────── -->
+<h3 id="plugin-arbiter">3. ArbiterPolicyPlugin — custom contradiction arbitration</h3>
+
+<p><strong>What it replaces:</strong> The built-in 4-check arbitration logic (logical, mathematical, cross-session, empirical).</p>
+<p><strong>When to write one:</strong> You want domain-specific arbitration — e.g. always prefer the response from the specialist with higher past U score, or use an external fact-checker API.</p>
+
+<p><strong>Required method:</strong> <code>arbitrate(subject, domain, output_a, output_b, metadata) → dict</code></p>
+
+<div class="code-block">
+<div class="code-header">plugins/simple_arbiter.py — minimum viable</div>
+<pre>class LengthArbiter:
+    def arbitrate(
+        self,
+        subject: str,          <span class="c"># short subject identifier e.g. "heapsort_complexity"</span>
+        domain: str,           <span class="c"># field name</span>
+        output_a: str,         <span class="c"># first specialist's full response text</span>
+        output_b: str,         <span class="c"># second specialist's full response text</span>
+        metadata: dict,        <span class="c"># {"session_id", "field_penalty_multiplier", ...}</span>
+    ) -> dict:
+        <span class="c"># Required return keys:</span>
+        return {
+            "case": "case_1",               <span class="c"># "case_1"|"case_2"|"case_3"|"case_4"</span>
+            "correct_a": False,             <span class="c"># True → store correction for specialist A</span>
+            "correct_b": False,             <span class="c"># True → store correction for specialist B</span>
+            "verified_claim": None,         <span class="c"># str if a fact was verified, else None</span>
+            "external_response": output_a,  <span class="c"># what the user sees</span>
+        }</pre>
 </div>
 
 <div class="code-block">
-<div class="code-header">bash — test before registering</div>
-<pre>aua extensions test \
-  --kind utility_scorer \
-  --import-path plugins.risk_scorer:RiskWeightedUtilityScorer
-
-<span class="ok">✓ Interface satisfied: UtilityScorerPlugin</span>
-<span class="ok">✓ score() signature valid</span>
-<span class="ok">✓ Test vector passed (U=0.612)</span></pre>
-</div>
-
-<h3>13.3 Example — custom model backend</h3>
-<div class="code-block">
-<div class="code-header">plugins/gateway_backend.py</div>
-<pre>from aua.plugins.interfaces import ModelBackendPlugin
-from typing import AsyncIterator
-import httpx
-
-class GatewayBackend(ModelBackendPlugin):
+<div class="code-header">plugins/simple_arbiter.py — full version with confidence-based decision</div>
+<pre>class ConfidenceArbiter:
     def __init__(self, config: dict):
-        self.base_url = config["base_url"]
-        self.api_key = config["api_key"]
+        self.prefer_longer = config.get("prefer_longer", False)
+
+    def arbitrate(self, subject: str, domain: str, output_a: str,
+                  output_b: str, metadata: dict) -> dict:
+        <span class="c"># metadata["specialist_a_confidence"] and ["specialist_b_confidence"]</span>
+        <span class="c"># are available when fanout routing produced both responses</span>
+        conf_a = metadata.get("specialist_a_confidence", 0.5)
+        conf_b = metadata.get("specialist_b_confidence", 0.5)
+
+        if abs(conf_a - conf_b) < 0.05:
+            <span class="c"># Too close to call — both acceptable (case_1: no contradiction)</span>
+            winner = output_a if (not self.prefer_longer or len(output_a) >= len(output_b)) else output_b
+            return {"case": "case_1", "correct_a": False, "correct_b": False,
+                    "verified_claim": None, "external_response": winner}
+
+        if conf_a > conf_b:
+            <span class="c"># A wins — B needs correction (case_2)</span>
+            return {"case": "case_2", "correct_a": False, "correct_b": True,
+                    "verified_claim": output_a[:200], "external_response": output_a}
+        else:
+            <span class="c"># B wins — A needs correction (case_3)</span>
+            return {"case": "case_3", "correct_a": True, "correct_b": False,
+                    "verified_claim": output_b[:200], "external_response": output_b}
+        <span class="c"># case_4 = both wrong — use "external_response" = your fallback text</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  arbiter_policy:
+    import_path: plugins.simple_arbiter:ConfidenceArbiter
+    config:
+      prefer_longer: true</pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<!-- ── 4. PromotionPolicyPlugin ───────────────────────────────────────── -->
+<h3 id="plugin-promotion">4. PromotionPolicyPlugin — custom blue-green promotion logic</h3>
+
+<p><strong>What it replaces:</strong> The built-in <code>delta + T_min</code> promotion threshold check.</p>
+<p><strong>When to write one:</strong> You want additional promotion criteria — e.g. minimum number of queries, assertion pass rate threshold, or a human approval step.</p>
+
+<p><strong>Required method:</strong> <code>should_promote(specialist, blue_mean_u, green_mean_u, n_queries, metadata) → bool</code></p>
+
+<div class="code-block">
+<div class="code-header">plugins/strict_promoter.py — minimum viable</div>
+<pre>class StrictPromoter:
+    def should_promote(
+        self,
+        specialist: str,       <span class="c"># specialist name e.g. "swe"</span>
+        blue_mean_u: float,    <span class="c"># BLUE model's mean U over evaluation period</span>
+        green_mean_u: float,   <span class="c"># GREEN candidate's mean U</span>
+        n_queries: int,        <span class="c"># number of evaluation queries run</span>
+        metadata: dict,        <span class="c"># {"delta", "T_min", "tau", "config", ...}</span>
+    ) -> bool:                 <span class="c"># True = promote, False = keep BLUE</span>
+        return green_mean_u > blue_mean_u + 0.05 and n_queries >= 50</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">plugins/strict_promoter.py — full version with assertion gate</div>
+<pre>class StrictPromoter:
+    def __init__(self, config: dict):
+        self.min_delta = float(config.get("min_delta", 0.05))
+        self.min_queries = int(config.get("min_queries", 50))
+        self.max_fail_rate = float(config.get("max_assertion_fail_rate", 0.10))
+
+    def should_promote(self, specialist: str, blue_mean_u: float,
+                       green_mean_u: float, n_queries: int, metadata: dict) -> bool:
+        <span class="c"># Gate 1: minimum evaluation period</span>
+        if n_queries < self.min_queries:
+            return False
+        <span class="c"># Gate 2: meaningful U improvement</span>
+        if green_mean_u - blue_mean_u < self.min_delta:
+            return False
+        <span class="c"># Gate 3: assertion pass rate (if available in metadata)</span>
+        fail_rate = metadata.get("assertion_fail_rate", 0.0)
+        if fail_rate > self.max_fail_rate:
+            return False
+        return True</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  promotion_policy:
+    import_path: plugins.strict_promoter:StrictPromoter
+    config:
+      min_delta: 0.08
+      min_queries: 100
+      max_assertion_fail_rate: 0.05</pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<!-- ── 5. CorrectionStorePlugin ───────────────────────────────────────── -->
+<h3 id="plugin-correctionstore">5. CorrectionStorePlugin — custom correction backend</h3>
+
+<p><strong>What it replaces:</strong> The built-in in-memory + SQLite AssertionsStore.</p>
+<p><strong>When to write one:</strong> You want corrections stored in Postgres, Redis, or a vector database — or you need multi-tenant isolation (pending v1.1 per-user scoping).</p>
+
+<p><strong>Required methods:</strong> <code>store()</code>, <code>query()</code>, <code>export_dpo_pairs()</code></p>
+
+<div class="code-block">
+<div class="code-header">plugins/pg_store.py — minimum viable (in-memory for illustration)</div>
+<pre>class InMemoryCorrectionStore:
+    def __init__(self, config: dict):
+        self._data: list[dict] = []
+
+    def store(
+        self,
+        subject: str,      <span class="c"># what the assertion is about e.g. "heapsort_complexity"</span>
+        domain: str,       <span class="c"># field name</span>
+        claim: str,        <span class="c"># the verified fact string</span>
+        confidence: float, <span class="c"># 0.0–1.0 confidence at write time</span>
+    ) -> None:
+        self._data.append({"subject": subject, "domain": domain,
+                           "claim": claim, "confidence": confidence})
+
+    def query(
+        self,
+        subject: str,           <span class="c"># filter by subject (partial match OK)</span>
+        domain: str | None,     <span class="c"># optional domain filter</span>
+    ) -> list[dict]:
+        return [d for d in self._data
+                if subject.lower() in d["subject"].lower()
+                and (domain is None or d["domain"] == domain)]
+
+    def export_dpo_pairs(
+        self,
+        domain: str | None,  <span class="c"># None = all domains</span>
+        limit: int,          <span class="c"># max pairs to return</span>
+    ) -> list[dict]:
+        <span class="c"># Return list of {"chosen": str, "rejected": str} dicts</span>
+        pairs = [{"chosen": d["claim"], "rejected": ""} for d in self._data
+                 if domain is None or d["domain"] == domain]
+        return pairs[:limit]</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  correction_store:
+    import_path: plugins.pg_store:InMemoryCorrectionStore
+    config:
+      connection_string_secret: POSTGRES_URL  <span class="c"># for a real Postgres implementation</span></pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<!-- ── 6. ModelBackendPlugin ──────────────────────────────────────────── -->
+<h3 id="plugin-modelbackend">6. ModelBackendPlugin — connect any LLM serving infrastructure</h3>
+
+<p><strong>What it replaces:</strong> The built-in vLLM and Ollama HTTP clients.</p>
+<p><strong>When to write one:</strong> You want to route to a commercial API (OpenAI, Anthropic, Cohere), an internal gateway, or any serving stack that isn't vLLM or Ollama.</p>
+
+<p><strong>Required methods:</strong> <code>complete()</code>, <code>stream()</code>, <code>health()</code> — all async.</p>
+
+<div class="code-block">
+<div class="code-header">plugins/openai_backend.py — minimum viable</div>
+<pre>import httpx
+from collections.abc import AsyncIterator
+
+class OpenAIBackend:
+    def __init__(self, config: dict):
+        self.api_key = config["api_key"]   <span class="c"># or resolve from env</span>
+        self.model = config.get("model", "gpt-4o-mini")
+        self.base_url = config.get("base_url", "https://api.openai.com")
 
     async def complete(self, request: dict) -> dict:
+        <span class="c"># request is OpenAI-compatible: {"model", "messages", "temperature", ...}</span>
+        <span class="c"># Return OpenAI-compatible response with choices[0].message.content</span>
         async with httpx.AsyncClient() as client:
             r = await client.post(
                 f"{self.base_url}/v1/chat/completions",
                 headers={"Authorization": f"Bearer {self.api_key}"},
-                json=request,
+                json={**request, "model": self.model},
+                timeout=30.0,
             )
             return r.json()
 
     async def stream(self, request: dict) -> AsyncIterator[str]:
-        <span class="c"># yield SSE chunks</span>
-        ...
+        <span class="c"># Yield token strings as they arrive</span>
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST", f"{self.base_url}/v1/chat/completions",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json={**request, "model": self.model, "stream": True},
+            ) as r:
+                async for line in r.aiter_lines():
+                    if line.startswith("data: ") and "[DONE]" not in line:
+                        import json
+                        chunk = json.loads(line[6:])
+                        token = chunk["choices"][0]["delta"].get("content", "")
+                        if token:
+                            yield token
 
     async def health(self) -> dict:
-        return {"status": "ok"}</pre>
+        <span class="c"># Return {"status": "ok"|"error", "latency_ms": float}</span>
+        try:
+            async with httpx.AsyncClient() as client:
+                import time
+                t0 = time.time()
+                await client.get(f"{self.base_url}/v1/models",
+                                 headers={"Authorization": f"Bearer {self.api_key}"},
+                                 timeout=5.0)
+                return {"status": "ok", "latency_ms": (time.time() - t0) * 1000}
+        except Exception as e:
+            return {"status": "error", "error": str(e), "latency_ms": 0.0}</pre>
 </div>
 
 <div class="code-block">
 <div class="code-header">aua_config.yaml</div>
-<pre>backends:
-  my_gateway:
-    plugin: plugins.gateway_backend:GatewayBackend
-    base_url: https://api.my-gateway.internal
-    api_key_secret: MY_GATEWAY_KEY  <span class="c"># resolved from secrets provider</span></pre>
+<pre>plugins:
+  model_backend:
+    import_path: plugins.openai_backend:OpenAIBackend
+    config:
+      api_key_secret: OPENAI_API_KEY   <span class="c"># resolved from env at startup</span>
+      model: gpt-4o-mini
+      base_url: https://api.openai.com</pre>
 </div>
 
-<h3>13.4 Listing and inspecting registered plugins</h3>
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<!-- ── 7. StateStorePlugin ────────────────────────────────────────────── -->
+<h3 id="plugin-statestore">7. StateStorePlugin — custom session/state backend</h3>
+
+<p><strong>What it replaces:</strong> The built-in SQLite state store.</p>
+<p><strong>When to write one:</strong> You want sessions, corrections, and audit events stored in Postgres, Redis, or a shared datastore across multiple router instances.</p>
+
+<p><strong>Required methods:</strong> <code>get()</code>, <code>set()</code>, <code>append()</code>, <code>query()</code></p>
+
+<div class="code-block">
+<div class="code-header">plugins/redis_store.py — minimum viable (dict for illustration)</div>
+<pre>import uuid
+
+class DictStateStore:
+    def __init__(self, config: dict):
+        self._store: dict[str, dict] = {}   <span class="c"># table:key → record</span>
+        self._lists: dict[str, list] = {}   <span class="c"># append-only tables</span>
+
+    def get(
+        self,
+        table: str,  <span class="c"># table name e.g. "sessions", "corrections", "assertion_events"</span>
+        key: str,    <span class="c"># record key (UUID string)</span>
+    ) -> dict | None:
+        return self._store.get(f"{table}:{key}")
+
+    def set(
+        self,
+        table: str,
+        key: str,
+        value: dict,  <span class="c"># arbitrary JSON-serialisable dict</span>
+    ) -> None:
+        self._store[f"{table}:{key}"] = value
+
+    def append(
+        self,
+        table: str,
+        record: dict,  <span class="c"># record to append (no key — framework generates one)</span>
+    ) -> str:          <span class="c"># return the generated record ID</span>
+        record_id = str(uuid.uuid4())
+        self._lists.setdefault(table, []).append({**record, "id": record_id})
+        return record_id
+
+    def query(
+        self,
+        table: str,
+        filters: dict = {},  <span class="c"># {field_name: value} equality filters</span>
+        limit: int = 100,
+    ) -> list[dict]:
+        rows = self._lists.get(table, [])
+        for k, v in filters.items():
+            rows = [r for r in rows if r.get(k) == v]
+        return rows[:limit]</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  state_store:
+    import_path: plugins.redis_store:DictStateStore
+    config:
+      url_secret: REDIS_URL</pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<!-- ── 8. AUAMiddleware ───────────────────────────────────────────────── -->
+<h3 id="plugin-middleware">8. AUAMiddleware — before/after every request</h3>
+
+<p><strong>What it replaces:</strong> Nothing — middleware is additive. It wraps every request/response pair.</p>
+<p><strong>When to write one:</strong> PII redaction, request logging, tenant routing, rate limiting, or any transformation that needs to run on every query.</p>
+
+<p><strong>Required methods:</strong> <code>before_query(request: dict) → dict</code> and <code>after_response(response: dict) → dict</code> — both async.</p>
+
+<div class="code-block">
+<div class="code-header">plugins/pii_middleware.py — minimum viable</div>
+<pre>import re
+
+class PIIRedactionMiddleware:
+    async def before_query(self, request: dict) -> dict:
+        <span class="c"># request keys: "query", "session_id", "conversation_history", "force_domain"</span>
+        <span class="c"># Modify and return request dict. Raise to abort the request.</span>
+        request["query"] = re.sub(r"\b\d{3}-\d{2}-\d{4}\b", "[SSN]", request["query"])
+        return request
+
+    async def after_response(self, response: dict) -> dict:
+        <span class="c"># response keys: "response", "u_score", "domain", "routing_mode",</span>
+        <span class="c">#                "confidence", "latency_ms", "contradictions_detected"</span>
+        <span class="c"># Return response unchanged if you don't need to modify it.</span>
+        return response</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">plugins/pii_middleware.py — full version with logging</div>
+<pre>import logging, re, time
+
+log = logging.getLogger(__name__)
+
+class PIIRedactionMiddleware:
+    def __init__(self, config: dict):
+        self.patterns = config.get("patterns", [r"\b\d{3}-\d{2}-\d{4}\b"])
+        self._compiled = [re.compile(p) for p in self.patterns]
+
+    async def before_query(self, request: dict) -> dict:
+        original = request["query"]
+        redacted = original
+        for pattern in self._compiled:
+            redacted = pattern.sub("[REDACTED]", redacted)
+        if redacted != original:
+            log.info("PII redacted in session %s", request.get("session_id"))
+        request["query"] = redacted
+        request["_redacted"] = redacted != original  <span class="c"># pass context forward</span>
+        return request
+
+    async def after_response(self, response: dict) -> dict:
+        <span class="c"># Optionally add middleware metadata to response</span>
+        if response.get("_redacted"):
+            response["metadata"] = response.get("metadata", {})
+            response["metadata"]["pii_redacted"] = True
+        return response</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — middleware runs in list order</div>
+<pre>plugins:
+  middleware:
+    - import_path: plugins.pii_middleware:PIIRedactionMiddleware
+      config:
+        patterns:
+          - '\b\d{3}-\d{2}-\d{4}\b'   <span class="c"># SSN</span>
+          - '\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b'  <span class="c"># email</span>
+    - import_path: plugins.tenant_policy:TenantMiddleware</pre>
+</div>
+
+<h3>Testing plugins before registering</h3>
 <div class="code-block">
 <div class="code-header">bash</div>
 <pre>aua extensions list
 aua extensions inspect utility_scorer
-aua extensions test --kind utility_scorer --import-path mypackage.myplugin:MyPlugin
-<span class="c"># To pick up plugin changes: restart aua serve</span></pre>
+aua extensions test --kind utility_scorer --import-path plugins.risk_scorer:RiskWeightedScorer
+<span class="c"># ✓ Interface satisfied: UtilityScorerPlugin
+# ✓ score() signature valid
+# To pick up changes: restart aua serve</span></pre>
 </div>
 
-<div class="next-part"><p><strong>Part 13 done.</strong> Part 14 covers hooks and middleware — intercepting the query lifecycle.</p></div>
+<div class="next-part"><p><strong>Part 13 done.</strong> Part 14 covers all 11 hook points — what event fields each one receives and how to write a hook that fires at the right moment.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 14 -->
-<h2 id="part-14" class="part-heading"><span class="how-badge">How-to 14</span> Hooks &amp; middleware <span class="time-badge">~20 min</span></h2>
+<h2 id="part-14" class="part-heading"><span class="how-badge">How-to 14</span> Hooks &amp; middleware <span class="time-badge">~25 min</span></h2>
 
-<h3>14.1 The 11 hook points</h3>
-<table>
-<tr><th>Hook</th><th>Fires when</th></tr>
-<tr><td><code>pre_query</code></td><td>Before field classification</td></tr>
-<tr><td><code>post_query</code></td><td>After response assembled</td></tr>
-<tr><td><code>pre_route</code></td><td>Before routing decision</td></tr>
-<tr><td><code>post_route</code></td><td>After routing decision, before specialist calls</td></tr>
-<tr><td><code>pre_specialist_call</code></td><td>Before each specialist API call</td></tr>
-<tr><td><code>post_specialist_call</code></td><td>After each specialist returns</td></tr>
-<tr><td><code>pre_arbiter</code></td><td>Before arbiter receives inputs</td></tr>
-<tr><td><code>post_arbiter</code></td><td>After arbiter verdict issued</td></tr>
-<tr><td><code>on_correction</code></td><td>When a correction is stored</td></tr>
-<tr><td><code>on_promotion</code></td><td>When GREEN promotes to BLUE</td></tr>
-<tr><td><code>on_rollback</code></td><td>When a rollback completes</td></tr>
-</table>
+<p>Hooks fire at 11 named points in the request pipeline. Each hook receives an event dict and returns a (possibly modified) event dict. Register one hook class per point, or one class for multiple points.</p>
 
-<h3>14.2 Writing a hook</h3>
+<div class="callout green">
+  <p><strong>All 11 hook points are live in v1.0.</strong> Hooks are fail-open by default — if a hook errors or times out, the pipeline continues. Set <code>fail_closed: true</code> in YAML to abort the request on hook failure.</p>
+</div>
+
+<h3>13.1 The minimal hook</h3>
+
 <div class="code-block">
-<div class="code-header">plugins/audit_hook.py</div>
-<pre>from aua.plugins.interfaces import HookPlugin
+<div class="code-header">plugins/my_hook.py — minimum viable</div>
+<pre>class MyHook:
+    async def __call__(self, event: dict) -> dict:
+        <span class="c"># event always has: "type" (hook point name), "session_id", "trace_id"</span>
+        <span class="c"># plus hook-specific fields documented below</span>
+        print(f"Hook fired: {event['type']}")
+        return event  <span class="c"># always return the event dict (modified or unchanged)</span></pre>
+</div>
 
-class AuditHook(HookPlugin):
-    hook_name = "post_arbiter"
-    error_policy = "fail_open"  <span class="c"># don't block response if hook fails</span>
-    timeout_seconds = 2.0
+<div class="code-block">
+<div class="code-header">aua_config.yaml — register</div>
+<pre>hooks:
+  on_correction:
+    - import_path: plugins.my_hook:MyHook
+      fail_closed: false   <span class="c"># fail-open: log error, continue (default)</span>
+      timeout_s: 5.0       <span class="c"># abort hook after 5 seconds</span></pre>
+</div>
+
+<h3>13.2 All 11 hook points — event fields</h3>
+
+<p>Each hook receives a specific event dict. Here are the fields available at each point, shown as the dict your <code>__call__</code> method receives:</p>
+
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">pre_query — fires before field classification</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: PII scrubbing, request logging, query transformation, rate limiting per session.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":                 "pre_query",         <span class="c"># always present</span>
+    "session_id":           "s_abc123",          <span class="c"># current session</span>
+    "trace_id":             "01HX...",           <span class="c"># W3C trace ID</span>
+    "query":                "Write binary search.",
+    "conversation_history": [...],               <span class="c"># list of prior messages</span>
+    "force_domain":         None,                <span class="c"># str if routing forced, else None</span>
+}
+<span class="c"># Modify event["query"] to transform the query before routing</span></pre>
+</div>
+</div>
+</details>
+
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">post_route — fires after routing decision, before specialist calls</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: logging routing decisions, overriding the routing mode, alerting on unexpected domains.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":                "post_route",
+    "session_id":          "s_abc123",
+    "trace_id":            "01HX...",
+    "query":               "Write binary search.",
+    "domain_distribution": {"software_engineering": 0.9, "mathematics": 0.1},
+    "top_domain":          "software_engineering",
+    "routing_mode":        "single",             <span class="c"># "single" | "fanout" | "arbiter"</span>
+    "active_specialists":  ["swe"],              <span class="c"># specialists involved</span>
+}</pre>
+</div>
+</div>
+</details>
+
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">pre_specialist_call — fires before each specialist API call</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: per-specialist logging, injecting prompt context, circuit breakers. Fires once per specialist in fanout mode.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":        "pre_specialist_call",
+    "session_id":  "s_abc123",
+    "trace_id":    "01HX...",
+    "query":       "Write binary search.",
+    "domain":      "software_engineering",
+    "specialist":  "swe",                 <span class="c"># specialist name from config</span>
+    "model":       "qwen2.5-coder:7b",   <span class="c"># model being called</span>
+    "endpoint":    "http://localhost:11434",
+}</pre>
+</div>
+</div>
+</details>
+
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">post_specialist_call — fires after each specialist returns</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: response logging, latency tracking per specialist, content filtering before scoring. Fires once per specialist in fanout mode.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":             "post_specialist_call",
+    "session_id":       "s_abc123",
+    "trace_id":         "01HX...",
+    "domain":           "software_engineering",
+    "specialist":       "swe",
+    "response_preview": "Here is a binary search implementation...",  <span class="c"># first 200 chars</span>
+    "confidence":       0.823,            <span class="c"># base confidence before Kalman</span>
+}</pre>
+</div>
+</div>
+</details>
+
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">pre_arbiter — fires before arbiter receives fanout responses</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: logging both specialist responses before arbitration, injecting human review, recording disagreements.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":          "pre_arbiter",
+    "session_id":    "s_abc123",
+    "trace_id":      "01HX...",
+    "query":         "What is heapsort complexity?",
+    "specialist_a":  "swe",
+    "response_a":    "O(n log n) worst-case...",   <span class="c"># first 200 chars</span>
+    "specialist_b":  "math",
+    "response_b":    "O(n^2) in the worst case...", <span class="c"># first 200 chars</span>
+}</pre>
+</div>
+</div>
+</details>
+
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">post_arbiter — fires after arbiter verdict issued</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: alerting on case_4 (both wrong), logging verdicts, triggering human review on contradictions.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":          "post_arbiter",
+    "session_id":    "s_abc123",
+    "trace_id":      "01HX...",
+    "verdict":       "case_2: specialist A is correct...",  <span class="c"># first 200 chars</span>
+    "winner_field":  "software_engineering",  <span class="c"># or "both_wrong"</span>
+    "specialist_a":  "swe",
+    "specialist_b":  "math",
+}
+<span class="c"># Alert on contradictions:</span>
+<span class="c"># if event["winner_field"] == "both_wrong": → trigger review</span></pre>
+</div>
+</div>
+</details>
+
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">on_correction — fires when a correction is stored</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: Slack/webhook notifications when the system learns something new, audit logging, syncing to external knowledge bases. Fires in background — non-blocking.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":        "on_correction",
+    "session_id":  "",              <span class="c"># may be empty for manual corrections</span>
+    "trace_id":    "",
+    "subject":     "heapsort_complexity",
+    "domain":      "software_engineering",
+    "claim":       "Heapsort is O(n log n) worst-case, O(1) extra space.",
+    "confidence":  0.99,
+    "decay_class": "A",             <span class="c"># A=permanent, B=slow, C=moderate, D=fast</span>
+    "source":      "manual",        <span class="c"># "manual" | "arbiter" | "cross_session"</span>
+}</pre>
+</div>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">Example — Slack notification hook</div>
+<pre>import httpx
+
+class SlackNotificationHook:
+    def __init__(self, config: dict):
+        self.webhook_url = config["webhook_url"]
 
     async def __call__(self, event: dict) -> dict:
-        <span class="c"># event contains: session_id, trace_id, field, verdict, utility_scores, ...</span>
-        if event.get("verdict") == "case_4":
-            await self.alert_slack(event)  <span class="c"># your logic here</span>
-        return event  <span class="c"># always return event (can mutate)</span>
+        if event["type"] == "on_correction":
+            msg = (f"*New correction stored*\n"
+                   f"Domain: {event['domain']}\n"
+                   f"Claim: {event['claim']}\n"
+                   f"Confidence: {event['confidence']}")
+            async with httpx.AsyncClient() as client:
+                await client.post(self.webhook_url, json={"text": msg}, timeout=3.0)
+        return event</pre>
+</div>
+</div>
+</details>
 
-    async def alert_slack(self, event: dict):
-        ...</pre>
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">pre_response — fires before response is sent to client</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: response transformation, content filtering, adding metadata, modifying the response text before it reaches the user. Modify <code>event["response"]</code> to change what the user sees.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":          "pre_response",
+    "session_id":    "s_abc123",
+    "trace_id":      "01HX...",
+    "domain":        "software_engineering",
+    "routing_mode":  "single",
+    "u_score":       0.731,
+    "confidence":    0.823,
+    "latency_ms":    312.4,
+    "response":      "Here is the implementation...",  <span class="c"># modify this to change response</span>
+}
+<span class="c"># Return modified event to change the response the user receives:</span>
+<span class="c"># event["response"] = event["response"] + "\n\n[Disclaimer: ...]"</span></pre>
+</div>
+</div>
+</details>
+
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">post_response — fires after response is sent (background, non-blocking)</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: async analytics, usage tracking, long-running post-processing. Never blocks the response. Return value is ignored.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":          "post_response",
+    "session_id":    "s_abc123",
+    "trace_id":      "01HX...",
+    "domain":        "software_engineering",
+    "routing_mode":  "single",
+    "u_score":       0.731,
+    "latency_ms":    312.4,
+    "gold_standard": True,   <span class="c"># True if all INFO assertions fired</span>
+}</pre>
+</div>
+</div>
+</details>
+
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">on_promotion — fires when GREEN promotes to BLUE (background)</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: deployment notifications, updating dashboards, triggering downstream systems.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":           "on_promotion",
+    "session_id":     "",
+    "trace_id":       "",
+    "specialist":     "swe",
+    "promoted_from":  "qwen2.5-coder:7b",
+    "promoted_to":    "qwen2.5-coder:14b-finetuned",
+    "project_dir":    "/home/user/my-aua-project",
+}</pre>
+</div>
+</div>
+</details>
+
+<details class="build-details" style="border-left-color:var(--accent);background:var(--tag-bg);">
+<summary style="color:var(--accent);">on_rollback — fires when a rollback completes (background)</summary>
+<div class="build-body" style="border-top-color:#c7d2fe;">
+<p style="font-size:.85rem;margin-top:.75rem;margin-bottom:.5rem;color:#333;">Use for: incident alerts, updating dashboards, triggering post-rollback diagnostics.</p>
+<div class="code-block" style="margin-top:.5rem;">
+<div class="code-header">event dict</div>
+<pre>event = {
+    "type":               "on_rollback",
+    "session_id":         "",
+    "trace_id":           "",
+    "specialist":         "swe",
+    "rolled_back_from":   "qwen2.5-coder:14b-finetuned",
+    "rolled_back_to":     "qwen2.5-coder:7b",
+    "project_dir":        "/home/user/my-aua-project",
+}</pre>
+</div>
+</div>
+</details>
+
+<h3>13.3 One hook for multiple points</h3>
+
+<div class="code-block">
+<div class="code-header">plugins/analytics_hook.py</div>
+<pre>class AnalyticsHook:
+    """Single hook that handles multiple pipeline points."""
+
+    async def __call__(self, event: dict) -> dict:
+        hook_type = event["type"]
+
+        if hook_type == "pre_query":
+            self._log_query(event["session_id"], event["query"])
+
+        elif hook_type == "post_response":
+            self._record_latency(event["domain"], event["latency_ms"], event["u_score"])
+
+        elif hook_type == "on_correction":
+            self._notify_team(event["domain"], event["claim"])
+
+        elif hook_type == "on_promotion":
+            self._update_dashboard(event["specialist"], event["promoted_to"])
+
+        return event  <span class="c"># always return event</span>
+
+    def _log_query(self, session_id, query): ...
+    def _record_latency(self, domain, ms, u): ...
+    def _notify_team(self, domain, claim): ...
+    def _update_dashboard(self, specialist, model): ...</pre>
 </div>
 
 <div class="code-block">
-<div class="code-header">aua_config.yaml</div>
+<div class="code-header">aua_config.yaml — register one class on multiple points</div>
 <pre>hooks:
-  - import_path: plugins.audit_hook:AuditHook
-    order: 10  <span class="c"># lower number runs first</span></pre>
+  pre_query:
+    - import_path: plugins.analytics_hook:AnalyticsHook
+  post_response:
+    - import_path: plugins.analytics_hook:AnalyticsHook
+  on_correction:
+    - import_path: plugins.analytics_hook:AnalyticsHook
+      fail_closed: false
+      timeout_s: 3.0
+  on_promotion:
+    - import_path: plugins.analytics_hook:AnalyticsHook</pre>
 </div>
 
-<h3>14.3 Middleware — before/after every request</h3>
-<div class="code-block">
-<div class="code-header">plugins/pii_middleware.py</div>
-<pre>from aua.plugins.interfaces import AUAMiddleware
-
-class PIIRedactionMiddleware(AUAMiddleware):
-    async def before_query(self, request: dict) -> dict:
-        request["prompt"] = self._redact(request["prompt"])
-        return request
-
-    async def after_response(self, response: dict) -> dict:
-        <span class="c"># optionally mutate response</span>
-        return response
-
-    def _redact(self, text: str) -> str:
-        <span class="c"># your PII redaction logic</span>
-        return text</pre>
-</div>
-
-<div class="code-block">
-<div class="code-header">aua_config.yaml</div>
-<pre>middleware:
-  - plugins.pii_middleware:PIIRedactionMiddleware
-  - plugins.tenant_policy:TenantPolicyMiddleware</pre>
-</div>
-
-<div class="callout">
-  <p><strong>Error policy:</strong> <code>fail_open</code> — hook failure is logged but does not block the response. <code>fail_closed</code> — hook failure returns an error to the client. Configure per hook in YAML. Middleware failures are always <code>fail_open</code> by default.</p>
-</div>
-
-<div class="next-part"><p><strong>Part 14 done.</strong> Part 15 covers production security — tokens, mTLS, secrets, and audit log.</p></div>
+<div class="next-part"><p><strong>Part 14 done.</strong> Part 15 covers production security — tokens, mTLS, secrets, and the audit log.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 15 -->
 <h2 id="part-15" class="part-heading"><span class="how-badge">How-to 15</span> Security <span class="time-badge">~25 min</span></h2>
 
-<h3>15.1 Bearer tokens and scopes</h3>
+<h3>12.1 Bearer tokens and scopes</h3>
 <p>AUA uses HMAC-SHA256 bearer tokens with 15 fine-grained scopes. Create tokens with the CLI:</p>
 
 <div class="code-block">
@@ -1702,7 +2374,7 @@ curl -X POST http://localhost:8000/query \
   -d '{"query": "Explain quicksort", "session_id": "s1"}'</pre>
 </div>
 
-<h3>15.2 mTLS — encrypted internal communication</h3>
+<h3>12.2 mTLS — encrypted internal communication</h3>
 <div class="code-block">
 <div class="code-header">bash</div>
 <pre><span class="c"># Generate dev certs (self-signed, router + specialists + arbiter)</span>
@@ -1723,7 +2395,7 @@ aua certs inspect
     auto_generate: true    <span class="c"># false in production — bring your own CA</span></pre>
 </div>
 
-<h3>15.3 Secrets management</h3>
+<h3>12.3 Secrets management</h3>
 <p>AUA never stores plaintext secrets in config. Instead, config references a secret name, and the secrets provider resolves it at startup:</p>
 
 <div class="code-block">
@@ -1745,7 +2417,7 @@ specialists:
   vault_path_prefix: secret/aua</pre>
 </div>
 
-<h3>15.4 Encryption at rest</h3>
+<h3>12.4 Encryption at rest</h3>
 <p>Correction payloads, assertions, DPO pairs, token metadata, and sensitive audit fields are encrypted at rest with AES-256-GCM:</p>
 
 <div class="code-block">
@@ -1756,7 +2428,7 @@ specialists:
     key_secret: AUA_ENCRYPTION_KEY   <span class="c"># 64-char hex key — see §14.3 for generation</span></pre>
 </div>
 
-<h3>15.5 Audit log</h3>
+<h3>12.5 Audit log</h3>
 <p>The audit log is append-only with a tamper-evident SHA-256 hash chain. Every security-relevant event is recorded:</p>
 
 <div class="code-block">
@@ -1772,14 +2444,14 @@ aua corrections export --format jsonl</pre>
   <p><strong>Production checklist:</strong> <code>aua doctor --strict</code> validates that if <code>cors_origins</code> is <code>*</code> <em>and</em> the host is <code>0.0.0.0</code> <em>and</em> auth is disabled, a loud warning is emitted. Use the Team Server or Enterprise deployment profile to enforce auth + mTLS requirements.</p>
 </div>
 
-<div class="next-part"><p><strong>Part 15 done.</strong> Part 16 covers observability — Prometheus, Grafana, OTEL, and structured logging.</p></div>
+<div class="next-part"><p><strong>Part 12 done.</strong> Part 13 covers observability — Prometheus, Grafana, OTEL, and structured logging.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 16 -->
 <h2 id="part-16" class="part-heading"><span class="how-badge">How-to 16</span> Observability <span class="time-badge">~25 min</span></h2>
 
 <p>AUA emits three observability streams out of the box: structured JSON logs (every query, assertion, and error), Prometheus metrics (18 gauges/counters/histograms), and optional OpenTelemetry distributed traces. All three are designed to ship directly to ELK, Splunk, Grafana, or any OTEL-compatible backend — no code changes required.</p>
 
-<h3>16.1 Structured JSON logging</h3>
+<h3>13.1 Structured JSON logging</h3>
 
 <p>Every log line the framework emits is a single-line JSON object. Every line automatically includes the current request's <code>session_id</code>, <code>trace_id</code>, and <code>request_id</code> — so a Kibana or Splunk search on a session ID returns the complete picture of everything that happened in that request.</p>
 
@@ -1818,7 +2490,7 @@ aua corrections export --format jsonl</pre>
 <tr><td><code>verdict</code></td><td>Arbiter verdict case (A/B/C/D) when arbiter fires</td></tr>
 </table>
 
-<h3>16.2 Shipping logs to ELK (Elasticsearch / Kibana)</h3>
+<h3>13.2 Shipping logs to ELK (Elasticsearch / Kibana)</h3>
 
 <p>AUA's JSON output is Filebeat-native. No parsing config needed — all fields are already top-level JSON keys that become indexed Elasticsearch fields automatically.</p>
 
@@ -1874,7 +2546,7 @@ routing_mode: "arbiter" AND verdict: *</pre>
   <p><strong>Logstash pipeline alternative.</strong> If you're using Logstash instead of Filebeat, pipe <code>aua serve</code> stdout directly: <code>aua serve 2>&amp;1 | logstash -f aua.conf</code>. In the pipeline filter: <code>json { source =&gt; "message" }</code> then <code>date { match =&gt; ["ts", "UNIX"] }</code>. The JSON structure needs no grok patterns.</p>
 </div>
 
-<h3>16.3 Shipping logs to Splunk</h3>
+<h3>13.3 Shipping logs to Splunk</h3>
 
 <p>Two options depending on your Splunk setup:</p>
 
@@ -1934,7 +2606,7 @@ index=aua sourcetype=aua_json latency_ms=*
 | stats perc95(latency_ms) by routing_mode</pre>
 </div>
 
-<h3>16.4 Prometheus metrics</h3>
+<h3>13.4 Prometheus metrics</h3>
 
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -1963,7 +2635,7 @@ index=aua sourcetype=aua_json latency_ms=*
 <tr><td><code>aua_assertion_bonus_applied</code></td><td>Histogram</td><td>E-score bonus applied by INFO assertions</td></tr>
 </table>
 
-<h3>16.5 Cost tracking</h3>
+<h3>13.5 Cost tracking</h3>
 
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -1978,7 +2650,7 @@ index=aua sourcetype=aua_json latency_ms=*
 }</pre>
 </div>
 
-<h3>16.6 Grafana dashboard</h3>
+<h3>13.6 Grafana dashboard</h3>
 
 <div class="code-block">
 <div class="code-header">bash — start with observability profile</div>
@@ -1991,7 +2663,7 @@ index=aua sourcetype=aua_json latency_ms=*
 # DPO pairs accumulated, auth failures, cost per specialist</span></pre>
 </div>
 
-<h3>16.7 OpenTelemetry — distributed traces</h3>
+<h3>13.7 OpenTelemetry — distributed traces</h3>
 
 <p>Optional. Sends full request traces to Jaeger, Tempo, Elastic APM, Splunk Observability, or any OTLP-compatible backend. Each trace covers the complete request path: router → classifier → routing decision → specialist calls → utility scoring → arbiter → hooks → policy assertions → response.</p>
 
@@ -2024,7 +2696,7 @@ index=aua sourcetype=aua_json latency_ms=*
   <p><strong>Log + trace correlation.</strong> The <code>trace_id</code> in every JSON log line is W3C-compatible. When OTEL is enabled, clicking a log line in Kibana or Splunk and following its <code>trace_id</code> jumps directly to the corresponding distributed trace in Jaeger or Elastic APM — showing the exact specialist calls, latencies, and assertion checks for that request.</p>
 </div>
 
-<h3>16.8 Structured logging in Docker / Kubernetes</h3>
+<h3>13.8 Structured logging in Docker / Kubernetes</h3>
 
 <div class="code-block">
 <div class="code-header">docker-compose.yml — ship stdout to Loki via Grafana Alloy</div>
@@ -2059,12 +2731,12 @@ index=aua sourcetype=aua_json latency_ms=*
     Type              _doc</pre>
 </div>
 
-<div class="next-part"><p><strong>Part 16 done.</strong> Part 17 covers Docker deployment profiles.</p></div>
+<div class="next-part"><p><strong>Part 13 done.</strong> Part 14 covers Docker deployment profiles.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 17 -->
 <h2 id="part-17" class="part-heading"><span class="how-badge">How-to 17</span> Docker deployment <span class="time-badge">~20 min</span></h2>
 
-<h3>17.1 Docker Compose profiles</h3>
+<h3>14.1 Docker Compose profiles</h3>
 <p class="caption">All examples use the modern <code>docker compose</code> (V2) command. If your system only has the legacy binary, replace with <code>docker-compose</code>.</p>
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -2084,7 +2756,7 @@ docker compose --profile ollama --profile obs up
 docker compose -f docker compose.gpu.yml up</pre>
 </div>
 
-<h3>17.2 Deployment profiles</h3>
+<h3>14.2 Deployment profiles</h3>
 <table>
 <tr><th>Profile</th><th>Auth</th><th>mTLS</th><th>State</th><th>Use for</th></tr>
 <tr><td>Local Developer</td><td>Optional</td><td>No</td><td>SQLite</td><td>localhost only</td></tr>
@@ -2093,7 +2765,7 @@ docker compose -f docker compose.gpu.yml up</pre>
 <tr><td>Enterprise</td><td>IAM + scopes</td><td>Required</td><td>Postgres</td><td>Custom backends, strict audit</td></tr>
 </table>
 
-<h3>17.3 Environment configuration</h3>
+<h3>14.3 Environment configuration</h3>
 
 <p>Generate your encryption key before deploying — it must be a 32-byte value encoded as 64 hex characters. Run either command once and store the output:</p>
 <div class="code-block">

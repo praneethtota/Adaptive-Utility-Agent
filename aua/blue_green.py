@@ -145,6 +145,9 @@ class BlueGreenDeployment:
         if self._green_model is None:
             return False
 
+        promoted_from = self._blue_model
+        promoted_to = self._green_model
+
         record_promotion(
             specialist=self._specialist_name,
             from_model=self._blue_model,
@@ -153,6 +156,26 @@ class BlueGreenDeployment:
         )
         self._blue_model = self._green_model
         self._green_model = None
+
+        # ── on_promotion hook (background — non-blocking) ─────────────────
+        try:
+
+            from aua.hooks import get_hook_runner
+
+            get_hook_runner().fire_background(
+                "on_promotion",
+                {
+                    "session_id": "",
+                    "trace_id": "",
+                    "specialist": self._specialist_name,
+                    "promoted_from": promoted_from,
+                    "promoted_to": promoted_to,
+                    "project_dir": self._project_dir,
+                },
+            )
+        except Exception:
+            pass  # hooks are always fail-open
+
         return True
 
     def rollback(self, yes: bool = False, restart: bool = False) -> int:
