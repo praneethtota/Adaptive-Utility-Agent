@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Test Suite — 176 tests, 0 failures
+## 1. Test Suite — 197 tests, 0 failures
 
 ```
 pytest -v --tb=short
@@ -14,7 +14,7 @@ pytest -v --tb=short
 
 Matrix: Python 3.10, 3.11, 3.12. All green on CI (GitHub Actions).
 
-**New tests added in this release (44):** `test_guard.py` (32 tests — assertion decorator, AssertionLevel, built-in assertions, Policy.run(), Option B bonus math, retry loop, gold_standard flag) and `test_policy.py` (20 tests — Policy construction, YAML loading, schema validation).
+**New tests added (65 total):** `test_guard.py` (32 tests), `test_policy.py` (20 tests — Policy construction, YAML loading, schema validation), `test_hooks_wired.py` (21 tests — all 11 hook point names, event field contracts, fail-open/closed, timeout, chain ordering, fire_background non-blocking).
 
 
 ```
@@ -193,9 +193,30 @@ test_policy.py::test_validate_policy_yaml_not_found                       PASSED
 test_policy.py::test_validate_policy_yaml_missing_import_path             PASSED
 test_policy.py::test_policy_utility_overrides_accessible                  PASSED
 test_policy.py::test_policy_summary_includes_all_fields                   PASSED
+test_hooks_wired.py::test_all_11_hook_points_defined                      PASSED
+test_hooks_wired.py::test_unknown_hook_point_raises                       PASSED
+test_hooks_wired.py::test_hook_receives_event_dict                        PASSED
+test_hooks_wired.py::test_hook_can_modify_event                           PASSED
+test_hooks_wired.py::test_multiple_hooks_chain                            PASSED
+test_hooks_wired.py::test_fail_open_hook_continues_on_error               PASSED
+test_hooks_wired.py::test_fail_closed_hook_propagates_error               PASSED
+test_hooks_wired.py::test_timeout_fail_open                               PASSED
+test_hooks_wired.py::test_timeout_fail_closed_raises                      PASSED
+test_hooks_wired.py::test_fire_background_does_not_block                  PASSED
+test_hooks_wired.py::test_registered_hooks_summary                        PASSED
+test_hooks_wired.py::test_on_correction_event_fields                      PASSED
+test_hooks_wired.py::test_on_promotion_event_fields                       PASSED
+test_hooks_wired.py::test_on_rollback_event_fields                        PASSED
+test_hooks_wired.py::test_pre_query_event_fields                          PASSED
+test_hooks_wired.py::test_post_route_event_fields                         PASSED
+test_hooks_wired.py::test_pre_specialist_call_event_fields                PASSED
+test_hooks_wired.py::test_post_specialist_call_event_fields               PASSED
+test_hooks_wired.py::test_pre_arbiter_event_fields                        PASSED
+test_hooks_wired.py::test_post_arbiter_event_fields                       PASSED
+test_hooks_wired.py::test_pre_response_event_fields                       PASSED
 test_version.py::test_cli_version                                          PASSED
 
-======================== 176 passed, 6 warnings in 12.76s ========================
+======================== 197 passed, 6 warnings in 11.73s ========================
 ```
 
 Matrix: Python 3.10, 3.11, 3.12. All green on CI (GitHub Actions).
@@ -287,7 +308,7 @@ Grafana dashboard: `docker/grafana/aua_dashboard.json` — 20 panels, pre-provis
 
 ---
 
-## 5. CLI — 22 command groups, 50+ subcommands
+## 5. CLI — 22 command groups, 55+ subcommands
 
 ```
 aua --version  # 1.0.0
