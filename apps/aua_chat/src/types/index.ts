@@ -27,6 +27,7 @@ export interface RouteDebug {
   latency_ms: number
   contradictions_detected: number
   specialist_responses?: Record<string, string>
+  welfare_scores?: Record<string, number>  // VCG mode only
 }
 
 export interface StreamEvent {
