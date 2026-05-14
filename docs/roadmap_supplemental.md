@@ -108,7 +108,62 @@ router:
 
 ---
 
-## Item 2 — (add future items here)
+## Item 2 — "Look Under the Hood" — user-facing model reliability panel
+
+**Origin:** Identified during AUA-Veritas design session (2026-05-14).
+Already in AUA-Veritas Phase 4 roadmap. Proposed for AUA Chat UI v1.1+.
+
+### The problem
+
+AUA's Framework Debugger panel is aimed at developers — it shows U scores,
+welfare scores, domain distributions and routing mode. Average users of the
+Chat UI (non-MLE operators) have no visibility into how models are performing
+over time and no way to understand why one specialist was picked over another
+without reading documentation.
+
+### The proposed mechanism
+
+A "Look Under the Hood" button in the Chat UI that opens a model reliability
+panel — showing the same 0–100 reliability scores that specialists see in their
+system prompts, as time-series graphs with clickable data points.
+
+**What's inside:**
+- One time-series graph per specialist with ≥10 queries and ≥2–3 time instances
+- Clickable data points that expand an event card: query (truncated), peer verdict,
+  correction stored y/n, score delta
+- Plain-language explainer section below all graphs
+- Models with <10 queries show "Not enough data yet"
+- Y-axis fixed 0–100 across all models so scores are comparable
+
+**Event card on point click:**
+```
+Score event — May 9, specialist swe: 72 → 70 (dropped)
+Query:   "What is the time complexity of Timsort?" [truncated]
+Verdict: Incorrect — arbiter flagged incorrect worst-case complexity
+Correction stored: yes
+Effect: reliability score −2
+```
+
+**Design rules:**
+- Audit events stored in `audit_log` table with canonical query (60 char truncation)
+- Raw prompt text never stored — only the canonical form snippet
+- No export — read-only, local only
+
+### Implementation in AUA Chat UI
+
+| File | Change |
+|---|---|
+| `apps/aua_chat/src/components/UnderTheHood.tsx` | New component — reliability graphs |
+| `apps/aua_chat/src/components/ScoreEventCard.tsx` | Clickable point event card |
+| `aua/router.py` | Write score delta events to `audit_log` after each query |
+| `aua/router.py` | New endpoint `GET /reliability` returning per-specialist score history |
+| `aua/state.py` | `audit_log` entries: `query_preview`, `specialist`, `score_before`, `score_after`, `verdict`, `correction_stored` |
+
+**Target version:** AUA Chat UI v1.1 (after model incentive transparency, Item 1)
+
+---
+
+## Item 3 — (add future items here)
 
 *Template:*
 ```
