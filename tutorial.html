@@ -2937,39 +2937,714 @@ aua logs export [--output &lt;path&gt;] [--table &lt;table&gt;] [--limit &lt;N&g
 <!-- ═══════════════════════════════════════════ API REF -->
 <h2 id="ref-api" class="ref-heading"><span class="ref-badge">Reference</span> REST API endpoints</h2>
 
+<p>All endpoints are on <code>http://localhost:8000</code>. Auth is disabled by default — include <code>Authorization: Bearer $AUA_TOKEN</code> only when auth is enabled in config. Interactive docs: <code>http://localhost:8000/docs</code> (Swagger UI).</p>
+
+<!-- ── Summary table ─────────────────────────────────────────────────────── -->
 <table>
 <tr><th>Method</th><th>Endpoint</th><th>Scope</th><th>Description</th></tr>
-<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/health</code></td><td>—</td><td>Health check. Returns 200 when router is up.</td></tr>
-<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/version</code></td><td>—</td><td>Framework version, build info.</td></tr>
-<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/config</code></td><td><code>aua:config:read</code></td><td>Current config (secrets redacted).</td></tr>
-<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/config/reload</code></td><td><code>aua:config:write</code></td><td>Hot-reload config (SIGHUP equivalent).</td></tr>
-<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/status</code></td><td><code>aua:status</code></td><td>Live U scores, specialist health, routing stats.</td></tr>
-<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/query</code></td><td><code>aua:query</code></td><td>Route a query. Returns response + metadata.</td></tr>
-<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/query/stream</code></td><td><code>aua:stream</code></td><td>Streaming SSE query response.</td></tr>
-<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/corrections</code></td><td><code>aua:corrections:read</code></td><td>List accumulated corrections.</td></tr>
-<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/corrections</code></td><td><code>aua:corrections:write</code></td><td>Inject a manual correction.</td></tr>
-<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/deploy/green</code></td><td><code>aua:deploy</code></td><td>Register a GREEN candidate model.</td></tr>
-<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/deploy/rollback</code></td><td><code>aua:rollback</code></td><td>Rollback to previous BLUE.</td></tr>
-<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/metrics</code></td><td>—</td><td>Prometheus metrics endpoint (16 metrics).</td></tr>
-<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/metrics/cost</code></td><td><code>aua:status</code></td><td>GPU hours and cost per specialist + total.</td></tr>
-<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/sessions</code></td><td><code>aua:query</code></td><td>List all chat sessions.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/query</code></td><td><code>aua:query</code></td><td>Route a query. Returns response + full metadata.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/query/stream</code></td><td><code>aua:stream</code></td><td>Streaming SSE query. Emits start → chunks → done.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/query/batch</code></td><td><code>aua:batch</code></td><td>Route multiple queries concurrently.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/health/live</code></td><td>—</td><td>Liveness probe. Returns 200 if process is alive.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/health/ready</code></td><td>—</td><td>Readiness probe. Returns 200 when all specialists reachable.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/health/startup</code></td><td>—</td><td>Startup probe. Returns 200 after first successful readiness check.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/status</code></td><td><code>aua:status</code></td><td>Full telemetry — U scores, latency percentiles, routing stats, memory.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/version</code></td><td>—</td><td>Framework version and build info.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/config</code></td><td><code>aua:config:read</code></td><td>Running config (secrets redacted).</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/config/reload</code></td><td><code>aua:config:write</code></td><td>Hot-reload config without restart.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/corrections</code></td><td><code>aua:corrections:read</code></td><td>List all stored corrections.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/corrections</code></td><td><code>aua:corrections:write</code></td><td>Inject a verified fact into the corrections store.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/deploy/green</code></td><td><code>aua:deploy</code></td><td>Register a GREEN candidate and evaluate against BLUE.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/deploy/rollback</code></td><td><code>aua:rollback</code></td><td>Roll back specialist to previous BLUE model.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/metrics</code></td><td>—</td><td>Prometheus scrape endpoint (18 metrics).</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/metrics/cost</code></td><td><code>aua:status</code></td><td>GPU hours and USD cost per specialist.</td></tr>
 <tr><td><span class="endpoint-tag post">POST</span></td><td><code>/sessions</code></td><td><code>aua:query</code></td><td>Create a new chat session.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/sessions</code></td><td><code>aua:query</code></td><td>List all sessions (most recent first).</td></tr>
 <tr><td><span class="endpoint-tag get">GET</span></td><td><code>/sessions/{id}</code></td><td><code>aua:query</code></td><td>Get session metadata.</td></tr>
-<tr><td><span class="endpoint-tag delete">DEL</span></td><td><code>/sessions/{id}</code></td><td><code>aua:query</code></td><td>Delete a session.</td></tr>
-<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/sessions/{id}/messages</code></td><td><code>aua:query</code></td><td>Send a message to a session.</td></tr>
-<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/sessions/{id}/stream</code></td><td><code>aua:stream</code></td><td>Send a streaming message to a session.</td></tr>
-<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/extensions</code></td><td>extensions:read</td><td>List registered plugins and hooks.</td></tr>
+<tr><td><span class="endpoint-tag delete">DELETE</span></td><td><code>/sessions/{id}</code></td><td><code>aua:query</code></td><td>Delete a session and its messages.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/sessions/{id}/messages</code></td><td><code>aua:query</code></td><td>Send a message in a session context.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/extensions</code></td><td>—</td><td>List registered plugins and hooks.</td></tr>
 </table>
 
-<h3>Standard error response</h3>
+<p class="caption">All POST bodies are JSON. All responses are JSON unless noted. Auth header: <code>Authorization: Bearer $AUA_TOKEN</code>.</p>
+
+<!-- ── 1. Core query ──────────────────────────────────────────────────────── -->
+<h3 style="margin-top:2rem;">1. Core query</h3>
+
+<h4 id="api-query">POST /query</h4>
+<p>The primary endpoint. Routes the query through the specialist graph, scores the response, runs assertions (if a policy is active), and returns everything.</p>
+
+<div class="code-block">
+<div class="code-header">Request body</div>
+<pre>{
+  "query":                "string",   <span class="c">// REQUIRED — the query text</span>
+  "session_id":           "string",   <span class="c">// optional — scopes cross-session corrections (default: "default")</span>
+  "conversation_history": [           <span class="c">// optional — prior turns for context</span>
+    {"role": "user",      "content": "previous question"},
+    {"role": "assistant", "content": "previous answer"}
+  ],
+  "force_domain":         "string"    <span class="c">// optional — bypass classifier, e.g. "software_engineering"</span>
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">bash — minimal</div>
+<pre>curl -s -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Write binary search in Python. State time complexity."}'</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">bash — with session and history</div>
+<pre>curl -s -X POST http://localhost:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Now implement it iteratively instead.",
+    "session_id": "user_42",
+    "conversation_history": [
+      {"role": "user",      "content": "Write binary search in Python."},
+      {"role": "assistant", "content": "def binary_search(arr, target):..."}
+    ]
+  }'</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Response</div>
+<pre>{
+  "query":                  "Write binary search in Python.",
+  "response":               "def binary_search(arr, target):\n    ...",  <span class="c">// the answer</span>
+  "routing_mode":           "single",         <span class="c">// "single" | "fanout" | "arbiter"</span>
+  "primary_domain":         "software_engineering",
+  "domain_distribution":    {"software_engineering": 0.91, "mathematics": 0.09},
+  "u_score":                0.731,            <span class="c">// U = w_e·E + w_c·C + w_k·K  (higher = better)</span>
+  "confidence":             0.823,            <span class="c">// Kalman-filtered consistency score</span>
+  "contradictions_detected": 0,              <span class="c">// > 0 means a correction was stored</span>
+  "dpo_pairs_generated":    0,               <span class="c">// DPO training pairs added this query</span>
+  "latency_ms":             312.4,
+  "specialist_responses":   null             <span class="c">// populated only in fanout mode</span>
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python</div>
+<pre>import requests
+
+r = requests.post("http://localhost:8000/query", json={
+    "query": "Write binary search in Python.",
+    "session_id": "my-session",
+})
+data = r.json()
+
+print(data["response"])              <span class="c"># the answer — use this in your app</span>
+print(data["primary_domain"])        <span class="c"># which specialist answered</span>
+print(data["u_score"])               <span class="c"># quality score — log this over time</span>
+print(data["routing_mode"])          <span class="c"># "single" | "fanout" | "arbiter"</span>
+
+<span class="c"># In fanout mode, inspect per-specialist responses:</span>
+if data["routing_mode"] == "fanout":
+    for sr in data["specialist_responses"]:
+        print(sr["domain"], sr["response"][:100])</pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<h4 id="api-query-stream">POST /query/stream</h4>
+<p>Server-Sent Events (SSE). Same request body as <code>/query</code>. The connection stays open and emits three event types: <code>start</code> (routing decision), <code>chunk</code> (one token), <code>done</code> (final metadata). Useful for showing a live typing effect in a UI.</p>
+
+<div class="code-block">
+<div class="code-header">bash — full SSE example</div>
+<pre>curl -s -X POST http://localhost:8000/query/stream \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  --no-buffer \
+  -d '{"query": "Write quicksort in Python.", "session_id": "s1"}'
+
+<span class="c"># Output — one event per line pair (data: {json}\n\n):</span>
+
+data: {"type":"start","routing_mode":"single","primary_domain":"software_engineering","domain_distribution":{"software_engineering":0.93}}
+
+data: {"type":"chunk","text":"def","index":0}
+
+data: {"type":"chunk","text":" quicksort","index":1}
+
+data: {"type":"chunk","text":"(arr):","index":2}
+
+<span class="c"># ... more chunks ...</span>
+
+data: {"type":"done","full_response":"def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)","routing_mode":"single","primary_domain":"software_engineering","domain_distribution":{"software_engineering":0.93},"u_score":0.748,"confidence":0.831,"contradictions_detected":0,"dpo_pairs_generated":0,"latency_ms":1821.3}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — consuming SSE with sseclient</div>
+<pre>import requests
+import json
+
+<span class="c"># pip install sseclient-py</span>
+from sseclient import SSEClient
+
+response = requests.post(
+    "http://localhost:8000/query/stream",
+    json={"query": "Write quicksort in Python.", "session_id": "s1"},
+    stream=True,
+    headers={"Accept": "text/event-stream"},
+)
+
+full_text = ""
+for event in SSEClient(response).events():
+    data = json.loads(event.data)
+
+    if data["type"] == "start":
+        print(f"Routing to: {data['primary_domain']}")
+
+    elif data["type"] == "chunk":
+        print(data["text"], end="", flush=True)  <span class="c"># live typing effect</span>
+        full_text += data["text"]
+
+    elif data["type"] == "done":
+        print()  <span class="c"># newline after last token</span>
+        print(f"\nU score: {data['u_score']}")
+        print(f"Latency: {data['latency_ms']:.0f}ms")
+        <span class="c"># data["full_response"] == full_text (same content)</span>
+        break</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — consuming SSE without a library</div>
+<pre>import requests, json
+
+r = requests.post(
+    "http://localhost:8000/query/stream",
+    json={"query": "Write quicksort in Python."},
+    stream=True,
+)
+for line in r.iter_lines():
+    if line and line.startswith(b"data: "):
+        data = json.loads(line[6:])
+        if data["type"] == "chunk":
+            print(data["text"], end="", flush=True)
+        elif data["type"] == "done":
+            print()
+            break</pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<h4 id="api-query-batch">POST /query/batch</h4>
+<p>Route multiple queries concurrently. Each query is routed independently. Results are returned in the same order as the input.</p>
+
+<div class="code-block">
+<div class="code-header">Request body</div>
+<pre>{
+  "queries":      ["string", ...],  <span class="c">// REQUIRED — 1 to 100 queries</span>
+  "session_id":   "string",         <span class="c">// optional — shared session for all queries</span>
+  "max_parallel": 4                 <span class="c">// optional — concurrent specialist calls (default 4, max 32)</span>
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>curl -s -X POST http://localhost:8000/query/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "queries": [
+      "Write binary search in Python.",
+      "What is the derivative of x squared?"
+    ],
+    "max_parallel": 4
+  }'</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Response</div>
+<pre>{
+  "results":         [...],   <span class="c">// list of RouterResponse objects — same shape as /query</span>
+  "total_latency_ms": 891.2,  <span class="c">// wall-clock for the whole batch</span>
+  "n_queries":        2,
+  "n_errors":         0       <span class="c">// failed queries are excluded from results</span>
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python</div>
+<pre>r = requests.post("http://localhost:8000/query/batch", json={
+    "queries": ["Write binary search.", "What is O(n log n)?"],
+})
+data = r.json()
+
+for i, result in enumerate(data["results"]):
+    print(f"Q{i}: domain={result['primary_domain']}  U={result['u_score']:.3f}")
+    print(result["response"][:100])</pre>
+</div>
+
+<!-- ── 2. Health & status ──────────────────────────────────────────────────── -->
+<h3 style="margin-top:2rem;">2. Health &amp; status</h3>
+
+<h4>GET /health/live &nbsp; GET /health/ready &nbsp; GET /health/startup</h4>
+<p>Kubernetes-style probes. Use <code>/health/live</code> for liveness (process alive), <code>/health/ready</code> for readiness (all specialists reachable), <code>/health/startup</code> for startup (ready at least once).</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>curl http://localhost:8000/health/live    <span class="c"># → 200 {"status":"alive","uptime_s":142.3}</span>
+curl http://localhost:8000/health/ready   <span class="c"># → 200 or 503</span>
+curl http://localhost:8000/health/startup <span class="c"># → 200 or 503</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">GET /health/ready response</div>
+<pre>{
+  "status":      "ready",            <span class="c">// "ready" or "not_ready"</span>
+  "specialists": {
+    "swe":     "ok",                 <span class="c">// "ok" | "unreachable" | "http_503"</span>
+    "math":    "ok",
+    "arbiter": "ok"
+  }
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — wait for ready before sending queries</div>
+<pre>import time, requests
+
+def wait_for_ready(timeout=60):
+    for _ in range(timeout):
+        try:
+            r = requests.get("http://localhost:8000/health/ready", timeout=2)
+            if r.status_code == 200 and r.json()["status"] == "ready":
+                return True
+        except requests.ConnectionError:
+            pass
+        time.sleep(1)
+    raise TimeoutError("Router not ready after 60s")
+
+wait_for_ready()
+<span class="c"># now safe to send queries</span></pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<h4 id="api-status">GET /status</h4>
+<p>Full telemetry snapshot. This is the richest endpoint — use it to monitor U score trends, latency percentiles, specialist health, and routing distribution over time.</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>curl http://localhost:8000/status | python3 -m json.tool</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Response</div>
+<pre>{
+  "version":   "1.0.1",
+  "backend":   "ollama",
+  "uptime_s":  3621.4,
+  "health": {
+    "swe":   "ok",
+    "math":  "ok",
+    "arbiter": "ok"
+  },
+  "utility": {                            <span class="c">// per-domain U score history</span>
+    "software_engineering": {
+      "mean_u":    0.7312,               <span class="c">// track this over time — should trend up</span>
+      "last_u":    0.7480,
+      "queries":   142,
+      "confidence": 0.8231
+    },
+    "mathematics": {
+      "mean_u":    0.6891,
+      "last_u":    0.7012,
+      "queries":   47,
+      "confidence": 0.7910
+    }
+  },
+  "latency": {                           <span class="c">// latency percentiles per component</span>
+    "router": {"p50_ms": 312.4, "p95_ms": 891.2, "last_ms": 298.1, "samples": 189},
+    "swe":    {"p50_ms": 280.1, "p95_ms": 820.4, "last_ms": 271.3, "samples": 142}
+  },
+  "routing": {
+    "total_queries":      189,
+    "by_mode": {"single": 154, "fanout": 28, "arbiter": 7},
+    "contradictions":     12,
+    "dpo_pairs":          8
+  },
+  "store": {
+    "corrections_total":  23,
+    "sessions_total":     41
+  },
+  "memory": {
+    "system": "CPU / Ollama"             <span class="c">// or "gpu0: 8192 / 24576 MiB" on GPU</span>
+  }
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — monitor U score and alert on degradation</div>
+<pre>import requests
+
+status = requests.get("http://localhost:8000/status").json()
+
+for domain, stats in status["utility"].items():
+    mean_u = stats["mean_u"]
+    if mean_u and mean_u < 0.50:
+        print(f"⚠ Low U score on {domain}: {mean_u:.3f} — check specialist")
+    else:
+        print(f"✓ {domain}: mean_u={mean_u:.3f}  queries={stats['queries']}")
+
+<span class="c"># Check latency</span>
+p95 = status["latency"]["router"]["p95_ms"]
+if p95 and p95 > 5000:
+    print(f"⚠ High p95 latency: {p95:.0f}ms")
+
+<span class="c"># Routing distribution</span>
+print(status["routing"]["by_mode"])  <span class="c"># {"single": 154, "fanout": 28, "arbiter": 7}</span></pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<h4>GET /version</h4>
+<div class="code-block">
+<div class="code-header">bash + response</div>
+<pre>curl http://localhost:8000/version
+<span class="c"># {"version": "1.0.1", "framework": "AUA Framework", "python": "3.11.10"}</span></pre>
+</div>
+
+<!-- ── 3. Configuration ────────────────────────────────────────────────────── -->
+<h3 style="margin-top:2rem;">3. Configuration</h3>
+
+<h4>GET /config</h4>
+<p>Returns the running configuration. Secrets are redacted — you will never see API keys or token values here.</p>
+
+<div class="code-block">
+<div class="code-header">bash + response shape</div>
+<pre>curl http://localhost:8000/config
+
+{
+  "version":     "0.5",
+  "mode":        "local",
+  "backend":     "ollama",
+  "specialists": [
+    {"name": "swe",  "model": "qwen2.5-coder:7b",  "port": 11434, "field": "software_engineering", "endpoint": "http://localhost:11434"},
+    {"name": "math", "model": "qwen2.5:7b",         "port": 11434, "field": "mathematics",          "endpoint": "http://localhost:11434"}
+  ],
+  "arbiter":  {"model": "qwen2.5:3b", "port": 11434, "endpoint": "http://localhost:11434"},
+  "router":   {"port": 8000, "single_domain_threshold": 0.75, "fanout_threshold": 0.30, "specialist_timeout": 30.0}
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — check which model is active</div>
+<pre>config = requests.get("http://localhost:8000/config").json()
+
+for spec in config["specialists"]:
+    print(f"{spec['name']}: {spec['model']} ({spec['field']})")
+
+print(f"Single threshold: {config['router']['single_domain_threshold']}")</pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<h4>POST /config/reload</h4>
+<p>Hot-reload the config file without restarting. Only hot-reloadable settings apply (routing thresholds, utility weights, CORS). Model/port changes require restart.</p>
+
+<div class="code-block">
+<div class="code-header">bash + response</div>
+<pre>curl -X POST http://localhost:8000/config/reload
+<span class="c"># {"reloaded": true, "message": "Config reloaded from aua_config.yaml"}</span></pre>
+</div>
+
+<!-- ── 4. Corrections ─────────────────────────────────────────────────────── -->
+<h3 style="margin-top:2rem;">4. Corrections</h3>
+
+<h4>POST /corrections</h4>
+<p>Inject a verified fact into the corrections store. It will be included in every future query on that subject in that domain — permanently (Class A) by default.</p>
+
+<div class="code-block">
+<div class="code-header">Request body</div>
+<pre>{
+  "subject":    "string",   <span class="c">// REQUIRED — short label e.g. "bubble_sort_complexity"</span>
+  "domain":     "string",   <span class="c">// REQUIRED — must match a field name e.g. "software_engineering"</span>
+  "claim":      "string",   <span class="c">// REQUIRED — the verified fact, max 2000 chars</span>
+  "confidence": 0.9,        <span class="c">// optional — 0.0–1.0 (default 0.9)</span>
+  "source":     "manual"    <span class="c">// optional — label for the correction source</span>
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>curl -X POST http://localhost:8000/corrections \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject":    "bubble_sort_complexity",
+    "domain":     "software_engineering",
+    "claim":      "Bubble sort is O(n²) average and worst-case. O(1) extra space.",
+    "confidence": 0.99,
+    "source":     "manual"
+  }'</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Response</div>
+<pre>{
+  "stored":      true,
+  "subject":     "bubble_sort_complexity",
+  "domain":      "software_engineering",
+  "claim":       "Bubble sort is O(n²) average and worst-case. O(1) extra space.",
+  "confidence":  0.99,
+  "decay_class": "A"   <span class="c">// A = never decays | B = 10yr | C = 3yr | D = 6mo</span>
+}</pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<h4>GET /corrections</h4>
+
+<div class="code-block">
+<div class="code-header">bash + response shape</div>
+<pre>curl http://localhost:8000/corrections
+
+{
+  "total":    23,
+  "returned": 23,
+  "corrections": [
+    {
+      "subject":              "bubble_sort_complexity",
+      "domain":               "software_engineering",
+      "claim":                "Bubble sort is O(n²)...",
+      "effective_confidence": 0.99,
+      "decay_class":          "A",
+      "source":               "manual"
+    },
+    ...
+  ]
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — audit what the system currently knows</div>
+<pre>data = requests.get("http://localhost:8000/corrections").json()
+print(f"Total corrections: {data['total']}")
+
+for c in data["corrections"]:
+    print(f"[{c['decay_class']}] {c['domain']} / {c['subject']}: {c['claim'][:60]}")</pre>
+</div>
+
+<!-- ── 5. Deployment ───────────────────────────────────────────────────────── -->
+<h3 style="margin-top:2rem;">5. Deployment</h3>
+
+<h4>POST /deploy/green</h4>
+<p>Register a GREEN model candidate and evaluate it against the current BLUE. Promotes if the U score delta exceeds the configured threshold.</p>
+
+<div class="code-block">
+<div class="code-header">Request body</div>
+<pre>{
+  "specialist":     "string",  <span class="c">// REQUIRED — specialist name e.g. "swe"</span>
+  "green_model":    "string",  <span class="c">// REQUIRED — model path or HuggingFace ID</span>
+  "n_eval_queries": 10         <span class="c">// optional — evaluation queries to run (default 10, max 100)</span>
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>curl -X POST http://localhost:8000/deploy/green \
+  -H "Content-Type: application/json" \
+  -d '{
+    "specialist":  "swe",
+    "green_model": "qwen2.5-coder:14b",
+    "n_eval_queries": 20
+  }'</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Response</div>
+<pre>{
+  "specialist":  "swe",
+  "promoted":    true,          <span class="c">// false = GREEN didn't beat BLUE by enough</span>
+  "u_delta":     0.062,         <span class="c">// green_u - blue_u  (must exceed threshold)</span>
+  "blue_u":      0.712,
+  "green_u":     0.774,
+  "threshold":   0.050,
+  "message":     "GREEN promoted: U delta 0.062 exceeds threshold 0.050",
+  "dry_run_only": false
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python</div>
+<pre>r = requests.post("http://localhost:8000/deploy/green", json={
+    "specialist": "swe",
+    "green_model": "qwen2.5-coder:14b",
+})
+result = r.json()
+
+if result["promoted"]:
+    print(f"✓ Promoted. U delta: {result['u_delta']:+.3f}")
+else:
+    print(f"✗ Not promoted. Delta {result['u_delta']:+.3f} below threshold {result['threshold']}")</pre>
+</div>
+
+<!-- ── 6. Observability ────────────────────────────────────────────────────── -->
+<h3 style="margin-top:2rem;">6. Observability</h3>
+
+<h4>GET /metrics</h4>
+<p>Prometheus scrape endpoint. Returns plain text in Prometheus exposition format — not JSON. Point your Prometheus <code>scrape_configs</code> here.</p>
+
+<div class="code-block">
+<div class="code-header">bash — sample output</div>
+<pre>curl http://localhost:8000/metrics | grep "^aua_"
+
+aua_queries_total{domain="software_engineering",routing_mode="single",status="ok"} 142.0
+aua_query_latency_seconds_bucket{domain="software_engineering",routing_mode="single",le="0.5"} 89.0
+aua_utility_score{domain="software_engineering"} 0.748
+aua_contradiction_rate{domain="software_engineering"} 0.0
+aua_assertion_results_total{assertion_name="PythonSyntaxCheck",level="blocking",passed="true",domain="software_engineering"} 38.0
+aua_assertion_fail_rate — not a gauge, derive from assertion_results_total</pre>
+</div>
+
+<hr style="border:none;border-top:1px solid var(--line);margin:1.5rem 0">
+
+<h4>GET /metrics/cost</h4>
+
+<div class="code-block">
+<div class="code-header">bash + response</div>
+<pre>curl http://localhost:8000/metrics/cost | python3 -m json.tool
+
+{
+  "swe":  {"queries": 142, "gpu_hours": 0.014, "cost_usd": 0.0097},
+  "math": {"queries":  47, "gpu_hours": 0.005, "cost_usd": 0.0034},
+  "total_cost_usd": 0.0131
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — cost tracking in a loop</div>
+<pre>cost = requests.get("http://localhost:8000/metrics/cost").json()
+print(f"Total cost so far: ${cost['total_cost_usd']:.4f}")
+for name, stats in cost.items():
+    if isinstance(stats, dict):
+        print(f"  {name}: {stats['queries']} queries  ${stats['cost_usd']:.4f}")</pre>
+</div>
+
+<!-- ── 7. Sessions ─────────────────────────────────────────────────────────── -->
+<h3 style="margin-top:2rem;">7. Sessions &amp; chat</h3>
+
+<p>Sessions maintain conversation state across multiple queries. The Chat UI uses these endpoints. You can also call them directly to build your own chat interface on top of AUA.</p>
+
+<div class="code-block">
+<div class="code-header">bash — full session flow</div>
+<pre><span class="c"># 1. Create a session</span>
+SESSION=$(curl -s -X POST http://localhost:8000/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Python help"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+
+echo "Session: $SESSION"
+
+<span class="c"># 2. Send a message</span>
+curl -s -X POST http://localhost:8000/sessions/$SESSION/messages \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Write binary search in Python."}'
+
+<span class="c"># 3. List sessions</span>
+curl http://localhost:8000/sessions
+
+<span class="c"># 4. Get session metadata</span>
+curl http://localhost:8000/sessions/$SESSION
+
+<span class="c"># 5. Delete session</span>
+curl -X DELETE http://localhost:8000/sessions/$SESSION</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">POST /sessions — response</div>
+<pre>{
+  "id":            "3f2a1b9c-...",   <span class="c">// session UUID — use in subsequent requests</span>
+  "title":         "Python help",
+  "created_at":    1747000000.123,   <span class="c">// Unix timestamp</span>
+  "updated_at":    1747000000.123,
+  "message_count": 0
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">GET /sessions — response</div>
+<pre>{
+  "sessions": [
+    {"id": "3f2a1b9c-...", "title": "Python help", "message_count": 4, "updated_at": 1747003200.0},
+    {"id": "8a1c4e2f-...", "title": "New Chat",    "message_count": 1, "updated_at": 1747002000.0}
+  ]
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — build a simple chat loop</div>
+<pre>import requests
+
+BASE = "http://localhost:8000"
+
+<span class="c"># Create session</span>
+session = requests.post(f"{BASE}/sessions", json={"title": "My chat"}).json()
+session_id = session["id"]
+
+while True:
+    user_input = input("You: ")
+    if user_input.lower() == "quit":
+        break
+
+    r = requests.post(f"{BASE}/sessions/{session_id}/messages",
+                      json={"content": user_input}).json()
+    print(f"AUA [{r['primary_domain']}]: {r['response']}\n")
+
+<span class="c"># Clean up</span>
+requests.delete(f"{BASE}/sessions/{session_id}")</pre>
+</div>
+
+<!-- ── 8. Extensions ───────────────────────────────────────────────────────── -->
+<h3 style="margin-top:2rem;">8. Extensions</h3>
+
+<h4>GET /extensions</h4>
+
+<div class="code-block">
+<div class="code-header">bash + response shape</div>
+<pre>curl http://localhost:8000/extensions
+
+{
+  "plugins": {
+    "field_classifier": null,       <span class="c">// null = using built-in</span>
+    "utility_scorer":   null,
+    "arbiter_policy":   null,
+    "model_backend":    null
+  },
+  "hooks": {
+    "on_correction": ["plugins.hooks:SlackNotificationHook"],
+    "pre_query":     []
+    <span class="c">// other hook points omitted if empty</span>
+  },
+  "middleware": []
+}</pre>
+</div>
+
+<!-- ── Standard error ─────────────────────────────────────────────────────── -->
+<h3 style="margin-top:2rem;">Standard error response</h3>
+<p>All errors return this shape regardless of endpoint:</p>
+
 <div class="code-block">
 <div class="code-header">JSON</div>
 <pre>{
-  "error": "AUA_SPECIALIST_TIMEOUT",     <span class="c">// stable AUA_* error code</span>
-  "message": "Specialist swe timed out after 30s",
-  "trace_id": "01HXYZ...",
-  "details": {"specialist": "swe", "timeout_seconds": 30}
+  "error":       "AUA_SPECIALIST_TIMEOUT",   <span class="c">// stable error code — use for programmatic handling</span>
+  "message":     "Specialist swe timed out after 30s",
+  "status_code": 503,
+  "request_id":  "user_42"                  <span class="c">// echoes session_id from request</span>
 }</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — error handling pattern</div>
+<pre>r = requests.post("http://localhost:8000/query", json={"query": "hello"})
+
+if not r.ok:
+    err = r.json()
+    print(f"Error {err['status_code']}: {err['error']}")
+    print(err["message"])
+else:
+    data = r.json()
+    print(data["response"])</pre>
 </div>
 
 </div><!-- /body -->
