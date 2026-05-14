@@ -609,19 +609,128 @@ print(verdict.external_response) <span class="c"># safe to return to user</span>
 </div>
 
 
+<h3>4.6 VCG welfare maximization — picking the best specialist</h3>
+
+<p>The default arbitration mode runs a pairwise 4-check arbiter between two specialists when fanout routing activates. VCG mode replaces pairwise selection with <strong>welfare maximization</strong>: select the specialist with the highest social welfare score across all fanout candidates.</p>
+
+<p>This is the mechanism that produced the <strong>+43.3pp correctness gain</strong> (p = 0.0003, d = 1.02) in the RTX 4090 hardware experiment — Arm D (VCG) vs Arm A (no routing).</p>
+
+<h4>The welfare formula</h4>
+
+<div class="code-block">
+<div class="code-header">Welfare signal per specialist</div>
+<pre>W_i = P(domain_i) × confidence_i × prior_mean_u_i
+
+P(domain_i)       — field classifier probability for this specialist's domain
+                    (how confident the router is that this specialist is right for this query)
+confidence_i      — base confidence returned by the specialist call
+                    (how internally consistent the response appears)
+prior_mean_u_i    — running mean U score for this specialist over all past sessions
+                    (how good this specialist has been historically)
+                    defaults to 1.0 if no history exists yet
+
+Winner            — argmax(W_i) across all specialists in the fanout
+Tie-breaking      — confidence, then P(domain)
+
+Example (two specialists, no prior history):
+  W_swe  = P(0.85) × C(0.82) × U_mean(1.0) = 0.697   ← wins
+  W_math = P(0.15) × C(0.91) × U_mean(1.0) = 0.137</pre>
+</div>
+
+<p>Key property: a specialist with lower classifier probability but high confidence and a strong history can beat a specialist the router is more certain about. This is why VCG outperforms "always route to the most likely domain" — it incorporates track record.</p>
+
+<p>The 4-check arbiter still runs in <strong>contradiction-detection mode</strong> — it stores corrections and DPO pairs but does not override the VCG winner.</p>
+
+<h4>Activating VCG</h4>
+
+<div class="code-block">
+<div class="code-header">Option 1 — YAML (persistent, recommended)</div>
+<pre>router:
+  arbitration_mode: vcg   <span class="c"># "pairwise" (default) | "vcg"</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Option 2 — CLI flag (session-only, good for testing)</div>
+<pre>aua serve --arbitration-mode vcg</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Option 3 — REST (hot-swap without restart)</div>
+<pre><span class="c"># Enable VCG, persist to aua_config.yaml</span>
+curl -X PATCH http://localhost:8000/config \
+  -H "Content-Type: application/json" \
+  -d '{"arbitration_mode": "vcg", "persist": true}'
+
+<span class="c"># Response</span>
+{"patched": {"arbitration_mode": "vcg"}, "persisted": true}
+
+<span class="c"># Revert to pairwise</span>
+curl -X PATCH http://localhost:8000/config \
+  -d '{"arbitration_mode": "pairwise", "persist": true}'</pre>
+</div>
+
+<h4>What changes in the response</h4>
+
+<div class="code-block">
+<div class="code-header">VCG response (routing_mode and welfare_scores)</div>
+<pre>curl -s -X POST http://localhost:8000/query \
+  -d '{"query": "What is the complexity of merge sort?"}'
+
+{
+  "routing_mode":    "vcg",                  <span class="c">← distinct from "fanout" or "arbiter"</span>
+  "primary_domain":  "software_engineering",
+  "response":        "Merge sort is O(n log n)...",
+  "u_score":         0.748,
+  "welfare_scores": {                        <span class="c">← only in VCG mode</span>
+    "swe":  0.5440,                          <span class="c">← winner (highest W)</span>
+    "math": 0.1800
+  }
+}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — read welfare scores</div>
+<pre>r = requests.post("http://localhost:8000/query", json={
+    "query": "What is the time complexity of heapsort?"
+})
+data = r.json()
+
+if data["routing_mode"] == "vcg":
+    print("VCG mode — welfare scores:")
+    for name, w in sorted(data["welfare_scores"].items(), key=lambda x: -x[1]):
+        winner = "← winner" if w == max(data["welfare_scores"].values()) else ""
+        print(f"  {name}: {w:.4f} {winner}")
+</pre>
+</div>
+
+<h4>When to use VCG vs pairwise</h4>
+
+<table>
+<tr><th>Scenario</th><th>Recommended mode</th></tr>
+<tr><td>Single specialist per domain, queries rarely trigger fanout</td><td>Pairwise (default) — VCG never fires</td></tr>
+<tr><td>2+ specialists configured, want best-of-N selection</td><td><strong>VCG</strong> — welfare maximization across all candidates</td></tr>
+<tr><td>3+ specialists, some with longer track records</td><td><strong>VCG</strong> — prior_mean_u provides meaningful differentiation</td></tr>
+<tr><td>Safety-critical domain, want conservative pairwise checks</td><td>Pairwise — 4-check arbiter runs in full verdict mode</td></tr>
+</table>
+
+<div class="callout green">
+  <p><strong>Chat UI toggle.</strong> The AUA Controls drawer (⚙ button) has a Pairwise / VCG segmented toggle. It's greyed out if you have fewer than 2 specialists in your config. Switching to VCG sends a <code>PATCH /config</code> call and persists the change. When VCG is active, the Framework Debugger shifts from mint-green to indigo and shows the per-specialist welfare scores alongside the winner.</p>
+</div>
+
 <details class="build-details">
   <summary>What you can build with this</summary>
   <div class="build-body">
     <ul>
-          <li>A system that catches its own contradictions, stores what it learns, and injects that knowledge into every future query on that subject.</li>
-          <li>A verified fact store for your domain — inject something once and every user benefits from it on every future query.</li>
-          <li>Audit what the system currently 'knows' with <code>GET /corrections</code> — a clear, exportable record of every stored fact.</li>
-          <li>Control how long knowledge lives: permanent for proved facts (Class A), months for fast-moving fields like security (Class D).</li>
+      <li>A system that doesn't just pick the most likely specialist — it picks the one with the best track record for this type of query. The more it runs, the better the prior_mean_u signal becomes.</li>
+      <li>Interpretable routing decisions: every VCG response shows exactly why each specialist was or wasn't chosen, as a number.</li>
+      <li>Validated +43.3pp correctness improvement over no routing, on real hardware — not simulation. Activate it with one config line.</li>
+      <li>Hot-swap between pairwise and VCG without restarting — try VCG on a subset of traffic, compare U scores, commit to it when the numbers support it.</li>
     </ul>
-        <p class="build-hook">Note: in v1.0, corrections are global across all users — intentional for internal tools, per-user scoping is coming in v1.1. Part 5 shows how to upgrade models safely without breaking what's working.</p>
+    <p class="build-hook">Part 5 shows how specialists get promoted and rolled back — the prior_mean_u that VCG uses is built from those sessions.</p>
   </div>
 </details>
-<div class="next-part"><p><strong>Part 4 done.</strong> You understand the Arbiter and corrections. Part 5 shows how U scores gate model promotion.</p></div>
+
+<div class="next-part"><p><strong>Part 4 done.</strong> You understand the Arbiter, corrections, and VCG welfare maximization. Part 5 shows how U scores gate model promotion.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 5 -->
 <h2 id="part-5" class="part-heading"><span class="part-badge">Part 5</span> Blue-green deployment <span class="time-badge">~20 min</span></h2>
@@ -1037,6 +1146,112 @@ curl http://localhost:8000/sessions \
 
 <div class="callout green">
   <p><strong>Framework Debugger tip:</strong> Every query in the UI shows the full routing trace — which specialist was called, intermediate U scores, whether the Arbiter fired, and a link to the OTEL trace in Jaeger or Tempo if observability is configured.</p>
+</div>
+
+<h3>9.6 UI screenshots</h3>
+
+<p>Five states to know before you start. Each accordion shows a screenshot with annotations.</p>
+
+<style>
+.ss-details {
+  margin: .75rem 0;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  background: var(--soft);
+}
+.ss-details summary {
+  padding: .6rem 1rem;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  user-select: none;
+}
+.ss-details summary::-webkit-details-marker { display: none; }
+.ss-details summary::before {
+  content: '▶';
+  font-size: .65rem;
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.ss-details[open] summary::before { transform: rotate(90deg); }
+.ss-details .ss-body {
+  padding: 0 1rem .9rem;
+  border-top: 1px solid var(--line);
+}
+.ss-body img {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  margin: .75rem 0 .5rem;
+}
+.ss-caption {
+  font-size: .78rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+.ss-placeholder {
+  background: var(--soft2);
+  border: 2px dashed var(--line);
+  border-radius: 6px;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: .8rem;
+  margin: .75rem 0 .5rem;
+}
+</style>
+
+<details class="ss-details">
+  <summary>Screenshot 1 — Empty state (three-panel layout)</summary>
+  <div class="ss-body">
+    <div class="ss-placeholder">📸 Screenshot: ui_empty.png<br><span style="font-size:.72rem;">Sidebar · Chat panel · Framework Debugger (mint)</span></div>
+    <p class="ss-caption">The three-panel layout on startup. Left: session sidebar (#fafaf8). Centre: chat area. Right: mint-green Framework Debugger showing "Send a message to see routing debug info". The ⚙ AUA Controls button is in the top-right corner.</p>
+  </div>
+</details>
+
+<details class="ss-details">
+  <summary>Screenshot 2 — Single specialist routing</summary>
+  <div class="ss-body">
+    <div class="ss-placeholder">📸 Screenshot: ui_single.png<br><span style="font-size:.72rem;">Debugger showing domain, U score, confidence after a coding query</span></div>
+    <p class="ss-caption">After sending "Write binary search in Python." The debugger shows: Domain (software_engineering), Mode (single), U Score (0.7xxx), Confidence, Latency, and the Classifier Output bar chart. The response appears in the chat panel with assistant formatting.</p>
+  </div>
+</details>
+
+<details class="ss-details">
+  <summary>Screenshot 3 — AUA Controls drawer (with VCG toggle)</summary>
+  <div class="ss-body">
+    <div class="ss-placeholder">📸 Screenshot: ui_controls.png<br><span style="font-size:.72rem;">Controls drawer open showing Arbitration Mode toggle</span></div>
+    <p class="ss-caption">The amber AUA Controls drawer open. At the top: the Arbitration Mode section with Pairwise / VCG segmented toggle. With a single specialist, VCG is greyed with tooltip "Requires at least 2 specialists in aua_config.yaml". Below: routing threshold sliders, Config Management reload button, and Live Config table showing backend, port, version, and active models.</p>
+  </div>
+</details>
+
+<details class="ss-details">
+  <summary>Screenshot 4 — VCG fanout query (indigo debugger)</summary>
+  <div class="ss-body">
+    <div class="ss-placeholder">📸 Screenshot: ui_vcg.png<br><span style="font-size:.72rem;">Indigo Framework Debugger — VCG with welfare scores per specialist</span></div>
+    <p class="ss-caption">With VCG enabled and 2+ specialists, a cross-domain query triggers fanout routing. The debugger shifts from mint-green to indigo. The header reads "Framework Debugger — VCG" with a purple "vcg" badge. A new "VCG Welfare Scores" section shows W_i per specialist — the winner is highlighted with a box border, bold text, and ✓ indicator. Runners-up shown at reduced opacity. The Utility Breakdown note reads "Winner selected by welfare maximization".</p>
+  </div>
+</details>
+
+<details class="ss-details">
+  <summary>Screenshot 5 — Policy active (INFO assertion bonus)</summary>
+  <div class="ss-body">
+    <div class="ss-placeholder">📸 Screenshot: ui_policy.png<br><span style="font-size:.72rem;">Debugger showing U score boost from INFO assertion firing</span></div>
+    <p class="ss-caption">With an active policy containing INFO assertions (e.g. AnalogyBonus), a response that uses an analogy fires the positive assertion. The U score in the debugger is higher than the base score — the E bonus is applied. The routing mode remains "single" or "vcg" depending on config. Use <code>aua logs assertions --filter passed=true</code> to see which assertions fired.</p>
+  </div>
+</details>
+
+<div class="callout">
+  <p style="font-size:.82rem;margin:0;">
+    <strong>Adding your own screenshots:</strong> Take screenshots of your running UI at <code>http://localhost:3001</code>, save to <code>docs/screenshots/</code> (create the folder), then replace the placeholder <code>&lt;div class="ss-placeholder"&gt;</code> blocks with <code>&lt;img src="../docs/screenshots/ui_empty.png" alt="AUA Chat UI empty state"&gt;</code> etc.
+  </p>
 </div>
 
 <details class="build-details">
@@ -3659,7 +3874,7 @@ else:
     <a href="whitepaper.html" style="color:var(--accent);text-decoration:none;margin-left:1rem;">Home</a>
     <a href="whitepaper_overview.html" style="color:var(--accent);text-decoration:none;margin-left:1rem;">Whitepaper</a>
     <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" style="color:var(--accent);text-decoration:none;margin-left:1rem;">GitHub</a><br>
-    <span style="margin-top:.3rem;display:block;">AUA Framework v1.0.0</span>
+    <span style="margin-top:.3rem;display:block;">AUA Framework v1.0.2</span>
   </div>
 </div>
 
