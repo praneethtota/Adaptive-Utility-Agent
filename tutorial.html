@@ -2011,6 +2011,29 @@ aua metrics --compare 30d
 <p><strong>What it replaces:</strong> The built-in vLLM and Ollama HTTP clients.</p>
 <p><strong>When to write one:</strong> You want to route to a commercial API (OpenAI, Anthropic, Cohere), an internal gateway, or any serving stack that isn't vLLM or Ollama.</p>
 
+<div class="callout green">
+  <p><strong>Prebuilt plugins available.</strong> Seven production-ready frontier model backends are included in <code>aua/plugins/prebuilt/</code> — contributed from AUA-Veritas. Drop them into your config without writing any code:</p>
+  <table style="margin-top:.75rem;">
+  <tr><th>Plugin</th><th>Models</th><th>import_path</th></tr>
+  <tr><td><code>OpenAIBackend</code></td><td>GPT-4o, GPT-4o mini</td><td><code>aua.plugins.prebuilt.openai_backend:OpenAIBackend</code></td></tr>
+  <tr><td><code>AnthropicBackend</code></td><td>Claude Sonnet 4.5, Haiku 4.5</td><td><code>aua.plugins.prebuilt.anthropic_backend:AnthropicBackend</code></td></tr>
+  <tr><td><code>GoogleBackend</code></td><td>Gemini 1.5 Pro, 2.0 Flash</td><td><code>aua.plugins.prebuilt.google_backend:GoogleBackend</code></td></tr>
+  <tr><td><code>XAIBackend</code></td><td>Grok-2</td><td><code>aua.plugins.prebuilt.xai_backend:XAIBackend</code></td></tr>
+  <tr><td><code>MistralBackend</code></td><td>Mistral Large</td><td><code>aua.plugins.prebuilt.mistral_backend:MistralBackend</code></td></tr>
+  <tr><td><code>GroqBackend</code></td><td>Llama 3.3 70B</td><td><code>aua.plugins.prebuilt.groq_backend:GroqBackend</code></td></tr>
+  <tr><td><code>DeepSeekBackend</code></td><td>DeepSeek-V3, DeepSeek-R1</td><td><code>aua.plugins.prebuilt.deepseek_backend:DeepSeekBackend</code></td></tr>
+  </table>
+  <div class="code-block" style="margin-top:.75rem;">
+  <div class="code-header">aua_config.yaml — use a prebuilt plugin (no code needed)</div>
+  <pre>plugins:
+  model_backend:
+    import_path: aua.plugins.prebuilt.openai_backend:OpenAIBackend
+    config:
+      api_key_secret: OPENAI_API_KEY   <span class="c"># resolved from env or secrets provider</span>
+      model: gpt-4o</pre>
+  </div>
+</div>
+
 <p><strong>Required methods:</strong> <code>complete()</code>, <code>stream()</code>, <code>health()</code> — all async.</p>
 
 <div class="code-block">
