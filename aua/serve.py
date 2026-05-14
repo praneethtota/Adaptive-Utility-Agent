@@ -67,6 +67,7 @@ def serve(
     router_only: bool = False,
     startup_timeout: int = DEFAULT_STARTUP_TIMEOUT,
     reuse_running: bool = False,
+    config_path: str | None = None,
 ) -> None:
     """
     Start all specialists and the router from config.
@@ -145,7 +146,7 @@ def serve(
 
     # ── Start router ───────────────────────────────────────────────────────
     if not no_router:
-        _start_router(config, dry_run, processes)
+        _start_router(config, dry_run, processes, config_path=config_path)
 
     # ── dry_run exits here ─────────────────────────────────────────────────
     if dry_run:
@@ -464,6 +465,7 @@ def _start_router(
     config: AUAConfig,
     dry_run: bool,
     specialist_procs: list[subprocess.Popen],
+    config_path: str | None = None,
 ) -> None:
     """Start the FastAPI router with uvicorn (runs in the current process)."""
     import uvicorn
@@ -482,7 +484,7 @@ def _start_router(
     _print_ready(config)
     _write_pid_file("router", os.getpid(), config.runtime)
 
-    router = Router.from_config(config)
+    router = Router.from_config(config, config_path=config_path)
     uvicorn.run(
         router.app,
         host=host,

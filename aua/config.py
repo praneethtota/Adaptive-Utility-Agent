@@ -226,6 +226,7 @@ _KNOWN_ROUTER_KEYS: set[str] = {
     "single_domain_threshold",
     "fanout_threshold",
     "specialist_timeout",
+    "arbitration_mode",
     "cors_origins",
 }
 _KNOWN_BG_KEYS: set[str] = {"delta", "T_min", "tau"}
@@ -381,6 +382,7 @@ class RouterConfig:
     specialist_timeout: float = 60.0  # seconds per specialist call
     host: str = "0.0.0.0"
     cors_origins: list[str] = field(default_factory=lambda: ["*"])
+    arbitration_mode: str = "pairwise"  # "pairwise" | "vcg"
 
 
 @dataclass
@@ -607,6 +609,7 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         specialist_timeout=float(raw_router.get("specialist_timeout", 60.0)),
         host=str(raw_router.get("host", "0.0.0.0")),
         cors_origins=list(cors),
+        arbitration_mode=str(raw_router.get("arbitration_mode", "pairwise")),
     )
 
     # ── Blue-green per specialist ──────────────────────────────────────────

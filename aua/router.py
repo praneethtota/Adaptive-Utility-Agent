@@ -214,8 +214,9 @@ class Router:
     thresholds anywhere in this class.
     """
 
-    def __init__(self, config: AUAConfig) -> None:
+    def __init__(self, config: AUAConfig, config_path: str | None = None) -> None:
         self._config = config
+        self._config_path = config_path  # for PATCH /config persist
         self._classifier = FieldClassifier()
         self._scorer = UtilityScorer()
         self._store = AssertionsStore()
@@ -228,6 +229,7 @@ class Router:
         self._single_threshold = config.router.single_domain_threshold
         self._fanout_threshold = config.router.fanout_threshold
         self._timeout = config.router.specialist_timeout
+        self._arbitration_mode = config.router.arbitration_mode  # "pairwise" | "vcg"
 
         self._start_time: float = time.time()
         self._queries_by_mode: dict[str, int] = {"single": 0, "fanout": 0, "arbiter": 0}
@@ -247,8 +249,8 @@ class Router:
         )
 
     @classmethod
-    def from_config(cls, config: AUAConfig) -> Router:
-        return cls(config)
+    def from_config(cls, config: AUAConfig, config_path: str | None = None) -> Router:
+        return cls(config, config_path=config_path)
 
     async def query(
         self,
@@ -594,6 +596,67 @@ class Router:
                     specialist_timeout=self._config.router.specialist_timeout,
                 ),
             )
+
+        @app.patch(
+            "/config",
+            tags=["config"],
+            summary="Patch hot-reloadable config settings",
+        )
+        async def patch_config(body: dict) -> dict:
+            """
+            Partially update hot-reloadable config fields without restart.
+
+            Supported fields:
+              arbitration_mode   — "pairwise" | "vcg"
+              single_domain_threshold — float 0.0–1.0
+              fanout_threshold        — float 0.0–1.0
+
+            Pass persist=true to write changes back to aua_config.yaml.
+
+            Example body: {"arbitration_mode": "vcg", "persist": true}
+            """
+            import yaml as _yaml
+
+            persist = bool(body.pop("persist", False))
+            changed: dict[str, str] = {}
+
+            if "arbitration_mode" in body:
+                mode = str(body["arbitration_mode"])
+                if mode not in ("pairwise", "vcg"):
+                    from fastapi import HTTPException as _HE
+
+                    raise _HE(422, f"arbitration_mode must be 'pairwise' or 'vcg', got {mode!r}")
+                self._arbitration_mode = mode
+                self._config.router.arbitration_mode = mode
+                changed["arbitration_mode"] = mode
+                log.info("arbitration_mode patched to %r", mode)
+
+            if "single_domain_threshold" in body:
+                v = float(body["single_domain_threshold"])
+                self._single_threshold = v
+                self._config.router.single_domain_threshold = v
+                changed["single_domain_threshold"] = str(v)
+
+            if "fanout_threshold" in body:
+                v = float(body["fanout_threshold"])
+                self._fanout_threshold = v
+                self._config.router.fanout_threshold = v
+                changed["fanout_threshold"] = str(v)
+
+            if persist and self._config_path and changed:
+                try:
+                    cfg_path = self._config_path
+                    raw = _yaml.safe_load(open(cfg_path).read()) or {}
+                    raw.setdefault("router", {})
+                    for k in changed:
+                        raw["router"][k] = body.get(k)
+                    with open(cfg_path, "w") as f:
+                        _yaml.dump(raw, f, default_flow_style=False, sort_keys=False)
+                    log.info("Config patched and written to %s", cfg_path)
+                except Exception as e:
+                    log.warning("Failed to persist config patch: %s", e)
+
+            return {"patched": changed, "persisted": persist and bool(changed)}
 
         # ── Deploy ─────────────────────────────────────────────────────────
 
@@ -1467,7 +1530,44 @@ class Router:
         if not responses:
             raise HTTPException(503, "All specialists unreachable during fanout")
 
-        if len(responses) >= 2:
+        _routing_mode = "fanout"
+        _vcg_welfare: dict[str, float] | None = None
+
+        # ── VCG vs pairwise selection ─────────────────────────────────────────
+        if self._arbitration_mode == "vcg" and len(responses) >= 2:
+            winner_idx, _vcg_welfare = self._vcg_select(responses, distribution)
+            winner_spec, final_text, final_conf = responses[winner_idx]
+            primary_domain = winner_spec.field
+            _routing_mode = "vcg"
+            log.info(
+                "VCG → winner=%s  W=%s",
+                winner_spec.name,
+                {k: round(v, 4) for k, v in _vcg_welfare.items()},
+            )
+            # Still run arbiter for contradiction detection + DPO pairs (non-verdict mode)
+            losers = [r for i, r in enumerate(responses) if i != winner_idx]
+            n_contra, n_dpo = 0, 0
+            for loser_spec, loser_text, _ in losers:
+                _, _, nc, nd = await self._score(req.query, loser_text, loser_spec.field, 0.30)
+                n_contra += nc
+                n_dpo += nd
+            u, conf, nc_win, nd_win = await self._score(
+                req.query, final_text, primary_domain, final_conf
+            )
+            n_contra += nc_win
+            n_dpo += nd_win
+            spec_responses = [
+                {
+                    "domain": s.field,
+                    "specialist": s.name,
+                    "response": t[:200] + "...",
+                    "welfare": round(_vcg_welfare.get(s.name, 0.0), 4),
+                    "winner": s.name == winner_spec.name,
+                }
+                for s, t, _ in responses
+            ]
+
+        elif len(responses) >= 2:
             (spec_a, text_a, conf_a), (spec_b, text_b, conf_b) = responses[0], responses[1]
 
             # ── pre_arbiter ───────────────────────────────────────────────────
@@ -1525,7 +1625,7 @@ class Router:
             final_text = text
             spec_responses = [{"domain": spec.field, "response": text[:200]}]
 
-        self._queries_by_mode["fanout"] = self._queries_by_mode.get("fanout", 0) + 1
+        self._queries_by_mode[_routing_mode] = self._queries_by_mode.get(_routing_mode, 0) + 1
         self._latencies_ms["router"].append((time.time() - t0) * 1000)
         for s in active_specialists:
             self._requests_per_spec[s.name] = self._requests_per_spec.get(s.name, 0) + 1
@@ -1536,7 +1636,7 @@ class Router:
 
         _gm().record_query(
             domain=primary_domain,
-            routing_mode="fanout",
+            routing_mode=_routing_mode,
             latency_s=_fanout_ms / 1000,
             u_score=u,
             status="ok",
@@ -1549,7 +1649,7 @@ class Router:
                 "session_id": _sid,
                 "trace_id": _tid,
                 "domain": primary_domain,
-                "routing_mode": "fanout",
+                "routing_mode": _routing_mode,
                 "u_score": u,
                 "latency_ms": _fanout_ms,
             },
@@ -1560,7 +1660,7 @@ class Router:
                 "session_id": _sid,
                 "trace_id": _tid,
                 "domain": primary_domain,
-                "routing_mode": "fanout",
+                "routing_mode": _routing_mode,
                 "u_score": u,
                 "latency_ms": _fanout_ms,
             },
@@ -1568,7 +1668,7 @@ class Router:
 
         return RouterResponse(
             query=req.query,
-            routing_mode="fanout",
+            routing_mode=_routing_mode,
             domain_distribution=distribution,
             primary_domain=primary_domain,
             response=final_text,
@@ -1578,6 +1678,7 @@ class Router:
             dpo_pairs_generated=n_dpo,
             latency_ms=_fanout_ms,
             specialist_responses=spec_responses,
+            welfare_scores=_vcg_welfare,
         )
 
     async def _handle_arbiter(self, req, distribution, t0, _sid="", _tid="") -> RouterResponse:
@@ -1674,6 +1775,51 @@ class Router:
         )
 
     # ── Specialist call (buffered) ────────────────────────────────────────────
+
+    def _vcg_select(
+        self,
+        responses: list[tuple],  # [(SpecialistConfig, text, confidence), ...]
+        distribution: dict[str, float],
+    ) -> tuple[int, dict[str, float]]:
+        """
+        VCG welfare maximization: select the specialist with the highest welfare score.
+
+        W_i = P(domain_i) × confidence_i × prior_mean_u_i
+
+          P(domain_i)     — field classifier probability for this specialist's domain
+          confidence_i    — base confidence returned by the specialist call
+          prior_mean_u_i  — running mean U score for this specialist (1.0 if no history)
+
+        Returns (winner_index, welfare_scores_dict).
+        Ties are broken by confidence, then by classifier probability.
+        """
+        welfare: dict[str, float] = {}
+        for spec, _text, conf in responses:
+            p_domain = distribution.get(spec.field, 0.0)
+            # Get running mean U from scorer history
+            history = [s.utility for s in self._scorer.history if s.field == spec.field]
+            prior_u = round(sum(history) / len(history), 4) if history else 1.0
+            w = round(p_domain * conf * prior_u, 6)
+            welfare[spec.name] = w
+            log.debug(
+                "VCG W(%s) = P(%.3f) × C(%.3f) × U_mean(%.3f) = %.4f",
+                spec.name,
+                p_domain,
+                conf,
+                prior_u,
+                w,
+            )
+
+        # argmax by welfare, tie-break: confidence, then P(domain)
+        winner_idx = max(
+            range(len(responses)),
+            key=lambda i: (
+                welfare[responses[i][0].name],
+                responses[i][2],
+                distribution.get(responses[i][0].field, 0.0),
+            ),
+        )
+        return winner_idx, welfare
 
     async def _call(
         self,

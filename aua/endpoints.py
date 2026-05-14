@@ -88,6 +88,13 @@ class RouterResponse(BaseModel):
         None,
         description=("Per-specialist responses " "(only populated for fanout routing)."),
     )
+    welfare_scores: dict[str, float] | None = Field(
+        None,
+        description=(
+            "VCG welfare scores per specialist: W_i = P(domain_i) × confidence_i × prior_mean_u_i. "
+            "Populated only when arbitration_mode='vcg'."
+        ),
+    )
 
 
 # ── Batch ─────────────────────────────────────────────────────────────────────

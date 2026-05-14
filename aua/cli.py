@@ -75,7 +75,24 @@ def main():
 )
 @click.option("--with-ui", "with_ui", is_flag=True, default=False, help="Also start the Chat UI.")
 @click.option("--ui-port", default=3001, show_default=True, type=int, help="Chat UI port.")
-def serve(config, dry_run, no_router, router_only, startup_timeout, tier, with_ui, ui_port):
+@click.option(
+    "--arbitration-mode",
+    "arbitration_mode",
+    default=None,
+    type=click.Choice(["pairwise", "vcg"], case_sensitive=False),
+    help="Override arbitration mode: 'pairwise' (default) or 'vcg' (welfare maximization).",
+)
+def serve(
+    config,
+    dry_run,
+    no_router,
+    router_only,
+    startup_timeout,
+    tier,
+    with_ui,
+    ui_port,
+    arbitration_mode,
+):
     """Start all specialists + router from aua_config.yaml.
 
     \b
@@ -100,12 +117,18 @@ def serve(config, dry_run, no_router, router_only, startup_timeout, tier, with_u
         console.print(f"[red]Config error:[/red] {e}")
         sys.exit(1)
 
+    # Apply CLI override for arbitration mode
+    if arbitration_mode:
+        cfg.router.arbitration_mode = arbitration_mode
+        console.print(f"[dim]Arbitration mode: [cyan]{arbitration_mode}[/cyan][/dim]")
+
     _serve(
         config=cfg,
         dry_run=dry_run,
         no_router=no_router,
         router_only=router_only,
         startup_timeout=startup_timeout,
+        config_path=config if not tier else None,
     )
 
     if with_ui and not dry_run:
