@@ -36,7 +36,7 @@ def test_version_export():
 
     assert hasattr(aua, "__version__")
     assert isinstance(aua.__version__, str)
-    assert aua.__version__ == "1.0.0"
+    assert aua.__version__ == "1.0.1"
 
 
 def test_endpoint_models_exported():
