@@ -2,6 +2,8 @@
 
 > A production framework for self-correcting, multi-specialist LLM systems.
 
+**Full site:** https://praneethtota.github.io/Adaptive-Utility-Agent
+**Recommended way to explore the project:** Start with the overview, then read the whitepaper, roadmap, and tutorial for implementation details.
 ---
 
 ## What it does
@@ -32,7 +34,6 @@ The sister repo is here:
 
 ## Documentation
 
-**Full site:** https://praneethtota.github.io/Adaptive-Utility-Agent
 
 | Page | Audience | Link |
 |---|---|---|
