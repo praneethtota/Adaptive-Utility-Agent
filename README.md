@@ -19,19 +19,15 @@ cd my-project && aua serve
 ---
 ## Sister Project: AUA Veritas
 
-I am also building **AUA Veritas**, a standalone consumer-facing desktop app based on the ideas behind this framework.
+I am currently building a standalone app based on this framework called **AUA Veritas**.
 
-While **Adaptive Utility Agent** is the developer/MLE framework for building adaptive multi-model LLM systems, **AUA Veritas** is aimed at everyday AI users. It is designed to ask multiple frontier AI models, compare their answers, remember user corrections, and return one answer with a confidence signal.
+AUA Framework is intended for developers, MLEs, and AI infrastructure teams who want to build adaptive multi-model LLM systems with routing, utility scoring, arbitration, correction loops, observability, and deployment controls.
 
-In short:
+**AUA Veritas** applies those ideas in a consumer-facing desktop app. Instead of exposing framework internals, it gives everyday AI users a simple interface: ask a question, let Veritas compare multiple frontier models, remember prior corrections, and return one answer with a confidence signal.
 
-- **Adaptive Utility Agent** = framework for developers, MLEs, and AI infrastructure teams.
+The sister repo is here:
 
-- **AUA Veritas** = standalone app for users who want more reliable answers from AI tools without manually checking multiple models.
-
-AUA Veritas is currently in active development in a sister repository:
-
-👉 [github.com/praneethtota/AUA-Veritas](https://github.com/praneethtota/AUA-Veritas)
+👉 [AUA Veritas](https://github.com/praneethtota/AUA-Veritas)
 
 
 ## Documentation
