@@ -664,7 +664,7 @@ class MessageCache:
 
     def __init__(self) -> None:
         from collections import OrderedDict
-        self._cache: "OrderedDict[str, list[dict]]" = OrderedDict()
+        self._cache: OrderedDict[str, list[dict]] = OrderedDict()
 
     def get(self, conversation_id: str, limit: int = DEFAULT_LIMIT) -> list[dict] | None:
         """Return cached messages or None. Bypasses cache for non-default limits."""
@@ -696,7 +696,7 @@ class MessageCache:
 
 # ── P0: Off-critical-path write helper ───────────────────────────────────────
 
-def fire_and_forget(coro: "Any") -> None:
+def fire_and_forget(coro: object) -> None:
     """
     Schedule a coroutine as a background task without blocking the caller.
 

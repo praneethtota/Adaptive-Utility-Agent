@@ -556,7 +556,7 @@ class Router:
             tags=["conversations"],
             summary="Paginated message fetch",
         )
-        async def get_messages(
+        async def get_conv_messages(
             conversation_id: str,
             limit: int = QueryParam(50, ge=1, le=500),
             before: float | None = QueryParam(None, description="Cursor: return messages before this timestamp."),
@@ -635,7 +635,6 @@ class Router:
             is no join path between a conversation and its model runs.
             """
             from aua.state import fire_and_forget
-            import asyncio
 
             run = {**body, "conversation_id": conversation_id}
 
