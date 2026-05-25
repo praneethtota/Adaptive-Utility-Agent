@@ -133,6 +133,7 @@ tr:nth-child(even) td{background:#fafaf8}
 <aside class="sidebar">
 <div class="sidebar-inner">
   <a href="whitepaper.html" class="sb-brand">← AUA v1.0</a>
+  <a href="docs/index.html" style="display:block;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;color:var(--accent2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:1rem;text-decoration:none">📂 Docs &amp; Schema →</a>
 
   <div class="sb-section">Quick Start</div>
   <nav>
@@ -183,6 +184,7 @@ tr:nth-child(even) td{background:#fafaf8}
     <a href="whitepaper_overview.html">Whitepaper</a>
     <a href="productionizing.html">Production Design</a>
     <a href="aua_roadmap.html">Roadmap</a>
+    <a href="docs/index.html">Docs</a>
     <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="cta">GitHub ↗</a>
   </div>
 </div>
@@ -2107,6 +2109,12 @@ class OpenAIBackend:
 
 <p><strong>What it replaces:</strong> The built-in SQLite state store.</p>
 <p><strong>When to write one:</strong> You want sessions, corrections, and audit events stored in Postgres, Redis, or a shared datastore across multiple router instances.</p>
+
+<p style="margin:.25rem 0 1rem">
+  <a href="docs/db_schema.html" style="display:inline-flex;align-items:center;gap:8px;background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;padding:.5rem 1rem;border-radius:7px;font-size:.88rem;font-weight:600;text-decoration:none">
+    🗄️ Full DB schema — all tables and columns →
+  </a>
+</p>
 
 <p><strong>Required methods:</strong> <code>get()</code>, <code>set()</code>, <code>append()</code>, <code>query()</code></p>
 

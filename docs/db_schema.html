@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Database Schema — AUA Framework v1.1-veritas</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--paper:#fff;--ink:#18181b;--muted:#6b7280;--line:#e4e1da;--accent:#4338ca;--accent2:#0f766e;--soft:#f0ede6;--soft2:#ecfdf5;--code-bg:#f2f0eb;--tag-bg:#eef2ff;--tag-text:#4338ca}
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:15px;line-height:1.75;color:var(--ink);background:var(--bg);margin:0}
+.layout{display:grid;grid-template-columns:240px 1fr;min-height:100vh;max-width:1140px;margin:0 auto;background:var(--paper);border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.sidebar{border-right:1px solid var(--line);background:#fafaf8;padding:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar-inner{padding:1.5rem 1.25rem 3rem}
+.sb-brand{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:1.5rem;display:block;text-decoration:none}
+.sb-section{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:1.25rem 0 .4rem;padding-top:.75rem;border-top:1px solid var(--line)}
+.sb-section:first-of-type{border-top:none;padding-top:0}
+.sidebar nav a{display:flex;align-items:center;gap:7px;font-size:.83rem;color:#555;text-decoration:none;padding:.22rem .3rem;line-height:1.5;border-radius:4px}
+.sidebar nav a:hover,.sidebar nav a.active{color:var(--accent)}
+.sidebar nav a.active{font-weight:600}
+.sb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.main{padding:0 0 5rem;max-width:780px}
+.topbar{display:flex;align-items:center;gap:1rem;padding:.75rem 2.5rem;border-bottom:1px solid var(--line);background:#fafaf8;font-size:.83rem;flex-wrap:wrap}
+.topbar a{color:var(--muted);text-decoration:none;font-size:.82rem}
+.topbar a:hover{color:var(--accent)}
+.topbar a.here{color:var(--accent);font-weight:600}
+.topbar-sep{color:var(--line)}
+.body{padding:2rem 2.5rem 0}
+h1{font-family:'DM Serif Display',Georgia,serif;font-size:2rem;line-height:1.2;color:var(--ink);margin:0 0 .6rem}
+.subtitle{font-size:.95rem;color:#555;max-width:600px;line-height:1.65;margin-bottom:1.25rem}
+.meta-row{display:flex;flex-wrap:wrap;gap:1.5rem;font-size:.82rem;color:var(--muted);margin-bottom:2rem;padding-bottom:1.25rem;border-bottom:1px solid var(--line)}
+.meta-row strong{color:var(--ink)}
+.callout{border-left:3px solid var(--accent);background:var(--tag-bg);padding:.85rem 1.1rem;margin:1.25rem 0 1.75rem;border-radius:0 6px 6px 0;font-size:.88rem;color:#3730a3}
+.callout code{background:#ddd6fe;padding:1px 5px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:.8rem}
+.callout.green{border-color:var(--accent2);background:#ecfdf5;color:#065f46}
+.callout.green code{background:#bbf7d0}
+h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.3rem;margin:2.5rem 0 .5rem;color:var(--ink);scroll-margin-top:20px}
+h2::before{font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:.25rem}
+.tbl-group{margin-bottom:2.75rem}
+.tbl-label{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:.2rem .6rem;border-radius:4px;margin-bottom:.6rem}
+.tbl-desc{font-size:.87rem;color:#444;line-height:1.65;margin-bottom:.85rem;max-width:580px}
+.note{font-size:.82rem;color:#555;background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:.65rem .9rem;margin-bottom:.85rem;line-height:1.6}
+.note strong{color:var(--ink)}
+.note code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:#e8e4dc;padding:1px 4px;border-radius:3px}
+table{width:100%;border-collapse:collapse;font-size:.82rem;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:.6rem}
+thead th{text-align:left;padding:8px 12px;background:#f2f0eb;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--line)}
+tbody td{padding:8px 12px;border-bottom:1px solid #f0ede6;vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#fafaf8}
+.cn{font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:600;color:var(--ink);white-space:nowrap}
+.cn.pk{color:var(--accent)}
+.ct{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--muted)}
+.cdesc{font-size:.82rem;color:#374151;line-height:1.55}
+.pk-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:700;background:var(--tag-bg);color:var(--tag-text);padding:1px 4px;border-radius:3px;text-transform:uppercase;margin-left:4px;vertical-align:middle}
+.idx{background:#f7f6f2;border:1px solid var(--line);border-radius:5px;padding:.5rem .85rem;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--accent2);line-height:1.8;margin-bottom:0}
+hr.divider{border:none;border-top:2px solid var(--line);margin:2.5rem 0}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.sidebar{display:none}.body{padding:1.5rem 1.25rem 0}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<div class="sidebar-inner">
+  <a href="../tutorial.html" class="sb-brand">← AUA Framework</a>
+  <div class="sb-section">Core — v0.7+</div>
+  <nav>
+    <a href="#promotions"><span class="sb-dot" style="background:#4338ca"></span>promotions</a>
+    <a href="#corrections"><span class="sb-dot" style="background:#4338ca"></span>corrections</a>
+    <a href="#sessions"><span class="sb-dot" style="background:#4338ca"></span>sessions</a>
+    <a href="#audit_log"><span class="sb-dot" style="background:#4338ca"></span>audit_log</a>
+    <a href="#assertion_events"><span class="sb-dot" style="background:#4338ca"></span>assertion_events</a>
+  </nav>
+  <div class="sb-section">v1.1-veritas backport</div>
+  <nav>
+    <a href="#conversations"><span class="sb-dot" style="background:#0f766e"></span>conversations</a>
+    <a href="#messages"><span class="sb-dot" style="background:#0f766e"></span>messages</a>
+    <a href="#model_runs"><span class="sb-dot" style="background:#0f766e"></span>model_runs</a>
+    <a href="#token_counters"><span class="sb-dot" style="background:#0f766e"></span>token_counters</a>
+    <a href="#message_keywords"><span class="sb-dot" style="background:#0f766e"></span>message_keywords</a>
+    <a href="#context_backups"><span class="sb-dot" style="background:#0f766e"></span>context_backups</a>
+    <a href="#projects"><span class="sb-dot" style="background:#0f766e"></span>projects</a>
+  </nav>
+</div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <a href="../tutorial.html">Tutorial</a><span class="topbar-sep">›</span>
+    <a href="index.html">Docs</a><span class="topbar-sep">›</span>
+    <a href="db_schema.html" class="here">DB Schema</a>
+    <span style="flex:1"></span>
+    <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/aua/state.py" style="color:var(--muted);font-size:.78rem">state.py ↗</a>
+  </div>
+
+  <div class="body">
+    <h1>Database Schema</h1>
+    <p class="subtitle">Every table in the AUA Framework's SQLite state store. The core v0.7+ tables handle promotions, corrections, sessions, and audit. The v1.1-veritas tables were backported from AUA-Veritas production.</p>
+    <div class="meta-row">
+      <span><strong>File:</strong> <code style="font-family:'JetBrains Mono',monospace;font-size:.8rem">.aua/state/aua.db</code></span>
+      <span><strong>Engine:</strong> SQLite 3 (WAL mode, NORMAL sync)</span>
+      <span><strong>Configured via:</strong> <code style="font-family:'JetBrains Mono',monospace;font-size:.8rem">state.path</code></span>
+    </div>
+
+    <div class="callout">
+      The full schema lives in <code>aua/state.py → _SCHEMA</code>. The
+      <code>SQLiteStateStore</code> class initialises all tables on first run via
+      <code>conn.executescript(_SCHEMA)</code>. Migration from v0.7 flat files:
+      <code>aua config migrate --from 0.7 --to 0.8</code>.
+    </div>
+
+    <!-- ── CORE TABLES ──────────────────────────────────────────────────── -->
+    <hr class="divider">
+    <h2>Core tables — v0.7+</h2>
+
+    <div class="tbl-group" id="promotions">
+      <div class="tbl-label" style="background:#ede9fe;color:#5b21b6">core</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">promotions</div>
+      <p class="tbl-desc">Specialist promotion and rollback events. Replaces the v0.7 <code>.aua/state/promotions.jsonl</code> flat file. Append-only — never deleted.</p>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">UUID v4. Auto-generated if not supplied.</td></tr>
+          <tr><td class="cn">created_at</td><td class="ct">REAL</td><td class="cdesc">Unix timestamp.</td></tr>
+          <tr><td class="cn">specialist</td><td class="ct">TEXT</td><td class="cdesc">Specialist name (e.g. <code>'swe'</code>).</td></tr>
+          <tr><td class="cn">event</td><td class="ct">TEXT</td><td class="cdesc"><code>'promote'</code> | <code>'rollback'</code>.</td></tr>
+          <tr><td class="cn">from_model / to_model</td><td class="ct">TEXT</td><td class="cdesc">Model identifiers for the transition.</td></tr>
+          <tr><td class="cn">reverted</td><td class="ct">INTEGER</td><td class="cdesc"><code>1</code> if this promotion was later rolled back.</td></tr>
+          <tr><td class="cn">metadata</td><td class="ct">TEXT</td><td class="cdesc">JSON catch-all (eval scores, operator notes).</td></tr>
+        </tbody>
+      </table>
+      <div class="idx">idx_promotions_specialist</div>
+    </div>
+
+    <div class="tbl-group" id="corrections">
+      <div class="tbl-label" style="background:#ede9fe;color:#5b21b6">core</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">corrections</div>
+      <p class="tbl-desc">Verified facts and DPO pairs from the arbiter. Replaces <code>dpo_pairs/*.jsonl</code>. Used by the correction retrieval step to inject context into specialist prompts.</p>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">UUID v4.</td></tr>
+          <tr><td class="cn">created_at</td><td class="ct">REAL</td><td class="cdesc"></td></tr>
+          <tr><td class="cn">subject</td><td class="ct">TEXT</td><td class="cdesc">Topic string used for retrieval matching.</td></tr>
+          <tr><td class="cn">domain</td><td class="ct">TEXT</td><td class="cdesc">Field/domain this correction applies to.</td></tr>
+          <tr><td class="cn">claim</td><td class="ct">TEXT</td><td class="cdesc">The verified correct claim (chosen in DPO pair).</td></tr>
+          <tr><td class="cn">rejected</td><td class="ct">TEXT</td><td class="cdesc">The incorrect claim (rejected in DPO pair). May be empty for preference-only corrections.</td></tr>
+          <tr><td class="cn">confidence</td><td class="ct">REAL</td><td class="cdesc">0–1. Higher = more likely to be injected into prompt.</td></tr>
+          <tr><td class="cn">source</td><td class="ct">TEXT</td><td class="cdesc"><code>'arbiter'</code> | <code>'manual'</code>.</td></tr>
+          <tr><td class="cn">effective_confidence</td><td class="ct">REAL</td><td class="cdesc">Confidence after decay applied.</td></tr>
+          <tr><td class="cn">decay_class</td><td class="ct">TEXT</td><td class="cdesc"><code>'A'</code> (permanent) | <code>'B'</code> (slow) | <code>'C'</code> (fast).</td></tr>
+          <tr><td class="cn">metadata</td><td class="ct">TEXT</td><td class="cdesc">JSON: session_id, trace_id, correction_type, extra context.</td></tr>
+        </tbody>
+      </table>
+      <div class="idx">idx_corrections_domain</div>
+    </div>
+
+    <div class="tbl-group" id="sessions">
+      <div class="tbl-label" style="background:#ede9fe;color:#5b21b6">core</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">sessions</div>
+      <p class="tbl-desc">Lightweight query session tracking. Updated on every query. Used to group routing traces and audit events. The Chat Session API (U-01) builds on top of this with <code>conversations</code> and <code>messages</code> below.</p>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">UUID v4, auto-generated if not supplied by client.</td></tr>
+          <tr><td class="cn">created_at / updated_at</td><td class="ct">REAL</td><td class="cdesc"></td></tr>
+          <tr><td class="cn">domain</td><td class="ct">TEXT</td><td class="cdesc">Dominant field for this session.</td></tr>
+          <tr><td class="cn">query_count</td><td class="ct">INTEGER</td><td class="cdesc">Incremented on every query in this session.</td></tr>
+          <tr><td class="cn">metadata</td><td class="ct">TEXT</td><td class="cdesc">JSON: token_id, trace_ids, routing summary.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tbl-group" id="audit_log">
+      <div class="tbl-label" style="background:#ede9fe;color:#5b21b6">core</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">audit_log</div>
+      <p class="tbl-desc">Append-only audit trail with a SHA-256 hash chain for tamper detection. Every event type — query, correction, promotion, auth failure, config reload — produces a row. <code>prev_hash → curr_hash</code> forms an unbreakable chain.</p>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">UUID v4.</td></tr>
+          <tr><td class="cn">created_at</td><td class="ct">REAL</td><td class="cdesc"></td></tr>
+          <tr><td class="cn">event_type</td><td class="ct">TEXT</td><td class="cdesc"><code>'query'</code> | <code>'correction'</code> | <code>'promote'</code> | <code>'rollback'</code> | <code>'auth_failure'</code> | <code>'config_reload'</code> | <code>'hook_failure'</code>…</td></tr>
+          <tr><td class="cn">session_id / trace_id / token_id</td><td class="ct">TEXT</td><td class="cdesc">Correlation IDs.</td></tr>
+          <tr><td class="cn">field</td><td class="ct">TEXT</td><td class="cdesc">Domain/field for this event.</td></tr>
+          <tr><td class="cn">specialist</td><td class="ct">TEXT</td><td class="cdesc">Specialist name (if applicable).</td></tr>
+          <tr><td class="cn">u_score / confidence / latency_ms</td><td class="ct">REAL</td><td class="cdesc">Performance metrics at time of event.</td></tr>
+          <tr><td class="cn">details</td><td class="ct">TEXT</td><td class="cdesc">JSON extra context.</td></tr>
+          <tr><td class="cn">prev_hash / curr_hash</td><td class="ct">TEXT</td><td class="cdesc">SHA-256 hash chain. Written by <code>append_audit()</code>. Verify with <code>aua doctor --check-audit</code>.</td></tr>
+        </tbody>
+      </table>
+      <div class="idx">idx_audit_session</div>
+    </div>
+
+    <div class="tbl-group" id="assertion_events">
+      <div class="tbl-label" style="background:#ede9fe;color:#5b21b6">core</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">assertion_events</div>
+      <p class="tbl-desc">Per-query record of which assertions the arbiter ran, whether they passed, and what bonus or penalty was applied to the utility score. Used for blue-green debugging and assertion tuning.</p>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc"></td></tr>
+          <tr><td class="cn">session_id</td><td class="ct">TEXT</td><td class="cdesc">FK to <code>sessions</code>.</td></tr>
+          <tr><td class="cn">assertion_name</td><td class="ct">TEXT</td><td class="cdesc">e.g. <code>'logical_consistency'</code>, <code>'cross_session_match'</code>.</td></tr>
+          <tr><td class="cn">level</td><td class="ct">TEXT</td><td class="cdesc"><code>'blocking'</code> | <code>'soft'</code> | <code>'info'</code>. Blocking failures abort the response.</td></tr>
+          <tr><td class="cn">passed</td><td class="ct">INTEGER</td><td class="cdesc"><code>1</code> = passed, <code>0</code> = failed.</td></tr>
+          <tr><td class="cn">bonus_applied</td><td class="ct">REAL</td><td class="cdesc">Utility bonus if assertion passed. Negative for failures.</td></tr>
+          <tr><td class="cn">retries_used</td><td class="ct">INTEGER</td><td class="cdesc">How many retries the arbiter used.</td></tr>
+          <tr><td class="cn">latency_ms</td><td class="ct">REAL</td><td class="cdesc">Time spent running this assertion.</td></tr>
+          <tr><td class="cn">domain / policy_name</td><td class="ct">TEXT</td><td class="cdesc">Context for filtering.</td></tr>
+        </tbody>
+      </table>
+      <div class="idx">idx_assertion_events_session · idx_assertion_events_name · idx_assertion_events_created</div>
+    </div>
+
+    <!-- ── V1.1-VERITAS TABLES ──────────────────────────────────────────── -->
+    <hr class="divider">
+    <h2>v1.1-veritas backport tables</h2>
+
+    <div class="callout green">
+      These tables were added in the <strong>Phase 13 backport</strong> from AUA-Veritas.
+      They ship in <code>aua/state.py</code> and are initialised alongside the core tables.
+      See <a href="../aua_roadmap.html#milestone-v1-1">v1.1-veritas roadmap</a> for implementation rules.
+    </div>
+
+    <div class="tbl-group" id="conversations">
+      <div class="tbl-label" style="background:#ecfdf5;color:#065f46">v1.1-veritas</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">conversations</div>
+      <p class="tbl-desc">Named chat sessions. The root entity for the Chat Session API (U-01). Supports project scoping via <code>project_id</code>.</p>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">conversation_id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">UUID v4.</td></tr>
+          <tr><td class="cn">user_id</td><td class="ct">TEXT</td><td class="cdesc">Default <code>'local'</code>. Multi-user: set to token sub.</td></tr>
+          <tr><td class="cn">title</td><td class="ct">TEXT</td><td class="cdesc">Display title. PATCH /conversations/{id}/title to update.</td></tr>
+          <tr><td class="cn">project_id</td><td class="ct">TEXT</td><td class="cdesc"><code>NULL</code> = global. FK to <code>projects.project_id</code>.</td></tr>
+          <tr><td class="cn">created_at / updated_at</td><td class="ct">REAL</td><td class="cdesc"><code>updated_at</code> refreshed on every message write.</td></tr>
+        </tbody>
+      </table>
+      <div class="idx">idx_conv_project · idx_conv_user</div>
+    </div>
+
+    <div class="tbl-group" id="messages">
+      <div class="tbl-label" style="background:#ecfdf5;color:#065f46">v1.1-veritas</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">messages</div>
+      <p class="tbl-desc">User and assistant messages. Pagination via <code>created_at</code> timestamp cursors. Content is AES-encrypted in production deployments (configure via <code>aua/encryption.py</code>).</p>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">message_id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">UUID v4.</td></tr>
+          <tr><td class="cn">conversation_id</td><td class="ct">TEXT</td><td class="cdesc">FK to <code>conversations</code>.</td></tr>
+          <tr><td class="cn">role</td><td class="ct">TEXT</td><td class="cdesc"><code>'user'</code> | <code>'assistant'</code>.</td></tr>
+          <tr><td class="cn">content</td><td class="ct">TEXT</td><td class="cdesc">Plaintext or ciphertext. Encrypted in production.</td></tr>
+          <tr><td class="cn">callout_type</td><td class="ct">TEXT</td><td class="cdesc"><code>'disagreement'</code> | <code>'correction'</code> | <code>NULL</code>. Controls Chat UI card rendering.</td></tr>
+          <tr><td class="cn">models_used</td><td class="ct">TEXT</td><td class="cdesc">JSON list of specialist IDs that answered.</td></tr>
+          <tr><td class="cn">accuracy_level</td><td class="ct">TEXT</td><td class="cdesc"><code>'fast'</code> | <code>'balanced'</code> | <code>'high'</code> | <code>'maximum'</code>.</td></tr>
+          <tr><td class="cn">confidence</td><td class="ct">TEXT</td><td class="cdesc">VCG confidence label: <code>'High'</code> | <code>'Medium'</code> | <code>'Uncertain'</code>.</td></tr>
+          <tr><td class="cn">created_at</td><td class="ct">REAL</td><td class="cdesc">Pagination cursor.</td></tr>
+        </tbody>
+      </table>
+      <div class="idx">idx_msg_conv · idx_msg_created</div>
+    </div>
+
+    <div class="tbl-group" id="model_runs">
+      <div class="tbl-label" style="background:#ecfdf5;color:#065f46">v1.1-veritas</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">model_runs</div>
+      <p class="tbl-desc">One row per specialist per query. Tracks VCG welfare scores, latency, domain, and whether this specialist won. Data source for reliability analytics.</p>
+      <div class="note"><strong>Phase 13 rule:</strong> <code>conversation_id</code> must be passed as an <em>explicit parameter</em> to every method that writes a model_run — never rely on closure capture. Without it there is no join path between a conversation and its model runs.</div>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">run_id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">UUID v4.</td></tr>
+          <tr><td class="cn">query_id</td><td class="ct">TEXT</td><td class="cdesc">Groups all specialist runs for a single query (loose ref).</td></tr>
+          <tr><td class="cn">conversation_id</td><td class="ct">TEXT</td><td class="cdesc">FK to <code>conversations</code>. Required join column.</td></tr>
+          <tr><td class="cn">specialist</td><td class="ct">TEXT</td><td class="cdesc">Specialist identifier.</td></tr>
+          <tr><td class="cn">round</td><td class="ct">TEXT</td><td class="cdesc"><code>'answer'</code> | <code>'peer_review'</code>.</td></tr>
+          <tr><td class="cn">utility_score / confidence_score / vcg_welfare_score</td><td class="ct">REAL</td><td class="cdesc">Scores from the utility and VCG mechanisms.</td></tr>
+          <tr><td class="cn">vcg_winner</td><td class="ct">INTEGER</td><td class="cdesc"><code>1</code> if VCG selected this specialist.</td></tr>
+          <tr><td class="cn">corrections_applied</td><td class="ct">TEXT</td><td class="cdesc">JSON list of correction IDs injected into this specialist's prompt.</td></tr>
+          <tr><td class="cn">latency_ms</td><td class="ct">REAL</td><td class="cdesc">Wall-clock request-to-first-token.</td></tr>
+          <tr><td class="cn">domain / domain_l0 / domain_path</td><td class="ct">TEXT</td><td class="cdesc">Domain classification hierarchy.</td></tr>
+          <tr><td class="cn">created_at</td><td class="ct">REAL</td><td class="cdesc"></td></tr>
+        </tbody>
+      </table>
+      <div class="idx">idx_runs_conv · idx_runs_specialist</div>
+    </div>
+
+    <div class="tbl-group" id="token_counters">
+      <div class="tbl-label" style="background:#ecfdf5;color:#065f46">v1.1-veritas</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">token_counters</div>
+      <p class="tbl-desc">Shadow token counter per specialist per conversation. Resets to 0 after a context backup is stored (new thread begins). Three backup triggers read from this table: token threshold, message count, time gap.</p>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">counter_id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">UNIQUE(specialist, conversation_id).</td></tr>
+          <tr><td class="cn">specialist / conversation_id</td><td class="ct">TEXT</td><td class="cdesc">Composite key.</td></tr>
+          <tr><td class="cn">token_estimate</td><td class="ct">INTEGER</td><td class="cdesc">chars/4 heuristic. Resets to 0 after backup.</td></tr>
+          <tr><td class="cn">message_count</td><td class="ct">INTEGER</td><td class="cdesc">Messages since last backup. Triggers at 30.</td></tr>
+          <tr><td class="cn">thread_number</td><td class="ct">INTEGER</td><td class="cdesc">Matches <code>context_backups.thread_number</code> for current window.</td></tr>
+          <tr><td class="cn">updated_at</td><td class="ct">REAL</td><td class="cdesc"></td></tr>
+        </tbody>
+      </table>
+      <div class="idx">idx_counters_conv</div>
+    </div>
+
+    <div class="tbl-group" id="message_keywords">
+      <div class="tbl-label" style="background:#ecfdf5;color:#065f46">v1.1-veritas</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">message_keywords</div>
+      <p class="tbl-desc">Inverted index backing full-text search. Written asynchronously by a queue-based keyword worker. A sorted in-memory list enables O(log n) prefix matching via <code>bisect</code>. The DB table survives restarts — rebuilt into memory at startup.</p>
+      <div class="note"><strong>Closure-scope trap (Phase 13):</strong> the keyword worker closure inside <code>lifespan()</code> must import time locally — it cannot reference module-level aliases imported later in the same body. This bug silently broke search in every session for months.</div>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">keyword + message_id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">Composite primary key.</td></tr>
+          <tr><td class="cn">conversation_id</td><td class="ct">TEXT</td><td class="cdesc">Redundant with messages for direct query without join.</td></tr>
+          <tr><td class="cn">role</td><td class="ct">TEXT</td><td class="cdesc"><code>'user'</code> | <code>'assistant'</code>.</td></tr>
+          <tr><td class="cn">created_at</td><td class="ct">REAL</td><td class="cdesc"></td></tr>
+        </tbody>
+      </table>
+      <div class="idx">idx_kw_conv</div>
+    </div>
+
+    <div class="tbl-group" id="context_backups">
+      <div class="tbl-label" style="background:#ecfdf5;color:#065f46">v1.1-veritas</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">context_backups</div>
+      <p class="tbl-desc">Structured handoff notes written by each specialist every ~30 messages or at 70% context pressure. A new context window receiving this backup can resume without re-briefing. Append-only.</p>
+      <div class="note"><strong>Validity check:</strong> <code>MAX(context_backups.created_at WHERE specialist=S, conversation_id=C) &gt; MAX(messages.created_at WHERE conversation_id=C)</code>. <code>backup_is_valid()</code> encapsulates this. The 6-hour coverage job finds and fills gaps.</div>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">backup_id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">UUID v4.</td></tr>
+          <tr><td class="cn">conversation_id / specialist</td><td class="ct">TEXT</td><td class="cdesc">Composite lookup key.</td></tr>
+          <tr><td class="cn">trigger</td><td class="ct">TEXT</td><td class="cdesc"><code>'token_threshold'</code> | <code>'message_count'</code> | <code>'time_gap'</code> | <code>'manual'</code> | <code>'coverage_job_no_backup'</code>.</td></tr>
+          <tr><td class="cn">thread_number</td><td class="ct">INTEGER</td><td class="cdesc">Increments each time a backup triggers a counter reset.</td></tr>
+          <tr><td class="cn">backup_text</td><td class="ct">TEXT</td><td class="cdesc">6-section structured note: GOAL / DECISIONS / STATUS / ACTIVE FILE / PREFERENCES / RESUME.</td></tr>
+          <tr><td class="cn">token_estimate</td><td class="ct">INTEGER</td><td class="cdesc">chars/4. Used by coverage reporting.</td></tr>
+          <tr><td class="cn">created_at</td><td class="ct">REAL</td><td class="cdesc">Append-only — rows never deleted.</td></tr>
+        </tbody>
+      </table>
+      <div class="idx">idx_backup_conv</div>
+    </div>
+
+    <div class="tbl-group" id="projects">
+      <div class="tbl-label" style="background:#ecfdf5;color:#065f46">v1.1-veritas</div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;margin-bottom:.4rem">projects</div>
+      <p class="tbl-desc">Named groups for scoping conversations. When a project is active, only that project's conversations are shown and new conversations are automatically assigned to it.</p>
+      <table>
+        <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="cn pk">project_id<span class="pk-tag">PK</span></td><td class="ct">TEXT</td><td class="cdesc">UUID v4. Referenced by <code>conversations.project_id</code>.</td></tr>
+          <tr><td class="cn">user_id</td><td class="ct">TEXT</td><td class="cdesc">Owner. Default <code>'local'</code>.</td></tr>
+          <tr><td class="cn">name</td><td class="ct">TEXT</td><td class="cdesc">Display name (e.g. <code>'Immigration Law'</code>).</td></tr>
+          <tr><td class="cn">created_at</td><td class="ct">REAL</td><td class="cdesc"></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- .body -->
+</main>
+</div><!-- .layout -->
+
+<script>
+const sections = document.querySelectorAll('.tbl-group[id]')
+const links = document.querySelectorAll('.sidebar nav a')
+const obs = new IntersectionObserver(e => {
+  e.forEach(entry => {
+    if (entry.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'))
+      const a = document.querySelector(`.sidebar nav a[href="#${entry.target.id}"]`)
+      if (a) a.classList.add('active')
+    }
+  })
+}, {rootMargin: '-10% 0px -75% 0px'})
+sections.forEach(s => obs.observe(s))
+</script>
+</body>
+</html>

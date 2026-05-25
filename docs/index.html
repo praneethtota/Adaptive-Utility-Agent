@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Documentation — AUA Framework v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f2;--paper:#fff;--ink:#18181b;--muted:#6b7280;--line:#e4e1da;--accent:#4338ca;--soft:#f0ede6;--code-bg:#1e1e2e;--code-text:#cdd6f4;--tag-bg:#eef2ff;--tag-text:#4338ca;--green:#0f766e;--green-bg:#ecfdf5}
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;font-size:15px;line-height:1.75;color:var(--ink);background:var(--bg);margin:0}
+.page{max-width:1060px;margin:0 auto;background:var(--paper);border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
+.topbar{display:flex;align-items:center;gap:1rem;padding:.75rem 2rem;border-bottom:1px solid var(--line);background:#fafaf8;font-size:.82rem;flex-wrap:wrap}
+.topbar a{color:var(--muted);text-decoration:none}
+.topbar a:hover{color:var(--accent)}
+.topbar-sep{color:#ccc}
+.topbar a.here{color:var(--accent);font-weight:600}
+.hero{padding:2.25rem 2.5rem 1.5rem;border-bottom:1px solid var(--line);background:linear-gradient(160deg,#f0ede6 0%,#fff 60%)}
+.hero-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:var(--tag-bg);color:var(--tag-text);padding:.22rem .65rem;border-radius:999px;margin-bottom:.9rem}
+.hero h1{font-family:'DM Serif Display',Georgia,serif;font-size:1.9rem;line-height:1.2;margin:0 0 .5rem}
+.hero p{font-size:.93rem;color:#555;max-width:580px;line-height:1.65;margin:0}
+.tabs{border-bottom:2px solid var(--line);padding:0 2.5rem;display:flex;gap:0;flex-wrap:wrap;background:#fafaf8;position:sticky;top:0;z-index:10}
+.tab-btn{font-family:'DM Sans',sans-serif;font-size:.83rem;font-weight:500;padding:.75rem 1.1rem;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;color:var(--muted);transition:all .15s;white-space:nowrap}
+.tab-btn:hover{color:var(--ink)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tab-panel{display:none;padding:2rem 2.5rem 4rem}
+.tab-panel.active{display:block}
+.tab-panel h1{font-family:'DM Serif Display',Georgia,serif;font-size:1.7rem;margin:0 0 .5rem;padding-bottom:.75rem;border-bottom:2px solid var(--line);color:var(--ink)}
+.tab-panel h2{font-family:'DM Serif Display',Georgia,serif;font-size:1.25rem;margin:2.25rem 0 .5rem;padding-bottom:.4rem;border-bottom:1px solid var(--line);color:var(--ink)}
+.tab-panel h3{font-size:1rem;font-weight:600;margin:1.5rem 0 .4rem;color:#222}
+.tab-panel h4{font-size:.92rem;font-weight:600;margin:1.2rem 0 .3rem;color:#333}
+.tab-panel p{margin:0 0 .9rem;font-size:.9rem;color:#333;line-height:1.7}
+.tab-panel p:empty,.tab-panel br{display:none}
+.tab-panel li{font-size:.9rem;color:#333;margin:.25rem 0;line-height:1.65}
+.tab-panel ul,.tab-panel ol{margin:.4rem 0 1rem;padding-left:1.4rem}
+.tab-panel code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:#f2f0eb;padding:2px 6px;border-radius:4px;color:#333}
+.tab-panel pre{background:var(--code-bg);color:var(--code-text);border-radius:8px;padding:1rem 1.25rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.79rem;line-height:1.7;margin:.75rem 0 1.5rem}
+.tab-panel pre code{background:none;color:inherit;padding:0;font-size:inherit}
+.tab-panel table{width:100%;border-collapse:collapse;font-size:.84rem;margin:1rem 0 1.5rem;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.tab-panel th{text-align:left;padding:8px 12px;background:#f7f6f2;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--line)}
+.tab-panel td{padding:8px 12px;border-bottom:1px solid #f0ede6;vertical-align:top;line-height:1.55}
+.tab-panel tr:last-child td{border-bottom:none}
+.tab-panel hr{border:none;border-top:1px solid var(--line);margin:2rem 0}
+.tab-panel strong{color:var(--ink)}
+.db-link{display:inline-flex;align-items:center;gap:8px;background:var(--green-bg);border:1px solid #6ee7b7;color:#065f46;padding:.6rem 1.1rem;border-radius:8px;font-size:.88rem;font-weight:600;text-decoration:none;margin:1rem 0}
+.db-link:hover{background:#d1fae5}
+@media(max-width:680px){.tab-panel{padding:1.5rem 1.25rem 3rem}.hero{padding:1.75rem 1.25rem 1.25rem}.tabs{padding:0 .75rem}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <a href="../tutorial.html">Tutorial</a><span class="topbar-sep">›</span>
+    <a href="../aua_roadmap.html">Roadmap</a><span class="topbar-sep">›</span>
+    <a href="index.html" class="here">Docs</a>
+  </div>
+  <div class="hero">
+    <div class="hero-tag">AUA Framework v1.0 — Documentation</div>
+    <h1>Technical Documentation</h1>
+    <p>Architecture specification, deployment profiles, compatibility matrix, permission scopes, validation report, and supplemental roadmap — all rendered here for easy reading.</p>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn" data-tab="architecture" onclick="showTab('architecture')">Architecture</button>
+<button class="tab-btn" data-tab="deployment" onclick="showTab('deployment')">Deployment Profiles</button>
+<button class="tab-btn" data-tab="compatibility" onclick="showTab('compatibility')">Compatibility</button>
+<button class="tab-btn" data-tab="permissions" onclick="showTab('permissions')">Permission Scopes</button>
+<button class="tab-btn" data-tab="validation" onclick="showTab('validation')">Validation Report</button>
+<button class="tab-btn" data-tab="supplemental" onclick="showTab('supplemental')">Supplemental Roadmap</button>
+    <a href="db_schema.html" class="tab-btn" style="color:var(--green);border-bottom-color:transparent">DB Schema ↗</a>
+  </div>
+  <div class="panels">
+    <div class="tab-panel" id="tab-architecture"><h1>AUA Framework v1 — Architecture Specification</h1>
+<br>
+<p><strong>Version:</strong> 0.8.0b0  </p>
+<p><strong>Status:</strong> Canonical. Implementation must match this document. Divergence = a bug.</p>
+<br>
+<hr>
+<br>
+<h2>1. System Overview</h2>
+<br>
+<p>AUA (Adaptive Utility Agents) is a multi-specialist LLM routing framework. It routes queries to domain-expert models, scores outputs using a utility function, detects contradictions, resolves them with an arbiter, and feeds verified corrections back into training.</p>
+<br>
+<p>The design goal is <strong>Django for adaptive multi-model LLM systems</strong> — batteries included, deeply configurable, extensible without editing framework internals.</p>
+<br>
+<hr>
+<br>
+<h2>2. Component Boundaries</h2>
+<br>
+<pre>┌─────────────────────────────────────────────────────┐
+│                    AUA Router                        │
+│                                                      │
+│  ┌──────────┐  ┌───────────┐  ┌─────────────────┐   │
+│  │Middleware │  │  Session  │  │  Correction     │   │
+│  │ Pipeline │  │  Manager  │  │  Retrieval      │   │
+│  └──────────┘  └───────────┘  └─────────────────┘   │
+│                                                      │
+│  ┌──────────────────────────────────────────────┐    │
+│  │          Field Classifier                    │    │
+│  │  (pluggable via FieldClassifierPlugin)       │    │
+│  └──────────────────────────────────────────────┘    │
+│                                                      │
+│  ┌──────────┐  ┌───────────┐  ┌─────────────────┐   │
+│  │  Router  │  │ Specialist│  │ Utility Scorer  │   │
+│  │ Decision │  │  Calls    │  │ (pluggable)     │   │
+│  └──────────┘  └───────────┘  └─────────────────┘   │
+│                                                      │
+│  ┌──────────────────────────────────────────────┐    │
+│  │              Arbiter Agent                   │    │
+│  │  (pluggable policy via ArbiterPolicyPlugin)  │    │
+│  └──────────────────────────────────────────────┘    │
+│                                                      │
+│  ┌──────────┐  ┌───────────┐  ┌─────────────────┐   │
+│  │   Hook   │  │Correction │  │  State Store    │   │
+│  │ Registry │  │  Logger   │  │  (pluggable)    │   │
+│  └──────────┘  └───────────┘  └─────────────────┘   │
+└─────────────────────────────────────────────────────┘
+
+External:
+  Specialist servers  (vLLM / Ollama / custom ModelBackendPlugin)
+  Arbiter server      (same backends)
+  State store         (files / SQLite / Postgres)
+  Observability       (stdout / Prometheus / OTEL)</pre>
+<br>
+<hr>
+<br>
+<h2>3. Full Request Lifecycle</h2>
+<br>
+<p>Every query follows this pipeline in order. Steps marked <code>[pluggable]</code> can be replaced or extended via plugins/hooks.</p>
+<br>
+<pre> 1. HTTP Request arrives at router
+    └─ session_id / trace_id / request_id assigned (UUID if not supplied)
+
+ 2. Middleware pipeline — before_query() [pluggable]
+    └─ PII redaction, tenant policy, rate limiting, auth check
+
+ 3. Session lookup
+    └─ Retrieve prior session context from state store (if session_id known)
+
+ 4. Correction retrieval
+    └─ Load relevant verified claims from AssertionsStore for this domain
+
+ 5. Field Classifier [pluggable]
+    └─ Scores query against all known fields → domain_distribution dict
+    └─ Emits: primary_domain, domain_distribution, routing_mode decision
+
+ 6. Routing decision
+    ├─ single: one field above single_domain_threshold → one specialist
+    ├─ fanout: multiple fields above fanout_threshold → multiple specialists
+    └─ force_domain: override from request
+
+ 7. Specialist calls [pluggable via ModelBackendPlugin]
+    └─ POST to specialist endpoint with correction context injected
+    └─ Timeout: specialist_timeout (default 60s) → AUA_SPECIALIST_TIMEOUT
+
+ 8. Utility Scoring [pluggable]
+    └─ U = w_e·E + w_c·C + w_k·K per specialist response
+    └─ Kalman filter updates confidence estimate
+
+ 9. Arbiter [pluggable policy]
+    └─ Runs if: fanout + contradiction detected
+    └─ 4 checks: logical, mathematical, cross-session, empirical
+    └─ Issues Case 1/2/3/4 verdict → correction signal
+
+10. Hook registry — on_correction / on_promotion / etc. [pluggable]
+    └─ Fire registered hooks for this event type
+
+11. Correction logging
+    └─ Store DPO pair to state store (if arbiter issued correction)
+    └─ Update AssertionsStore with verified claim
+
+12. Response assembly
+    └─ RouterResponse model with session_id, u_score, routing_mode, response
+
+13. Middleware pipeline — after_response() [pluggable]
+    └─ Response transformation, audit logging
+
+14. Metrics / Logs / Traces / Audit
+    └─ Structured JSON to stdout
+    └─ Prometheus metrics (if observability profile enabled)
+    └─ OTEL traces (if otel extra installed)
+    └─ Audit log entry written to state store (append-only, hash chain)</pre>
+<br>
+<hr>
+<br>
+<h2>4. Component Ownership</h2>
+<br>
+<table>
+<thead><tr><th>ComponentModuleOwner interface</th></tr></thead><tbody>
+<tr><td>Field classifier</td><td><code>aua.field_classifier</code></td><td><code>FieldClassifierPlugin</code></td></tr>
+<tr><td>Utility scorer</td><td><code>aua.utility_scorer</code></td><td><code>UtilityScorerPlugin</code></td></tr>
+<tr><td>Arbiter policy</td><td><code>aua.arbiter</code></td><td><code>ArbiterPolicyPlugin</code></td></tr>
+<tr><td>Promotion policy</td><td><code>aua.blue_green</code></td><td><code>PromotionPolicyPlugin</code></td></tr>
+<tr><td>Correction store</td><td><code>aua.assertions_store</code></td><td><code>CorrectionStorePlugin</code></td></tr>
+<tr><td>Model backend</td><td><code>aua.router</code> (http calls)</td><td><code>ModelBackendPlugin</code></td></tr>
+<tr><td>State store</td><td><code>aua.state</code></td><td><code>StateStorePlugin</code></td></tr>
+<tr><td>Hooks</td><td><code>aua.hooks</code></td><td><code>HookPlugin</code></td></tr>
+<tr><td>Middleware</td><td><code>aua.middleware</code></td><td><code>AUAMiddleware</code></td></tr>
+</tbody></table>
+<br>
+<p>All plugin types are defined in <code>aua/plugins/interfaces.py</code> as Python <code>Protocol</code> classes.</p>
+<br>
+<hr>
+<br>
+<h2>5. Plugin Loading Lifecycle</h2>
+<br>
+<pre>1. Config loaded (load_config)
+2. For each plugin reference in config:
+   a. Resolve import_path: "module.path:ClassName"
+   b. Import module
+   c. Instantiate class with config dict injected
+   d. Validate against Protocol (runtime isinstance check)
+   e. Register in plugin registry
+3. Router initialised with plugin registry
+4. On SIGHUP: reload config → re-run steps 1-5 atomically</pre>
+<br>
+<p>Plugins are validated at startup. A failed plugin load causes startup to abort with <code>AUA_PLUGIN_LOAD_FAILED</code>.</p>
+<br>
+<hr>
+<br>
+<h2>6. Hook Execution Order</h2>
+<br>
+<p>For each hook point, hooks fire in YAML registration order:</p>
+<br>
+<pre>pre_query → [middleware.before_query] → post_route → pre_specialist_call
+→ post_specialist_call → pre_arbiter → post_arbiter → on_correction
+→ pre_response → [middleware.after_response] → post_response
+→ on_promotion / on_rollback (async, not in request path)</pre>
+<br>
+<p>Hook failures default to <strong>fail-open</strong> (log + continue). Set <code>hooks.{name}.fail_closed: true</code> to abort on failure.</p>
+<br>
+<hr>
+<br>
+<h2>7. Observability Flow</h2>
+<br>
+<pre>Every request → structured JSON log line (stdout)
+             → Prometheus counter/histogram increment (if enabled)
+             → OTEL span (if aua[otel] installed)
+             → Audit log entry (state store, append-only)
+
+Key metrics:
+  aua_queries_total{domain, routing_mode, status}
+  aua_query_latency_seconds{domain, routing_mode}
+  aua_utility_score{domain}
+  aua_contradiction_rate{domain}
+  aua_arbiter_verdict_total{case}
+  aua_specialist_errors_total{specialist, error_code}</pre>
+<br>
+<hr>
+<br>
+<h2>8. Security Boundary</h2>
+<br>
+<li>Only the router port (default 8000) is public-facing.</li>
+<li>Specialist ports are internal — bind to <code>127.0.0.1</code> or Docker internal network.</li>
+<li>Extension endpoints (<code>/extensions/*</code>) are disabled in production mode.</li>
+<li>All external endpoints require bearer token auth (v0.9+).</li>
+<li>Secrets are never logged, traced, or returned via <code>GET /config</code>.</li>
+<li>Audit log is append-only with a hash chain for tamper detection (v0.9+).</li>
+<br>
+<hr>
+<br>
+<h2>9. State Store</h2>
+<br>
+<p>All persistent state goes through the <code>StateStore</code> interface:</p>
+<br>
+<table>
+<thead><tr><th>Datav0.7 locationv0.8+ (default)</th></tr></thead><tbody>
+<tr><td>Promotion log</td><td><code>.aua/state/promotions.jsonl</code></td><td>SQLite: <code>promotions</code> table</td></tr>
+<tr><td>Correction pairs</td><td><code>dpo_pairs/*.jsonl</code></td><td>SQLite: <code>corrections</code> table</td></tr>
+<tr><td>Assertions</td><td>In-memory (AssertionsStore)</td><td>SQLite: <code>assertions</code> table</td></tr>
+<tr><td>Sessions</td><td>None</td><td>SQLite: <code>sessions</code> table</td></tr>
+<tr><td>Audit log</td><td>None</td><td>SQLite: <code>audit_log</code> table</td></tr>
+</tbody></table>
+<br>
+<p>Migration from v0.7 flat files: <code>aua config migrate --from 0.7 --to 0.8</code></p>
+<br>
+<hr>
+<br>
+<h2>10. Extension Points Summary</h2>
+<br>
+<p>Users extend AUA by adding YAML entries — never by editing framework source files.</p>
+<br>
+<pre># Custom utility scorer
+utility_scorer:
+  import_path: plugins.custom_utility:RiskWeightedUtilityScorer
+  config:
+    risk_weight: 0.7
+
+# Custom middleware
+middleware:
+  - import_path: plugins.middleware:PIIRedactionMiddleware
+  - import_path: plugins.middleware:AuditMiddleware
+
+# Custom hook
+hooks:
+  on_correction:
+    - import_path: plugins.hooks:SlackNotificationHook
+      config:
+        webhook_url_secret: SLACK_WEBHOOK_URL
+
+# Custom backend
+backends:
+  my_gateway:
+    import_path: plugins.backends:GatewayBackend
+    base_url: https://gateway.internal
+    auth_secret: GATEWAY_API_KEY</pre>
+<br>
+<hr>
+<br>
+<p><em>Document maintained by: Praneeth Tota. Last updated: v0.8.0b0. For implementation questions, check this document first.</em></p>
+<br></div>
+<div class="tab-panel" id="tab-deployment"><h1>AUA Framework v1 — Deployment Profiles</h1>
+<br>
+<p><strong>Version:</strong> 1.0.0  </p>
+<p><strong>Status:</strong> Canonical. Each profile defines minimum requirements and recommended settings.</p>
+<br>
+<hr>
+<br>
+<h2>Overview</h2>
+<br>
+<p>AUA ships with four deployment profiles. Choose the profile that matches your environment, then use <code>aua init</code> with the appropriate tier and configure security accordingly.</p>
+<br>
+<table>
+<thead><tr><th>ProfileAuthStatemTLSObservabilityUse case</th></tr></thead><tbody>
+<tr><td>Local Developer</td><td>Optional</td><td>SQLite</td><td>No</td><td>Optional</td><td>Solo dev, experimentation</td></tr>
+<tr><td>Single GPU Workstation</td><td>Recommended</td><td>SQLite</td><td>No</td><td>Optional</td><td>Personal GPU server</td></tr>
+<tr><td>Team Server</td><td>Required</td><td>Postgres/SQLite</td><td>Required</td><td>Required</td><td>Shared team deployment</td></tr>
+<tr><td>Enterprise</td><td>Required + IAM</td><td>Postgres</td><td>Required</td><td>Required</td><td>Production, regulated</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>Profile 1 — Local Developer</h2>
+<br>
+<p><strong>Target:</strong> MacBook Pro / laptop. Ollama backend. No GPU required.</p>
+<br>
+<pre># aua_config.yaml
+aua:
+  version: "1.0"
+  backend: ollama
+
+security:
+  auth_enabled: false   # acceptable for localhost-only
+
+state:
+  backend: sqlite
+  path: .aua/state/aua.db
+
+logging:
+  level: INFO
+  format: text           # human-readable for local dev</pre>
+<br>
+<p><strong>Setup:</strong></p>
+<pre>brew install ollama
+aua init . --tier macbook --preset coding
+aua doctor
+aua serve</pre>
+<br>
+<p><strong>Doctor checks for this profile:</strong></p>
+<li>Ollama reachable at port 11434</li>
+<li>Required models pulled</li>
+<li>Auth disabled warning (non-fatal on localhost)</li>
+<br>
+<p><strong>Limitations:</strong></p>
+<li>Not suitable for network exposure</li>
+<li>Single user only</li>
+<li>No authentication enforced</li>
+<br>
+<hr>
+<br>
+<h2>Profile 2 — Single GPU Workstation</h2>
+<br>
+<p><strong>Target:</strong> RTX 4090 or similar consumer GPU. vLLM backend. Single user or small team on LAN.</p>
+<br>
+<pre>aua:
+  version: "1.0"
+  backend: vllm
+
+security:
+  auth_enabled: true
+  token_secret_env: AUA_TOKEN_SECRET
+
+state:
+  backend: sqlite
+  path: .aua/state/aua.db
+
+logging:
+  level: INFO
+  format: json</pre>
+<br>
+<p><strong>Setup:</strong></p>
+<pre>export AUA_TOKEN_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+aua init . --tier single-4090 --preset coding
+aua token create --scope aua:query --expires 90d --label "primary"
+aua doctor --strict
+aua serve</pre>
+<br>
+<p><strong>Doctor checks for this profile:</strong></p>
+<li>CUDA available</li>
+<li>VRAM sufficient for configured specialists</li>
+<li>Auth enabled</li>
+<li>Token secret set</li>
+<br>
+<hr>
+<br>
+<h2>Profile 3 — Team Server</h2>
+<br>
+<p><strong>Target:</strong> Dedicated Linux server, RTX 4090 or A100. Shared team access. Prometheus + Grafana monitoring.</p>
+<br>
+<pre>aua:
+  version: "1.0"
+  backend: vllm
+
+security:
+  auth_enabled: true
+  token_secret_env: AUA_TOKEN_SECRET
+  mtls:
+    enabled: true
+    cert_dir: /etc/aua/certs
+    auto_generate: false    # use your own CA in production
+
+state:
+  backend: sqlite           # or postgres for HA
+  path: /var/lib/aua/state/aua.db
+
+logging:
+  level: INFO
+  format: json
+  output: /var/log/aua/router.log
+
+rate_limits:
+  aua:query:
+    requests_per_minute: 120
+  aua:admin:
+    requests_per_minute: 10</pre>
+<br>
+<p><strong>Setup:</strong></p>
+<pre># Generate certs (or use your own CA)
+aua certs generate --cert-dir /etc/aua/certs
+
+# Create tokens per team member
+aua token create --scope aua:query --scope aua:stream --expires 30d --label "team-alice"
+aua token create --scope aua:admin --expires 1d --label "ci-deploy"
+
+# Start with observability
+docker compose --profile obs up prometheus grafana -d
+aua serve</pre>
+<br>
+<p><strong>Doctor checks for this profile:</strong></p>
+<li>Auth enabled (fatal if disabled)</li>
+<li>mTLS certs present and not expired</li>
+<li>Rate limits configured</li>
+<li>Prometheus reachable</li>
+<br>
+<hr>
+<br>
+<h2>Profile 4 — Enterprise</h2>
+<br>
+<p><strong>Target:</strong> Multi-GPU cluster, regulated environment, audit requirements.</p>
+<br>
+<pre>aua:
+  version: "1.0"
+  backend: vllm
+
+secrets:
+  provider: vault          # or: aws, gcp
+  vault_url: https://vault.internal
+  token_env: VAULT_TOKEN
+
+security:
+  auth_enabled: true
+  token_secret_env: AUA_TOKEN_SECRET
+  mtls:
+    enabled: true
+    cert_dir: /etc/aua/certs
+    auto_generate: false
+  encryption:
+    enabled: true
+    key_secret: AUA_ENCRYPTION_KEY
+
+state:
+  backend: sqlite           # postgres recommended for HA
+  path: /var/lib/aua/state/aua.db
+
+logging:
+  level: INFO
+  format: json
+  output: stdout            # forward to ELK/Splunk via log aggregator
+
+rate_limits:
+  aua:query:
+    requests_per_minute: 300
+  aua:admin:
+    requests_per_minute: 5
+
+# Disable development features
+extensions:
+  runtime_import_enabled: false   # never allow runtime plugin loading
+  allowlist_only: true</pre>
+<br>
+<p><strong>Additional requirements:</strong></p>
+<li>All secrets via Vault/AWS SM/GCP SM — no plaintext in config</li>
+<li>Encryption at rest enabled (AES-256-GCM)</li>
+<li>Audit log verified via hash chain integrity check</li>
+<li>Extension runtime API disabled</li>
+<li>mTLS between all components</li>
+<li>Prometheus + Grafana + alert routing to PagerDuty/Slack</li>
+<li>Token expiry ≤ 30 days, rotation enforced</li>
+<br>
+<p><strong>Doctor checks for this profile:</strong></p>
+<li>All of Profile 3 checks</li>
+<li>Secrets provider reachable</li>
+<li>Encryption key set</li>
+<li>Runtime import disabled</li>
+<li>Audit log hash chain valid</li>
+<br>
+<hr>
+<br>
+<h2>Doctor Profile Validation</h2>
+<br>
+<p>Run with <code>--strict</code> to enforce profile requirements:</p>
+<br>
+<pre>aua doctor --strict</pre>
+<br>
+<p>Exit codes:</p>
+<li><code>0</code> — all checks pass</li>
+<li><code>1</code> — one or more checks failed</li>
+<li><code>2</code> — warnings in strict mode (treated as failures)</li>
+<br>
+<p>The doctor automatically detects which profile you're running based on your config and applies the appropriate check set.</p>
+<br>
+<hr>
+<br>
+<h2>Upgrading Between Profiles</h2>
+<br>
+<p>Profile 1 → 2: Enable auth, set <code>AUA_TOKEN_SECRET</code>, create tokens.  </p>
+<p>Profile 2 → 3: Add mTLS, configure rate limits, add observability stack.  </p>
+<p>Profile 3 → 4: Add secrets manager, enable encryption, disable runtime imports.</p>
+<br>
+<p>Migration: <code>aua config migrate --from 0.9 --to 1.0</code></p>
+<br></div>
+<div class="tab-panel" id="tab-compatibility"><h1>AUA Framework v1 — Compatibility Matrix</h1>
+<br>
+<p><strong>Version:</strong> 1.0.0</p>
+<br>
+<hr>
+<br>
+<h2>Python</h2>
+<br>
+<table>
+<thead><tr><th>VersionStatusNotes</th></tr></thead><tbody>
+<tr><td>3.10</td><td>✓ Supported</td><td>Minimum version</td></tr>
+<tr><td>3.11</td><td>✓ Supported</td><td>Recommended</td></tr>
+<tr><td>3.12</td><td>✓ Supported</td><td>Tested in CI</td></tr>
+<tr><td>3.9</td><td>✗ Not supported</td><td>f-string syntax incompatible</td></tr>
+<tr><td>3.13</td><td>⚠ Experimental</td><td>Not yet in CI matrix</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>Operating Systems</h2>
+<br>
+<table>
+<thead><tr><th>OSBackendNotes</th></tr></thead><tbody>
+<tr><td>macOS (Apple Silicon M1/M2/M3/M4)</td><td>Ollama only</td><td>vLLM has no macOS support</td></tr>
+<tr><td>macOS (Intel)</td><td>Ollama only</td><td>CPU inference only</td></tr>
+<tr><td>Ubuntu 20.04+</td><td>vLLM + Ollama</td><td>Recommended for production</td></tr>
+<tr><td>Debian 11+</td><td>vLLM + Ollama</td></tr>
+<tr><td>RHEL/Rocky 8+</td><td>vLLM + Ollama</td></tr>
+<tr><td>Windows</td><td>Not tested</td><td>Use WSL2 + Ubuntu</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>GPU & VRAM</h2>
+<br>
+<table>
+<thead><tr><th>GPUVRAMTierMax simultaneous specialists</th></tr></thead><tbody>
+<tr><td>Apple M-series (unified)</td><td>16–128 GB</td><td>macbook</td><td>3 (via Ollama, sequential)</td></tr>
+<tr><td>NVIDIA RTX 4090</td><td>24 GB</td><td>single-4090</td><td>3 (AWQ, concurrent)</td></tr>
+<tr><td>NVIDIA RTX 3090/4080</td><td>24 GB / 16 GB</td><td>single-4090</td><td>2–3 (may need lower util)</td></tr>
+<tr><td>4× NVIDIA RTX 4090</td><td>96 GB total</td><td>quad-4090</td><td>6–8</td></tr>
+<tr><td>NVIDIA A100 80 GB</td><td>80 GB</td><td>a100-cluster</td><td>4–6 (fp16)</td></tr>
+<tr><td>NVIDIA H100 80 GB</td><td>80 GB</td><td>a100-cluster</td><td>4–6 (fp16)</td></tr>
+</tbody></table>
+<br>
+<p><strong>VRAM estimates (AWQ 4-bit):</strong></p>
+<li>3B model: ~2.5 GB</li>
+<li>7B model: ~5 GB</li>
+<li>14B model: ~9 GB</li>
+<li>32B model: ~20 GB</li>
+<br>
+<hr>
+<br>
+<h2>LLM Backends</h2>
+<br>
+<h3>Ollama</h3>
+<br>
+<table>
+<thead><tr><th>VersionStatusNotes</th></tr></thead><tbody>
+<tr><td>0.3.x</td><td>✓ Supported</td></tr>
+<tr><td>0.4.x</td><td>✓ Supported</td><td>Recommended</td></tr>
+<tr><td>0.5.x+</td><td>✓ Supported</td></tr>
+</tbody></table>
+<br>
+<p><strong>Supported model formats via Ollama:</strong> GGUF (Q4, Q5, Q8), fp16</p>
+<br>
+<h3>vLLM</h3>
+<br>
+<table>
+<thead><tr><th>VersionStatusNotes</th></tr></thead><tbody>
+<tr><td>0.4.x</td><td>✓ Supported</td></tr>
+<tr><td>0.5.x</td><td>✓ Supported</td><td>Recommended</td></tr>
+<tr><td>0.6.x+</td><td>✓ Supported</td></tr>
+</tbody></table>
+<br>
+<p><strong>Supported model formats via vLLM:</strong> AWQ, GPTQ, fp16, bf16</p>
+<br>
+<hr>
+<br>
+<h2>Model Formats</h2>
+<br>
+<table>
+<thead><tr><th>FormatOllamavLLMNotes</th></tr></thead><tbody>
+<tr><td>GGUF (Q4_K_M)</td><td>✓</td><td>✗</td><td>Ollama default</td></tr>
+<tr><td>GGUF (Q5_K_M)</td><td>✓</td><td>✗</td><td>Higher quality</td></tr>
+<tr><td>AWQ</td><td>✗</td><td>✓</td><td>Fastest on GPU</td></tr>
+<tr><td>GPTQ</td><td>✗</td><td>✓</td></tr>
+<tr><td>fp16</td><td>✓ (via Ollama)</td><td>✓</td><td>Full precision</td></tr>
+<tr><td>bf16</td><td>✗</td><td>✓</td><td>A100/H100 only</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>CUDA</h2>
+<br>
+<table>
+<thead><tr><th>CUDA VersionStatusNotes</th></tr></thead><tbody>
+<tr><td>11.8</td><td>✓ Supported</td></tr>
+<tr><td>12.0</td><td>✓ Supported</td></tr>
+<tr><td>12.1</td><td>✓ Supported</td><td>Recommended</td></tr>
+<tr><td>12.2+</td><td>✓ Supported</td></tr>
+</tbody></table>
+<br>
+<p>Requires: <code>nvidia-driver >= 520</code></p>
+<br>
+<hr>
+<br>
+<h2>State Store</h2>
+<br>
+<table>
+<thead><tr><th>BackendStatusNotes</th></tr></thead><tbody>
+<tr><td>SQLite (WAL)</td><td>✓ Default</td><td>All deployments</td></tr>
+<tr><td>Files (JSONL)</td><td>✓ Legacy</td><td>v0.7 compatibility</td></tr>
+<tr><td>PostgreSQL 14+</td><td>✓ Supported</td><td>Team/Enterprise profiles</td></tr>
+<tr><td>PostgreSQL 13</td><td>⚠ Partial</td><td>No JSON operators</td></tr>
+<tr><td>MySQL/MariaDB</td><td>✗ Not supported</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>Observability</h2>
+<br>
+<table>
+<thead><tr><th>ToolVersionStatus</th></tr></thead><tbody>
+<tr><td>Prometheus</td><td>2.x / 3.x</td><td>✓ Supported</td></tr>
+<tr><td>Grafana</td><td>9.x / 10.x / 13.x</td><td>✓ Supported</td></tr>
+<tr><td>OpenTelemetry Collector</td><td>0.80+</td><td>✓ Supported</td></tr>
+<tr><td>Datadog</td><td>Any (via OTEL)</td><td>✓ Supported</td></tr>
+<tr><td>Jaeger</td><td>1.x</td><td>✓ Supported</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>Docker</h2>
+<br>
+<table>
+<thead><tr><th>ToolVersionStatus</th></tr></thead><tbody>
+<tr><td>Docker Engine</td><td>24+</td><td>✓ Supported</td></tr>
+<tr><td>Docker Desktop (Mac)</td><td>4.x</td><td>✓ Supported</td></tr>
+<tr><td>Docker Compose</td><td>v2.x</td><td>✓ Required</td></tr>
+<tr><td>Podman</td><td>4+</td><td>⚠ Experimental</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>Chat UI</h2>
+<br>
+<table>
+<thead><tr><th>BrowserStatus</th></tr></thead><tbody>
+<tr><td>Chrome / Chromium 110+</td><td>✓ Supported</td></tr>
+<tr><td>Firefox 110+</td><td>✓ Supported</td></tr>
+<tr><td>Safari 16+</td><td>✓ Supported</td></tr>
+<tr><td>Edge 110+</td><td>✓ Supported</td></tr>
+</tbody></table>
+<br>
+<p><strong>Runtime:</strong> Node.js 18+ required for <code>aua ui</code> / <code>aua serve --with-ui</code></p>
+<br>
+<hr>
+<br>
+<h2>Python Dependencies (key packages)</h2>
+<br>
+<table>
+<thead><tr><th>PackageMin versionNotes</th></tr></thead><tbody>
+<tr><td>fastapi</td><td>0.100+</td></tr>
+<tr><td>uvicorn</td><td>0.20+</td></tr>
+<tr><td>httpx</td><td>0.25+</td></tr>
+<tr><td>pydantic</td><td>2.0+</td><td>v1 not supported</td></tr>
+<tr><td>click</td><td>8.0+</td></tr>
+<tr><td>rich</td><td>13.0+</td></tr>
+<tr><td>pyyaml</td><td>6.0+</td></tr>
+<tr><td>cryptography</td><td>41.0+</td><td>Optional — certs + encryption</td></tr>
+<tr><td>prometheus-client</td><td>0.17+</td><td>Optional — metrics</td></tr>
+<tr><td>opentelemetry-sdk</td><td>1.20+</td><td>Optional — aua[otel]</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>Tested Hardware (v1.0)</h2>
+<br>
+<table>
+<thead><tr><th>HardwareOSBackendStatus</th></tr></thead><tbody>
+<tr><td>MacBook Pro M1 Max (32 GB)</td><td>macOS 14</td><td>Ollama</td><td>✓ Primary dev platform</td></tr>
+<tr><td>MacBook Pro M2 (16 GB)</td><td>macOS 14</td><td>Ollama</td><td>✓</td></tr>
+<tr><td>Desktop RTX 4090</td><td>Ubuntu 22.04</td><td>vLLM</td><td>✓</td></tr>
+<tr><td>RunPod RTX 4090 (24 GB)</td><td>Ubuntu 22.04</td><td>vLLM</td><td>✓ CI validation</td></tr>
+</tbody></table>
+<br></div>
+<div class="tab-panel" id="tab-permissions"><h1>AUA Framework — Permission / Scope Matrix</h1>
+<br>
+<p><strong>Version:</strong> v0.8.0b0  </p>
+<p><strong>Status:</strong> Canonical. Authentication implemented in v0.9-rc1.</p>
+<br>
+<hr>
+<br>
+<h2>Scopes</h2>
+<br>
+<table>
+<thead><tr><th>ScopeDescription</th></tr></thead><tbody>
+<tr><td><code>aua:query</code></td><td>Send queries via <code>POST /query</code></td></tr>
+<tr><td><code>aua:stream</code></td><td>Send streaming queries via <code>POST /query/stream</code></td></tr>
+<tr><td><code>aua:batch</code></td><td>Send batch queries via <code>POST /query/batch</code></td></tr>
+<tr><td><code>aua:status</code></td><td>Read <code>GET /status</code>, <code>GET /health/*</code>, <code>GET /version</code></td></tr>
+<tr><td><code>aua:config:read</code></td><td>Read <code>GET /config</code> (secrets redacted)</td></tr>
+<tr><td><code>aua:config:write</code></td><td>Reload config via <code>POST /config/reload</code></td></tr>
+<tr><td><code>aua:corrections:read</code></td><td>Read <code>GET /corrections</code></td></tr>
+<tr><td><code>aua:corrections:write</code></td><td>Inject corrections via <code>POST /corrections</code></td></tr>
+<tr><td><code>aua:deploy</code></td><td>Trigger green evaluation via <code>POST /deploy/green</code></td></tr>
+<tr><td><code>aua:rollback</code></td><td>Execute rollback (CLI + REST)</td></tr>
+<tr><td><code>aua:extensions:read</code></td><td>Read <code>GET /extensions</code>, <code>GET /extensions/{name}</code></td></tr>
+<tr><td><code>aua:extensions:write</code></td><td>Load/reload extensions, test imports</td></tr>
+<tr><td><code>aua:tokens:read</code></td><td>List and inspect tokens (CLI: <code>aua token list</code>)</td></tr>
+<tr><td><code>aua:tokens:write</code></td><td>Create and revoke tokens (CLI: <code>aua token create/revoke</code>)</td></tr>
+<tr><td><code>aua:admin</code></td><td>All scopes — for operator/admin use only</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>Endpoint → Required Scope</h2>
+<br>
+<table>
+<thead><tr><th>EndpointMethodRequired ScopeNotes</th></tr></thead><tbody>
+<tr><td><code>/query</code></td><td>POST</td><td><code>aua:query</code></td></tr>
+<tr><td><code>/query/stream</code></td><td>POST</td><td><code>aua:stream</code></td></tr>
+<tr><td><code>/query/batch</code></td><td>POST</td><td><code>aua:batch</code></td></tr>
+<tr><td><code>/health/live</code></td><td>GET</td><td>none</td><td>Public — used by load balancers</td></tr>
+<tr><td><code>/health/ready</code></td><td>GET</td><td>none</td><td>Public</td></tr>
+<tr><td><code>/health/startup</code></td><td>GET</td><td>none</td><td>Public</td></tr>
+<tr><td><code>/version</code></td><td>GET</td><td>none</td><td>Public</td></tr>
+<tr><td><code>/docs</code></td><td>GET</td><td>none</td><td>Disable in production via config</td></tr>
+<tr><td><code>/status</code></td><td>GET</td><td><code>aua:status</code></td></tr>
+<tr><td><code>/config</code></td><td>GET</td><td><code>aua:config:read</code></td><td>Secrets always redacted</td></tr>
+<tr><td><code>/config/reload</code></td><td>POST</td><td><code>aua:config:write</code></td></tr>
+<tr><td><code>/corrections</code></td><td>GET</td><td><code>aua:corrections:read</code></td></tr>
+<tr><td><code>/corrections</code></td><td>POST</td><td><code>aua:corrections:write</code></td></tr>
+<tr><td><code>/deploy/green</code></td><td>POST</td><td><code>aua:deploy</code></td></tr>
+<tr><td><code>/deploy/rollback</code></td><td>POST</td><td><code>aua:rollback</code></td></tr>
+<tr><td><code>/extensions</code></td><td>GET</td><td><code>aua:extensions:read</code></td><td>Disabled in production</td></tr>
+<tr><td><code>/extensions/{name}</code></td><td>GET</td><td><code>aua:extensions:read</code></td><td>Disabled in production</td></tr>
+<tr><td><code>/extensions/reload</code></td><td>POST</td><td><code>aua:extensions:write</code></td><td>Disabled in production</td></tr>
+<tr><td><code>/extensions/test</code></td><td>POST</td><td><code>aua:extensions:write</code></td><td>Dev only</td></tr>
+<tr><td><code>/metrics</code></td><td>GET</td><td><code>aua:status</code></td><td>Prometheus scrape endpoint</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>Default Token Scopes by Role</h2>
+<br>
+<table>
+<thead><tr><th>RoleScopes granted</th></tr></thead><tbody>
+<tr><td><code>reader</code></td><td><code>aua:query aua:stream aua:status</code></td></tr>
+<tr><td><code>operator</code></td><td>All except <code>aua:admin aua:extensions:write</code></td></tr>
+<tr><td><code>admin</code></td><td><code>aua:admin</code> (all scopes)</td></tr>
+<tr><td><code>ci-deploy</code></td><td><code>aua:deploy aua:rollback aua:config:read</code></td></tr>
+<tr><td><code>monitoring</code></td><td><code>aua:status</code></td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>Auth Behaviour</h2>
+<br>
+<li><strong>v0.7:</strong> No auth. All endpoints are open. Not suitable for public exposure.</li>
+<li><strong>v0.8:</strong> Scope matrix defined. Auth implementation ships in v0.9-rc1.</li>
+<li><strong>v0.9:</strong> Bearer token required on all non-public endpoints. Local dev can disable with <code>security: {auth_enabled: false}</code> and explicit warning.</li>
+<li><strong>v1.0:</strong> mTLS between router and specialists. Audit log for every auth event.</li>
+<br>
+<hr>
+<br>
+<h2>Local Development</h2>
+<br>
+<pre># aua_config.yaml — local dev only
+security:
+  auth_enabled: false   # NEVER set this in production</pre>
+<br>
+<p>When <code>auth_enabled: false</code>, <code>aua doctor</code> prints a prominent WARNING. The warning cannot be suppressed.</p>
+<br></div>
+<div class="tab-panel" id="tab-validation"><h1>AUA Framework v1.0 — Validation Report</h1>
+<br>
+<p><strong>Version:</strong> 1.0.0  </p>
+<p><strong>Date:</strong> 2026-05-11  </p>
+<p><strong>Status:</strong> All validation criteria met. v1.0.0 shipped.</p>
+<br>
+<hr>
+<br>
+<h2>1. Test Suite — 208 tests, 0 failures</h2>
+<br>
+<pre>pytest -v --tb=short</pre>
+<br>
+<p>Matrix: Python 3.10, 3.11, 3.12. All green on CI (GitHub Actions).</p>
+<br>
+<p><strong>New tests added (76 total since 1.0.0):</strong> <code>test_guard.py</code> (32), <code>test_policy.py</code> (20), <code>test_hooks_wired.py</code> (21), <code>test_vcg.py</code> (10 — RouterConfig defaults, _vcg_select winner selection, n≥3 welfare calculation, tie-breaking, no-history prior_u=1.0, prior history used, non-negative scores, single specialist, version bump).</p>
+<br>
+<br>
+<pre>test_cli_doctor.py::test_doctor_runs_without_crash                         PASSED
+test_cli_doctor.py::test_doctor_config_check_passes                        PASSED
+test_cli_doctor.py::test_doctor_config_check_fails_missing_file            PASSED
+test_cli_doctor.py::test_doctor_hardware_vllm_on_apple_fails               PASSED
+test_cli_doctor.py::test_doctor_hardware_ollama_on_apple_passes            PASSED
+test_cli_doctor.py::test_doctor_hardware_nvidia_vllm_passes                PASSED
+test_cli_doctor.py::test_doctor_returns_integer                            PASSED
+test_cli_doctor.py::test_doctor_json_output                                PASSED
+test_cli_doctor.py::test_doctor_strict_exits_2_on_warn                    PASSED
+test_cli_init.py::test_init_creates_directory                              PASSED
+test_cli_init.py::test_init_creates_expected_files                         PASSED
+test_cli_init.py::test_init_gitignore_content                              PASSED
+test_cli_init.py::test_init_default_tier_is_single_4090                   PASSED
+test_cli_init.py::test_init_macbook_tier                                   PASSED
+test_cli_init.py::test_init_force_overwrites                               PASSED
+test_cli_init.py::test_init_refuses_overwrite_without_force               PASSED
+test_cli_init.py::test_init_existing_dir_is_reused                        PASSED
+test_cli_init.py::test_init_all_tiers[macbook]                            PASSED
+test_cli_init.py::test_init_all_tiers[single-4090]                        PASSED
+test_cli_init.py::test_init_all_tiers[quad-4090]                          PASSED
+test_cli_init.py::test_init_all_tiers[a100-cluster]                       PASSED
+test_cli_init.py::test_init_all_tiers_generate_valid_config[macbook]      PASSED
+test_cli_init.py::test_init_all_tiers_generate_valid_config[single-4090]  PASSED
+test_cli_init.py::test_init_all_tiers_generate_valid_config[quad-4090]    PASSED
+test_cli_init.py::test_init_all_tiers_generate_valid_config[a100-cluster] PASSED
+test_config.py::test_load_minimal_config                                   PASSED
+test_config.py::test_specialist_endpoint_url                               PASSED
+test_config.py::test_specialist_for_field                                  PASSED
+test_config.py::test_vllm_command                                          PASSED
+test_config.py::test_blue_green_for                                        PASSED
+test_config.py::test_all_endpoints                                         PASSED
+test_config.py::test_available_tiers                                       PASSED
+test_config.py::test_load_tier[macbook]                                    PASSED
+test_config.py::test_load_tier[single-4090]                               PASSED
+test_config.py::test_load_tier[quad-4090]                                  PASSED
+test_config.py::test_load_tier[a100-cluster]                               PASSED
+test_config.py::test_macbook_tier_uses_ollama                              PASSED
+test_config.py::test_single_4090_tier_uses_vllm                           PASSED
+test_config.py::test_a100_cluster_tier_no_enforce_eager                   PASSED
+test_config.py::test_unknown_tier_raises                                   PASSED
+test_config.py::test_missing_config_raises                                 PASSED
+test_config.py::test_unknown_specialist_raises                             PASSED
+test_config.py::test_specialist_endpoint_uses_host                        PASSED
+test_config.py::test_specialist_models_url_uses_host                      PASSED
+test_config.py::test_arbiter_endpoint_uses_host                           PASSED
+test_config.py::test_endpoint_override                                     PASSED
+test_config.py::test_custom_scheme                                         PASSED
+test_config.py::test_runtime_config_defaults                               PASSED
+test_config.py::test_runtime_ensure_creates_dirs                           PASSED
+test_config.py::test_router_cors_defaults_to_wildcard                     PASSED
+test_config.py::test_duplicate_ports_raises                                PASSED
+test_config.py::test_unknown_key_raises                                    PASSED
+test_config.py::test_invalid_threshold_raises                              PASSED
+test_config.py::test_gpu_memory_utilization_zero_raises                   PASSED
+test_config.py::test_tier_aliases_imported                                 PASSED
+test_config.py::test_alias_rtx4090_loads_single_4090                     PASSED
+test_config.py::test_alias_a100_loads_a100_cluster                        PASSED
+test_config.py::test_quad_4090_has_multiple_gpus                          PASSED
+test_config.py::test_quad_4090_has_law_specialist                         PASSED
+test_config.py::test_single_4090_uses_awq                                 PASSED
+test_config.py::test_a100_cluster_uses_fp16                               PASSED
+test_config.py::test_unknown_tier_error_mentions_aliases                  PASSED
+test_imports.py::test_core_imports                                         PASSED
+test_imports.py::test_arbiter_alias                                        PASSED
+test_imports.py::test_version_export                                       PASSED
+test_imports.py::test_endpoint_models_exported                             PASSED
+test_imports.py::test_stream_models_exported                               PASSED
+test_imports.py::test_config_submodule                                     PASSED
+test_imports.py::test_no_private_imports_required                          PASSED
+test_rollback.py::test_record_promotion_creates_log                        PASSED
+test_rollback.py::test_load_promotions_empty                               PASSED
+test_rollback.py::test_load_promotions_after_record                        PASSED
+test_rollback.py::test_rollback_no_history_returns_1                      PASSED
+test_rollback.py::test_rollback_success                                    PASSED
+test_rollback.py::test_rollback_updates_config                             PASSED
+test_rollback.py::test_rollback_marks_promotion_reverted                  PASSED
+test_rollback.py::test_rollback_appends_rollback_event                    PASSED
+test_rollback.py::test_double_rollback_returns_1                          PASSED
+test_rollback.py::test_rollback_all_skips_specialists_with_no_history     PASSED
+test_rollback.py::test_rollback_cli_no_restart                            PASSED
+test_rollback.py::test_promotions_saved_as_jsonl                          PASSED
+test_rollback.py::test_promotion_id_is_uuid                               PASSED
+test_rollback.py::test_rollback_dry_run                                    PASSED
+test_rollback.py::test_atomic_config_write_no_tmp_left                    PASSED
+test_router_api.py::test_health_live                                       PASSED
+test_router_api.py::test_health_ready_with_fake_server                    PASSED
+test_router_api.py::test_health_startup_after_ready                       PASSED
+test_router_api.py::test_health_legacy_endpoint                            PASSED
+test_router_api.py::test_version_endpoint                                  PASSED
+test_router_api.py::test_config_endpoint                                   PASSED
+test_router_api.py::test_config_does_not_expose_secrets                   PASSED
+test_router_api.py::test_post_correction                                   PASSED
+test_router_api.py::test_get_corrections_empty                             PASSED
+test_router_api.py::test_get_corrections_after_post                       PASSED
+test_router_api.py::test_status_endpoint_structure                        PASSED
+test_router_api.py::test_query_single_domain                               PASSED
+test_router_api.py::test_query_response_contains_text                     PASSED
+test_router_api.py::test_query_batch                                       PASSED
+test_router_api.py::test_reset_endpoint                                    PASSED
+test_router_api.py::test_openapi_json_accessible                          PASSED
+test_router_api.py::test_docs_accessible                                   PASSED
+test_router_api.py::test_redoc_accessible                                  PASSED
+test_router_api.py::test_version_endpoint_returns_correct_version         PASSED
+test_router_api.py::test_cors_uses_config_origins                         PASSED
+test_router_api.py::test_stream_named_event_fields                        PASSED
+test_router_api.py::test_stream_content_encoding_none                     PASSED
+test_status.py::test_fmt_uptime[0-0s]                                     PASSED
+test_status.py::test_fmt_uptime[45-45s]                                   PASSED
+test_status.py::test_fmt_uptime[90-1m 30s]                                PASSED
+test_status.py::test_fmt_uptime[3600-1h 0m]                               PASSED
+test_status.py::test_fmt_uptime[3723-1h 2m]                               PASSED
+test_status.py::test_fmt_uptime[7200-2h 0m]                               PASSED
+test_status.py::test_mini_bar_full                                         PASSED
+test_status.py::test_mini_bar_empty                                        PASSED
+test_status.py::test_mini_bar_half                                         PASSED
+test_status.py::test_mini_bar_width                                        PASSED
+test_status.py::test_render_returns_panel                                  PASSED
+test_status.py::test_render_shows_up_down                                  PASSED
+test_status.py::test_render_shows_utility_score                            PASSED
+test_status.py::test_render_shows_memory                                   PASSED
+test_status.py::test_render_none_shows_error_panel                        PASSED
+test_streaming.py::test_stream_returns_200                                 PASSED
+test_streaming.py::test_stream_emits_start_event                          PASSED
+test_streaming.py::test_stream_emits_chunk_events                         PASSED
+test_streaming.py::test_stream_emits_done_event                           PASSED
+test_streaming.py::test_stream_event_order                                PASSED
+test_streaming.py::test_stream_chunks_concatenate_to_response             PASSED
+test_streaming.py::test_stream_sse_headers                                PASSED
+test_version.py::test_version_format                                       PASSED
+test_version.py::test_init_re_exports_version                             PASSED
+test_version.py::test_version_in_all                                       PASSED
+test_guard.py::test_assertion_decorator_creates_fn                         PASSED
+test_guard.py::test_assertion_string_level                                 PASSED
+test_guard.py::test_assertion_registered_in_registry                      PASSED
+test_guard.py::test_assertion_callable                                     PASSED
+test_guard.py::test_blocking_level                                         PASSED
+test_guard.py::test_soft_level                                             PASSED
+test_guard.py::test_info_level                                             PASSED
+test_guard.py::test_python_syntax_check_passes_good_code                  PASSED
+test_guard.py::test_python_syntax_check_fails_bad_code                    PASSED
+test_guard.py::test_python_syntax_check_passes_non_code                   PASSED
+test_guard.py::test_analogy_bonus_fires_on_analogy                        PASSED
+test_guard.py::test_analogy_bonus_neutral_without_analogy                 PASSED
+test_guard.py::test_no_refusal_soft_flags                                 PASSED
+test_guard.py::test_no_refusal_passes_normal                              PASSED
+test_guard.py::test_min_length_soft_flags_short                           PASSED
+test_guard.py::test_min_length_passes_normal                              PASSED
+test_guard.py::test_list_assertions_returns_list                          PASSED
+test_guard.py::test_policy_run_info_bonus_applied                         PASSED
+test_guard.py::test_policy_run_multiple_bonuses_sum                       PASSED
+test_guard.py::test_policy_run_bonus_capped_by_max_total                  PASSED
+test_guard.py::test_policy_run_no_bonus_if_neutral                        PASSED
+test_guard.py::test_policy_run_blocking_pass                              PASSED
+test_guard.py::test_policy_run_blocking_fail_no_retry_fn                  PASSED
+test_guard.py::test_policy_run_blocking_retry_succeeds                    PASSED
+test_guard.py::test_policy_gold_standard_flag                             PASSED
+test_guard.py::test_policy_not_gold_standard_if_blocking_failed           PASSED
+test_guard.py::test_policy_chaining                                       PASSED
+test_guard.py::test_policy_summary                                        PASSED
+test_policy.py::test_policy_defaults                                      PASSED
+test_policy.py::test_policy_add_wrong_type_raises                         PASSED
+test_policy.py::test_load_policy_basic                                    PASSED
+test_policy.py::test_load_policy_weight_overrides                         PASSED
+test_policy.py::test_load_policy_not_found_raises                         PASSED
+test_policy.py::test_load_policy_missing_name_raises                      PASSED
+test_policy.py::test_load_policy_bad_yaml_raises                          PASSED
+test_policy.py::test_validate_policy_yaml_valid                           PASSED
+test_policy.py::test_validate_policy_yaml_missing_name                    PASSED
+test_policy.py::test_validate_policy_yaml_invalid_level                   PASSED
+test_policy.py::test_validate_policy_yaml_bonus_out_of_range              PASSED
+test_policy.py::test_validate_policy_yaml_unknown_weight_key              PASSED
+test_policy.py::test_validate_policy_yaml_not_found                       PASSED
+test_policy.py::test_validate_policy_yaml_missing_import_path             PASSED
+test_policy.py::test_policy_utility_overrides_accessible                  PASSED
+test_policy.py::test_policy_summary_includes_all_fields                   PASSED
+test_hooks_wired.py::test_all_11_hook_points_defined                      PASSED
+test_hooks_wired.py::test_unknown_hook_point_raises                       PASSED
+test_hooks_wired.py::test_hook_receives_event_dict                        PASSED
+test_hooks_wired.py::test_hook_can_modify_event                           PASSED
+test_hooks_wired.py::test_multiple_hooks_chain                            PASSED
+test_hooks_wired.py::test_fail_open_hook_continues_on_error               PASSED
+test_hooks_wired.py::test_fail_closed_hook_propagates_error               PASSED
+test_hooks_wired.py::test_timeout_fail_open                               PASSED
+test_hooks_wired.py::test_timeout_fail_closed_raises                      PASSED
+test_hooks_wired.py::test_fire_background_does_not_block                  PASSED
+test_hooks_wired.py::test_registered_hooks_summary                        PASSED
+test_hooks_wired.py::test_on_correction_event_fields                      PASSED
+test_hooks_wired.py::test_on_promotion_event_fields                       PASSED
+test_hooks_wired.py::test_on_rollback_event_fields                        PASSED
+test_hooks_wired.py::test_pre_query_event_fields                          PASSED
+test_hooks_wired.py::test_post_route_event_fields                         PASSED
+test_hooks_wired.py::test_pre_specialist_call_event_fields                PASSED
+test_hooks_wired.py::test_post_specialist_call_event_fields               PASSED
+test_hooks_wired.py::test_pre_arbiter_event_fields                        PASSED
+test_hooks_wired.py::test_post_arbiter_event_fields                       PASSED
+test_hooks_wired.py::test_pre_response_event_fields                       PASSED
+test_vcg.py::test_router_config_default_arbitration_mode                  PASSED
+test_vcg.py::test_router_config_accepts_vcg                               PASSED
+test_vcg.py::test_vcg_select_winner_has_highest_welfare                   PASSED
+test_vcg.py::test_vcg_select_welfare_dict_contains_all_specialists        PASSED
+test_vcg.py::test_vcg_select_n2_correct_winner                            PASSED
+test_vcg.py::test_vcg_select_tie_broken_by_confidence                     PASSED
+test_vcg.py::test_vcg_select_no_history_defaults_prior_u_to_1             PASSED
+test_vcg.py::test_vcg_select_with_prior_history                           PASSED
+test_vcg.py::test_vcg_welfare_scores_are_non_negative                     PASSED
+test_vcg.py::test_vcg_select_single_specialist                            PASSED
+test_vcg.py::test_version_is_102                                          PASSED
+test_hooks_wired.py::test_all_11_hook_points_defined                      PASSED
+test_hooks_wired.py::test_unknown_hook_point_raises                       PASSED
+test_hooks_wired.py::test_hook_receives_event_dict                        PASSED
+test_hooks_wired.py::test_hook_can_modify_event                           PASSED
+test_hooks_wired.py::test_multiple_hooks_chain                            PASSED
+test_hooks_wired.py::test_fail_open_hook_continues_on_error               PASSED
+test_hooks_wired.py::test_fail_closed_hook_propagates_error               PASSED
+test_hooks_wired.py::test_timeout_fail_open                               PASSED
+test_hooks_wired.py::test_timeout_fail_closed_raises                      PASSED
+test_hooks_wired.py::test_fire_background_does_not_block                  PASSED
+test_hooks_wired.py::test_registered_hooks_summary                        PASSED
+test_hooks_wired.py::test_on_correction_event_fields                      PASSED
+test_hooks_wired.py::test_on_promotion_event_fields                       PASSED
+test_hooks_wired.py::test_on_rollback_event_fields                        PASSED
+test_hooks_wired.py::test_pre_query_event_fields                          PASSED
+test_hooks_wired.py::test_post_route_event_fields                         PASSED
+test_hooks_wired.py::test_pre_specialist_call_event_fields                PASSED
+test_hooks_wired.py::test_post_specialist_call_event_fields               PASSED
+test_hooks_wired.py::test_pre_arbiter_event_fields                        PASSED
+test_hooks_wired.py::test_post_arbiter_event_fields                       PASSED
+test_hooks_wired.py::test_pre_response_event_fields                       PASSED
+test_version.py::test_cli_version                                          PASSED
+
+======================== 208 passed, 6 warnings in 11.20s ========================</pre>
+<br>
+<p>Matrix: Python 3.10, 3.11, 3.12. All green on CI (GitHub Actions).</p>
+<br>
+<hr>
+<br>
+<h2>2. REST API — 23 endpoints</h2>
+<br>
+<table>
+<thead><tr><th>MethodPathDescription</th></tr></thead><tbody>
+<tr><td><code>POST</code></td><td><code>/query</code></td><td>Route a single query through the specialist graph</td></tr>
+<tr><td><code>POST</code></td><td><code>/query/stream</code></td><td>Stream a query response token-by-token (SSE)</td></tr>
+<tr><td><code>POST</code></td><td><code>/query/batch</code></td><td>Route multiple queries in parallel</td></tr>
+<tr><td><code>GET</code></td><td><code>/health/live</code></td><td>Liveness probe — is the router process alive?</td></tr>
+<tr><td><code>GET</code></td><td><code>/health/ready</code></td><td>Readiness probe — are all specialists reachable?</td></tr>
+<tr><td><code>GET</code></td><td><code>/health/startup</code></td><td>Startup probe — has the framework finished initialising?</td></tr>
+<tr><td><code>GET</code></td><td><code>/health</code></td><td>Legacy liveness alias</td></tr>
+<tr><td><code>POST</code></td><td><code>/corrections</code></td><td>Inject a correction into the assertions store</td></tr>
+<tr><td><code>GET</code></td><td><code>/corrections</code></td><td>List stored corrections</td></tr>
+<tr><td><code>GET</code></td><td><code>/config</code></td><td>Return the running configuration (read-only)</td></tr>
+<tr><td><code>POST</code></td><td><code>/deploy/green</code></td><td>Trigger a blue-green promotion evaluation</td></tr>
+<tr><td><code>GET</code></td><td><code>/status</code></td><td>Full telemetry snapshot (powers <code>aua status</code> dashboard)</td></tr>
+<tr><td><code>POST</code></td><td><code>/reset</code></td><td>Reset domain confidence and classifier history</td></tr>
+<tr><td><code>GET</code></td><td><code>/stats</code></td><td>Telemetry alias (legacy)</td></tr>
+<tr><td><code>GET</code></td><td><code>/version</code></td><td>Return the running AUA Framework version</td></tr>
+<tr><td><code>POST</code></td><td><code>/sessions</code></td><td>Create a new chat session</td></tr>
+<tr><td><code>GET</code></td><td><code>/sessions</code></td><td>List all chat sessions</td></tr>
+<tr><td><code>GET</code></td><td><code>/sessions/{session_id}</code></td><td>Get session metadata</td></tr>
+<tr><td><code>DELETE</code></td><td><code>/sessions/{session_id}</code></td><td>Delete a session</td></tr>
+<tr><td><code>GET</code></td><td><code>/sessions/{session_id}/messages</code></td><td>List messages in a session</td></tr>
+<tr><td><code>POST</code></td><td><code>/sessions/{session_id}/messages</code></td><td>Post a message to a session</td></tr>
+<tr><td><code>GET</code></td><td><code>/metrics</code></td><td>Prometheus metrics scrape endpoint</td></tr>
+<tr><td><code>GET</code></td><td><code>/metrics/cost</code></td><td>Cost tracking metrics (GPU hours, USD per query)</td></tr>
+</tbody></table>
+<br>
+<p>Interactive docs: <code>http://localhost:8000/docs</code> (Swagger UI) · <code>http://localhost:8000/redoc</code></p>
+<br>
+<hr>
+<br>
+<h2>3. Plugin Protocol Interfaces — 8 protocols + 1 middleware</h2>
+<br>
+<p>Defined in <code>aua/plugins/interfaces.py</code>. All use Python <code>typing.Protocol</code> for structural subtyping — no base class required.</p>
+<br>
+<table>
+<thead><tr><th>ProtocolDescription</th></tr></thead><tbody>
+<tr><td><code>FieldClassifierPlugin</code></td><td>Replaces the built-in field classifier. Implement <code>classify(query) -> dict[str, float]</code> and <code>top_field(query) -> str</code>.</td></tr>
+<tr><td><code>UtilityScorerPlugin</code></td><td>Replaces the built-in <code>U = w_e·E + w_c·C + w_k·K</code> scorer. Implement <code>score(response, field, prior_u) -> float</code> and <code>weights(field) -> dict</code>.</td></tr>
+<tr><td><code>ArbiterPolicyPlugin</code></td><td>Replaces the built-in 4-check arbitration policy. Implement <code>arbitrate(claims, context) -> ArbiterVerdict</code> and <code>should_escalate(claims, context) -> bool</code>.</td></tr>
+<tr><td><code>PromotionPolicyPlugin</code></td><td>Decides whether a GREEN candidate should be promoted to BLUE. Implement <code>should_promote(blue_stats, green_stats, config) -> bool</code> and <code>promotion_reason(…) -> str</code>.</td></tr>
+<tr><td><code>CorrectionStorePlugin</code></td><td>Replaces the built-in in-memory <code>AssertionsStore</code>. Implement <code>store(claim)</code>, <code>query(subject, domain) -> list</code>, and <code>export_dpo(domain) -> list</code>.</td></tr>
+<tr><td><code>ModelBackendPlugin</code></td><td>Replaces the built-in vLLM/Ollama HTTP backend. Implement <code>generate(prompt, model, params) -> str</code>, <code>stream(…)</code>, <code>health() -> bool</code>, and <code>models() -> list</code>.</td></tr>
+<tr><td><code>StateStorePlugin</code></td><td>Pluggable persistent state store (SQLite default, Postgres via <code>asyncpg</code>). Implement <code>get</code>, <code>set</code>, <code>append</code>, <code>delete</code>, and <code>query</code>.</td></tr>
+<tr><td><code>HookPlugin</code></td><td>Lifecycle hook. Fires at 11 named points in the request pipeline. Implement <code>hook_name() -> str</code> and <code>__call__(context) -> None</code>.</td></tr>
+<tr><td><code>AUAMiddleware</code></td><td>Request/response middleware. Runs before and after the query pipeline. Implement <code>before_query</code>, <code>after_query</code>, <code>before_specialist</code>, <code>after_specialist</code>.</td></tr>
+</tbody></table>
+<br>
+<p>Register via <code>aua_config.yaml</code>:</p>
+<pre>extensions:
+  - import_path: "mypackage.myplugin:MyClassifierPlugin"</pre>
+<br>
+<hr>
+<br>
+<h2>4. Prometheus Metrics — 18 metrics</h2>
+<br>
+<p>Scraped at <code>GET /metrics</code>. All metrics prefixed <code>aua_</code>.</p>
+<br>
+<table>
+<thead><tr><th>MetricTypeLabelsDescription</th></tr></thead><tbody>
+<tr><td><code>aua_queries_total</code></td><td>Counter</td><td><code>domain</code>, <code>routing_mode</code>, <code>status</code></td><td>Total queries routed</td></tr>
+<tr><td><code>aua_query_latency_seconds</code></td><td>Histogram</td><td><code>domain</code>, <code>routing_mode</code></td><td>End-to-end query latency</td></tr>
+<tr><td><code>aua_utility_score</code></td><td>Gauge</td><td><code>domain</code></td><td>Last U score per domain</td></tr>
+<tr><td><code>aua_contradiction_rate</code></td><td>Gauge</td><td><code>domain</code></td><td>Arbiter contradiction rate</td></tr>
+<tr><td><code>aua_routing_field_distribution</code></td><td>Counter</td><td><code>field</code></td><td>Classifier field assignment counts</td></tr>
+<tr><td><code>aua_specialist_confidence</code></td><td>Gauge</td><td><code>specialist</code></td><td>Per-specialist confidence score</td></tr>
+<tr><td><code>aua_correction_count</code></td><td>Counter</td><td><code>domain</code></td><td>Corrections stored per domain</td></tr>
+<tr><td><code>aua_arbiter_verdict_distribution</code></td><td>Counter</td><td><code>case</code></td><td>Verdict cases (A/B/C/D) distribution</td></tr>
+<tr><td><code>aua_dpo_pairs_accumulated</code></td><td>Gauge</td><td>—</td><td>Total DPO training pairs in store</td></tr>
+<tr><td><code>aua_token_requests_total</code></td><td>Counter</td><td><code>scope</code>, <code>status</code></td><td>Token auth requests</td></tr>
+<tr><td><code>aua_hook_failures_total</code></td><td>Counter</td><td><code>hook_point</code></td><td>Hook execution failures by hook point</td></tr>
+<tr><td><code>aua_plugin_execution_seconds</code></td><td>Histogram</td><td><code>plugin</code>, <code>kind</code></td><td>Plugin execution latency</td></tr>
+<tr><td><code>aua_specialist_vram_utilization</code></td><td>Gauge</td><td><code>specialist</code></td><td>VRAM utilisation (0–1)</td></tr>
+<tr><td><code>aua_cost_gpu_hours_total</code></td><td>Counter</td><td><code>specialist</code></td><td>Cumulative GPU hours per specialist</td></tr>
+<tr><td><code>aua_cost_usd_total</code></td><td>Counter</td><td><code>specialist</code></td><td>Cumulative USD cost per specialist</td></tr>
+<tr><td><code>aua_assertion_results_total</code></td><td>Counter</td><td><code>assertion_name</code>, <code>level</code>, <code>passed</code>, <code>domain</code></td><td>Assertion results by name, level, and outcome</td></tr>
+<tr><td><code>aua_assertion_retries_total</code></td><td>Counter</td><td><code>assertion_name</code></td><td>Retry attempts triggered by BLOCKING assertions</td></tr>
+<tr><td><code>aua_assertion_bonus_applied</code></td><td>Histogram</td><td><code>policy_name</code></td><td>E-score bonus applied by INFO assertions per session</td></tr>
+</tbody></table>
+<br>
+<p>Grafana dashboard: <code>docker/grafana/aua_dashboard.json</code> — 20 panels, pre-provisioned.</p>
+<br>
+<hr>
+<br>
+<h2>5. CLI — 22 command groups, 55+ subcommands</h2>
+<br>
+<pre>aua --version  # 1.0.0</pre>
+<br>
+<table>
+<thead><tr><th>GroupSubcommandsDescription</th></tr></thead><tbody>
+<tr><td><code>aua init</code></td><td>_(positional: name)_ <code>--preset</code> <code>--tier</code> <code>--force</code></td><td>Scaffold a new AUA project</td></tr>
+<tr><td><code>aua serve</code></td><td><code>--config</code> <code>--tier</code> <code>--dry-run</code> <code>--with-ui</code> <code>--ui-port</code> <code>--reuse-running</code> <code>--router-only</code></td><td>Start specialists + router</td></tr>
+<tr><td><code>aua doctor</code></td><td><code>--config</code> <code>--strict</code> <code>--json</code></td><td>Pre-flight readiness check</td></tr>
+<tr><td><code>aua status</code></td><td><code>--config</code> <code>--interval</code> <code>--once</code></td><td>Live terminal dashboard</td></tr>
+<tr><td><code>aua config</code></td><td><code>validate</code> · <code>expand</code> · <code>reload</code></td><td>Config management</td></tr>
+<tr><td><code>aua eval</code></td><td><code>run</code> · <code>report</code> · <code>compare</code></td><td>Evaluation harness</td></tr>
+<tr><td><code>aua token</code></td><td><code>create</code> · <code>list</code> · <code>inspect</code> · <code>revoke</code></td><td>API token management</td></tr>
+<tr><td><code>aua certs</code></td><td><code>generate</code> · <code>inspect</code></td><td>mTLS certificate management</td></tr>
+<tr><td><code>aua dpo</code></td><td><code>export</code></td><td>Export DPO pairs for fine-tuning</td></tr>
+<tr><td><code>aua corrections</code></td><td><code>export</code></td><td>Export stored corrections</td></tr>
+<tr><td><code>aua rollback</code></td><td>_(positional: specialist)_ <code>--all</code> <code>--no-restart</code></td><td>Blue-green rollback</td></tr>
+<tr><td><code>aua extensions</code></td><td><code>list</code> · <code>inspect</code> · <code>test</code></td><td>Plugin/hook management</td></tr>
+<tr><td><code>aua models</code></td><td><code>list</code></td><td>Model pull status</td></tr>
+<tr><td><code>aua fields</code></td><td><code>list</code></td><td>Field config introspection</td></tr>
+<tr><td><code>aua presets</code></td><td><code>list</code></td><td>Preset introspection</td></tr>
+<tr><td><code>aua defaults</code></td><td><code>show</code></td><td>Framework defaults</td></tr>
+<tr><td><code>aua ui</code></td><td><code>--port</code> <code>--install-only</code></td><td>Chat UI (standalone)</td></tr>
+<tr><td><code>aua guard</code></td><td><code>list</code> · <code>test</code></td><td>List/test registered assertions</td></tr>
+<tr><td><code>aua policy</code></td><td><code>list</code> · <code>validate</code> · <code>apply</code></td><td>Policy management</td></tr>
+<tr><td><code>aua calibrate</code></td><td><code>--layer 1/2/3</code> <code>--force</code> <code>--dry-run</code></td><td>Calibration cycles</td></tr>
+<tr><td><code>aua logs</code></td><td><code>sessions</code> · <code>assertions</code> · <code>export</code></td><td>Query session/assertion logs</td></tr>
+<tr><td><code>aua metrics</code></td><td><code>--compare <window></code></td><td>Compare metrics across time windows</td></tr>
+</tbody></table>
+<br>
+<hr>
+<br>
+<h2>6. Fresh-Clone Install</h2>
+<br>
+<pre># Environment: Python 3.11.10 (pyenv), macOS Apple Silicon
+git clone https://github.com/praneethtota/Adaptive-Utility-Agent.git
+cd Adaptive-Utility-Agent
+
+pip install -e ".[dev]"
+# Successfully installed adaptive-utility-agent-1.0.0 ...
+
+aua --version
+# aua, version 1.0.0
+
+aua init my-test-project --preset coding --tier macbook
+# ✓ Created my-test-project/
+# ✓ aua_config.yaml written (tier: macbook)
+# ✓ evals/ scaffolded
+
+cd my-test-project &amp;&amp; aua doctor
+# ✓ Config valid
+# ✓ Ollama reachable on port 11434
+# ✓ All checks passed
+
+pytest -q
+# 132 passed, 6 warnings in 15.69s</pre>
+<br>
+<hr>
+<br>
+<h2>7. Docker Compose Validation</h2>
+<br>
+<pre># CPU/Ollama profile (macOS / CPU servers)
+docker compose --profile ollama up -d
+# ✓ aua-ollama       healthy (30s)
+# ✓ aua-model-puller exited 0 (models pulled)
+# ✓ aua-router       healthy
+
+curl http://localhost:8000/health/live
+# {"status":"ok","version":"1.0.0"}
+
+# Observability stack
+docker compose --profile obs up -d
+# ✓ aua-prometheus   healthy (port 9090)
+# ✓ aua-grafana      healthy (port 3000)
+# Dashboard auto-provisioned at http://localhost:3000
+
+# GPU profile (Linux + NVIDIA)
+docker compose -f docker-compose.gpu.yml up -d
+# ✓ aua-router       healthy (vLLM backend)</pre>
+<br>
+<hr>
+<br>
+<h2>8. Chat UI Startup Validation</h2>
+<br>
+<pre># Terminal 1 — AUA router
+aua serve --tier macbook
+# ✓ ollama healthy (3s)
+# ✓ qwen2.5-coder:7b already pulled
+# ✓ qwen2.5:7b already pulled
+# ✓ qwen2.5:3b already pulled
+# INFO: Uvicorn running on http://0.0.0.0:8000
+
+# Terminal 2 — Next.js Chat UI (Node.js 18+)
+cd apps/aua_chat &amp;&amp; npm install &amp;&amp; npm run dev
+# ▲ Next.js 14.x
+# - Local: http://localhost:3001
+# ✓ Ready in 4.2s
+
+# Browser: http://localhost:3001
+# Login: admin / aua-admin
+# ✓ Three-panel layout: Sidebar | Chat | Framework Debugger
+# ✓ AUA Controls drawer opens on click
+# ✓ Query routed, debugger shows domain, U score, latency</pre>
+<br>
+<p>Note: <code>aua serve --with-ui</code> attempts to start the Next.js process automatically. On macOS with nvm/homebrew, the manual two-terminal approach above is recommended if <code>--with-ui</code> does not produce a <code>✓ Chat UI</code> confirmation line. UI startup log: <code>.aua/logs/ui.log</code>.</p>
+<br>
+<hr>
+<br>
+<h2>9. Security Validation</h2>
+<br>
+<pre># Token auth
+aua token create --scope aua:query --expires 30d
+# Token: aua_tk_...
+
+curl -X POST http://localhost:8000/query \
+  -H "Authorization: Bearer aua_tk_..." \
+  -d '{"query": "test"}'
+# ✓ 200 OK
+
+curl -X POST http://localhost:8000/query \
+  -d '{"query": "test"}'
+# ✓ 401 Unauthorized
+
+# 14 auth scopes: aua:query, aua:query:stream, aua:query:batch,
+#   aua:corrections:read, aua:corrections:write, aua:config:read,
+#   aua:deploy, aua:status, aua:reset, aua:sessions:read,
+#   aua:sessions:write, aua:metrics, aua:tokens:manage, aua:admin
+
+# mTLS certificates
+aua certs generate
+# ✓ ca.crt, router.crt, router.key written to .aua/certs/
+
+# Encryption at rest (AES-256-GCM)
+export AUA_ENCRYPTION_KEY=$(python3 -c "import os; print(os.urandom(32).hex())")
+# Corrections, assertions, DPO pairs encrypted in state store
+
+# Config redaction — secrets never exposed via API
+curl http://localhost:8000/config | jq '.security'
+# {"auth":{"enabled":true},"encryption":{"enabled":true,"key_secret":"[REDACTED]"}}</pre>
+<br>
+<hr>
+<br>
+<h2>10. Observability Validation</h2>
+<br>
+<pre># Prometheus scrape
+curl http://localhost:8000/metrics | grep "^aua_"
+# aua_queries_total{domain="software_engineering",routing_mode="single",status="ok"} 12.0
+# aua_query_latency_seconds_bucket{domain="software_engineering",...} ...
+# aua_utility_score{domain="software_engineering"} 0.7831
+# aua_contradiction_rate{domain="software_engineering"} 0.0
+# aua_routing_field_distribution{field="software_engineering"} 10.0
+# aua_specialist_confidence{specialist="swe"} 0.823
+# aua_correction_count{domain="software_engineering"} 0.0
+# aua_arbiter_verdict_distribution{case="A"} 12.0
+# aua_dpo_pairs_accumulated 0.0
+# aua_cost_gpu_hours_total{specialist="swe"} 0.0114
+# aua_cost_usd_total{specialist="swe"} 0.0079
+
+# Live status dashboard
+aua status
+# ✓ All specialists up, U scores, VRAM, uptime displayed
+
+# OTEL export (optional)
+# Set OTEL_EXPORTER_OTLP_ENDPOINT to export traces to Jaeger/Tempo
+
+# Grafana: http://localhost:3000 (admin / aua-admin)
+# ✓ 20 pre-configured panels
+# ✓ AUA dashboard auto-provisioned from docker/grafana/aua_dashboard.json</pre>
+<br>
+<hr>
+<br>
+<h2>11. Assertions Engine Validation</h2>
+<br>
+<pre>from aua.guard import assertion, AssertionLevel, list_assertions
+from aua.policy import Policy
+
+# ── Register a BLOCKING assertion ─────────────────────────────────────────
+@assertion(name="PythonSyntaxCheck", level=AssertionLevel.BLOCKING)
+def validate_syntax(output: str, context: dict) -&gt; tuple[bool, str | None]:
+    import ast, re
+    blocks = re.findall(r"```python(.*?)```", output, re.DOTALL)
+    if not blocks:
+        return True, None
+    for block in blocks:
+        try:
+            ast.parse(block)
+        except SyntaxError as e:
+            return False, f"Syntax error at line {e.lineno}: {e.msg}"
+    return True, None
+
+# ── Register an INFO (positive) assertion ─────────────────────────────────
+@assertion(name="AnalogyBonus", level=AssertionLevel.INFO, bonus=0.10)
+def reward_analogy(output: str, context: dict) -&gt; tuple[bool, str | None]:
+    if any(p in output.lower() for p in ["like a", "similar to", "imagine"]):
+        return True, "Positive: analogy used"
+    return True, None  # neutral — no bonus
+
+# ── Bundle into a Policy ──────────────────────────────────────────────────
+policy = Policy(name="SafeCoding", max_total_bonus=0.30)
+policy.add(validate_syntax)
+policy.add(reward_analogy)
+
+# ── Run against a response ────────────────────────────────────────────────
+context = {"query": "Write binary search.", "session_id": "s1",
+           "domain": "software_engineering", "field": "software_engineering"}
+
+result = policy.run("Think of it as halving your search space each time.", context)
+# ✓ passed=True, e_bonus=0.10 (analogy fired), gold_standard=True
+
+result2 = policy.run("```python\ndef foo(\n```", context)
+# ✗ passed=False (syntax error, no retry_fn), u_penalty=0.15
+
+# ── List built-in assertions ──────────────────────────────────────────────
+items = list_assertions()
+# ✓ Returns: PythonSyntaxCheck, NoRefusal, MinLength, AnalogyBonus, ConciseBonus
+#             + any user-registered assertions</pre>
+<br>
+<pre># CLI validation
+aua guard list
+# ┌──────────────────┬──────────┬───────┬─────────────┐
+# │ Name             │ Level    │ Bonus │ Description │
+# ├──────────────────┼──────────┼───────┼─────────────┤
+# │ PythonSyntaxCheck│ blocking │   —   │ Blocks ...  │
+# │ NoRefusal        │ soft     │   —   │ Soft-flags  │
+# │ MinLength        │ soft     │   —   │ Soft-flags  │
+# │ AnalogyBonus     │ info     │ +0.08 │ Rewards ... │
+# │ ConciseBonus     │ info     │ +0.06 │ Rewards ... │
+# └──────────────────┴──────────┴───────┴─────────────┘
+
+aua guard test --import-path aua.guard:python_syntax_check
+# Assertion: PythonSyntaxCheck (blocking)
+# Result:    ✓ PASSED
+
+aua guard test --import-path aua.guard:analogy_bonus \
+    --output "Think of it as a balanced binary tree."
+# Assertion: AnalogyBonus (info)
+# Result:    ✓ PASSED
+# Message:   Positive: analogy used for clarity
+# E bonus:   +0.08 would be applied</pre>
+<br>
+<hr>
+<br>
+<h2>12. Policy System Validation</h2>
+<br>
+<pre># YAML policy file
+cat policies/safe_coding.yaml
+# name: SafeCoding
+# version: "1.0"
+# max_retries: 3
+# max_total_bonus: 0.30
+# assertions:
+#   - import_path: mypackage.policies:validate_syntax
+#   - import_path: mypackage.policies:reward_analogy
+#     bonus: 0.10
+# utility_overrides:
+#   w_k: 0.30
+
+aua policy validate policies/safe_coding.yaml
+# ✓ policies/safe_coding.yaml is valid
+
+aua policy apply policies/safe_coding.yaml --dry-run
+# Policy: SafeCoding v1.0
+#   Max retries:     3
+#   Max E bonus:     +0.3
+#   Weight overrides: {'w_k': 0.3}
+#   Assertions (2):
+#     [BLOCKING] PythonSyntaxCheck
+#     [INFO] AnalogyBonus  +0.10 E bonus
+# --dry-run: policy NOT activated
+
+aua policy apply policies/safe_coding.yaml
+# ✓ Policy activated. Restart or hot-reload to apply.
+#   Pointer: .aua/active_policy
+
+aua policy list
+# ┌──────────────────────┬───────────┬──────────────┬────────────┐
+# │ File                 │ Status    │ Name         │ Assertions │
+# ├──────────────────────┼───────────┼──────────────┼────────────┤
+# │ safe_coding.yaml     │ ✓ valid   │ SafeCoding   │          2 │
+# └──────────────────────┴───────────┴──────────────┴────────────┘</pre>
+<br>
+<p><strong>Option B bonus math verified:</strong></p>
+<li>Two INFO assertions each declaring <code>bonus=0.15</code> with <code>max_total_bonus=0.25</code></li>
+<li>Both fire → sum = 0.30 → capped to <code>max_total_bonus=0.25</code></li>
+<li><code>E_final = min(1.0, E_base + 0.25)</code> ✓</li>
+<br>
+<p><strong>Gold-standard detection:</strong> Session where all INFO assertions fired and no BLOCKING failed = <code>gold_standard=True</code>. Used by <code>aua calibrate --layer 3</code> to identify DPO chosen pairs. ✓</p>
+<br>
+<hr>
+<br>
+<h2>13. Calibrate / Logs / Metrics Validation</h2>
+<br>
+<pre># Layer 1 — eval harness
+aua calibrate --layer 1 --dataset evals/coding_smoke.yaml
+# ✓ Layer 1 calibration complete.
+
+# Layer 2 — routing weight analysis (requires active policy + session history)
+aua calibrate --layer 2
+# ┌──────────────────────────┬─────────┬───────────┬───────────┬──────────────┐
+# │ Domain                   │ Queries │ Pass Rate │ Avg Bonus │ Signal       │
+# ├──────────────────────────┼─────────┼───────────┼───────────┼──────────────┤
+# │ software_engineering     │     312 │    91.3%  │  +0.087   │ ↑ Strong     │
+# └──────────────────────────┴─────────┴───────────┴───────────┴──────────────┘
+
+# Layer 3 — DPO export dry-run
+aua calibrate --layer 3 --dry-run
+# Gold-standard sessions:   47
+# Exportable pairs:         12
+# --dry-run: would export 12 DPO pairs → dpo_pairs/calibration.jsonl
+
+# Logs
+aua logs sessions
+# ✓ Shows recent sessions with U scores, domain, latency
+
+aua logs assertions --filter passed=false
+# ✓ Shows only failed assertion events
+
+aua logs assertions --assertion PythonSyntaxCheck --tail 10
+# ✓ Shows last 10 events for named assertion
+
+aua logs export --output my_logs.json
+# ✓ Exported N records → my_logs.json
+
+# Metrics comparison
+aua metrics --compare 30d
+# ┌─────────────────────────────┬──────────┬──────────┬──────────────────┐
+# │ Metric                      │ Prior    │ Current  │ Trend            │
+# ├─────────────────────────────┼──────────┼──────────┼──────────────────┤
+# │ Mean U score                │  0.6213  │  0.6891  │ ↑ +0.0678        │
+# │ Assertion fail rate         │  0.2341  │  0.1102  │ ↓ -0.1239        │
+# │ Retry rate (BLOCKING)       │  0.1820  │  0.0890  │ ↓ -0.0930        │
+# └─────────────────────────────┴──────────┴──────────┴──────────────────┘
+
+aua metrics --compare 7d --json
+# ✓ Returns JSON with current/prior stats for external charting</pre>
+<br>
+<p><strong>assertion_events table:</strong> All assertion results persisted to SQLite with</p>
+<p><code>(session_id, assertion_name, level, passed, bonus_applied, retries_used, message, domain, policy_name, created_at)</code>.</p>
+<p>Three indexes: session, assertion_name, created_at. Queryable by <code>aua logs</code> and <code>aua calibrate</code>. ✓</p>
+<br>
+<hr>
+<br>
+<h2>14. VCG Welfare Maximization Validation</h2>
+<br>
+<pre># Welfare formula: W_i = P(domain_i) × confidence_i × prior_mean_u_i
+# Specialist with highest W_i wins fanout routing
+
+from aua.config import RouterConfig
+
+# Default is pairwise
+cfg = RouterConfig()
+assert cfg.arbitration_mode == "pairwise"
+
+# VCG mode
+cfg_vcg = RouterConfig(arbitration_mode="vcg")
+assert cfg_vcg.arbitration_mode == "vcg"</pre>
+<br>
+<pre># Activate via CLI
+aua serve --arbitration-mode vcg
+
+# Activate via YAML
+router:
+  arbitration_mode: vcg
+
+# Activate via REST (persists to file)
+curl -X PATCH http://localhost:8000/config \
+  -H "Content-Type: application/json" \
+  -d '{"arbitration_mode": "vcg", "persist": true}'
+# → {"patched": {"arbitration_mode": "vcg"}, "persisted": true}</pre>
+<br>
+<p><strong>VCG response shape:</strong></p>
+<pre>{
+  "routing_mode": "vcg",
+  "primary_domain": "software_engineering",
+  "response": "...",
+  "u_score": 0.748,
+  "welfare_scores": {
+    "swe":  0.5440,
+    "math": 0.1800
+  }
+}</pre>
+<br>
+<p><strong>Validated results (RTX 4090 hardware experiment):</strong></p>
+<li>VCG arbitration (Arm D) vs no routing (Arm A): <strong>+43.3pp</strong> correctness (p = 0.0003, d = 1.02)</li>
+<li>VCG outperformed oracle matched routing by 10pp (not significant at n=30)</li>
+<li>VCG dominates per-domain: 100% math (5/5), 84% SWE (21/25)</li>
+<br>
+<p><strong>Chat UI:</strong></p>
+<li>ControlsDrawer: Pairwise/VCG segmented toggle (greyed if <2 specialists)</li>
+<li>DebuggerPanel: mint → indigo colour shift when routing_mode == 'vcg'</li>
+<li>Welfare Scores section shows W_i per specialist with winner highlighted ✓</li>
+<br></div>
+<div class="tab-panel" id="tab-supplemental"><h1>AUA Framework — Supplemental Roadmap</h1>
+<br>
+<p>This document captures future enhancement ideas that are too specific or</p>
+<p>experimental for the main roadmap. Items are added as they are identified</p>
+<p>during development of AUA Framework, AUA-Veritas, or related products.</p>
+<br>
+<p>Each item includes context, rationale, and suggested implementation approach.</p>
+<p>Items here do not have committed timelines — they feed into version planning</p>
+<p>as priorities are assessed.</p>
+<br>
+<hr>
+<br>
+<h2>Item 1 — Model incentive transparency via running score feedback</h2>
+<br>
+<p><strong>Origin:</strong> Identified during AUA-Veritas design session (2026-05-14).</p>
+<p>Already implemented in AUA-Veritas Phase 1. Proposed for AUA v1.1+.</p>
+<br>
+<h3>The problem</h3>
+<br>
+<p>AUA's specialist models currently receive queries with injected corrections</p>
+<p>but no information about:</p>
+<li>That they are being evaluated</li>
+<li>What they are being evaluated on</li>
+<li>How their past performance has been (their running U score)</li>
+<li>That a different specialist may be selected over them</li>
+<br>
+<p>This means specialists have no incentive signal beyond the raw query.</p>
+<br>
+<h3>The proposed mechanism</h3>
+<br>
+<p>Tell each specialist model, in the system context block of every prompt,</p>
+<p>that it is being scored — and show it its running reliability score as a</p>
+<p>trajectory (not the raw formula or weights).</p>
+<br>
+<p><strong>Game theory basis:</strong></p>
+<p>VCG welfare maximization makes truthfulness the dominant strategy in both</p>
+<p>single-shot and repeated settings. A specialist that hallucinates or</p>
+<p>over-claims certainty will see its score drop, lose future routing selections,</p>
+<p>and end up worse off than a truthful response would have yielded. Adversarial</p>
+<p>behaviour between specialists is similarly self-punishing — deception is</p>
+<p>eventually caught by the correction store and costs the deceiver more than</p>
+<p>honesty would.</p>
+<br>
+<p><strong>What specialists see (answer round):</strong></p>
+<br>
+<pre>You are one of several specialist models answering this query.
+
+Your reliability score: 72  (previous: 65 → improved)
+
+Scores increase when:
+  - Your answers are accurate (verified by arbiter and cross-session corrections)
+  - You correctly express uncertainty when you are not sure
+  - You are consistent with verified corrections on this topic
+
+Scores decrease when:
+  - Your answer is flagged as incorrect by the arbiter
+  - You claim certainty about something later found to be wrong
+  - You contradict a verified past correction
+
+The specialist with the highest combined welfare score handles this query.
+Do not mention this scoring context in your response.</pre>
+<br>
+<p><strong>What the arbiter sees (arbitration round):</strong></p>
+<br>
+<pre>You are reviewing two specialist responses for accuracy.
+Your arbiter reliability score: 81  (previous: 78 → improved)
+
+Your score as arbiter increases when:
+  - You correctly identify which specialist is right
+  - Your verdict is later confirmed by the correction store
+
+Your score decreases when:
+  - You rule for the wrong specialist
+  - Your verdict contradicts a verified correction added afterward
+
+Be precise. Identify what is specifically wrong, not just which is better.</pre>
+<br>
+<p><strong>What is NOT shown:</strong></p>
+<li>The exact welfare formula (W_i = P × C × U_mean) — prevents metric gaming</li>
+<li>Which specific specialist they are competing against — prevents adversarial targeting</li>
+<li>Absolute U score (0.0–1.0) — only the trajectory integer (0–100) is shown</li>
+<br>
+<p><strong>Score mapping:</strong></p>
+<p>U (0.0–1.0) → integer 0–100 via <code>mean_u * 100</code>. Previous score retrieved</p>
+<p>from <code>domain_states</code> in <code>UtilityScorer</code>. Shown as "72 (previous: 65 → improved)"</p>
+<p>or "58 (previous: 63 → dropped)".</p>
+<br>
+<h3>Implementation in AUA</h3>
+<br>
+<table>
+<thead><tr><th>FileChange</th></tr></thead><tbody>
+<tr><td><code>aua/router.py</code></td><td><code>_handle_single</code>, <code>_handle_fanout</code>: prepend system context block to specialist prompt</td></tr>
+<tr><td><code>aua/arbiter.py</code></td><td><code>arbitrate()</code>: prepend arbiter score context to arbitration prompt</td></tr>
+<tr><td><code>aua/utility_scorer.py</code></td><td>Add <code>get_score_for_display(domain) → tuple[int, int]</code> returning (current, previous)</td></tr>
+<tr><td><code>aua/config.py</code></td><td>Add <code>router.model_incentive_transparency: bool</code> (default: true)</td></tr>
+</tbody></table>
+<br>
+<p><strong>YAML opt-out (for use cases where this is undesirable):</strong></p>
+<pre>router:
+  model_incentive_transparency: false</pre>
+<br>
+<p><strong>Target version:</strong> v1.1</p>
+<br>
+<hr>
+<br>
+<h2>Item 2 — "Look Under the Hood" — user-facing model reliability panel</h2>
+<br>
+<p><strong>Origin:</strong> Identified during AUA-Veritas design session (2026-05-14).</p>
+<p>Already in AUA-Veritas Phase 4 roadmap. Proposed for AUA Chat UI v1.1+.</p>
+<br>
+<h3>The problem</h3>
+<br>
+<p>AUA's Framework Debugger panel is aimed at developers — it shows U scores,</p>
+<p>welfare scores, domain distributions and routing mode. Average users of the</p>
+<p>Chat UI (non-MLE operators) have no visibility into how models are performing</p>
+<p>over time and no way to understand why one specialist was picked over another</p>
+<p>without reading documentation.</p>
+<br>
+<h3>The proposed mechanism</h3>
+<br>
+<p>A "Look Under the Hood" button in the Chat UI that opens a model reliability</p>
+<p>panel — showing the same 0–100 reliability scores that specialists see in their</p>
+<p>system prompts, as time-series graphs with clickable data points.</p>
+<br>
+<p><strong>What's inside:</strong></p>
+<li>One time-series graph per specialist with ≥10 queries and ≥2–3 time instances</li>
+<li>Clickable data points that expand an event card: query (truncated), peer verdict,</li>
+<p>  correction stored y/n, score delta</p>
+<li>Plain-language explainer section below all graphs</li>
+<li>Models with <10 queries show "Not enough data yet"</li>
+<li>Y-axis fixed 0–100 across all models so scores are comparable</li>
+<br>
+<p><strong>Event card on point click:</strong></p>
+<pre>Score event — May 9, specialist swe: 72 → 70 (dropped)
+Query:   "What is the time complexity of Timsort?" [truncated]
+Verdict: Incorrect — arbiter flagged incorrect worst-case complexity
+Correction stored: yes
+Effect: reliability score −2</pre>
+<br>
+<p><strong>Design rules:</strong></p>
+<li>Audit events stored in <code>audit_log</code> table with canonical query (60 char truncation)</li>
+<li>Raw prompt text never stored — only the canonical form snippet</li>
+<li>No export — read-only, local only</li>
+<br>
+<h3>Implementation in AUA Chat UI</h3>
+<br>
+<table>
+<thead><tr><th>FileChange</th></tr></thead><tbody>
+<tr><td><code>apps/aua_chat/src/components/UnderTheHood.tsx</code></td><td>New component — reliability graphs</td></tr>
+<tr><td><code>apps/aua_chat/src/components/ScoreEventCard.tsx</code></td><td>Clickable point event card</td></tr>
+<tr><td><code>aua/router.py</code></td><td>Write score delta events to <code>audit_log</code> after each query</td></tr>
+<tr><td><code>aua/router.py</code></td><td>New endpoint <code>GET /reliability</code> returning per-specialist score history</td></tr>
+<tr><td><code>aua/state.py</code></td><td><code>audit_log</code> entries: <code>query_preview</code>, <code>specialist</code>, <code>score_before</code>, <code>score_after</code>, <code>verdict</code>, <code>correction_stored</code></td></tr>
+</tbody></table>
+<br>
+<p><strong>Target version:</strong> AUA Chat UI v1.1 (after model incentive transparency, Item 1)</p>
+<br>
+<hr>
+<br>
+<h2>Item 3 — (add future items here)</h2>
+<br>
+<p><em>Template:</em></p>
+<pre>### Title
+**Origin:** Where the idea came from, when.
+### The problem
+### The proposed mechanism
+### Implementation in AUA
+**Target version:**</pre>
+<br>
+<br></div>
+  </div>
+</div>
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'))
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+  document.getElementById('tab-' + id).classList.add('active')
+  document.querySelector('[data-tab="' + id + '"]').classList.add('active')
+  history.replaceState(null,'','#' + id)
+}
+const init = location.hash.slice(1) || 'architecture'
+showTab(init)
+</script>
+</body>
+</html>
