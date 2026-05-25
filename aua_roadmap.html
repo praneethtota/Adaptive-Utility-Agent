@@ -117,6 +117,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
   <a href="#milestone-rc1">v0.9-rc1</a>
   <a href="#milestone-rc2">v0.9-rc2</a>
   <a href="#milestone-v1">v1.0</a>
+  <a href="#milestone-v1-1">v1.1-veritas</a>
   <a href="#milestone-v2">v2.0+</a>
 </nav>
 
@@ -970,7 +971,445 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
-<!-- MILESTONE 7: v2.0+                                                     -->
+<!-- MILESTONE 7: v1.1-veritas (Phase 13 backport)                          -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 id="milestone-v1-1">v1.1-veritas &mdash; AUA-Veritas Production Backport (Phase 13)</h2>
+
+<p>
+  These 49 items were discovered, built, and battle-tested in
+  <strong>AUA-Veritas</strong> &mdash; a macOS desktop AI assistant
+  built on top of the AUA framework. Every item here was required to
+  make a real user-facing product work. P0 items are
+  <span class="badge done">done</span> in this release.
+  P1&ndash;P3 are <span class="badge planned">planned</span>.
+</p>
+
+<div class="callout purple">
+  <p><strong>Implementation rules discovered through production.</strong>
+  Each warning below represents a real bug that caused silent failures in AUA-Veritas.
+  The rules are carried forward into the framework to prevent recurrence.</p>
+</div>
+
+<div class="stage stage-2">
+  <div class="stage-header">
+    <div class="stage-num">V-P0</div>
+    <div>
+      <p class="stage-title">Priority 0 &mdash; Required for any production deployment</p>
+      <p class="stage-subtitle">All items implemented and tested against real Claude API calls (75 E2E tests, 0 failures).</p>
+    </div>
+    <div class="stage-meta">
+      <span class="badge done">done</span>
+      <span class="stage-timeline">v1.1-veritas</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="task-group">
+      <span class="task-group-label">Persistence layer</span>
+      <div class="tasks">
+
+        <div class="task">
+          <span class="task-id">V-P0.1</span>
+          <div class="task-body">
+            <span class="task-title">Conversation + message persistence API <span class="badge done">done</span></span>
+            <p class="task-desc">
+              New tables: <code>conversations</code> (with <code>project_id</code> FK),
+              <code>messages</code>, <code>model_runs</code>, <code>token_counters</code>,
+              <code>message_keywords</code>, <code>context_backups</code>, <code>projects</code>.
+              Endpoints: <code>POST /conversations</code>, <code>GET /conversations</code> (with
+              <code>?project_id=</code> filter), <code>PATCH /conversations/{id}/title</code>,
+              <code>GET /conversations/{id}/messages</code> (paginated with <code>before</code>/<code>after</code>
+              timestamp cursors), <code>POST /projects</code>, <code>GET /projects</code>.
+              All implemented in <code>aua/state.py</code> and <code>aua/router.py</code>.
+            </p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">V-P0.2</span>
+          <div class="task-body">
+            <span class="task-title">Schema: <code>model_runs.conversation_id</code> &mdash; required join column <span class="badge done">done</span></span>
+            <p class="task-desc">
+              <code>model_runs</code> previously had <code>query_id</code> but no <code>conversation_id</code>.
+              There was literally no join path between a conversation and its model runs in the database.
+              Added <code>conversation_id TEXT</code> column + <code>idx_runs_conv</code> index.
+              Also added <code>domain_l0</code> and <code>domain_path</code> for hierarchical domain tracking.
+              <br/><strong>Implementation rule:</strong> every method that stores a model run must receive
+              <code>conversation_id</code> as an <em>explicit parameter</em> &mdash; never rely on closure
+              capture. The <code>_peer_review()</code> method in Veritas silently dropped conversation IDs
+              for 3 months because of this.
+            </p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">V-P0.3</span>
+          <div class="task-body">
+            <span class="task-title">Off-critical-path writes via <code>fire_and_forget()</code> <span class="badge done">done</span></span>
+            <p class="task-desc">
+              Model score updates, <code>model_runs</code> inserts, and token counter increments
+              were blocking the response path (1&ndash;8 ms each, compounding). Moved off the critical
+              path using <code>asyncio.create_task()</code> via the new <code>fire_and_forget(coro)</code>
+              helper in <code>aua/state.py</code>. Saves 15&ndash;25 ms per query.
+              Score thresholds validated in production: <em>3 correct responses &rarr; +1 point</em>,
+              <em>2 wrong &rarr; &minus;1 point</em>. A threshold of 5 made score movement invisible
+              within a typical session.
+              <br/><strong>Implementation rule:</strong> <code>asyncio</code> must be imported at the
+              <em>top</em> of <code>lifespan()</code> (or locally in each use site) &mdash; never as a
+              lazy mid-body import. Any startup code that runs before the lazy import will crash with
+              <code>NameError</code>. This bug manifested in 2 separate places in Veritas.
+            </p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">V-P0.4</span>
+          <div class="task-body">
+            <span class="task-title">LRU message cache &mdash; <code>MessageCache</code> class <span class="badge done">done</span></span>
+            <p class="task-desc">
+              Implemented <code>MessageCache</code> in <code>aua/state.py</code> using
+              <code>collections.OrderedDict</code> + <code>move_to_end()</code> on every cache hit
+              (true LRU). FIFO <code>dict</code> evicts the <em>most-accessed</em> conversation first
+              &mdash; the opposite of what you want. Capacity: 500 conversations.
+              <br/><strong>Cache bypass rule:</strong> only serve from cache when
+              <code>limit &ge; 50</code> (the default). A custom <code>?limit=1</code> query must
+              bypass the cache and hit the DB with the actual limit &mdash; otherwise pagination is
+              silently broken (<code>limit=1</code> returns all cached messages). This bug was found
+              by the E2E test suite.
+            </p>
+            <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+          </div>
+        </div>
+
+        <div class="task">
+          <span class="task-id">V-P0.5</span>
+          <div class="task-body">
+            <span class="task-title">Context backup reads full DB history, not request slice <span class="badge done">done</span></span>
+            <p class="task-desc">
+              The context backup generator previously used <code>conversation_history</code> from the
+              client request body &mdash; whatever messages the frontend happened to have loaded.
+              If the UI had 20 messages loaded from an 80-message conversation, the backup was written
+              from those 20. Fixed: backup reads the full conversation from the DB (last 60 messages,
+              decrypted). The <code>get_messages()</code> method now serves as the canonical source.
+              Also: max backup tokens raised 600 &rarr; 900 to accommodate the structured 6-section
+              template (GOAL / DECISIONS / STATUS / ACTIVE FILE / PREFERENCES / RESUME INSTRUCTION).
+            </p>
+            <div class="task-tags"><span class="tag code">code</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stage stage-2">
+  <div class="stage-header">
+    <div class="stage-num">V-P1</div>
+    <div>
+      <p class="stage-title">Priority 1 &mdash; Required for desktop / long-running sessions</p>
+      <p class="stage-subtitle">All items implemented in AUA-Veritas. Backport to framework pending.</p>
+    </div>
+    <div class="stage-meta">
+      <span class="badge planned">planned</span>
+      <span class="stage-timeline">v1.1-veritas</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="tasks">
+
+      <div class="task">
+        <span class="task-id">V-P1.1</span>
+        <div class="task-body">
+          <span class="task-title">Full-text keyword search &mdash; in-memory inverted index + bisect prefix</span>
+          <p class="task-desc">
+            In-memory inverted index (<code>keyword &rarr; {conversation_id, ...}</code>)
+            backed by a sorted keyword list for O(log n) prefix matching via <code>bisect</code>.
+            Multi-word AND semantics. Average query latency: 4&ndash;10 ms (vs 1.07 ms DB fallback).
+            Queue-based async worker (<code>asyncio.Queue</code>) drains keyword extraction
+            off the response path in 50 ms batches.
+            <br/><strong>Closure-scope trap (Phase 13):</strong> the <code>_kw_worker</code> closure
+            inside <code>lifespan()</code> used <code>_tm.time()</code> where <code>_tm</code> was
+            only imported later in the same body. The task crashed on its first item in <em>every
+            session</em> &mdash; search was 100% broken for 3 months. Fix: add
+            <code>import time as _kw_tm</code> <em>inside</em> the closure.
+            <br/><strong>Startup backfill required:</strong> the async worker is killed on process
+            restart before flushing. At startup, scan <code>messages</code> for rows not yet in
+            <code>message_keywords</code> and index them. Without this, search returns empty after
+            every rebuild.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P1.2</span>
+        <div class="task-body">
+          <span class="task-title">Context backup coverage job &mdash; 6-hour sweep</span>
+          <p class="task-desc">
+            Background job that runs every 6 hours (first run: 60 s after startup).
+            SQL validity check: <code>backup valid &hArr; MAX(context_backups.created_at) &gt; MAX(messages.created_at)</code>
+            for that conversation + specialist pair. Finds all stale or missing backups and generates
+            them at 1/s (rate-limit pacing). Exposes <code>GET /context/backup/coverage</code> and
+            <code>POST /context/backup/run-coverage-job</code>.
+            <br/><strong>Method signature hygiene:</strong> when refactoring method signatures,
+            grep all call sites. A stale <code>conversation_id=</code> kwarg passed to a method
+            that no longer accepts it crashed every coverage job run silently.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P1.3</span>
+        <div class="task-body">
+          <span class="task-title">Implicit correction confirm/reject &mdash; <code>POST /corrections/confirm-implicit</code></span>
+          <p class="task-desc">
+            Layer 1 trigger detector catches implicit corrections (short reply + negation pattern +
+            semantic similarity). Instead of asking the user to re-type their intent, a modal
+            presents Accept / Reject buttons. <code>POST /corrections/confirm-implicit</code>
+            handles the response.
+            <br/><strong>Explicit prefix rule:</strong> <code>correction: X</code> is a preference
+            statement &mdash; store it <em>regardless</em> of whether a prior AI turn exists.
+            The <code>_handle_correction()</code> early-return
+            (<code>if not last_ai_response: return None</code>) must be guarded by
+            <code>and not explicit_prefix</code>. Without this guard, corrections sent at the
+            start of a conversation are silently discarded.
+            <br/><strong>Regex pattern rule:</strong> patterns ending in punctuation or space
+            (e.g. <code>actually,</code> &nbsp;<code>no,</code> &nbsp;<code>in fact,</code>)
+            cannot use a trailing <code></code> word boundary &mdash; comma + space is not a
+            word boundary. Split <code>CORRECTION_PATTERNS</code> into two groups: word-terminated
+            (use <code>...</code>) and punct/space-terminated (use <code></code> prefix only).
+          </p>
+          <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P1.4</span>
+        <div class="task-body">
+          <span class="task-title">Structured context backup prompt &mdash; 6-section handoff template</span>
+          <p class="task-desc">
+            Replaces the free-form backup prompt with a structured template that forces
+            the model to capture: <strong>GOAL</strong> (objective + constraints),
+            <strong>DECISIONS MADE</strong> (&ldquo;Decided X because Y. Rejected Z because W.&rdquo;),
+            <strong>CURRENT STATUS</strong> (✅ completed / 🔄 in progress / ❓ unresolved),
+            <strong>ACTIVE FILE / CODE CONTEXT</strong> (exact path + function + next step),
+            <strong>USER PREFERENCES LEARNED</strong>, and
+            <strong>RESUME INSTRUCTION</strong> (one sentence for the new window).
+            Max tokens raised 600 &rarr; 900 to accommodate all 6 sections without truncation.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P1.5</span>
+        <div class="task-body">
+          <span class="task-title">Crash reporter &mdash; startup sentinel + auto-report on next launch</span>
+          <p class="task-desc">
+            On startup: write <code>status=&lsquo;running&rsquo;</code> sentinel to DB.
+            On clean shutdown: update to <code>status=&lsquo;clean&rsquo;</code>.
+            On next startup: detect <code>status=&lsquo;running&rsquo;</code> &rarr; previous session
+            crashed &rarr; send report async to GitHub Contents API.
+            Includes <code>pending_error_reports</code> table for queuing errors from crashed sessions.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span><span class="tag ops">ops</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P1.6</span>
+        <div class="task-body">
+          <span class="task-title">Remote model config &mdash; fetch &rarr; DB cache &rarr; hardcoded fallback chain</span>
+          <p class="task-desc">
+            Three-level fallback: remote JSON (e.g. GitHub Pages, fetched at startup + every 24 h)
+            &rarr; DB-cached config (last successful fetch, kept 7 days) &rarr; hardcoded fallback.
+            Allows model IDs, pricing, and context windows to be updated without a rebuild.
+            Critical for production: Gemini 1.5 Pro was silently deprecated with a 404 and required
+            a full rebuild to fix without this system.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="stage stage-3">
+  <div class="stage-header">
+    <div class="stage-num">V-P2</div>
+    <div>
+      <p class="stage-title">Priority 2 &mdash; UX quality</p>
+      <p class="stage-subtitle">Implemented in AUA-Veritas. Backport to framework planned.</p>
+    </div>
+    <div class="stage-meta">
+      <span class="badge planned">planned</span>
+      <span class="stage-timeline">v1.1-veritas</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="tasks">
+
+      <div class="task">
+        <span class="task-id">V-P2.1</span>
+        <div class="task-body">
+          <span class="task-title">Peer review notes in response &mdash; <code>review_notes</code> field</span>
+          <p class="task-desc">
+            When the peer reviewer flags an issue, surface the findings to the client:
+            reviewer model name, ISSUES found, CORRECTION suggested.
+            Add <code>review_notes: str | None</code> to <code>RouterResponse</code>.
+            Parse <code>ISSUES:</code> / <code>CORRECTION:</code> structured sections from
+            reviewer output. Currently the framework discards reviewer findings after
+            parsing the verdict.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P2.2</span>
+        <div class="task-body">
+          <span class="task-title">Analytics, reliability, and usage endpoints</span>
+          <p class="task-desc">
+            <code>GET /analytics</code> &mdash; session stats, agreement rate, domain distribution,
+            correction stats, confidence distribution.
+            <code>GET /reliability</code> &mdash; per-specialist win rate and
+            <code>effective_u</code> trajectory.
+            <code>GET /usage</code> &mdash; token usage summary.
+            <code>GET /pricing</code> &mdash; per-specialist token pricing for cost estimation.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P2.3</span>
+        <div class="task-body">
+          <span class="task-title">Update management &mdash; version check, skip-version persistence</span>
+          <p class="task-desc">
+            <code>GET /version/check</code> &mdash; check GitHub releases for newer version.
+            <code>POST /update/skip</code> &mdash; store <code>skipped_version</code> so update
+            banner doesn't re-appear. <code>GET /update/skipped</code>.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P2.4</span>
+        <div class="task-body">
+          <span class="task-title">Corrections CRUD &mdash; edit, soft-delete, evidence endpoint</span>
+          <p class="task-desc">
+            <code>PATCH /corrections/{id}</code> &mdash; update correction text.
+            <code>DELETE /corrections/{id}</code> &mdash; soft-delete (sets
+            <code>scope=&lsquo;superseded&rsquo;</code>, row stays in DB, excluded from
+            retrieval). <code>GET /corrections/evidence</code> &mdash; per-correction evidence
+            and application history.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="stage stage-3">
+  <div class="stage-header">
+    <div class="stage-num">V-P3</div>
+    <div>
+      <p class="stage-title">Priority 3 &mdash; Production hardening</p>
+      <p class="stage-subtitle">Implemented in AUA-Veritas. Backport to framework planned.</p>
+    </div>
+    <div class="stage-meta">
+      <span class="badge planned">planned</span>
+      <span class="stage-timeline">v1.1-veritas</span>
+    </div>
+  </div>
+  <div class="stage-body">
+    <div class="tasks">
+
+      <div class="task">
+        <span class="task-id">V-P3.1</span>
+        <div class="task-body">
+          <span class="task-title">Bug reporting &mdash; structured report to GitHub Contents API</span>
+          <p class="task-desc">
+            <code>POST /bug-report</code>: collects system log tail, API log tail, JS console errors,
+            optional conversation exchange. Submits via GitHub Contents API to a private repo.
+            Falls back gracefully when PAT not configured (returns 200 with error message, never 500).
+          </p>
+          <div class="task-tags"><span class="tag code">code</span><span class="tag ops">ops</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P3.2</span>
+        <div class="task-body">
+          <span class="task-title">Projects &mdash; conversation scoping via <code>project_id</code> FK</span>
+          <p class="task-desc">
+            <code>conversations.project_id</code> FK (schema already in V-P0.1).
+            <code>GET /conversations?project_id=X</code> filters correctly.
+            <code>POST /conversations</code> accepts <code>project_id</code> in body.
+            Sidebar filters to that project&rsquo;s conversations.
+            &ldquo;All chats&rdquo; option shows conversations with <code>project_id=NULL</code>.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P3.3</span>
+        <div class="task-body">
+          <span class="task-title">Local model management API &mdash; Ollama discovery + specialist tagging</span>
+          <p class="task-desc">
+            <code>GET /local/models</code> &mdash; list connected local models with
+            <code>specialist_domain</code> + <code>specialist_depth</code> fields.
+            <code>GET /local/settings</code>, <code>POST /local/settings</code>.
+            <code>PATCH /local/specialist/{id}</code> &mdash; tag a local model as specialist
+            for a domain node. Framework currently has <code>ollama_backend.py</code> but no
+            discovery, management, or specialist routing API.
+          </p>
+          <div class="task-tags"><span class="tag code">code</span><span class="tag new">new</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <span class="task-id">V-P3.4</span>
+        <div class="task-body">
+          <span class="task-title">Dynamic domain ontology &mdash; candidate queue + promotion</span>
+          <p class="task-desc">
+            Dynamic domain tree with candidate promotion: domain nodes start as aliases, get
+            promoted when query volume and divergence thresholds are met.
+            <code>GET /domain-tree</code> &mdash; full ontology with node stats and candidate queue.
+            Background ontology job runs divergence test, applies promotion criteria.
+          </p>
+          <div class="task-tags"><span class="tag ml">ml</span><span class="tag new">new</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="callout green">
+  <p><strong>v1.1-veritas P0 definition of done:</strong>
+  <code>from aua.state import SQLiteStateStore, MessageCache, fire_and_forget</code> imports cleanly.
+  <code>POST /conversations</code>, <code>GET /conversations</code>,
+  <code>GET /conversations/{id}/messages?limit=1</code> (bypasses cache),
+  <code>POST /projects</code>, <code>GET /context/backup/coverage</code>
+  all return correct responses. Schema includes <code>conversations</code>,
+  <code>messages</code>, <code>model_runs</code> (with <code>conversation_id</code>),
+  <code>token_counters</code>, <code>message_keywords</code>, <code>context_backups</code>,
+  <code>projects</code>. <code>fire_and_forget()</code> schedules background tasks without
+  blocking the response path.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MILESTONE 8: v2.0+                                                     -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <h2 id="milestone-v2">v2.0+ &mdash; High Availability, Distributed, Advanced</h2>
 
@@ -1111,6 +1550,12 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
       <td>D-01&ndash;D-04 (4 items)</td>
       <td>Release readiness</td>
       <td>All v1.0 definition-of-done commands pass</td>
+    </tr>
+    <tr>
+      <td><strong>v1.1-veritas</strong></td>
+      <td>V-P0&ndash;V-P3 (49 items across 4 priorities)</td>
+      <td>AUA-Veritas production backport &mdash; persistence, search, corrections, backup</td>
+      <td>P0 implemented. P1&ndash;P3 planned.</td>
     </tr>
     <tr>
       <td><strong>v2.0+</strong></td>

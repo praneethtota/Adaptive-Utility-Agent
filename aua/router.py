@@ -221,6 +221,12 @@ class Router:
         self._scorer = UtilityScorer()
         self._store = AssertionsStore()
         self._detector = ContradictionDetector(penalty_multiplier=2.0)
+
+        # P0: persistent state store (conversations, messages, model_runs, etc.)
+        from aua.state import SQLiteStateStore
+        _db_path = getattr(config, "state", None)
+        _db_path = getattr(_db_path, "path", ".aua/state/aua.db") if _db_path else ".aua/state/aua.db"
+        self._state_store = SQLiteStateStore(db_path=_db_path)
         self._conf = ConfidenceUpdater()
 
         self._domain_confidence: dict[str, float] = {s.field: 0.5 for s in config.specialists}
@@ -487,6 +493,182 @@ class Router:
             return await self._health()
 
         # ── Corrections ────────────────────────────────────────────────────
+
+        # ── P0: Conversation + message persistence ──────────────────────────────
+        # Implemented as part of Phase 13 backport from AUA-Veritas.
+        # Key implementation rules carried forward:
+        #   1. asyncio imported at TOP of lifespan/mount — never mid-body.
+        #   2. model_runs.conversation_id must be explicit — no closure capture.
+        #   3. Cache bypass when limit < 50 (non-default).
+        #   4. fire_and_forget() for all post-response DB writes.
+
+        from aua.state import MessageCache
+        _msg_cache = MessageCache()
+
+        @app.post(
+            "/conversations",
+            tags=["conversations"],
+            summary="Create a new conversation",
+            status_code=201,
+        )
+        async def create_conversation(body: dict = None) -> dict:
+            """Create a new conversation, optionally in a project."""
+            body = body or {}
+            title = body.get("title", "New Chat")
+            project_id = body.get("project_id")
+            user_id = body.get("user_id", "local")
+            conv = self._state_store.create_conversation(
+                title=title, project_id=project_id, user_id=user_id
+            )
+            return conv
+
+        @app.get(
+            "/conversations",
+            tags=["conversations"],
+            summary="List conversations",
+        )
+        async def list_conversations(
+            project_id: str | None = QueryParam(None, description="Filter by project ID. Omit for all conversations."),
+            user_id: str = QueryParam("local", description="User identifier."),
+            limit: int = QueryParam(1000, ge=1, le=10000),
+        ) -> list:
+            """List conversations, optionally filtered by project."""
+            return self._state_store.list_conversations(
+                user_id=user_id, project_id=project_id, limit=limit
+            )
+
+        @app.patch(
+            "/conversations/{conversation_id}/title",
+            tags=["conversations"],
+            summary="Rename a conversation",
+        )
+        async def rename_conversation(conversation_id: str, body: dict) -> dict:
+            """Update the title of a conversation."""
+            title = body.get("title", "").strip()
+            if not title:
+                from fastapi import HTTPException
+                raise HTTPException(400, "title must not be empty")
+            self._state_store.rename_conversation(conversation_id, title)
+            return {"conversation_id": conversation_id, "title": title}
+
+        @app.get(
+            "/conversations/{conversation_id}/messages",
+            tags=["conversations"],
+            summary="Paginated message fetch",
+        )
+        async def get_messages(
+            conversation_id: str,
+            limit: int = QueryParam(50, ge=1, le=500),
+            before: float | None = QueryParam(None, description="Cursor: return messages before this timestamp."),
+            after: float | None = QueryParam(None, description="Cursor: return messages after this timestamp."),
+        ) -> list:
+            """
+            Return messages for a conversation, paginated by timestamp cursor.
+
+            Cache rule (Phase 13): only serve from cache when limit >= 50 (default).
+            A non-default limit bypasses cache and hits DB with the actual limit.
+            """
+            # Cache-first for default first-page loads only
+            if before is None and after is None:
+                cached = _msg_cache.get(conversation_id, limit=limit)
+                if cached is not None:
+                    return cached
+
+            messages = self._state_store.get_messages(
+                conversation_id, limit=limit, before=before, after=after
+            )
+
+            # Populate cache for default first-page loads
+            if before is None and after is None:
+                _msg_cache.set(conversation_id, messages)
+
+            return messages
+
+        @app.post(
+            "/projects",
+            tags=["conversations"],
+            summary="Create a project",
+            status_code=201,
+        )
+        async def create_project(body: dict) -> dict:
+            """Create a project for grouping conversations."""
+            import uuid as _uuid_proj
+            name = body.get("name", "").strip()
+            if not name:
+                from fastapi import HTTPException
+                raise HTTPException(400, "name must not be empty")
+            project_id = str(_uuid_proj.uuid4())
+            user_id = body.get("user_id", "local")
+            import time as _time_proj
+            self._state_store.append(
+                "projects",
+                {"project_id": project_id, "user_id": user_id, "name": name,
+                 "created_at": _time_proj.time()},
+            )
+            return {"project_id": project_id, "name": name, "user_id": user_id}
+
+        @app.get(
+            "/projects",
+            tags=["conversations"],
+            summary="List projects",
+        )
+        async def list_projects(
+            user_id: str = QueryParam("local"),
+        ) -> list:
+            """List all projects for a user."""
+            return self._state_store.query(
+                "projects", filters={"user_id": user_id}, limit=1000, order_by="created_at ASC"
+            )
+
+        @app.post(
+            "/conversations/{conversation_id}/model-run",
+            tags=["conversations"],
+            summary="Record a model run",
+            status_code=201,
+        )
+        async def record_model_run(conversation_id: str, body: dict) -> dict:
+            """
+            Record a model run for a query in a conversation.
+
+            Implementation rule (Phase 13): conversation_id is passed as an
+            EXPLICIT parameter — never rely on closure capture. Without it there
+            is no join path between a conversation and its model runs.
+            """
+            from aua.state import fire_and_forget
+            import asyncio
+
+            run = {**body, "conversation_id": conversation_id}
+
+            async def _store():
+                self._state_store.record_model_run(run)
+
+            fire_and_forget(_store())
+            return {"ok": True}
+
+        @app.get(
+            "/context/backup/coverage",
+            tags=["context"],
+            summary="Context backup coverage report",
+        )
+        async def get_backup_coverage(
+            specialist: str = QueryParam(None, description="Check coverage for a specific specialist."),
+        ) -> dict:
+            """
+            Return which conversations have valid context backups.
+
+            A backup is VALID when backup.created_at > MAX(messages.created_at).
+            Used by the 6-hour coverage job to find stale or missing backups.
+            """
+            if not specialist:
+                return {"error": "specialist parameter required"}
+            stale = self._state_store.stale_backup_conversations(specialist)
+            return {
+                "specialist": specialist,
+                "stale_count": len(stale),
+                "stale_conversations": stale,
+            }
+
+        # ── End P0: Conversation + message persistence ───────────────────────
 
         @app.post(
             "/corrections",
