@@ -610,6 +610,7 @@ footer a:hover { text-decoration: underline; }
   <div class="hero-actions">
     <a href="tutorial.html" class="btn btn-primary">Get Started →</a>
     <a href="whitepaper_overview.html" class="btn btn-secondary">Whitepaper</a>
+    <a href="https://praneethtota.github.io/AUA-Veritas/" target="_blank" class="btn btn-secondary">AUA-Veritas app ↗</a>
     <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank" class="btn btn-secondary">GitHub ↗</a>
   </div>
 
@@ -767,6 +768,104 @@ Field-specific penalty multipliers route into DPO training:
   <p style="font-size:.9rem;color:#555;">
     Full theory in the <a href="whitepaper_overview.html">whitepaper</a>. Implementation walkthrough in the <a href="tutorial.html">tutorial</a>. Framework architecture spec in the <a href="docs/index.html#architecture">Architecture doc</a>.
   </p>
+</div>
+
+<!-- AUA-VERITAS -->
+<div style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:72px 24px;margin:0">
+  <div style="max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center">
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#a5b4fc;margin-bottom:14px">Built on AUA Framework</div>
+      <h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:clamp(1.6rem,3vw,2.2rem);font-weight:400;color:#fff;line-height:1.2;margin:0 0 16px">AUA-Veritas — the desktop app</h2>
+      <p style="font-size:.97rem;color:#c7d2fe;line-height:1.75;margin:0 0 24px">
+        AUA-Veritas is a macOS desktop AI assistant that puts the full AUA Framework behind a simple chat interface. Ask anything — it runs GPT-4o, Claude, Gemini, o4-mini and others simultaneously, picks the best answer via VCG mechanism design, remembers every correction you make, and backs up context so you never re-explain yourself.
+      </p>
+      <p style="font-size:.9rem;color:#a5b4fc;line-height:1.7;margin:0 0 28px">
+        All data stays on your machine. No account. No telemetry. API keys stored in macOS Keychain.
+      </p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a href="https://praneethtota.github.io/AUA-Veritas/" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#4338ca;color:#fff;padding:10px 22px;border-radius:8px;font-size:.88rem;font-weight:600;text-decoration:none">
+          App page + download ↗
+        </a>
+        <a href="https://github.com/praneethtota/AUA-Veritas/releases/tag/v0.9.0" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);color:#e0e7ff;padding:10px 22px;border-radius:8px;font-size:.88rem;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,.2)">
+          v0.9.0 release ↗
+        </a>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:18px 20px">
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#a5b4fc;margin-bottom:6px">10 models connected</div>
+        <div style="font-size:.9rem;color:#e0e7ff;line-height:1.6">GPT-4o · o4-mini · Claude Opus · Claude Sonnet · Gemini 2.5 Pro · Gemini 2.5 Flash · Gemini 2.0 Flash · GPT-4o mini · Claude Haiku · Llama 3.3 70B</div>
+      </div>
+      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:18px 20px">
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#a5b4fc;margin-bottom:6px">v0.9.0 E2E results</div>
+        <div style="font-size:.9rem;color:#e0e7ff;line-height:1.7">27 / 31 pass &nbsp;·&nbsp; 0 code failures &nbsp;·&nbsp; 10 / 10 models tested<br>Search: 46 message-level hits for "python" across conversations</div>
+      </div>
+      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:18px 20px">
+        <div style="font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#a5b4fc;margin-bottom:6px">Relationship to the framework</div>
+        <div style="font-size:.9rem;color:#e0e7ff;line-height:1.7">Veritas is a production application of the AUA Framework — it backported 49 items (Phase 13) that became <a href="aua_roadmap.html#milestone-v1-1" style="color:#a5b4fc">v1.1-veritas milestone</a> in the framework roadmap.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- AUA-VERITAS FEATURE CARDS -->
+<div class="section">
+  <div class="section-label">AUA-Veritas — v0.9.0</div>
+  <h2>What the app adds on top of the framework</h2>
+  <p style="max-width:700px;font-size:1.02rem;color:#333;">
+    AUA-Veritas is a production consumer application built on this framework. It shipped 49 new items (Phase 13 backport) that were promoted back into the framework as <a href="aua_roadmap.html#milestone-v1-1" style="color:var(--accent)">v1.1-veritas milestone</a>.
+  </p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <span class="fc-icon">💬</span>
+      <div class="fc-title">Persistent chat with encryption</div>
+      <div class="fc-desc">
+        Full conversation persistence in SQLite — <code>conversations</code>, <code>messages</code>, <code>model_runs</code>, <code>token_counters</code>, <code>message_keywords</code>, <code>context_backups</code>, <code>projects</code>. All message content AES-128 encrypted at rest via Fernet.
+      </div>
+      <div class="fc-stat">7 new tables · AES-128 Fernet · paginated message API</div>
+    </div>
+    <div class="feature-card">
+      <span class="fc-icon">🔍</span>
+      <div class="fc-title">Full-text search — Cmd+F model</div>
+      <div class="fc-desc">
+        In-memory inverted index with <code>bisect</code> prefix matching. Returns one result per matching <em>message</em>, not per conversation — same navigation model as browser Cmd+F. AND semantics across words. Navigate with ‹ › arrows or Enter / Shift+Enter.
+      </div>
+      <div class="fc-stat">&lt;10ms query · message-level hits · startup backfill</div>
+    </div>
+    <div class="feature-card">
+      <span class="fc-icon">🔄</span>
+      <div class="fc-title">Context backup system</div>
+      <div class="fc-desc">
+        Each model maintains its own shadow token counter. At 70% context pressure or 30 messages, it writes a structured 6-section handoff note (GOAL / DECISIONS / STATUS / ACTIVE FILE / PREFERENCES / RESUME). A 6-hour coverage job finds and fills gaps. Backup validity: <code>backup.created_at &gt; MAX(messages.created_at)</code>.
+      </div>
+      <div class="fc-stat">Per-model · 3 triggers · 6h coverage sweep</div>
+    </div>
+    <div class="feature-card">
+      <span class="fc-icon">📎</span>
+      <div class="fc-title">File attachments</div>
+      <div class="fc-desc">
+        Drag-and-drop or click to attach PDFs, images, and text files. Extracted text sent to models. Keywords indexed for search. Raw bytes stored in local object store when enabled. Download stored files from chat via <code>GET /attachments/{id}/content</code>.
+      </div>
+      <div class="fc-stat">Drag-drop · keyword indexed · re-downloadable</div>
+    </div>
+    <div class="feature-card">
+      <span class="fc-icon">⚡</span>
+      <div class="fc-title">Off-critical-path writes</div>
+      <div class="fc-desc">
+        Model run recording, token counter increments, and keyword extraction moved off the response path via <code>asyncio.create_task()</code> through the <code>fire_and_forget(coro)</code> helper. Saves 15–25ms per query. Score thresholds validated in production: 3 correct → +1, 2 wrong → −1.
+      </div>
+      <div class="fc-stat">fire_and_forget() · 15–25ms saved · LRU message cache</div>
+    </div>
+    <div class="feature-card">
+      <span class="fc-icon">🐛</span>
+      <div class="fc-title">Crash reporting + remote config</div>
+      <div class="fc-desc">
+        Startup sentinel detects crashes from previous sessions and files async reports to a private GitHub repo. Three-level model config fallback: remote JSON → DB cache → hardcoded. Model IDs, pricing, and context windows update without a rebuild.
+      </div>
+      <div class="fc-stat">Crash sentinel · 24h config refresh · graceful fallback</div>
+    </div>
+  </div>
 </div>
 
 <!-- DOMAIN DEEP-DIVES -->
@@ -986,43 +1085,6 @@ Field-specific penalty multipliers route into DPO training:
   </div>
 </div>
 
-<!-- AUA-VERITAS -->
-<div style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:72px 24px;margin:0">
-  <div style="max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center">
-    <div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#a5b4fc;margin-bottom:14px">Built on AUA Framework</div>
-      <h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:clamp(1.6rem,3vw,2.2rem);font-weight:400;color:#fff;line-height:1.2;margin:0 0 16px">AUA-Veritas — the desktop app</h2>
-      <p style="font-size:.97rem;color:#c7d2fe;line-height:1.75;margin:0 0 24px">
-        AUA-Veritas is a macOS desktop AI assistant that puts the full AUA Framework behind a simple chat interface. Ask anything — it runs GPT-4o, Claude, Gemini, o4-mini and others simultaneously, picks the best answer via VCG mechanism design, remembers every correction you make, and backs up context so you never re-explain yourself.
-      </p>
-      <p style="font-size:.9rem;color:#a5b4fc;line-height:1.7;margin:0 0 28px">
-        All data stays on your machine. No account. No telemetry. API keys stored in macOS Keychain.
-      </p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <a href="https://praneethtota.github.io/AUA-Veritas/" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#4338ca;color:#fff;padding:10px 22px;border-radius:8px;font-size:.88rem;font-weight:600;text-decoration:none">
-          App page + download ↗
-        </a>
-        <a href="https://github.com/praneethtota/AUA-Veritas/releases/tag/v0.9.0" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);color:#e0e7ff;padding:10px 22px;border-radius:8px;font-size:.88rem;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,.2)">
-          v0.9.0 release ↗
-        </a>
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:18px 20px">
-        <div style="font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#a5b4fc;margin-bottom:6px">10 models connected</div>
-        <div style="font-size:.9rem;color:#e0e7ff;line-height:1.6">GPT-4o · o4-mini · Claude Opus · Claude Sonnet · Gemini 2.5 Pro · Gemini 2.5 Flash · Gemini 2.0 Flash · GPT-4o mini · Claude Haiku · Llama 3.3 70B</div>
-      </div>
-      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:18px 20px">
-        <div style="font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#a5b4fc;margin-bottom:6px">v0.9.0 E2E results</div>
-        <div style="font-size:.9rem;color:#e0e7ff;line-height:1.7">27 / 31 pass &nbsp;·&nbsp; 0 code failures &nbsp;·&nbsp; 10 / 10 models tested<br>Search: 46 message-level hits for "python" across conversations</div>
-      </div>
-      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:18px 20px">
-        <div style="font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#a5b4fc;margin-bottom:6px">Relationship to the framework</div>
-        <div style="font-size:.9rem;color:#e0e7ff;line-height:1.7">Veritas is a production application of the AUA Framework — it backported 49 items (Phase 13) that became <a href="aua_roadmap.html#milestone-v1-1" style="color:#a5b4fc">v1.1-veritas milestone</a> in the framework roadmap.</div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- QUICKSTART -->
 <div class="section" id="quickstart">
