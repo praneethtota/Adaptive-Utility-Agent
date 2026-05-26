@@ -224,8 +224,11 @@ class Router:
 
         # P0: persistent state store (conversations, messages, model_runs, etc.)
         from aua.state import SQLiteStateStore
+
         _db_path = getattr(config, "state", None)
-        _db_path = getattr(_db_path, "path", ".aua/state/aua.db") if _db_path else ".aua/state/aua.db"
+        _db_path = (
+            getattr(_db_path, "path", ".aua/state/aua.db") if _db_path else ".aua/state/aua.db"
+        )
         self._state_store = SQLiteStateStore(db_path=_db_path)
         self._conf = ConfidenceUpdater()
 
@@ -503,6 +506,7 @@ class Router:
         #   4. fire_and_forget() for all post-response DB writes.
 
         from aua.state import MessageCache
+
         _msg_cache = MessageCache()
 
         @app.post(
@@ -511,12 +515,12 @@ class Router:
             summary="Create a new conversation",
             status_code=201,
         )
-        async def create_conversation(body: dict = None) -> dict:
+        async def create_conversation(body: dict | None = None) -> dict:
             """Create a new conversation, optionally in a project."""
-            body = body or {}
-            title = body.get("title", "New Chat")
-            project_id = body.get("project_id")
-            user_id = body.get("user_id", "local")
+            b = body or {}
+            title = b.get("title", "New Chat")
+            project_id = b.get("project_id")
+            user_id = b.get("user_id", "local")
             conv = self._state_store.create_conversation(
                 title=title, project_id=project_id, user_id=user_id
             )
@@ -528,7 +532,9 @@ class Router:
             summary="List conversations",
         )
         async def list_conversations(
-            project_id: str | None = QueryParam(None, description="Filter by project ID. Omit for all conversations."),
+            project_id: str | None = QueryParam(
+                None, description="Filter by project ID. Omit for all conversations."
+            ),
             user_id: str = QueryParam("local", description="User identifier."),
             limit: int = QueryParam(1000, ge=1, le=10000),
         ) -> list:
@@ -547,6 +553,7 @@ class Router:
             title = body.get("title", "").strip()
             if not title:
                 from fastapi import HTTPException
+
                 raise HTTPException(400, "title must not be empty")
             self._state_store.rename_conversation(conversation_id, title)
             return {"conversation_id": conversation_id, "title": title}
@@ -559,8 +566,12 @@ class Router:
         async def get_conv_messages(
             conversation_id: str,
             limit: int = QueryParam(50, ge=1, le=500),
-            before: float | None = QueryParam(None, description="Cursor: return messages before this timestamp."),
-            after: float | None = QueryParam(None, description="Cursor: return messages after this timestamp."),
+            before: float | None = QueryParam(
+                None, description="Cursor: return messages before this timestamp."
+            ),
+            after: float | None = QueryParam(
+                None, description="Cursor: return messages after this timestamp."
+            ),
         ) -> list:
             """
             Return messages for a conversation, paginated by timestamp cursor.
@@ -593,17 +604,24 @@ class Router:
         async def create_project(body: dict) -> dict:
             """Create a project for grouping conversations."""
             import uuid as _uuid_proj
+
             name = body.get("name", "").strip()
             if not name:
                 from fastapi import HTTPException
+
                 raise HTTPException(400, "name must not be empty")
             project_id = str(_uuid_proj.uuid4())
             user_id = body.get("user_id", "local")
             import time as _time_proj
+
             self._state_store.append(
                 "projects",
-                {"project_id": project_id, "user_id": user_id, "name": name,
-                 "created_at": _time_proj.time()},
+                {
+                    "project_id": project_id,
+                    "user_id": user_id,
+                    "name": name,
+                    "created_at": _time_proj.time(),
+                },
             )
             return {"project_id": project_id, "name": name, "user_id": user_id}
 
@@ -650,7 +668,9 @@ class Router:
             summary="Context backup coverage report",
         )
         async def get_backup_coverage(
-            specialist: str = QueryParam(None, description="Check coverage for a specific specialist."),
+            specialist: str = QueryParam(
+                None, description="Check coverage for a specific specialist."
+            ),
         ) -> dict:
             """
             Return which conversations have valid context backups.

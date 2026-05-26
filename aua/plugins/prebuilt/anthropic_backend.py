@@ -7,6 +7,7 @@ Uses the Anthropic messages API (not OpenAI-compatible).
 To contribute back to AUA: copy this file to
   aua/plugins/prebuilt/anthropic_backend.py
 """
+
 from __future__ import annotations
 
 import logging

@@ -7,6 +7,7 @@ OpenAI-compatible API endpoint at api.x.ai/v1
 Contributed from AUA-Veritas.
 Source: core/plugins/xai_backend.py
 """
+
 from __future__ import annotations
 
 import logging

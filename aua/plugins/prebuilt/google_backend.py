@@ -9,6 +9,7 @@ request/response format.
 Contributed from AUA-Veritas.
 Source: core/plugins/google_backend.py
 """
+
 from __future__ import annotations
 
 import json
@@ -59,7 +60,7 @@ class GoogleBackend:
                  "generationConfig": {"maxOutputTokens": N}}
         """
         messages = request.get("messages", [])
-        contents = []
+        contents: list[dict] = []
         system_text = None
 
         for m in messages:

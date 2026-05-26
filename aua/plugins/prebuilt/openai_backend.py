@@ -8,6 +8,7 @@ To contribute back to AUA: copy this file to
   aua/plugins/prebuilt/openai_backend.py
 and register in aua/plugins/registry.py.
 """
+
 from __future__ import annotations
 
 import logging

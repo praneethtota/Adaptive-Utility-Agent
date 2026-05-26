@@ -32,6 +32,7 @@ import os
 import sqlite3
 import time
 import uuid
+from collections.abc import Coroutine
 from pathlib import Path
 from typing import Any
 
@@ -355,8 +356,6 @@ class SQLiteStateStore:
 
         return counts
 
-
-
     # ── P0: Conversation + message persistence ────────────────────────────────
 
     def create_conversation(
@@ -431,10 +430,15 @@ class SQLiteStateStore:
                 " callout_type, models_used, accuracy_level, confidence, created_at)"
                 " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
-                    msg_id, conversation_id, role, content,
+                    msg_id,
+                    conversation_id,
+                    role,
+                    content,
                     callout_type,
                     json.dumps(models_used) if models_used else None,
-                    accuracy_level, confidence, now,
+                    accuracy_level,
+                    confidence,
+                    now,
                 ),
             )
             conn.execute(
@@ -494,7 +498,9 @@ class SQLiteStateStore:
         """
         run_id = run.get("run_id") or str(uuid.uuid4())
         record = {**run, "run_id": run_id, "created_at": run.get("created_at") or time.time()}
-        serialized = {k: (json.dumps(v) if isinstance(v, (dict, list)) else v) for k, v in record.items()}
+        serialized = {
+            k: (json.dumps(v) if isinstance(v, (dict, list)) else v) for k, v in record.items()
+        }
         cols = ", ".join(serialized.keys())
         placeholders = ", ".join("?" for _ in serialized)
         with self._connect() as conn:
@@ -569,9 +575,7 @@ class SQLiteStateStore:
             )
         return backup_id
 
-    def get_latest_backup(
-        self, conversation_id: str, specialist: str
-    ) -> str | None:
+    def get_latest_backup(self, conversation_id: str, specialist: str) -> str | None:
         """Return the most recent backup text for a conversation+specialist pair."""
         with self._connect() as conn:
             row = conn.execute(
@@ -646,6 +650,7 @@ class SQLiteStateStore:
 
 # ── P0: LRU message cache ─────────────────────────────────────────────────────
 
+
 class MessageCache:
     """
     LRU in-memory cache for conversation message lists.
@@ -664,6 +669,7 @@ class MessageCache:
 
     def __init__(self) -> None:
         from collections import OrderedDict
+
         self._cache: OrderedDict[str, list[dict]] = OrderedDict()
 
     def get(self, conversation_id: str, limit: int = DEFAULT_LIMIT) -> list[dict] | None:
@@ -696,7 +702,8 @@ class MessageCache:
 
 # ── P0: Off-critical-path write helper ───────────────────────────────────────
 
-def fire_and_forget(coro: object) -> None:
+
+def fire_and_forget(coro: Coroutine[object, object, object]) -> None:
     """
     Schedule a coroutine as a background task without blocking the caller.
 
@@ -710,12 +717,14 @@ def fire_and_forget(coro: object) -> None:
         fire_and_forget(_update_token_counter(store, specialist, conv_id, tokens))
     """
     import asyncio as _asyncio_ff
+
     try:
         loop = _asyncio_ff.get_running_loop()
         loop.create_task(coro)
     except RuntimeError:
         # No running loop — run synchronously as fallback (e.g. in tests)
         import asyncio
+
         asyncio.run(coro)
 
 

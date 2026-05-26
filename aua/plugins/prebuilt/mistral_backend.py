@@ -10,6 +10,7 @@ users who prefer open-weight models, coding tasks (Codestral).
 Contributed from AUA-Veritas.
 Source: core/plugins/mistral_backend.py
 """
+
 from __future__ import annotations
 
 import logging
@@ -57,7 +58,7 @@ class MistralBackend(OpenAIBackend):
                 return {
                     "status": "error",
                     "error": f"Model {self.model_id!r} not in your Mistral account. "
-                             f"Available: {', '.join(available[:5])}",
+                    f"Available: {', '.join(available[:5])}",
                     "latency_ms": round((time.time() - t0) * 1000, 1),
                 }
             return {

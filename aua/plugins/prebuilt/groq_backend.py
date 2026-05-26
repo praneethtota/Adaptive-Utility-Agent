@@ -11,6 +11,7 @@ Runs Meta's open-weight Llama models on custom hardware.
 Contributed from AUA-Veritas.
 Source: core/plugins/groq_backend.py
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,11 +28,11 @@ DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
 # Groq context window limits per model
 GROQ_CONTEXT_LIMITS: dict[str, int] = {
-    "llama-3.3-70b-versatile":   128_000,
-    "llama-3.1-70b-versatile":   128_000,
-    "llama-3.1-8b-instant":      128_000,
-    "mixtral-8x7b-32768":         32_768,
-    "gemma2-9b-it":                8_192,
+    "llama-3.3-70b-versatile": 128_000,
+    "llama-3.1-70b-versatile": 128_000,
+    "llama-3.1-8b-instant": 128_000,
+    "mixtral-8x7b-32768": 32_768,
+    "gemma2-9b-it": 8_192,
 }
 
 
