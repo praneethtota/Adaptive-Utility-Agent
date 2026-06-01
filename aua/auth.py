@@ -232,7 +232,7 @@ class TokenManager:
         import base64
 
         payload_b64 = base64.urlsafe_b64encode(payload_json.encode()).decode()
-        token_str = f"{payload_b64}.{sig}"
+        token_str = f"aua_tk_{payload_b64}.{sig}"
 
         token = AUAToken(
             token_id=token_id,
@@ -264,7 +264,8 @@ class TokenManager:
         import base64
 
         try:
-            payload_b64, sig = token_str.rsplit(".", 1)
+            _raw = token_str.removeprefix("aua_tk_") if token_str.startswith("aua_tk_") else token_str
+            payload_b64, sig = _raw.rsplit(".", 1)
             payload_json = base64.urlsafe_b64decode(payload_b64 + "==").decode()
         except Exception:
             raise TokenError("Malformed token")

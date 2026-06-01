@@ -106,6 +106,10 @@ class CreateSessionRequest(BaseModel):
     """Request body for POST /sessions."""
 
     title: str = ""
+    name: str = ""  # alias for title — tutorial uses "name", both accepted
+
+    def effective_title(self) -> str:
+        return self.name or self.title or ""
 
 
 class SendMessageRequest(BaseModel):
@@ -443,7 +447,7 @@ class Router:
         async def health_live() -> HealthLiveResponse:
             """Always returns 200 if the router process is running."""
             return HealthLiveResponse(
-                status="alive",
+                status="live",
                 uptime_s=round(time.time() - self._start_time, 1),
             )
 
@@ -694,7 +698,7 @@ class Router:
             response_model=CorrectionResponse,
             tags=["corrections"],
             summary="Inject a correction into the assertions store",
-            status_code=201,
+            status_code=200,
         )
         async def inject_correction(req: CorrectionRequest) -> CorrectionResponse:
             """
@@ -926,7 +930,7 @@ class Router:
 
         @app.post("/sessions", tags=["sessions"], summary="Create a new chat session")
         async def sessions_create(req: CreateSessionRequest):
-            return create_session(title=req.title)
+            return create_session(title=req.effective_title())
 
         @app.get("/sessions", tags=["sessions"], summary="List all chat sessions")
         async def sessions_list(limit: int = 50):
@@ -996,6 +1000,119 @@ class Router:
                 "latency_ms": result.latency_ms,
                 "contradictions_detected": result.contradictions_detected,
             }
+
+
+        @app.post(
+            "/sessions/{session_id}/stream",
+            tags=["sessions"],
+            summary="Post a message to a session and stream the response as SSE",
+        )
+        async def sessions_stream(session_id: str, req: SendMessageRequest):
+            """
+            Stream a response from the routing pipeline for a session query.
+
+            Emits Server-Sent Events with the following event types (Part 9.4):
+              - route          — routing decision made
+              - specialist_start — specialist call begins
+              - chunk          — each token from the specialist
+              - specialist_done — U score and latency for this specialist
+              - done           — full response and complete metadata
+              - error          — AUA error code and trace ID
+            """
+            if not get_session(session_id):
+                raise HTTPException(404, f"Session {session_id!r} not found")
+
+            # Store user message
+            add_message(session_id, role="user", content=req.content)
+
+            # Build conversation history
+            history_msgs = get_messages(session_id, limit=20)
+            history = [
+                {"role": m["role"], "content": m["content"]}
+                for m in history_msgs[:-1]
+            ]
+
+            query_req = QueryRequest(
+                query=req.content,
+                session_id=session_id,
+                conversation_history=history,
+            )
+
+            async def _generate() -> AsyncIterator[str]:
+                t0 = time.time()
+                try:
+                    # Emit route event
+                    distribution = self._classifier.classify(req.content)
+                    top_domain = max(distribution, key=distribution.get)  # type: ignore[arg-type]
+                    yield _sse(
+                        StreamStartEvent(
+                            type="route",
+                            routing_mode="single",
+                            primary_domain=top_domain,
+                            domain_distribution=distribution,
+                        )
+                    )
+
+                    # Emit specialist_start event
+                    spec = self._config.specialist_for_field(top_domain)
+                    _spec_name = spec.name if spec else "default"
+                    yield f"event: specialist_start\ndata: {{\"specialist\": \"{_spec_name}\", \"domain\": \"{top_domain}\"}}\n\n"
+
+                    # Stream tokens
+                    url = self._field_to_url.get(top_domain, self._arbiter_url)
+                    model_name = spec.serve_model_name if spec else "default_model"
+                    full_text = ""
+                    idx = 0
+                    async for token in self._call_stream(url, req.content, top_domain, history, model_name=model_name):
+                        full_text += token
+                        yield _sse(StreamChunkEvent(type="chunk", text=token, index=idx))
+                        idx += 1
+
+                    # Score the full response
+                    base_conf = 0.8
+                    u, conf, n_contra, n_dpo = await self._score(
+                        req.content, full_text, top_domain, base_conf
+                    )
+                    latency_ms = round((time.time() - t0) * 1000, 1)
+
+                    # Store assistant message
+                    add_message(
+                        session_id,
+                        role="assistant",
+                        content=full_text,
+                        domain=top_domain,
+                        routing_mode="single",
+                        u_score=u,
+                        latency_ms=latency_ms,
+                    )
+
+                    # Emit specialist_done event
+                    yield f"event: specialist_done\ndata: {{\"u_score\": {u:.4f}, \"latency_ms\": {latency_ms}}}\n\n"
+
+                    # Emit done event
+                    yield _sse(
+                        StreamDoneEvent(
+                            type="done",
+                            full_response=full_text,
+                            routing_mode="single",
+                            primary_domain=top_domain,
+                            domain_distribution=distribution,
+                            u_score=u,
+                            confidence=conf,
+                            contradictions_detected=n_contra,
+                            dpo_pairs_generated=n_dpo,
+                            latency_ms=latency_ms,
+                        )
+                    )
+                except Exception as exc:
+                    log.exception("session stream error: %s", exc)
+                    yield _sse(StreamErrorEvent(type="error", code=500, message=str(exc)))
+
+            return StreamingResponse(
+                _generate(),
+                media_type=_SSE_CONTENT_TYPE,
+                headers=_SSE_HEADERS,
+            )
 
         @app.get("/metrics", tags=["observability"], include_in_schema=False)
         async def prometheus_metrics():
@@ -1622,8 +1739,10 @@ class Router:
             u_score=u,
             status="ok",
         )
+        _n_corrections = len(self._store.query(subject=req.query[:100], domain=domain))
         resp = RouterResponse(
             query=req.query,
+            session_id=req.session_id,
             routing_mode="single",
             domain_distribution=distribution,
             primary_domain=domain,
@@ -1631,6 +1750,7 @@ class Router:
             u_score=u,
             confidence=conf,
             contradictions_detected=n_contra,
+            corrections_injected=_n_corrections,
             dpo_pairs_generated=n_dpo,
             latency_ms=latency_ms,
         )
@@ -1652,6 +1772,7 @@ class Router:
         if pre_event.get("response") and pre_event["response"] != response:
             resp = RouterResponse(
                 query=req.query,
+                session_id=req.session_id,
                 routing_mode="single",
                 domain_distribution=distribution,
                 primary_domain=domain,
@@ -1659,6 +1780,7 @@ class Router:
                 u_score=u,
                 confidence=conf,
                 contradictions_detected=n_contra,
+                corrections_injected=_n_corrections,
                 dpo_pairs_generated=n_dpo,
                 latency_ms=latency_ms,
             )
@@ -1867,8 +1989,10 @@ class Router:
             },
         )
 
+        _n_corrections_fo = len(self._store.query(subject=req.query[:100], domain=primary_domain))
         return RouterResponse(
             query=req.query,
+            session_id=req.session_id,
             routing_mode=_routing_mode,
             domain_distribution=distribution,
             primary_domain=primary_domain,
@@ -1876,6 +2000,7 @@ class Router:
             u_score=u,
             confidence=conf,
             contradictions_detected=n_contra,
+            corrections_injected=_n_corrections_fo,
             dpo_pairs_generated=n_dpo,
             latency_ms=_fanout_ms,
             specialist_responses=spec_responses,
@@ -1962,8 +2087,10 @@ class Router:
             },
         )
 
+        _n_corrections_arb = len(self._store.query(subject=req.query[:100], domain="general"))
         return RouterResponse(
             query=req.query,
+            session_id=req.session_id,
             routing_mode="arbiter",
             domain_distribution=distribution,
             primary_domain="general",
@@ -1971,6 +2098,7 @@ class Router:
             u_score=u,
             confidence=conf,
             contradictions_detected=n_contra,
+            corrections_injected=_n_corrections_arb,
             dpo_pairs_generated=n_dpo,
             latency_ms=_arb_ms,
         )

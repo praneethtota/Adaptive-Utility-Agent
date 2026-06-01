@@ -66,6 +66,10 @@ class RouterResponse(BaseModel):
     """Full response from the routing pipeline, including scoring and telemetry."""
 
     query: str
+    session_id: str | None = Field(
+        None,
+        description="Echo of the session_id from the request.",
+    )
     routing_mode: str = Field(
         ...,
         description="How the query was routed: 'single' | 'fanout' | 'arbiter'.",
@@ -82,6 +86,10 @@ class RouterResponse(BaseModel):
     u_score: float = Field(..., description="Utility score U = w_e·E + w_c·C + w_k·K.")
     confidence: float = Field(..., description="Updated confidence after contradiction check.")
     contradictions_detected: int
+    corrections_injected: int = Field(
+        0,
+        description="Number of prior corrections injected into the specialist prompt.",
+    )
     dpo_pairs_generated: int
     latency_ms: float
     specialist_responses: list[dict] | None = Field(
@@ -398,7 +406,7 @@ class ErrorResponse(BaseModel):
 class HealthLiveResponse(BaseModel):
     """Liveness probe response."""
 
-    status: str = Field("alive", description="Always 'alive' if the process is running.")
+    status: str = Field("live", description="Always 'live' if the process is running.")
     uptime_s: float
 
 

@@ -229,7 +229,37 @@ class Policy:
     def assertions(self) -> list[AssertionFn]:
         return list(self._assertions)
 
-    def summary(self) -> dict[str, Any]:
+    def summary(self) -> str:
+        """Return a human-readable summary of this policy.
+
+        Example output::
+
+            Policy: SafeCoding v1.0
+            Assertions: 3 (1 BLOCKING · 1 SOFT · 1 INFO)
+            Max retries: 3  |  Max E bonus: 0.30
+            Utility overrides: w_k=0.30
+              [BLOCKING] PythonSyntaxCheck
+              [SOFT]     NoAIisms
+              [INFO+0.12] PythonSyntaxBonus
+        """
+        lines = [
+            f"Policy: {self.name} v{self.version}",
+            f"Assertions: {len(self._assertions)} "
+            f"({sum(1 for a in self._assertions if a.level.value == 'blocking')} BLOCKING"
+            f" · {sum(1 for a in self._assertions if a.level.value == 'soft')} SOFT"
+            f" · {sum(1 for a in self._assertions if a.level.value == 'info')} INFO)",
+            f"Max retries: {self.max_retries}  |  Max E bonus: {self.max_total_bonus}",
+        ]
+        if self.utility_overrides:
+            lines.append("Utility overrides: " + "  ".join(f"{k}={v}" for k, v in self.utility_overrides.items()))
+        for a in self._assertions:
+            level_tag = a.level.value.upper()
+            bonus_tag = f"+{a.bonus}" if a.level.value == "info" and a.bonus else ""
+            lines.append(f"  [{level_tag}{bonus_tag}] {a.name}")
+        return "\n".join(lines)
+
+    def summary_dict(self) -> dict[str, Any]:
+        """Return a machine-readable dict of this policy's configuration."""
         return {
             "name": self.name,
             "version": self.version,

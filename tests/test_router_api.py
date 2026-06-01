@@ -29,11 +29,11 @@ def client(router):
 
 
 def test_health_live(client):
-    """GET /health/live always returns 200 with status=alive."""
+    """GET /health/live always returns 200 with status=live."""
     r = client.get("/health/live")
     assert r.status_code == 200
     body = r.json()
-    assert body["status"] == "alive"
+    assert body["status"] == "live"
     assert "uptime_s" in body
     assert body["uptime_s"] >= 0
 
@@ -101,7 +101,7 @@ def test_config_does_not_expose_secrets(client):
 
 
 def test_post_correction(client):
-    """POST /corrections stores a correction and returns 201."""
+    """POST /corrections stores a correction and returns 200."""
     payload = {
         "subject": "binary_search_complexity",
         "domain": "software_engineering",
@@ -110,7 +110,7 @@ def test_post_correction(client):
         "source": "manual",
     }
     r = client.post("/corrections", json=payload)
-    assert r.status_code == 201
+    assert r.status_code == 200
     body = r.json()
     assert body["stored"] is True
     assert body["subject"] == "binary_search_complexity"

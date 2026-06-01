@@ -297,7 +297,11 @@ def test_policy_chaining():
 def test_policy_summary():
     policy = Policy(name="SummaryTest", version="2.0", max_total_bonus=0.25)
     policy.add(no_refusal)
-    summary = policy.summary()
+    # summary() returns a human-readable string; summary_dict() returns the machine-readable dict
+    summary_str = policy.summary()
+    assert "SummaryTest" in summary_str
+    assert "2.0" in summary_str
+    summary = policy.summary_dict()
     assert summary["name"] == "SummaryTest"
     assert summary["version"] == "2.0"
     assert len(summary["assertions"]) == 1

@@ -142,7 +142,18 @@ class HookRunner:
             except Exception as exc:
                 log.error("Background hook %s failed: %s", hook_point, exc)
 
-        asyncio.ensure_future(_run())
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.ensure_future(_run())
+            else:
+                loop.run_until_complete(_run())
+        except RuntimeError:
+            # No event loop in this thread — run in a new one
+            try:
+                asyncio.run(_run())
+            except Exception as exc:
+                log.error("Background hook %s failed: %s", hook_point, exc)
 
     def registered_hooks(self) -> dict[str, list[str]]:
         """Return {hook_point: [class_names]} for status/doctor output."""

@@ -319,7 +319,7 @@ def doctor(config, as_json, strict):
 @click.option(
     "--interval", default=2, show_default=True, type=int, help="Refresh interval in seconds."
 )
-@click.option("--url", default=None, help="Router URL override (default: read from config).")
+@click.option("--url", "--router-url", default=None, help="Router URL override (default: read from config).")
 @click.option("--once", is_flag=True, default=False, help="Run once and exit (no auto-refresh).")
 @click.option("--refresh", default=None, type=int, help="Alias for --interval.")
 @click.option(
@@ -658,6 +658,49 @@ def models_list(config, as_json):
     console.print(table)
 
 
+
+
+@models.command("inspect")
+@click.argument("alias")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON.")
+def models_inspect(alias, as_json):
+    """Show full details for a model alias.
+
+    \b
+    Examples:
+        aua models inspect qwen-coder-7b-awq
+        aua models inspect qwen2.5:7b
+    """
+    import json as _json
+
+    from aua.defaults.registry import get_defaults
+
+    try:
+        models_data = get_defaults("models")
+    except Exception:
+        models_data = {}
+
+    entry = models_data.get(alias)
+    if entry is None:
+        # Try a loose match
+        for k, v in models_data.items():
+            if alias.lower() in k.lower():
+                entry = v
+                break
+
+    if entry is None:
+        console.print(f"[yellow]Model alias {alias!r} not found in registry.[/yellow]")
+        console.print("[dim]Run 'aua models list' to see configured models.[/dim]")
+        sys.exit(1)
+
+    if as_json:
+        print(_json.dumps({alias: entry}, indent=2, default=str))
+        return
+
+    import yaml
+    console.print(f"[bold]Model:[/bold] [cyan]{alias}[/cyan]")
+    console.print(yaml.dump(entry, default_flow_style=False, sort_keys=False))
+
 # ── aua fields ────────────────────────────────────────────────────────────────
 
 
@@ -727,6 +770,55 @@ def fields_list(as_json):
     console.print("[dim]U = w_e·E + w_c·C + w_k·K  ·  c_min = minimum confidence required[/dim]")
 
 
+
+
+@fields.command("inspect")
+@click.argument("field_name")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON.")
+def fields_inspect(field_name, as_json):
+    """Show full configuration for a field.
+
+    \b
+    Examples:
+        aua fields inspect software_engineering
+        aua fields inspect mathematics
+    """
+    import json as _json
+
+    from aua import FIELD_CONFIGS
+
+    cfg = FIELD_CONFIGS.get(field_name)
+    if cfg is None:
+        console.print(f"[red]✗[/red] Unknown field: {field_name!r}")
+        console.print(f"[dim]Known fields: {', '.join(FIELD_CONFIGS.keys())}[/dim]")
+        sys.exit(1)
+
+    data = {
+        "field": field_name,
+        "w_e (efficacy)": cfg.w_efficacy,
+        "w_c (confidence)": cfg.w_confidence,
+        "w_k (curiosity)": cfg.w_curiosity,
+        "c_min": cfg.c_min,
+        "e_min": cfg.e_min,
+        "penalty_multiplier": cfg.penalty_multiplier,
+    }
+
+    if as_json:
+        print(_json.dumps(data, indent=2))
+        return
+
+    from rich import box
+    from rich.table import Table
+
+    table = Table(box=box.SIMPLE, header_style="bold dim",
+                  title=f"[bold]Field: {field_name}[/bold]")
+    table.add_column("Property")
+    table.add_column("Value", justify="right")
+    for k, v in data.items():
+        table.add_row(k, str(v))
+    console.print(table)
+    console.print("[dim]U = w_e·E + w_c·C + w_k·K[/dim]")
+
 # ── aua presets ───────────────────────────────────────────────────────────────
 
 
@@ -781,6 +873,46 @@ def presets_list(as_json):
     console.print(table)
     console.print("[dim]Usage: aua init --preset <name> --tier <tier>[/dim]")
 
+
+
+
+@presets.command("inspect")
+@click.argument("preset_name")
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON.")
+def presets_inspect(preset_name, as_json):
+    """Show full configuration for a preset.
+
+    \b
+    Examples:
+        aua presets inspect coding
+        aua presets inspect medical-safe
+    """
+    import json as _json
+
+    from aua.presets import PRESETS
+
+    p = PRESETS.get(preset_name)
+    if p is None:
+        console.print(f"[red]✗[/red] Unknown preset: {preset_name!r}")
+        console.print(f"[dim]Known presets: {', '.join(PRESETS.keys())}[/dim]")
+        sys.exit(1)
+
+    data = {
+        "name": preset_name,
+        "description": p.description,
+        "specialists": p.specialists,
+        "recommended_tiers": p.recommended_tiers,
+        "notes": p.notes,
+    }
+
+    if as_json:
+        print(_json.dumps(data, indent=2, default=str))
+        return
+
+    import yaml
+    console.print(f"[bold]Preset:[/bold] [cyan]{preset_name}[/cyan]")
+    console.print(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True))
+    console.print(f"[dim]Usage: aua init --preset {preset_name} --tier <tier>[/dim]")
 
 @config.command("expand")
 @click.option(
@@ -952,6 +1084,31 @@ def defaults_show(category, key, as_json):
     console.print(f"[dim]# {category}{(' · ' + key) if key else ''}[/dim]")
     console.print(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True))
 
+
+
+
+@defaults.command("list")
+@click.option("--json", "as_json", is_flag=True, default=False)
+def defaults_list(as_json):
+    """List all built-in default categories.
+
+    \b
+    Examples:
+        aua defaults list
+        aua defaults show fields
+    """
+    import json as _json
+
+    from aua.defaults.registry import list_categories
+
+    cats = list_categories()
+    if as_json:
+        print(_json.dumps({"categories": cats}))
+        return
+    console.print("[bold]Built-in default categories:[/bold]")
+    for c in cats:
+        console.print(f"  [cyan]{c}[/cyan]  — aua defaults show {c}")
+    console.print("\n[dim]Usage: aua defaults show <category>[/dim]")
 
 # ── aua extensions ────────────────────────────────────────────────────────────
 
@@ -1418,7 +1575,7 @@ def eval():
 @eval.command("run")
 @click.option("--dataset", "-d", required=True, help="Path to eval dataset YAML.")
 @click.option("--config", "-c", default="aua_config.yaml", show_default=True)
-@click.option("--url", default="http://localhost:8000", show_default=True, help="Router URL.")
+@click.option("--url", "--router-url", default="http://localhost:8000", show_default=True, help="Router URL.")
 @click.option("--output-dir", default=".aua/evals", show_default=True)
 @click.option("--timeout", default=120.0, show_default=True, type=float)
 @click.option("--json", "as_json", is_flag=True, default=False)

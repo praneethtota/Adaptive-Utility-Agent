@@ -149,9 +149,16 @@ def test_policy_utility_overrides_accessible():
 
 def test_policy_summary_includes_all_fields():
     pol = Policy(name="Full", version="2.0", max_total_bonus=0.25)
+    # summary() returns a human-readable string
     s = pol.summary()
-    assert "name" in s
-    assert "version" in s
-    assert "max_total_bonus" in s
-    assert "assertions" in s
-    assert "utility_overrides" in s
+    assert isinstance(s, str)
+    assert "Full" in s
+    assert "2.0" in s
+    assert "0.25" in s
+    # summary_dict() returns the machine-readable dict
+    d = pol.summary_dict()
+    assert d["name"] == "Full"
+    assert d["version"] == "2.0"
+    assert d["max_total_bonus"] == 0.25
+    assert "assertions" in d
+    assert "utility_overrides" in d
