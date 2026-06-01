@@ -115,8 +115,8 @@ class CreateSessionRequest(BaseModel):
 class SendMessageRequest(BaseModel):
     """Request body for POST /sessions/{id}/messages and POST /sessions/{id}/stream."""
 
-    content: str = ""   # canonical field name
-    query: str = ""     # alias used by the tutorial (POST /sessions/{id}/stream examples)
+    content: str = ""  # canonical field name
+    query: str = ""  # alias used by the tutorial (POST /sessions/{id}/stream examples)
     stream: bool = False
 
     def effective_content(self) -> str:
@@ -1006,7 +1006,6 @@ class Router:
                 "contradictions_detected": result.contradictions_detected,
             }
 
-
         @app.post(
             "/sessions/{session_id}/stream",
             tags=["sessions"],
@@ -1033,16 +1032,7 @@ class Router:
 
             # Build conversation history
             history_msgs = get_messages(session_id, limit=20)
-            history = [
-                {"role": m["role"], "content": m["content"]}
-                for m in history_msgs[:-1]
-            ]
-
-            query_req = QueryRequest(
-                query=_stream_content,
-                session_id=session_id,
-                conversation_history=history,
-            )
+            history = [{"role": m["role"], "content": m["content"]} for m in history_msgs[:-1]]
 
             async def _generate() -> AsyncIterator[str]:
                 t0 = time.time()
@@ -1062,14 +1052,16 @@ class Router:
                     # Emit specialist_start event
                     spec = self._config.specialist_for_field(top_domain)
                     _spec_name = spec.name if spec else "default"
-                    yield f"event: specialist_start\ndata: {{\"specialist\": \"{_spec_name}\", \"domain\": \"{top_domain}\"}}\n\n"
+                    yield f'event: specialist_start\ndata: {{"specialist": "{_spec_name}", "domain": "{top_domain}"}}\n\n'
 
                     # Stream tokens
                     url = self._field_to_url.get(top_domain, self._arbiter_url)
                     model_name = spec.serve_model_name if spec else "default_model"
                     full_text = ""
                     idx = 0
-                    async for token in self._call_stream(url, _stream_content, top_domain, history, model_name=model_name):
+                    async for token in self._call_stream(
+                        url, _stream_content, top_domain, history, model_name=model_name
+                    ):
                         full_text += token
                         yield _sse(StreamChunkEvent(type="chunk", text=token, index=idx))
                         idx += 1
@@ -1093,7 +1085,7 @@ class Router:
                     )
 
                     # Emit specialist_done event
-                    yield f"event: specialist_done\ndata: {{\"u_score\": {u:.4f}, \"latency_ms\": {latency_ms}}}\n\n"
+                    yield f'event: specialist_done\ndata: {{"u_score": {u:.4f}, "latency_ms": {latency_ms}}}\n\n'
 
                     # Emit done event
                     yield _sse(

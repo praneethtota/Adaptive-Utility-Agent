@@ -251,7 +251,10 @@ class Policy:
             f"Max retries: {self.max_retries}  |  Max E bonus: {self.max_total_bonus}",
         ]
         if self.utility_overrides:
-            lines.append("Utility overrides: " + "  ".join(f"{k}={v}" for k, v in self.utility_overrides.items()))
+            lines.append(
+                "Utility overrides: "
+                + "  ".join(f"{k}={v}" for k, v in self.utility_overrides.items())
+            )
         for a in self._assertions:
             level_tag = a.level.value.upper()
             bonus_tag = f"+{a.bonus}" if a.level.value == "info" and a.bonus else ""

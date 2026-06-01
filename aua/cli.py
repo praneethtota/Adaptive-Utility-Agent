@@ -319,7 +319,9 @@ def doctor(config, as_json, strict):
 @click.option(
     "--interval", default=2, show_default=True, type=int, help="Refresh interval in seconds."
 )
-@click.option("--url", "--router-url", default=None, help="Router URL override (default: read from config).")
+@click.option(
+    "--url", "--router-url", default=None, help="Router URL override (default: read from config)."
+)
 @click.option("--once", is_flag=True, default=False, help="Run once and exit (no auto-refresh).")
 @click.option("--refresh", default=None, type=int, help="Alias for --interval.")
 @click.option(
@@ -658,8 +660,6 @@ def models_list(config, as_json):
     console.print(table)
 
 
-
-
 @models.command("inspect")
 @click.argument("alias")
 @click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON.")
@@ -698,8 +698,10 @@ def models_inspect(alias, as_json):
         return
 
     import yaml
+
     console.print(f"[bold]Model:[/bold] [cyan]{alias}[/cyan]")
     console.print(yaml.dump(entry, default_flow_style=False, sort_keys=False))
+
 
 # ── aua fields ────────────────────────────────────────────────────────────────
 
@@ -770,8 +772,6 @@ def fields_list(as_json):
     console.print("[dim]U = w_e·E + w_c·C + w_k·K  ·  c_min = minimum confidence required[/dim]")
 
 
-
-
 @fields.command("inspect")
 @click.argument("field_name")
 @click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON.")
@@ -810,14 +810,16 @@ def fields_inspect(field_name, as_json):
     from rich import box
     from rich.table import Table
 
-    table = Table(box=box.SIMPLE, header_style="bold dim",
-                  title=f"[bold]Field: {field_name}[/bold]")
+    table = Table(
+        box=box.SIMPLE, header_style="bold dim", title=f"[bold]Field: {field_name}[/bold]"
+    )
     table.add_column("Property")
     table.add_column("Value", justify="right")
     for k, v in data.items():
         table.add_row(k, str(v))
     console.print(table)
     console.print("[dim]U = w_e·E + w_c·C + w_k·K[/dim]")
+
 
 # ── aua presets ───────────────────────────────────────────────────────────────
 
@@ -874,8 +876,6 @@ def presets_list(as_json):
     console.print("[dim]Usage: aua init --preset <name> --tier <tier>[/dim]")
 
 
-
-
 @presets.command("inspect")
 @click.argument("preset_name")
 @click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON.")
@@ -910,9 +910,11 @@ def presets_inspect(preset_name, as_json):
         return
 
     import yaml
+
     console.print(f"[bold]Preset:[/bold] [cyan]{preset_name}[/cyan]")
     console.print(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True))
     console.print(f"[dim]Usage: aua init --preset {preset_name} --tier <tier>[/dim]")
+
 
 @config.command("expand")
 @click.option(
@@ -1085,8 +1087,6 @@ def defaults_show(category, key, as_json):
     console.print(yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True))
 
 
-
-
 @defaults.command("list")
 @click.option("--json", "as_json", is_flag=True, default=False)
 def defaults_list(as_json):
@@ -1109,6 +1109,7 @@ def defaults_list(as_json):
     for c in cats:
         console.print(f"  [cyan]{c}[/cyan]  — aua defaults show {c}")
     console.print("\n[dim]Usage: aua defaults show <category>[/dim]")
+
 
 # ── aua extensions ────────────────────────────────────────────────────────────
 
@@ -1575,7 +1576,9 @@ def eval():
 @eval.command("run")
 @click.option("--dataset", "-d", required=True, help="Path to eval dataset YAML.")
 @click.option("--config", "-c", default="aua_config.yaml", show_default=True)
-@click.option("--url", "--router-url", default="http://localhost:8000", show_default=True, help="Router URL.")
+@click.option(
+    "--url", "--router-url", default="http://localhost:8000", show_default=True, help="Router URL."
+)
 @click.option("--output-dir", default=".aua/evals", show_default=True)
 @click.option("--timeout", default=120.0, show_default=True, type=float)
 @click.option("--json", "as_json", is_flag=True, default=False)

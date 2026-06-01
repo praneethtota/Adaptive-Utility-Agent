@@ -264,7 +264,9 @@ class TokenManager:
         import base64
 
         try:
-            _raw = token_str.removeprefix("aua_tk_") if token_str.startswith("aua_tk_") else token_str
+            _raw = (
+                token_str.removeprefix("aua_tk_") if token_str.startswith("aua_tk_") else token_str
+            )
             payload_b64, sig = _raw.rsplit(".", 1)
             payload_json = base64.urlsafe_b64decode(payload_b64 + "==").decode()
         except Exception:
