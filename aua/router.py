@@ -113,10 +113,14 @@ class CreateSessionRequest(BaseModel):
 
 
 class SendMessageRequest(BaseModel):
-    """Request body for POST /sessions/{id}/messages."""
+    """Request body for POST /sessions/{id}/messages and POST /sessions/{id}/stream."""
 
-    content: str
+    content: str = ""   # canonical field name
+    query: str = ""     # alias used by the tutorial (POST /sessions/{id}/stream examples)
     stream: bool = False
+
+    def effective_content(self) -> str:
+        return self.content or self.query or ""
 
 
 def _audit_query(
@@ -962,7 +966,8 @@ class Router:
                 raise HTTPException(404, f"Session {session_id!r} not found")
 
             # Store user message
-            add_message(session_id, role="user", content=req.content)
+            _msg_content = req.effective_content()
+            add_message(session_id, role="user", content=_msg_content)
 
             # Build conversation history for the router
             history_msgs = get_messages(session_id, limit=20)
@@ -973,7 +978,7 @@ class Router:
 
             # Route through the framework
             query_req = QueryRequest(
-                query=req.content,
+                query=_msg_content,
                 session_id=session_id,
                 conversation_history=history,
             )
@@ -1023,7 +1028,8 @@ class Router:
                 raise HTTPException(404, f"Session {session_id!r} not found")
 
             # Store user message
-            add_message(session_id, role="user", content=req.content)
+            _stream_content = req.effective_content()
+            add_message(session_id, role="user", content=_stream_content)
 
             # Build conversation history
             history_msgs = get_messages(session_id, limit=20)
@@ -1033,7 +1039,7 @@ class Router:
             ]
 
             query_req = QueryRequest(
-                query=req.content,
+                query=_stream_content,
                 session_id=session_id,
                 conversation_history=history,
             )
@@ -1042,7 +1048,7 @@ class Router:
                 t0 = time.time()
                 try:
                     # Emit route event
-                    distribution = self._classifier.classify(req.content)
+                    distribution = self._classifier.classify(_stream_content)
                     top_domain = max(distribution, key=distribution.get)  # type: ignore[arg-type]
                     yield _sse(
                         StreamStartEvent(
@@ -1063,7 +1069,7 @@ class Router:
                     model_name = spec.serve_model_name if spec else "default_model"
                     full_text = ""
                     idx = 0
-                    async for token in self._call_stream(url, req.content, top_domain, history, model_name=model_name):
+                    async for token in self._call_stream(url, _stream_content, top_domain, history, model_name=model_name):
                         full_text += token
                         yield _sse(StreamChunkEvent(type="chunk", text=token, index=idx))
                         idx += 1
@@ -1071,7 +1077,7 @@ class Router:
                     # Score the full response
                     base_conf = 0.8
                     u, conf, n_contra, n_dpo = await self._score(
-                        req.content, full_text, top_domain, base_conf
+                        _stream_content, full_text, top_domain, base_conf
                     )
                     latency_ms = round((time.time() - t0) * 1000, 1)
 
