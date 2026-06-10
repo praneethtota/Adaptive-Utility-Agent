@@ -188,7 +188,15 @@ def get_effective_config(field_distribution: dict[str, float]) -> FieldConfig:
 # These are populated from aua_config.yaml.
 
 # ── Allowed keys per config section (used by unknown-key validator) ───────────
-_KNOWN_TOP_LEVEL: set[str] = {"aua", "specialists", "arbiter", "router", "blue_green", "logging"}
+_KNOWN_TOP_LEVEL: set[str] = {
+    "aua",
+    "specialists",
+    "arbiter",
+    "router",
+    "blue_green",
+    "logging",
+    "secrets",
+}
 _KNOWN_AUA_KEYS: set[str] = {"version", "mode", "backend", "project_name"}
 _KNOWN_SPECIALIST_KEYS: set[str] = {
     "name",
@@ -231,6 +239,7 @@ _KNOWN_ROUTER_KEYS: set[str] = {
 }
 _KNOWN_BG_KEYS: set[str] = {"delta", "T_min", "tau"}
 _KNOWN_LOG_KEYS: set[str] = {"level", "format"}
+_KNOWN_SECRETS_KEYS: set[str] = {"provider", "region", "url", "token_env"}
 
 
 @dataclass
@@ -439,6 +448,25 @@ class LoggingConfig:
 
 
 @dataclass
+class SecretsConfig:
+    """
+    #19: secrets provider selection. Config references secret NAMES,
+    never values; the provider resolves them at startup.
+
+        secrets:
+          provider: vault            # "env" (default) | "vault" | "aws" | "gcp"
+          url: http://127.0.0.1:8200 # vault only
+          token_env: VAULT_TOKEN     # vault only — env var holding the token
+          region: us-east-1          # aws only
+    """
+
+    provider: str = "env"
+    region: str = "us-east-1"
+    url: str = "http://127.0.0.1:8200"
+    token_env: str = "VAULT_TOKEN"
+
+
+@dataclass
 class AUAConfig:
     """
     Top-level configuration loaded from aua_config.yaml.
@@ -454,6 +482,7 @@ class AUAConfig:
     backend: str = "vllm"  # "vllm" | "ollama"
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
+    secrets: SecretsConfig = field(default_factory=SecretsConfig)
 
     # Derived — built on load
     _specialist_by_name: dict[str, SpecialistConfig] = field(
@@ -631,6 +660,22 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         format=str(raw_log.get("format", "%(asctime)s [%(levelname)s] %(name)s: %(message)s")),
     )
 
+    # ── Secrets (#19) ──────────────────────────────────────────────────────
+    raw_secrets = raw.get("secrets", {})
+    _reject_unknown_keys(raw_secrets, _KNOWN_SECRETS_KEYS, "secrets", source)
+    _provider = str(raw_secrets.get("provider", "env"))
+    if _provider not in ("env", "vault", "aws", "gcp"):
+        raise ValueError(
+            f"[{source}] secrets.provider must be one of "
+            f"'env' | 'vault' | 'aws' | 'gcp', got {_provider!r}"
+        )
+    secrets_cfg = SecretsConfig(
+        provider=_provider,
+        region=str(raw_secrets.get("region", "us-east-1")),
+        url=str(raw_secrets.get("url", "http://127.0.0.1:8200")),
+        token_env=str(raw_secrets.get("token_env", "VAULT_TOKEN")),
+    )
+
     # ── Validate field names against FIELD_CONFIGS ─────────────────────────
     for s in specialists:
         if s.field not in FIELD_CONFIGS:
@@ -651,6 +696,7 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         router=router,
         blue_green=blue_green,
         logging=logging_cfg,
+        secrets=secrets_cfg,
     )
 
 

@@ -249,3 +249,57 @@ def test_resolved_secret_never_in_repr(aws_env):
     mgr.get("SENSITIVE")
     assert "hunter2" not in repr(mgr)
     assert "hunter2" not in str(mgr)
+
+
+# ── #19: YAML config → provider wiring ────────────────────────────────────────
+
+
+def test_secrets_config_block_parses_and_wires_provider(tmp_path, fixtures_dir):
+    """The documented `secrets:` YAML block loads and selects the provider."""
+    import yaml
+
+    from aua.config import load_config
+
+    raw = yaml.safe_load((fixtures_dir / "aua_config_minimal.yaml").read_text())
+    raw["secrets"] = {"provider": "vault", "url": VAULT_URL, "token_env": "VAULT_TOKEN"}
+    cfg_path = tmp_path / "cfg.yaml"
+    cfg_path.write_text(yaml.dump(raw))
+    cfg = load_config(cfg_path)
+    assert cfg.secrets.provider == "vault"
+    mgr = SecretsManager.from_config(cfg)
+    assert mgr.provider == "vault"
+
+
+def test_secrets_config_rejects_unknown_key_and_bad_provider(tmp_path, fixtures_dir):
+    import yaml
+
+    from aua.config import load_config
+
+    raw = yaml.safe_load((fixtures_dir / "aua_config_minimal.yaml").read_text())
+    raw["secrets"] = {"provider": "vault", "vault_addr": "http://x"}  # wrong key
+    p = tmp_path / "bad1.yaml"
+    p.write_text(yaml.dump(raw))
+    with pytest.raises(ValueError, match="vault_addr"):
+        load_config(p)
+    raw["secrets"] = {"provider": "onepassword"}
+    p2 = tmp_path / "bad2.yaml"
+    p2.write_text(yaml.dump(raw))
+    with pytest.raises(ValueError, match="provider"):
+        load_config(p2)
+
+
+def test_vault_provider_via_yaml_resolves_end_to_end(
+    vault_server, vault_env, tmp_path, fixtures_dir
+):
+    """Full chain: YAML → AUAConfig → SecretsManager → live Vault wire API."""
+    import yaml
+
+    from aua.config import load_config
+
+    vault_server.secrets["E2E_YAML_KEY"] = {"value": "yaml-chain-ok"}
+    raw = yaml.safe_load((fixtures_dir / "aua_config_minimal.yaml").read_text())
+    raw["secrets"] = {"provider": "vault", "url": VAULT_URL, "token_env": "VAULT_TOKEN"}
+    cfg_path = tmp_path / "cfg.yaml"
+    cfg_path.write_text(yaml.dump(raw))
+    mgr = SecretsManager.from_config(load_config(cfg_path))
+    assert mgr.get("E2E_YAML_KEY") == "yaml-chain-ok"
