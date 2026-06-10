@@ -71,7 +71,7 @@ tr:nth-child(even) td{background:#fafaf8}
 .section-divider{border:none;border-top:3px solid var(--line);margin:4rem 0 1rem}
 .cmd-table td:first-child{font-family:'JetBrains Mono',monospace;font-size:.8rem;white-space:nowrap}
 .endpoint-tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;padding:.15rem .5rem;border-radius:4px;margin-right:.5rem;color:#fff}
-.get{background:#0f766e}.post{background:#1d4ed8}.delete{background:#b91c1c}
+.get{background:#0f766e}.post{background:#1d4ed8}.delete{background:#b91c1c}.patch{background:#a16207}
 @media(max-width:800px){.layout{grid-template-columns:1fr}.sidebar{display:none}.main{max-width:100%}}
 
 .build-details {
@@ -163,6 +163,7 @@ tr:nth-child(even) td{background:#fafaf8}
     <a href="#part-15">15 · Security</a>
     <a href="#part-16">16 · Observability</a>
     <a href="#part-17">17 · Docker deployment</a>
+    <a href="#part-18">18 · Persistence &amp; search</a>
   </nav>
 
   <div class="sb-section">Reference</div>
@@ -237,7 +238,7 @@ tr:nth-child(even) td{background:#fafaf8}
   <div class="hero-pills" style="margin-bottom:2rem;">
     <span class="pill">Quick Start</span>
     <span class="pill">Tutorial (12 parts)</span>
-    <span class="pill">How-to guides (5 topics)</span>
+    <span class="pill">How-to guides (6 topics)</span>
     <span class="pill">CLI reference</span>
     <span class="pill">REST API reference</span>
   </div>
@@ -1594,7 +1595,7 @@ aua logs export --table audit_log --output sessions.json</pre>
 
 <div class="code-block">
 <div class="code-header">bash</div>
-<pre"># Compare last 30 days vs prior 30 days
+<pre># Compare last 30 days vs prior 30 days
 aua metrics --compare 30d
 
 # Example output (after a few weeks with an active policy):
@@ -2647,7 +2648,7 @@ aua certs inspect
 <div class="code-block">
 <div class="code-header">aua_config.yaml</div>
 <pre>secrets:
-  provider: env            <span class="c"># "env" | "vault" | "aws_sm" | "gcp_sm"</span>
+  provider: env            <span class="c"># "env" (default) | "vault" | "aws" | "gcp"</span>
 
 specialists:
   - name: swe
@@ -2655,13 +2656,21 @@ specialists:
 </div>
 
 <div class="code-block">
-<div class="code-header">aua_config.yaml — Vault provider</div>
+<div class="code-header">aua_config.yaml — HashiCorp Vault (KV v2)</div>
 <pre>secrets:
   provider: vault
-  vault_addr: https://vault.internal:8200
-  vault_token_secret: VAULT_TOKEN   <span class="c"># token from env</span>
-  vault_path_prefix: secret/aua</pre>
+  url: https://vault.internal:8200
+  token_env: VAULT_TOKEN     <span class="c"># env var holding the Vault token</span></pre>
 </div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — AWS Secrets Manager</div>
+<pre>secrets:
+  provider: aws
+  region: us-east-1</pre>
+</div>
+
+<p>Resolution order is always <em>environment variable first</em>, then the configured provider; values are cached for the process lifetime and never appear in logs, <code>repr()</code>, or <code>GET /config</code>. Vault secrets are read from the KV v2 path matching the secret name, taking the <code>value</code> key (or a key named after the secret). Both providers are covered by live integration tests in CI — a wire-faithful Vault KV v2 server driven by the real <code>hvac</code> client, and <code>moto</code> intercepting the real <code>boto3</code> client (<code>tests/test_secrets_live.py</code>).</p>
 
 <h3>12.4 Encryption at rest</h3>
 <p>Correction payloads, assertions, DPO pairs, token metadata, and sensitive audit fields are encrypted at rest with AES-256-GCM:</p>
@@ -2685,6 +2694,24 @@ tail -f .aua/audit.log
 <span class="c"># Export corrections (machine-readable audit trail)</span>
 aua corrections export --format jsonl</pre>
 </div>
+
+<h3>12.6 Session, trace &amp; request IDs (#15)</h3>
+<p>Every HTTP request gets three IDs: <code>session_id</code> (logical conversation — persistent across queries), <code>trace_id</code> (one per request, W3C-compatible 48-hex format, used by OTEL/audit/logs), and <code>request_id</code> (one per HTTP request, never reused). Client-supplied IDs are honored via the <code>X-Session-ID</code>, <code>X-Trace-ID</code> (or <code>traceparent</code>), and <code>X-Request-ID</code> headers; UUIDs are generated otherwise. All three come back as headers on <em>every</em> response, and <code>/query</code> additionally echoes them in the body.</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre><span class="c"># No session_id supplied → a UUID is generated and echoed back.</span>
+<span class="c"># Adopt it for the rest of the conversation:</span>
+curl -si -X POST localhost:8000/query -H "Content-Type: application/json" \
+  -d '{"query": "Write binary search in Python."}' | grep -iE "x-(session|trace|request)-id"
+
+<span class="c"># Pin your own session across requests (body session_id wins over the header)</span>
+curl -s -X POST localhost:8000/query -H "Content-Type: application/json" \
+  -d '{"query": "Now make it iterative.", "session_id": "user_42"}' \
+  | jq '{session_id, trace_id, request_id}'</pre>
+</div>
+
+<p>The context propagates everywhere: downstream specialist and arbiter calls carry the three headers, every hook payload includes them, the audit log records them per event, and structured logs attach them automatically — so one <code>trace_id</code> stitches a query across the router, the winning specialist, the arbiter verdict, and the audit chain.</p>
 
 <div class="callout orange">
   <p><strong>Production checklist:</strong> <code>aua doctor --strict</code> validates that if <code>cors_origins</code> is <code>*</code> <em>and</em> the host is <code>0.0.0.0</code> <em>and</em> auth is disabled, a loud warning is emitted. Use the Team Server or Enterprise deployment profile to enforce auth + mTLS requirements.</p>
@@ -3051,6 +3078,175 @@ audit:
   hash_chain: true</pre>
 </div>
 
+<!-- ═══════════════════════════════════════════ PART 18 -->
+<h2 id="part-18" class="part-heading"><span class="how-badge">How-to 18</span> Persistence, search &amp; production ops <span class="time-badge">~30 min</span></h2>
+
+<p>Everything in this part was battle-tested in <strong>AUA-Veritas</strong> — a macOS desktop assistant built on this framework — and backported in v1.1. It turns the router from a stateless query engine into a product backend: durable conversations, full-text search, automatic context handoffs, a correction lifecycle, analytics, and self-maintenance jobs. All of it ships in the default <code>aua serve</code> — nothing extra to enable.</p>
+
+<h3>18.1 Conversations, messages &amp; projects</h3>
+<p>The state store (SQLite by default, <code>.aua/state/aua.db</code>) persists conversations and messages independently of the chat-session API. Projects group conversations; <code>project_id=NULL</code> means "All chats".</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre><span class="c"># Create a project, then a conversation inside it</span>
+PROJECT=$(curl -s -X POST localhost:8000/projects -H "Content-Type: application/json" \
+  -d '{"name": "Q3 Research"}' | jq -r .project_id)
+
+CONV=$(curl -s -X POST localhost:8000/conversations -H "Content-Type: application/json" \
+  -d "{\"title\": \"Vector DB eval\", \"project_id\": \"$PROJECT\"}" | jq -r .conversation_id)
+
+<span class="c"># Append messages (role: user | assistant)</span>
+curl -s -X POST localhost:8000/conversations/$CONV/messages \
+  -H "Content-Type: application/json" \
+  -d '{"role": "user", "content": "Compare pgvector and Qdrant for 10M embeddings"}'
+
+<span class="c"># Paginated reads — newest page by default, timestamp cursors for history</span>
+curl -s "localhost:8000/conversations/$CONV/messages?limit=50"
+curl -s "localhost:8000/conversations/$CONV/messages?before=1765432100.5&amp;limit=50"
+
+<span class="c"># Filter the sidebar to one project; omit project_id for all chats</span>
+curl -s "localhost:8000/conversations?project_id=$PROJECT"</pre>
+</div>
+
+<div class="callout">
+<p><strong>Cache rule (learned in production):</strong> first-page reads at the default <code>limit&ge;50</code> are served from a true-LRU <code>MessageCache</code>. Any non-default limit bypasses the cache and hits the DB with the actual limit — otherwise <code>?limit=1</code> would silently return the whole cached page and break pagination.</p>
+</div>
+
+<h3>18.2 Full-text keyword search</h3>
+<p>Every message write is keyword-indexed by a background worker (50&nbsp;ms batches, never on the response path) into an in-memory inverted index with O(log&nbsp;n) prefix matching. Search is message-level — the Cmd+F model: one result per matching <em>message</em>, with AND semantics for multi-word queries. On restart, a startup backfill re-indexes anything the worker didn't flush.</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>curl -s "localhost:8000/search?q=pgvector+embeddings" | jq</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Response — one entry per matching message, newest first</div>
+<pre>[
+  {
+    "conversation_id":  "7f3a…",
+    "title":            "Vector DB eval",
+    "message_id":       "c91d…",
+    "match_message_id": "c91d…",
+    "match_message_ts": 1765432101.7
+  }
+]</pre>
+</div>
+
+<p>Extraction is pure Python (~8&nbsp;µs/message, no spaCy): stopword filtering, CamelCase/snake_case identifiers, years and multi-digit numbers — so <code>fire_and_forget</code>, <code>MessageCache</code>, and <code>2026</code> are all searchable. Prefix search means <code>kuber</code> finds <code>kubernetes</code>.</p>
+
+<h3>18.3 Context backups — automatic session handoffs</h3>
+<p>Long conversations exhaust context windows. AUA keeps a per-<code>(specialist, conversation)</code> token counter and, when a trigger fires, asks the specialist to write a structured handoff note that a fresh window can resume from. Triggers: <code>token_threshold</code> (70% of the context window — bumps the thread number), <code>message_count</code> (every 30 messages), and <code>time_gap</code> (returning after 24h+ with &ge;5 messages).</p>
+
+<p>The backup prompt forces six sections — <strong>GOAL · DECISIONS MADE · CURRENT STATUS · ACTIVE FILE / CODE CONTEXT · USER PREFERENCES LEARNED · RESUME INSTRUCTION</strong> — capped at 900 tokens. Two production rules are baked in: the generator always reads the last 60 messages from the <em>database</em>, never the slice the client happened to send; and a 6-hour coverage job sweeps for any conversation whose newest backup is older than its newest message (<code>backup valid ⇔ MAX(backup.created_at) &gt; MAX(messages.created_at)</code>), regenerating stale ones at 1/s.</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre><span class="c"># Which conversations need a backup for this specialist?</span>
+curl -s "localhost:8000/context/backup/coverage?specialist=swe" | jq
+
+<span class="c"># Don't wait 6 hours — sweep now (runs in the background)</span>
+curl -s -X POST "localhost:8000/context/backup/run-coverage-job?specialist=swe"</pre>
+</div>
+
+<h3>18.4 The correction lifecycle</h3>
+<p>Part 4 covered arbiter-driven corrections. v1.1 adds the full user-facing lifecycle.</p>
+
+<p><strong>Explicit prefix.</strong> A message starting with <code>correction:</code> is a preference statement and is stored immediately — <em>even as the first message of a conversation, with no prior AI turn</em>. (In Veritas, an early-return guard silently discarded these for months.)</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>SESSION=$(curl -s -X POST localhost:8000/sessions -H "Content-Type: application/json" -d '{}' | jq -r .id)
+curl -s -X POST localhost:8000/sessions/$SESSION/messages \
+  -H "Content-Type: application/json" \
+  -d '{"content": "correction: always use ISO-8601 dates"}' | jq .correction_stored
+<span class="c"># → a correction_id — stored at confidence 0.85, source=explicit_prefix</span></pre>
+</div>
+
+<p><strong>Implicit detection.</strong> A two-layer trigger detector (regex layer ships with the framework; plug a classifier into <code>TriggerDetector(layer2=…)</code> for semantic catches) flags replies like <em>"no, that's wrong — use UTC"</em> after an AI turn. Instead of asking the user to re-type their intent, the response carries <code>implicit_correction_pending: true</code> and your UI shows Accept / Reject:</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>curl -s -X POST localhost:8000/corrections/confirm-implicit \
+  -H "Content-Type: application/json" \
+  -d "{\"conversation_id\": \"$SESSION\", \"action\": \"accept\"}"
+<span class="c"># accept → stored (confidence 0.75, source=implicit_confirmed); reject → discarded</span></pre>
+</div>
+
+<p><strong>CRUD + evidence.</strong> Every stored correction has a persistent ID and an append-only event history (<code>created → applied → edited → superseded</code>):</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>CID=$(curl -s -X POST localhost:8000/corrections -H "Content-Type: application/json" \
+  -d '{"subject":"timezones","domain":"general","claim":"Store timestamps in UTC","confidence":0.9}' \
+  | jq -r .correction_id)
+
+curl -s -X PATCH localhost:8000/corrections/$CID \
+  -H "Content-Type: application/json" -d '{"claim": "Store and display in UTC"}'
+
+curl -s "localhost:8000/corrections/evidence?correction_id=$CID" | jq
+
+<span class="c"># Soft delete — sets scope='superseded'; the row stays for audit,</span>
+<span class="c"># but is excluded from retrieval and prompt injection</span>
+curl -s -X DELETE localhost:8000/corrections/$CID</pre>
+</div>
+
+<p><strong>Reviewer findings surfaced.</strong> When fanout routing runs the arbiter, its <code>REASON:</code>/<code>CORRECTION:</code> sections are no longer discarded after the verdict — they come back on the response as <code>review_notes</code> so the client can show <em>why</em> an answer won.</p>
+
+<h3>18.5 Analytics, reliability, usage &amp; pricing</h3>
+<p>Four read-only endpoints power a "look under the hood" dashboard, all computed from <code>model_runs</code>:</p>
+
+<table>
+<tr><th>Endpoint</th><th>Returns</th></tr>
+<tr><td><code>GET /analytics</code></td><td>Per-specialist run/win stats, confidence distribution (high &ge; 0.75 / medium &ge; 0.50 / uncertain), active-correction stats by domain, domain distribution, VCG welfare summary.</td></tr>
+<tr><td><code>GET /reliability</code></td><td>Per-specialist win rate plus the last-20-run welfare trajectory and trend (up/down/flat) — sparkline-ready.</td></tr>
+<tr><td><code>GET /usage</code></td><td>Query counts and estimated cost per specialist.</td></tr>
+<tr><td><code>GET /pricing</code></td><td>Per-specialist token pricing from the live model registry (self-hosted models cost 0).</td></tr>
+</table>
+
+<h3>18.6 Self-maintenance: updates, crashes, bug reports, remote config</h3>
+
+<p><strong>Update management.</strong> <code>GET /version/check</code> compares the running version against the latest GitHub release (graceful when offline). <code>POST /update/skip {"version": "1.2.0"}</code> persists a skipped version so the banner stays hidden; <code>show_banner</code> in the check response already accounts for it.</p>
+
+<p><strong>Crash reporting.</strong> Startup writes a <code>running</code> sentinel; clean shutdown marks it <code>clean</code>. A sentinel still <code>running</code> at the next startup means the previous session crashed — it's reported automatically (and queued runtime errors from <code>pending_error_reports</code> are flushed). Detection runs <em>before</em> the new sentinel is written, so a session never reports itself.</p>
+
+<p><strong>Bug reports.</strong> <code>POST /bug-report</code> assembles a structured report (platform fingerprint, log tails, opt-in last messages) and pushes it to a GitHub repo via the Contents API. Configure with <code>AUA_BUGS_REPO</code> (owner/repo) and a write-only <code>AUA_BUGS_PAT</code>. Without a PAT it returns <code>200 {"ok": false}</code> — bug reporting is never itself a source of 500s.</p>
+
+<p><strong>Remote model config.</strong> Model aliases, pricing, and context windows refresh from a remote <code>models.json</code> (default: this site; override with <code>AUA_REMOTE_MODELS_URL</code>) at startup and every 24h, with a three-level fallback: <em>remote → DB cache (kept 7 days) → built-in registry</em>. Remote may update display names, costs, windows, and add aliases for known providers — never <code>backend</code> or <code>provider</code>, which map to code. A <code>model_id_renames</code> map lets retired upstream IDs hot-swap without a release.</p>
+
+<h3>18.7 Local model management</h3>
+<p>Register Ollama-class local models, tag them as specialists for domain nodes, and persist UI settings:</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>curl -s -X POST localhost:8000/local/models -H "Content-Type: application/json" \
+  -d '{"local_model_id": "qwen3:8b", "nickname": "Qwen 8B", "base_url": "http://localhost:11434"}'
+
+curl -s -X PATCH localhost:8000/local/specialist/qwen3:8b \
+  -H "Content-Type: application/json" \
+  -d '{"specialist_domain": "software_engineering", "specialist_depth": 1}'
+
+curl -s localhost:8000/local/models | jq
+curl -s -X POST localhost:8000/local/settings -H "Content-Type: application/json" \
+  -d '{"auto_discover": true}'</pre>
+</div>
+
+<h3>18.8 The dynamic domain ontology</h3>
+<p>Field classification starts from 10 fixed L0 roots (<code>software_engineering</code>, <code>mathematics</code>, <code>research</code>, <code>law</code>, <code>medicine</code>, <code>finance</code>, <code>writing</code>, <code>analysis</code>, <code>history</code>, <code>general</code>) and <em>grows</em> from specialist self-reports. A raw domain string resolves in two stages — O(1) alias map, then Levenshtein similarity. Above 0.80 similarity it becomes an alias; below, it enters a candidate queue.</p>
+
+<p>An hourly ontology job promotes a candidate to a real node only when all four gates pass: <strong>volume</strong> (&ge;5 distinct queries), <strong>diversity</strong> (&ge;2 distinct specialists reported it), <strong>coverage</strong> (still unresolved by the alias map), and <strong>divergence</strong> (mean per-specialist win-rate difference vs. the nearest node exceeds δ(d) = 0.10 + 0.05·depth). Low-evidence candidates are pruned after 30 days.</p>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre>curl -s localhost:8000/domain-tree | jq '{nodes: .nodes | length, candidates: .candidates[:3]}'</pre>
+</div>
+
+<div class="callout green">
+<p><strong>Why this matters for routing:</strong> each promoted node gets its own effective-utility cell, so "compiler design" queries can route to a different winner than generic "software engineering" once the evidence says the models genuinely diverge there.</p>
+</div>
+
+<div class="next-part"><p><strong>Part 18 done.</strong> That's the full v1.1 surface. The reference sections below list every CLI command and REST endpoint.</p></div>
+
 <hr class="section-divider">
 <h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:1.4rem;color:#444;margin:1.5rem 0 .5rem;">Reference</h2>
 
@@ -3210,7 +3406,38 @@ aua logs export [--output &lt;path&gt;] [--table &lt;table&gt;] [--limit &lt;N&g
 <tr><td><span class="endpoint-tag delete">DELETE</span></td><td><code>/sessions/{id}</code></td><td><code>aua:query</code></td><td>Delete a session and its messages.</td></tr>
 <tr><td><span class="endpoint-tag post">POST</span></td><td><code>/sessions/{id}/messages</code></td><td><code>aua:query</code></td><td>Send a message in a session context.</td></tr>
 <tr><td><span class="endpoint-tag get">GET</span></td><td><code>/extensions</code></td><td>—</td><td>List registered plugins and hooks.</td></tr>
+<tr><td colspan="4" style="background:var(--soft);font-weight:600;">v1.1 — persistence, search &amp; production ops (How-to 18)</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/conversations</code></td><td><code>aua:query</code></td><td>Create a conversation (optional <code>project_id</code>).</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/conversations</code></td><td><code>aua:query</code></td><td>List conversations; <code>?project_id=</code> filters.</td></tr>
+<tr><td><span class="endpoint-tag patch">PATCH</span></td><td><code>/conversations/{id}/title</code></td><td><code>aua:query</code></td><td>Rename a conversation.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/conversations/{id}/messages</code></td><td><code>aua:query</code></td><td>Paginated messages (<code>before</code>/<code>after</code> cursors).</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/conversations/{id}/messages</code></td><td><code>aua:query</code></td><td>Append a message; keyword-indexed in the background.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/projects</code></td><td><code>aua:query</code></td><td>Create a project for grouping conversations.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/projects</code></td><td><code>aua:query</code></td><td>List projects.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/search</code></td><td><code>aua:query</code></td><td>Message-level keyword search (AND semantics, prefix match).</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/context/backup/coverage</code></td><td><code>aua:status</code></td><td>Stale/missing context backups per specialist.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/context/backup/run-coverage-job</code></td><td><code>aua:query</code></td><td>Trigger an immediate backup coverage sweep.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/corrections/confirm-implicit</code></td><td><code>aua:corrections:write</code></td><td>Accept/Reject a detected implicit correction.</td></tr>
+<tr><td><span class="endpoint-tag patch">PATCH</span></td><td><code>/corrections/{id}</code></td><td><code>aua:corrections:write</code></td><td>Edit a stored correction (logs an <code>edited</code> event).</td></tr>
+<tr><td><span class="endpoint-tag delete">DELETE</span></td><td><code>/corrections/{id}</code></td><td><code>aua:corrections:write</code></td><td>Soft-delete (<code>scope='superseded'</code>; row kept for audit).</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/corrections/evidence</code></td><td><code>aua:corrections:read</code></td><td>Per-correction event history and application counts.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/analytics</code></td><td><code>aua:status</code></td><td>Specialist stats, confidence distribution, domain + welfare summary.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/reliability</code></td><td><code>aua:status</code></td><td>Per-specialist win rate + last-20 welfare trajectory.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/usage</code></td><td><code>aua:status</code></td><td>Query counts and estimated cost per specialist.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/pricing</code></td><td><code>aua:status</code></td><td>Per-specialist token pricing from the live model registry.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/version/check</code></td><td>—</td><td>Compare running version against the latest GitHub release.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/update/skip</code></td><td><code>aua:config:write</code></td><td>Persist a skipped update version (banner stays hidden).</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/update/skipped</code></td><td>—</td><td>Return the skipped version, if any.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/bug-report</code></td><td>—</td><td>Submit a structured bug report (200 even without a PAT).</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/local/models</code></td><td><code>aua:status</code></td><td>List registered local (Ollama-class) models.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/local/models</code></td><td><code>aua:config:write</code></td><td>Register/upsert a local model.</td></tr>
+<tr><td><span class="endpoint-tag patch">PATCH</span></td><td><code>/local/specialist/{id}</code></td><td><code>aua:config:write</code></td><td>Tag a local model as a domain specialist.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/local/settings</code></td><td><code>aua:status</code></td><td>Read local model settings.</td></tr>
+<tr><td><span class="endpoint-tag post">POST</span></td><td><code>/local/settings</code></td><td><code>aua:config:write</code></td><td>Write local model settings.</td></tr>
+<tr><td><span class="endpoint-tag get">GET</span></td><td><code>/domain-tree</code></td><td><code>aua:status</code></td><td>Full domain ontology with node stats and candidate queue.</td></tr>
 </table>
+
+<p class="caption">#15: every response also carries <code>X-Session-ID</code>, <code>X-Trace-ID</code>, and <code>X-Request-ID</code> headers — client-supplied values honored, UUIDs generated otherwise.</p>
 
 <p class="caption">All POST bodies are JSON. All responses are JSON unless noted. Auth header: <code>Authorization: Bearer $AUA_TOKEN</code>.</p>
 
@@ -3224,7 +3451,7 @@ aua logs export [--output &lt;path&gt;] [--table &lt;table&gt;] [--limit &lt;N&g
 <div class="code-header">Request body</div>
 <pre>{
   "query":                "string",   <span class="c">// REQUIRED — the query text</span>
-  "session_id":           "string",   <span class="c">// optional — scopes cross-session corrections (default: "default")</span>
+  "session_id":           "string",   <span class="c">// optional — scopes cross-session corrections; a UUID is generated and echoed back if omitted (#15)</span>
   "conversation_history": [           <span class="c">// optional — prior turns for context</span>
     {"role": "user",      "content": "previous question"},
     {"role": "assistant", "content": "previous answer"}
