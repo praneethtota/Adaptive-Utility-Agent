@@ -35,8 +35,11 @@ class QueryRequest(BaseModel):
         examples=["Write a binary search function in Python. State the time complexity."],
     )
     session_id: str | None = Field(
-        "default",
-        description="Session identifier. Used to scope cross-session assertions.",
+        None,
+        description=(
+            "Session identifier; scopes cross-session assertions. "
+            "#15: a UUID is generated and echoed back when not supplied."
+        ),
     )
     conversation_history: list[dict] | None = Field(
         [],
@@ -109,6 +112,20 @@ class RouterResponse(BaseModel):
             "Reviewer findings surfaced to the client (V-P2.1): reviewer name, "
             "ISSUES found, and CORRECTION suggested. Populated when the arbiter "
             "flags an issue; None when no review ran or nothing was flagged."
+        ),
+    )
+    trace_id: str | None = Field(
+        None,
+        description=(
+            "#15: distributed trace ID (W3C-compatible, 48 hex chars). "
+            "One per request; also returned in the X-Trace-ID header."
+        ),
+    )
+    request_id: str | None = Field(
+        None,
+        description=(
+            "#15: unique ID for this HTTP request, never reused. "
+            "Also returned in the X-Request-ID header."
         ),
     )
 

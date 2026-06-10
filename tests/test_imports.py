@@ -48,7 +48,7 @@ def test_endpoint_models_exported():
     # Pydantic models — check they can be instantiated with required fields
     req = QueryRequest(query="test query")
     assert req.query == "test query"
-    assert req.session_id == "default"
+    assert req.session_id is None  # #15: UUID generated when not supplied
 
 
 def test_stream_models_exported():

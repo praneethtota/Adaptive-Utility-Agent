@@ -421,6 +421,26 @@ class Router:
 
         app.add_middleware(RateLimitMiddleware, config=self._config)
 
+        # ── #15: session/trace/request ID middleware ─────────────────────────
+        # Every HTTP request gets a SessionContext (client-supplied IDs
+        # honored, UUIDs generated otherwise) stored in a contextvar so the
+        # router, classifier, specialist calls, arbiter, correction loop,
+        # hooks, middleware, logs, metrics, and audit log can all read it.
+        # The three IDs are returned on EVERY response as headers.
+        from aua.session import new_session_context
+
+        @app.middleware("http")
+        async def _session_id_middleware(request, call_next):
+            ctx = new_session_context(
+                session_id=request.headers.get("X-Session-ID"),
+                trace_id=request.headers.get("X-Trace-ID") or request.headers.get("traceparent"),
+                request_id=request.headers.get("X-Request-ID"),
+            )
+            response = await call_next(request)
+            for k, v in ctx.as_headers().items():
+                response.headers[k] = v
+            return response
+
         app.add_middleware(
             CORSMiddleware,
             allow_origins=self._config.router.cors_origins,
@@ -2373,8 +2393,23 @@ class Router:
         t0 = time.time()
         log.info("Query: %.80s", req.query)
         _hooks = get_hook_runner()
-        _sid = req.session_id or ""
-        _tid = str(uuid.uuid4())
+
+        # ── #15: session/trace/request IDs ────────────────────────────────────
+        # The HTTP middleware sets a SessionContext per request; the library
+        # API (Router.query) creates one here. Body session_id wins over the
+        # header; when neither is supplied the generated UUID is echoed back
+        # so clients can adopt it for the rest of the conversation.
+        from aua.session import get_current_or_none, new_session_context
+
+        _ctx = get_current_or_none()
+        if _ctx is None:
+            _ctx = new_session_context(session_id=req.session_id)
+        if req.session_id:
+            _ctx.session_id = req.session_id
+        else:
+            req.session_id = _ctx.session_id
+        _sid = req.session_id
+        _tid = _ctx.trace_id
 
         # ── pre_query: before field classification ────────────────────────────
         await _hooks.fire(
@@ -2382,6 +2417,7 @@ class Router:
             {
                 "session_id": _sid,
                 "trace_id": _tid,
+                "request_id": _ctx.request_id,
                 "query": req.query,
                 "conversation_history": req.conversation_history or [],
                 "force_domain": req.force_domain,
@@ -2408,6 +2444,9 @@ class Router:
             if len(active) >= 2
             else "single" if top_prob >= self._single_threshold else "arbiter"
         )
+        # #15: enrich the context so logs/audit carry domain + routing mode
+        _ctx.domain = top_domain
+        _ctx.routing_mode = routing_mode
 
         # ── post_route: after routing decision, before specialist calls ───────
         await _hooks.fire(
@@ -2415,6 +2454,7 @@ class Router:
             {
                 "session_id": _sid,
                 "trace_id": _tid,
+                "request_id": _ctx.request_id,
                 "query": req.query,
                 "domain_distribution": distribution,
                 "top_domain": top_domain,
@@ -2429,6 +2469,13 @@ class Router:
             return await self._handle_single(req, top_domain, distribution, t0, _sid, _tid)
         else:
             return await self._handle_arbiter(req, distribution, t0, _sid, _tid)
+
+    def _response_ids(self, trace_id: str) -> dict[str, str | None]:
+        """#15: trace/request IDs echoed in every RouterResponse."""
+        from aua.session import get_current_or_none
+
+        ctx = get_current_or_none()
+        return {"trace_id": trace_id, "request_id": ctx.request_id if ctx else None}
 
     async def _handle_single(
         self, req, domain, distribution, t0, _sid="", _tid=""
@@ -2545,6 +2592,7 @@ class Router:
             corrections_injected=_n_corrections,
             dpo_pairs_generated=n_dpo,
             latency_ms=latency_ms,
+            **self._response_ids(_tid),
         )
         # ── pre_response / post_response ──────────────────────────────────────
         pre_event = await _hooks.fire(
@@ -2575,6 +2623,7 @@ class Router:
                 corrections_injected=_n_corrections,
                 dpo_pairs_generated=n_dpo,
                 latency_ms=latency_ms,
+                **self._response_ids(_tid),
             )
         _hooks.fire_background(
             "post_response",
@@ -2802,6 +2851,7 @@ class Router:
             specialist_responses=spec_responses,
             welfare_scores=_vcg_welfare,
             review_notes=_review_notes,
+            **self._response_ids(_tid),
         )
 
     async def _handle_arbiter(self, req, distribution, t0, _sid="", _tid="") -> RouterResponse:
@@ -2898,6 +2948,7 @@ class Router:
             corrections_injected=_n_corrections_arb,
             dpo_pairs_generated=n_dpo,
             latency_ms=_arb_ms,
+            **self._response_ids(_tid),
         )
 
     # ── Specialist call (buffered) ────────────────────────────────────────────
@@ -3067,10 +3118,16 @@ class Router:
             messages.append(h)
         messages.append({"role": "user", "content": query})
 
+        # #15: propagate session/trace/request IDs to downstream services
+        from aua.session import get_current_or_none as _gcon
+
+        _prop_ctx = _gcon()
+        _prop_headers = _prop_ctx.as_headers() if _prop_ctx else {}
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 r = await client.post(
                     url,
+                    headers=_prop_headers,
                     json={
                         "model": model_name,
                         "messages": messages,

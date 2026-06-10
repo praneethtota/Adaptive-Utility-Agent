@@ -79,6 +79,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
     event_type TEXT NOT NULL,
     session_id TEXT,
     trace_id TEXT,
+    request_id TEXT,
+    routing_mode TEXT,
     token_id TEXT,
     field TEXT,
     specialist TEXT,
@@ -297,6 +299,10 @@ CREATE INDEX IF NOT EXISTS idx_domain_parent    ON domain_nodes(parent_id);
 # already exists, which is the expected steady state.
 _MIGRATIONS = [
     "ALTER TABLE corrections ADD COLUMN scope TEXT DEFAULT 'global'",
+    # #15: audit events carry request_id; without this column the audit
+    # INSERT failed silently (swallowed by the fire-and-forget try/except)
+    "ALTER TABLE audit_log ADD COLUMN request_id TEXT",
+    "ALTER TABLE audit_log ADD COLUMN routing_mode TEXT",
     "ALTER TABLE token_counters ADD COLUMN last_backup_at REAL",
 ]
 
