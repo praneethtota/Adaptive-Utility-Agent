@@ -202,7 +202,103 @@ CREATE INDEX IF NOT EXISTS idx_runs_specialist ON model_runs(specialist);
 CREATE INDEX IF NOT EXISTS idx_counters_conv   ON token_counters(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_kw_conv         ON message_keywords(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_backup_conv     ON context_backups(conversation_id);
+
+-- ── v1.1-veritas P1–P3 backport tables ───────────────────────────────────────
+
+-- V-P1.5: crash detection sentinel
+CREATE TABLE IF NOT EXISTS crash_sentinel (
+    session_id  TEXT PRIMARY KEY,
+    status      TEXT NOT NULL DEFAULT 'running',  -- 'running' | 'clean'
+    started_at  REAL NOT NULL,
+    ended_at    REAL,
+    system_log_snippet TEXT,
+    api_log_snippet    TEXT
+);
+
+-- V-P1.5 / V-P3.1: errors queued from crashed sessions, sent on next launch
+CREATE TABLE IF NOT EXISTS pending_error_reports (
+    id          TEXT PRIMARY KEY,
+    created_at  REAL NOT NULL,
+    kind        TEXT NOT NULL DEFAULT 'error',    -- 'error' | 'crash' | 'bug'
+    payload     TEXT DEFAULT '{}',
+    sent        INTEGER DEFAULT 0
+);
+
+-- V-P1.6: remote model config cache (last successful fetch, kept 7 days)
+CREATE TABLE IF NOT EXISTS remote_config_cache (
+    id          TEXT PRIMARY KEY,                 -- cache key, e.g. 'models'
+    created_at  REAL NOT NULL,
+    fetched_at  REAL NOT NULL,
+    payload     TEXT NOT NULL
+);
+
+-- V-P2.3: small app-level key/value store (skipped update versions, etc.)
+CREATE TABLE IF NOT EXISTS app_meta (
+    id          TEXT PRIMARY KEY,
+    created_at  REAL,
+    value       TEXT
+);
+
+-- V-P2.4: per-correction application/edit history (evidence endpoint)
+CREATE TABLE IF NOT EXISTS correction_events (
+    id            TEXT PRIMARY KEY,
+    created_at    REAL NOT NULL,
+    correction_id TEXT NOT NULL,
+    event         TEXT NOT NULL DEFAULT 'applied', -- created|applied|edited|superseded
+    session_id    TEXT,
+    details       TEXT DEFAULT '{}'
+);
+
+-- V-P3.3: local (Ollama-class) model management
+CREATE TABLE IF NOT EXISTS local_models (
+    local_model_id    TEXT PRIMARY KEY,
+    user_id           TEXT NOT NULL DEFAULT 'local',
+    ollama_name       TEXT,
+    nickname          TEXT,
+    base_url          TEXT,
+    runtime           TEXT DEFAULT 'ollama',
+    connected         INTEGER DEFAULT 1,
+    specialist_domain TEXT,
+    specialist_depth  INTEGER DEFAULT 0,
+    created_at        REAL NOT NULL DEFAULT (unixepoch('now')),
+    updated_at        REAL NOT NULL DEFAULT (unixepoch('now'))
+);
+
+-- V-P3.4: dynamic domain ontology (candidate queue + promotion)
+CREATE TABLE IF NOT EXISTS domain_nodes (
+    node_id       TEXT PRIMARY KEY,
+    parent_id     TEXT,
+    depth         INTEGER NOT NULL DEFAULT 0,
+    display_name  TEXT NOT NULL,
+    aliases       TEXT DEFAULT '[]',              -- JSON list of alias strings
+    query_count   INTEGER DEFAULT 0,
+    is_l0_root    INTEGER DEFAULT 0,
+    promoted_from TEXT,
+    created_at    REAL NOT NULL DEFAULT (unixepoch('now'))
+);
+
+CREATE TABLE IF NOT EXISTS domain_candidates (
+    raw_string    TEXT PRIMARY KEY,
+    nearest_node  TEXT NOT NULL,
+    similarity    REAL DEFAULT 0.0,
+    query_count   INTEGER DEFAULT 1,
+    model_sources TEXT DEFAULT '[]',              -- JSON list of specialist names
+    first_seen    REAL NOT NULL,
+    last_seen     REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_corr_events_corr ON correction_events(correction_id);
+CREATE INDEX IF NOT EXISTS idx_sentinel_status  ON crash_sentinel(status);
+CREATE INDEX IF NOT EXISTS idx_domain_parent    ON domain_nodes(parent_id);
 """
+
+# Column additions applied to databases created before this version.
+# Each runs in a try/except — sqlite raises OperationalError if the column
+# already exists, which is the expected steady state.
+_MIGRATIONS = [
+    "ALTER TABLE corrections ADD COLUMN scope TEXT DEFAULT 'global'",
+    "ALTER TABLE token_counters ADD COLUMN last_backup_at REAL",
+]
 
 
 # ── SQLite state store ────────────────────────────────────────────────────────
@@ -230,6 +326,22 @@ class SQLiteStateStore:
     def _init_db(self) -> None:
         with self._connect() as conn:
             conn.executescript(_SCHEMA)
+            for migration in _MIGRATIONS:
+                try:
+                    conn.execute(migration)
+                except sqlite3.OperationalError:
+                    pass  # column already exists — expected steady state
+
+    # ── App meta key/value (V-P2.3) ───────────────────────────────────────────
+
+    def meta_get(self, key: str) -> str | None:
+        """Read a value from the app_meta key/value table."""
+        row = self.get("app_meta", key)
+        return row["value"] if row else None
+
+    def meta_set(self, key: str, value: str) -> None:
+        """Write a value to the app_meta key/value table (upsert)."""
+        self.set("app_meta", key, {"created_at": time.time(), "value": value})
 
     def get(self, table: str, key: str) -> dict[str, Any] | None:
         with self._connect() as conn:

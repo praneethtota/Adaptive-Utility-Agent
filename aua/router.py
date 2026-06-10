@@ -24,6 +24,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+import re
 import time
 import uuid
 from collections import defaultdict, deque
@@ -240,6 +242,23 @@ class Router:
         self._state_store = SQLiteStateStore(db_path=_db_path)
         self._conf = ConfidenceUpdater()
 
+        # ── v1.1-veritas P1–P3 components ────────────────────────────────────
+        from aua.context_backup import ContextBackupManager
+        from aua.domain_tree import DomainTree, OntologyJob
+        from aua.keywords import KeywordIndex
+        from aua.remote_config import RemoteModelConfig
+        from aua.trigger_detector import TriggerDetector
+
+        self._keyword_index = KeywordIndex(self._state_store)  # V-P1.1
+        self._backup_mgr = ContextBackupManager(self._state_store)  # V-P1.2/1.4
+        self._trigger = TriggerDetector()  # V-P1.3
+        self._pending_implicit: dict[str, dict] = {}  # conv_id → pending correction
+        self._remote_models = RemoteModelConfig(self._state_store)  # V-P1.6
+        self._domain_tree = DomainTree(self._state_store)  # V-P3.4
+        self._ontology_job = OntologyJob(self._domain_tree, self._state_store)
+        self._crash_session_id: str | None = None  # V-P1.5
+        self._background_tasks: list = []  # cancelled on shutdown
+
         self._domain_confidence: dict[str, float] = {s.field: 0.5 for s in config.specialists}
         self._field_to_url: dict[str, str] = {s.field: s.endpoint for s in config.specialists}
         self._arbiter_url = config.arbiter.endpoint
@@ -286,7 +305,83 @@ class Router:
         return await self._handle(req)
 
     def _build_app(self) -> FastAPI:
+        # Implementation rule (Phase 13): asyncio imported at the TOP of the
+        # lifespan/mount body — never mid-body. Startup code that runs before
+        # a lazy import crashes with NameError (bit Veritas in 2 places).
+        import asyncio as _asyncio
+        from contextlib import asynccontextmanager
+
+        from aua import crash_reporter as _crash
+
+        @asynccontextmanager
+        async def _lifespan(app: FastAPI):
+            # ── Startup ───────────────────────────────────────────────────────
+            try:
+                # V-P1.5: detect previous crash BEFORE writing the new sentinel
+                # (writing first makes the current session self-report as
+                # crashed), then write the sentinel, then report in background.
+                _prev_crash = _crash.detect_crash(self._state_store)
+                self._crash_session_id = _crash.record_startup(self._state_store)
+
+                async def _crash_startup() -> None:
+                    try:
+                        if _prev_crash:
+                            await _crash.report_previous_crash(self._state_store, crash=_prev_crash)
+                        await _crash.flush_pending_errors(self._state_store)
+                    except Exception as e:  # noqa: BLE001
+                        log.debug("Crash report on startup skipped: %s", e)
+
+                self._background_tasks.append(_asyncio.create_task(_crash_startup()))
+
+                # V-P1.1: keyword worker + index build/backfill (off the loop)
+                self._keyword_index.start()
+
+                async def _build_index() -> None:
+                    loop = _asyncio.get_running_loop()
+                    await loop.run_in_executor(None, self._keyword_index.build_from_db)
+
+                self._background_tasks.append(_asyncio.create_task(_build_index()))
+
+                # V-P1.2: 6-hour context backup coverage job
+                self._background_tasks.append(
+                    _asyncio.create_task(
+                        self._backup_mgr.coverage_job(
+                            specialists_provider=lambda: [s.name for s in self._config.specialists],
+                            generator=self._generate_backup_text,
+                        )
+                    )
+                )
+
+                # V-P1.6: remote model config — fetch now, refresh every 24h
+                async def _remote_cfg() -> None:
+                    try:
+                        await self._remote_models.refresh()
+                    except Exception as e:  # noqa: BLE001
+                        log.debug("Remote model config initial refresh skipped: %s", e)
+
+                self._background_tasks.append(_asyncio.create_task(_remote_cfg()))
+                self._background_tasks.append(
+                    _asyncio.create_task(self._remote_models.refresh_job())
+                )
+
+                # V-P3.4: hourly ontology maintenance
+                self._ontology_job.start()
+            except Exception as e:  # noqa: BLE001
+                log.warning("v1.1 startup tasks failed (continuing): %s", e)
+
+            yield
+
+            # ── Shutdown ──────────────────────────────────────────────────────
+            self._keyword_index.stop()
+            self._ontology_job.stop()
+            for task in self._background_tasks:
+                task.cancel()
+            self._background_tasks.clear()
+            if self._crash_session_id:
+                _crash.record_shutdown(self._state_store, self._crash_session_id)
+
         app = FastAPI(
+            lifespan=_lifespan,
             title="AUA Micro-Expert Router",
             description=(
                 "**Adaptive Utility Agents** — routes queries to specialist LLM models, "
@@ -622,15 +717,15 @@ class Router:
             user_id = body.get("user_id", "local")
             import time as _time_proj
 
-            self._state_store.append(
-                "projects",
-                {
-                    "project_id": project_id,
-                    "user_id": user_id,
-                    "name": name,
-                    "created_at": _time_proj.time(),
-                },
-            )
+            # Direct INSERT — the generic append() injects an `id` column,
+            # but the projects table keys on project_id (bug found by the
+            # v1.1 E2E suite: "table projects has no column named id").
+            with self._state_store._connect() as _conn_proj:
+                _conn_proj.execute(
+                    "INSERT INTO projects (project_id, user_id, name, created_at)"
+                    " VALUES (?, ?, ?, ?)",
+                    (project_id, user_id, name, _time_proj.time()),
+                )
             return {"project_id": project_id, "name": name, "user_id": user_id}
 
         @app.get(
@@ -697,6 +792,9 @@ class Router:
 
         # ── End P0: Conversation + message persistence ───────────────────────
 
+        # ── v1.1-veritas P1–P3 endpoints ─────────────────────────────────────
+        self._mount_v11_endpoints(app, _msg_cache)
+
         @app.post(
             "/corrections",
             response_model=CorrectionResponse,
@@ -717,6 +815,9 @@ class Router:
                 confidence=req.confidence,
                 source=req.source or "manual",
             )
+            # V-P2.4: dual-write to the state store so the correction has a
+            # persistent ID for PATCH/DELETE/evidence.
+            _correction_id = self._persist_correction(assertion, source=req.source or "manual")
             # ── on_correction hook (background — non-blocking) ────────────────
             get_hook_runner().fire_background(
                 "on_correction",
@@ -738,6 +839,7 @@ class Router:
                 claim=assertion.claim,
                 confidence=round(assertion.effective_confidence(), 4),
                 decay_class=assertion.decay_class.value,
+                correction_id=_correction_id,
             )
 
         @app.get(
@@ -969,6 +1071,40 @@ class Router:
             _msg_content = req.effective_content()
             add_message(session_id, role="user", content=_msg_content)
 
+            # ── V-P1.3: correction trigger detection ──────────────────────────
+            # Explicit prefix rule: "correction: X" is a preference statement —
+            # store it regardless of whether a prior AI turn exists. Without
+            # this guard, corrections sent at the start of a conversation are
+            # silently discarded.
+            from aua.trigger_detector import is_explicit_prefix, strip_explicit_prefix
+
+            _prior_msgs = get_messages(session_id, limit=20)
+            _has_prior_ai = any(m["role"] == "assistant" for m in _prior_msgs[:-1])
+            _correction_stored: str | None = None
+            _implicit_pending = False
+            if is_explicit_prefix(_msg_content):
+                _instruction = strip_explicit_prefix(_msg_content)
+                if _instruction:
+                    _assertion = self._store.add(
+                        subject=_instruction[:100],
+                        domain="general",
+                        claim=_instruction,
+                        confidence=0.85,
+                        source="explicit_prefix",
+                    )
+                    _correction_stored = self._persist_correction(
+                        _assertion, source="explicit_prefix", session_id=session_id
+                    )
+            elif _has_prior_ai and self._trigger.detect(_msg_content):
+                # Implicit correction — queue for Accept/Reject instead of
+                # asking the user to re-type their intent.
+                self._pending_implicit[session_id] = {
+                    "query": _msg_content,
+                    "domain": "general",
+                    "detected_at": time.time(),
+                }
+                _implicit_pending = True
+
             # Build conversation history for the router
             history_msgs = get_messages(session_id, limit=20)
             history = [
@@ -1004,6 +1140,9 @@ class Router:
                 "u_score": result.u_score,
                 "latency_ms": result.latency_ms,
                 "contradictions_detected": result.contradictions_detected,
+                "review_notes": result.review_notes,
+                "correction_stored": _correction_stored,
+                "implicit_correction_pending": _implicit_pending,
             }
 
         @app.post(
@@ -1132,6 +1271,661 @@ class Router:
         return app
 
     # ── Streaming ─────────────────────────────────────────────────────────────
+
+    def _mount_v11_endpoints(self, app: FastAPI, _msg_cache: Any) -> None:
+        """
+        Mount the v1.1-veritas P1–P3 backport endpoints.
+
+        Persistence (V-P0 complement), search (V-P1.1), backup coverage
+        (V-P1.2), implicit corrections (V-P1.3), analytics suite (V-P2.2),
+        update management (V-P2.3), corrections CRUD (V-P2.4), bug reporting
+        (V-P3.1), local model management (V-P3.3), domain tree (V-P3.4).
+        """
+        from aua.state import fire_and_forget
+
+        # ── Message write (completes the V-P0 persistence API; feeds V-P1.1) ──
+
+        @app.post(
+            "/conversations/{conversation_id}/messages",
+            tags=["conversations"],
+            summary="Append a message to a conversation",
+            status_code=201,
+        )
+        async def post_conv_message(conversation_id: str, body: dict) -> dict:
+            """
+            Persist a message and index its keywords.
+
+            The keyword extraction is enqueued to the background worker (never
+            blocks the response path); when the worker isn't running (e.g. in
+            tests without lifespan) it falls back to synchronous indexing.
+            """
+            role = body.get("role", "user")
+            content = (body.get("content") or "").strip()
+            if role not in ("user", "assistant"):
+                raise HTTPException(422, "role must be 'user' or 'assistant'")
+            if not content:
+                raise HTTPException(422, "content must not be empty")
+            message_id = self._state_store.add_message(
+                conversation_id,
+                role=role,
+                content=content,
+                models_used=body.get("models_used"),
+            )
+            _msg_cache.invalidate(conversation_id, reason="new_message")
+            if self._keyword_index._queue is not None:
+                self._keyword_index.enqueue(message_id, conversation_id, role, content)
+            else:
+                self._keyword_index.index_message_now(message_id, conversation_id, role, content)
+            return {"message_id": message_id, "conversation_id": conversation_id}
+
+        # ── V-P1.1: full-text keyword search ──────────────────────────────────
+
+        @app.get("/search", tags=["conversations"], summary="Keyword search over messages")
+        async def search_messages(
+            q: str = QueryParam("", description="Space-separated keywords (AND semantics)."),
+            limit: int = QueryParam(500, ge=1, le=1000),
+        ) -> list:
+            """
+            Message-level search (Cmd+F model): one entry per matching MESSAGE.
+            In-memory inverted index when built; DB fallback otherwise.
+            """
+            if not q.strip():
+                return []
+            t0 = time.time()
+            if self._keyword_index.ready:
+                hits = self._keyword_index.search(q, limit=limit)
+            else:
+                hits = self._keyword_index.search_db_fallback(q, limit=limit)
+            if not hits:
+                return []
+            conv_ids = list(dict.fromkeys(h["conversation_id"] for h in hits))
+            placeholders = ",".join("?" * len(conv_ids))
+            with self._state_store._connect() as conn:
+                rows = conn.execute(
+                    f"SELECT conversation_id, title FROM conversations"
+                    f" WHERE conversation_id IN ({placeholders})",
+                    conv_ids,
+                ).fetchall()
+            titles = {r[0]: (r[1] or "New Chat") for r in rows}
+            latency_ms = round((time.time() - t0) * 1000, 2)
+            log.debug("Search %r: %d hits in %.2fms", q, len(hits), latency_ms)
+            return [
+                {
+                    "conversation_id": h["conversation_id"],
+                    "title": titles.get(h["conversation_id"], "New Chat"),
+                    "message_id": h["message_id"],
+                    "match_message_id": h["message_id"],
+                    "match_message_ts": h["ts"],
+                }
+                for h in hits
+            ]
+
+        # ── V-P1.2: context backup coverage job ───────────────────────────────
+
+        @app.post(
+            "/context/backup/run-coverage-job",
+            tags=["context"],
+            summary="Trigger a backup coverage sweep now",
+        )
+        async def run_coverage_job(
+            specialist: str | None = QueryParam(
+                None, description="Limit the sweep to one specialist."
+            ),
+        ) -> dict:
+            """Start an immediate coverage sweep in the background."""
+            specialists = [specialist] if specialist else [s.name for s in self._config.specialists]
+            unknown = [
+                s for s in specialists if s not in {sp.name for sp in self._config.specialists}
+            ]
+            if unknown:
+                raise HTTPException(404, f"Unknown specialist(s): {unknown}")
+
+            async def _run() -> None:
+                try:
+                    result = await self._backup_mgr.run_coverage_sweep(
+                        specialists, self._generate_backup_text
+                    )
+                    log.info("Manual coverage sweep: %s", result)
+                except Exception as e:  # noqa: BLE001
+                    log.error("Manual coverage sweep failed: %s", e)
+
+            fire_and_forget(_run())
+            return {
+                "ok": True,
+                "message": (
+                    f"Coverage job started for {len(specialists)} specialist(s). "
+                    "Check GET /context/backup/coverage for results."
+                ),
+                "specialists": specialists,
+            }
+
+        # ── V-P1.3: implicit correction confirm/reject ────────────────────────
+
+        @app.post(
+            "/corrections/confirm-implicit",
+            tags=["corrections"],
+            summary="Accept or reject a detected implicit correction",
+        )
+        async def confirm_implicit(body: dict) -> dict:
+            """
+            Accept/Reject buttons on the implicit-correction modal.
+            Body: { "conversation_id": str, "action": "accept" | "reject" }
+            """
+            conv_id = body.get("conversation_id", "")
+            action = body.get("action", "reject")
+            pending = self._pending_implicit.get(conv_id)
+            if not pending:
+                return {"ok": False, "error": "no pending correction for this conversation"}
+            del self._pending_implicit[conv_id]
+            if action != "accept":
+                return {"ok": True, "stored": False, "message": "Correction discarded."}
+            assertion = self._store.add(
+                subject=pending["query"][:100],
+                domain=pending.get("domain", "general"),
+                claim=pending["query"],
+                confidence=0.75,
+                source="implicit_confirmed",
+            )
+            correction_id = self._persist_correction(
+                assertion, source="implicit_confirmed", session_id=conv_id
+            )
+            return {
+                "ok": True,
+                "stored": True,
+                "correction_id": correction_id,
+                "message": "Correction saved.",
+            }
+
+        # ── V-P2.2: analytics / reliability / usage / pricing ─────────────────
+
+        @app.get("/analytics", tags=["telemetry"], summary="Analytics dashboard payload")
+        async def get_analytics() -> dict:
+            """Session stats, agreement, domain distribution, correction stats."""
+            runs = self._state_store.query("model_runs", limit=5000)
+            corrs = self._state_store.query("corrections", limit=1000)
+            convs = self._state_store.query("conversations", limit=1000, order_by="updated_at DESC")
+            answer_runs = [r for r in runs if r.get("round") == "answer"]
+            winner_runs = [r for r in answer_runs if r.get("vcg_winner")]
+
+            per_spec: dict[str, dict] = {}
+            for r in answer_runs:
+                spec = r.get("specialist", "")
+                if not spec:
+                    continue
+                s = per_spec.setdefault(
+                    spec,
+                    {
+                        "specialist": spec,
+                        "total_runs": 0,
+                        "winner_count": 0,
+                        "latencies": [],
+                        "welfare": [],
+                        "confidence": [],
+                    },
+                )
+                s["total_runs"] += 1
+                if r.get("vcg_winner"):
+                    s["winner_count"] += 1
+                if r.get("latency_ms") is not None:
+                    s["latencies"].append(r["latency_ms"])
+                if r.get("vcg_welfare_score") is not None:
+                    s["welfare"].append(r["vcg_welfare_score"])
+                if r.get("confidence_score") is not None:
+                    s["confidence"].append(r["confidence_score"])
+            specialists_out = []
+            for s in per_spec.values():
+                n = s["total_runs"] or 1
+                specialists_out.append(
+                    {
+                        "specialist": s["specialist"],
+                        "total_runs": s["total_runs"],
+                        "winner_count": s["winner_count"],
+                        "win_rate_pct": round(s["winner_count"] / n * 100, 1),
+                        "avg_latency_ms": (
+                            round(sum(s["latencies"]) / len(s["latencies"]), 1)
+                            if s["latencies"]
+                            else None
+                        ),
+                        "avg_welfare_score": (
+                            round(sum(s["welfare"]) / len(s["welfare"]), 3)
+                            if s["welfare"]
+                            else None
+                        ),
+                    }
+                )
+            specialists_out.sort(key=lambda m: -m["total_runs"])
+
+            conf_hi = conf_med = conf_lo = 0
+            for r in winner_runs:
+                cs = r.get("confidence_score") or 0.5
+                if cs >= 0.75:
+                    conf_hi += 1
+                elif cs >= 0.50:
+                    conf_med += 1
+                else:
+                    conf_lo += 1
+
+            active_corrs = [c for c in corrs if c.get("scope") != "superseded"]
+            corr_by_domain: dict[str, int] = {}
+            for c in active_corrs:
+                d = c.get("domain", "general")
+                corr_by_domain[d] = corr_by_domain.get(d, 0) + 1
+
+            domain_dist: dict[str, int] = {}
+            for r in answer_runs:
+                d = r.get("domain") or "general"
+                domain_dist[d] = domain_dist.get(d, 0) + 1
+
+            welfare = [
+                r["vcg_welfare_score"]
+                for r in answer_runs
+                if r.get("vcg_welfare_score") is not None
+            ]
+            return {
+                "specialists": specialists_out,
+                "confidence_dist": {
+                    "high": conf_hi,
+                    "medium": conf_med,
+                    "uncertain": conf_lo,
+                    "total": len(winner_runs),
+                },
+                "correction_stats": {
+                    "total_active": len(active_corrs),
+                    "by_domain": corr_by_domain,
+                },
+                "domain_dist": domain_dist,
+                "welfare_summary": {
+                    "avg": round(sum(welfare) / len(welfare), 3) if welfare else None,
+                    "max": round(max(welfare), 3) if welfare else None,
+                    "min": round(min(welfare), 3) if welfare else None,
+                    "total_scored": len(welfare),
+                },
+                "total_conversations": len(convs),
+                "total_model_runs": len(runs),
+            }
+
+        @app.get(
+            "/reliability",
+            tags=["telemetry"],
+            summary="Per-specialist win rate and welfare trajectory",
+        )
+        async def get_reliability() -> list:
+            """Per-specialist win rate and effective-u trajectory (V-P2.2)."""
+            runs = self._state_store.query("model_runs", limit=2000, order_by="created_at ASC")
+            by_spec: dict[str, list[dict]] = {}
+            for r in runs:
+                if r.get("round") != "answer":
+                    continue
+                spec = r.get("specialist", "")
+                if spec:
+                    by_spec.setdefault(spec, []).append(r)
+            result = []
+            for spec, rs in by_spec.items():
+                wins = sum(1 for r in rs if r.get("vcg_winner"))
+                trajectory = [
+                    {
+                        "created_at": r.get("created_at"),
+                        "welfare": r.get("vcg_welfare_score"),
+                        "winner": bool(r.get("vcg_winner")),
+                    }
+                    for r in rs[-20:]
+                ]
+                recent = [t["welfare"] for t in trajectory if t["welfare"] is not None]
+                trend = "flat"
+                if len(recent) >= 2:
+                    trend = (
+                        "up"
+                        if recent[-1] > recent[-2]
+                        else "down" if recent[-1] < recent[-2] else "flat"
+                    )
+                result.append(
+                    {
+                        "specialist": spec,
+                        "total_runs": len(rs),
+                        "win_rate_pct": round(wins / len(rs) * 100, 1),
+                        "trend": trend,
+                        "trajectory": trajectory,
+                    }
+                )
+            result.sort(key=lambda m: -float(m["win_rate_pct"]))  # type: ignore[arg-type]
+            return result
+
+        @app.get("/usage", tags=["telemetry"], summary="Per-specialist usage and cost")
+        async def get_usage() -> dict:
+            """Per-specialist query counts and estimated costs (V-P2.2)."""
+            runs = self._state_store.query("model_runs", limit=5000)
+            counts: dict[str, dict] = {}
+            for r in runs:
+                spec = r.get("specialist", "")
+                if not spec:
+                    continue
+                c = counts.setdefault(spec, {"count": 0, "last_used": None})
+                c["count"] += 1
+                ts = r.get("created_at")
+                if ts and (c["last_used"] is None or ts > c["last_used"]):
+                    c["last_used"] = ts
+            pricing = self._pricing_table()
+            out, total_cost, total_queries = [], 0.0, 0
+            for spec, c in counts.items():
+                per_query = pricing.get(spec, {}).get("estimated_cost_per_query", 0.001)
+                cost = c["count"] * per_query
+                total_cost += cost
+                total_queries += c["count"]
+                out.append(
+                    {
+                        "specialist": spec,
+                        "query_count": c["count"],
+                        "estimated_cost": round(cost, 6),
+                        "last_used": c["last_used"],
+                    }
+                )
+            out.sort(key=lambda x: -x["query_count"])
+            return {
+                "specialists": out,
+                "total_cost": round(total_cost, 6),
+                "total_queries": total_queries,
+            }
+
+        @app.get("/pricing", tags=["telemetry"], summary="Per-specialist token pricing")
+        async def get_pricing() -> dict:
+            """Per-specialist pricing for cost estimation (V-P2.2)."""
+            return {"pricing": self._pricing_table(), "source": self._remote_models.source}
+
+        # ── V-P2.3: update management ─────────────────────────────────────────
+
+        @app.get("/version/check", tags=["meta"], summary="Check GitHub for a newer release")
+        async def version_check() -> dict:
+            """Compare the running version against the latest GitHub release."""
+            from aua.version import __version__
+
+            repo = os.environ.get("AUA_RELEASES_REPO", "praneethtota/Adaptive-Utility-Agent")
+            latest, url = None, None
+            try:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    resp = await client.get(
+                        f"https://api.github.com/repos/{repo}/releases/latest",
+                        headers={"Accept": "application/vnd.github+json"},
+                    )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    latest = (data.get("tag_name") or "").lstrip("v") or None
+                    url = data.get("html_url")
+            except Exception as e:  # noqa: BLE001
+                log.debug("version check failed: %s", e)
+            skipped = self._state_store.meta_get("skipped_version")
+            update_available = bool(latest) and latest != __version__
+            return {
+                "current": __version__,
+                "latest": latest,
+                "update_available": update_available,
+                "skipped": skipped,
+                "show_banner": update_available and latest != skipped,
+                "release_url": url,
+            }
+
+        @app.post("/update/skip", tags=["meta"], summary="Skip an update version")
+        async def update_skip(body: dict) -> dict:
+            """Persist a skipped version so the update banner stays hidden."""
+            version_str = (body.get("version") or "").strip()
+            if not version_str:
+                raise HTTPException(422, "version must not be empty")
+            self._state_store.meta_set("skipped_version", version_str)
+            return {"ok": True, "skipped_version": version_str}
+
+        @app.get("/update/skipped", tags=["meta"], summary="Return the skipped version")
+        async def update_skipped() -> dict:
+            return {"skipped_version": self._state_store.meta_get("skipped_version")}
+
+        # ── V-P2.4: corrections CRUD + evidence ───────────────────────────────
+
+        @app.get(
+            "/corrections/evidence",
+            tags=["corrections"],
+            summary="Per-correction evidence and application history",
+        )
+        async def corrections_evidence(
+            correction_id: str | None = QueryParam(None),
+            include_superseded: bool = QueryParam(False),
+            limit: int = QueryParam(100, ge=1, le=1000),
+        ) -> dict:
+            """Corrections from the state store joined with their event history."""
+            rows: list[dict[str, Any]]
+            if correction_id:
+                row = self._state_store.get("corrections", correction_id)
+                rows = [row] if row else []
+            else:
+                rows = self._state_store.query("corrections", limit=limit)
+            if not include_superseded:
+                rows = [r for r in rows if r.get("scope") != "superseded"]
+            out = []
+            for r in rows:
+                events = self._state_store.query(
+                    "correction_events",
+                    filters={"correction_id": r["id"]},
+                    limit=100,
+                    order_by="created_at ASC",
+                )
+                out.append({**r, "events": events, "application_count": len(events)})
+            return {"total": len(out), "corrections": out}
+
+        @app.patch(
+            "/corrections/{correction_id}",
+            tags=["corrections"],
+            summary="Edit a stored correction",
+        )
+        async def patch_correction(correction_id: str, body: dict) -> dict:
+            """Update the correction text. Logs an 'edited' event."""
+            row = self._state_store.get("corrections", correction_id)
+            if not row:
+                raise HTTPException(404, f"Correction {correction_id!r} not found")
+            new_claim = (body.get("claim") or "").strip()
+            if not new_claim:
+                raise HTTPException(422, "claim must not be empty")
+            old_claim = row.get("claim", "")
+            with self._state_store._connect() as conn:
+                conn.execute(
+                    "UPDATE corrections SET claim=? WHERE id=?", (new_claim, correction_id)
+                )
+            # Best-effort sync of the in-memory prompt-injection store
+            for a in self._store.assertions:
+                if a.subject == row.get("subject") and a.claim == old_claim:
+                    a.claim = new_claim
+            self._state_store.append(
+                "correction_events",
+                {
+                    "correction_id": correction_id,
+                    "event": "edited",
+                    "details": json.dumps({"old": old_claim[:200], "new": new_claim[:200]}),
+                },
+            )
+            return {"ok": True, "correction_id": correction_id, "claim": new_claim}
+
+        @app.delete(
+            "/corrections/{correction_id}",
+            tags=["corrections"],
+            summary="Soft-delete a correction",
+        )
+        async def delete_correction(correction_id: str) -> dict:
+            """
+            Soft-delete: sets scope='superseded'. The row stays in the DB for
+            audit but is excluded from retrieval and evidence by default.
+            """
+            row = self._state_store.get("corrections", correction_id)
+            if not row:
+                raise HTTPException(404, f"Correction {correction_id!r} not found")
+            with self._state_store._connect() as conn:
+                conn.execute(
+                    "UPDATE corrections SET scope='superseded' WHERE id=?", (correction_id,)
+                )
+            self._store.assertions = [
+                a
+                for a in self._store.assertions
+                if not (a.subject == row.get("subject") and a.claim == row.get("claim"))
+            ]
+            self._state_store.append(
+                "correction_events",
+                {"correction_id": correction_id, "event": "superseded"},
+            )
+            return {"ok": True, "correction_id": correction_id, "scope": "superseded"}
+
+        # ── V-P3.1: bug reporting ─────────────────────────────────────────────
+
+        @app.post("/bug-report", tags=["meta"], summary="Submit a structured bug report")
+        async def submit_bug_report(body: dict) -> dict:
+            """
+            Assemble and submit a bug report via the GitHub Contents API.
+            Falls back gracefully when no PAT is configured — returns 200 with
+            an error message, never a 500.
+            """
+            from aua import bug_reporter as _bugs
+
+            report = _bugs.build_report(
+                user_token=_bugs.generate_user_token(),
+                comment=body.get("comment", ""),
+                kind="bug",
+                system_log_tail=body.get("system_log_tail", ""),
+                api_log_tail=body.get("api_log_tail", ""),
+                console_errors=body.get("console_errors", []),
+                include_messages=bool(body.get("include_messages", False)),
+                last_messages=body.get("last_messages", []),
+                user_email=body.get("user_email"),
+            )
+            pat = _bugs.get_bugs_pat(self._state_store)
+            ok, msg = await _bugs.submit_report(report, pat or "")
+            return {"ok": ok, "report_id": report["report_id"], "message": msg}
+
+        # ── V-P3.3: local model management ────────────────────────────────────
+
+        @app.get("/local/models", tags=["local"], summary="List registered local models")
+        async def list_local_models(user_id: str = QueryParam("local")) -> list:
+            rows = self._state_store.query("local_models", filters={"user_id": user_id}, limit=200)
+            return rows
+
+        @app.post(
+            "/local/models",
+            tags=["local"],
+            summary="Register a local model",
+            status_code=201,
+        )
+        async def register_local_model(body: dict) -> dict:
+            local_model_id = (body.get("local_model_id") or "").strip()
+            if not local_model_id:
+                raise HTTPException(422, "local_model_id must not be empty")
+            now = time.time()
+            record = {
+                "local_model_id": local_model_id,
+                "user_id": body.get("user_id", "local"),
+                "ollama_name": body.get("ollama_name") or local_model_id,
+                "nickname": body.get("nickname") or local_model_id,
+                "base_url": body.get("base_url", "http://localhost:11434"),
+                "runtime": body.get("runtime", "ollama"),
+                "connected": 1,
+                "specialist_domain": body.get("specialist_domain"),
+                "specialist_depth": int(body.get("specialist_depth", 0)),
+                "created_at": now,
+                "updated_at": now,
+            }
+            cols = ", ".join(record.keys())
+            ph = ", ".join("?" for _ in record)
+            updates = ", ".join(
+                f"{k}=excluded.{k}" for k in record if k not in ("local_model_id", "created_at")
+            )
+            with self._state_store._connect() as conn:
+                conn.execute(
+                    f"INSERT INTO local_models ({cols}) VALUES ({ph})"
+                    f" ON CONFLICT(local_model_id) DO UPDATE SET {updates}",
+                    list(record.values()),
+                )
+            return record
+
+        @app.patch(
+            "/local/specialist/{local_model_id}",
+            tags=["local"],
+            summary="Tag a local model as a domain specialist",
+        )
+        async def set_local_specialist(local_model_id: str, body: dict) -> dict:
+            """Tag a local model for a domain node; specialist_domain=null untags."""
+            rows = self._state_store.query(
+                "local_models", filters={"local_model_id": local_model_id}, limit=1
+            )
+            if not rows:
+                raise HTTPException(404, f"Local model {local_model_id!r} not found")
+            specialist_domain = body.get("specialist_domain")
+            specialist_depth = int(body.get("specialist_depth", 0))
+            with self._state_store._connect() as conn:
+                conn.execute(
+                    "UPDATE local_models"
+                    " SET specialist_domain=?, specialist_depth=?, updated_at=?"
+                    " WHERE local_model_id=?",
+                    (specialist_domain, specialist_depth, time.time(), local_model_id),
+                )
+            return {
+                "ok": True,
+                "local_model_id": local_model_id,
+                "specialist_domain": specialist_domain,
+                "specialist_depth": specialist_depth,
+            }
+
+        @app.get("/local/settings", tags=["local"], summary="Read local model settings")
+        async def get_local_settings() -> dict:
+            raw = self._state_store.meta_get("local_settings")
+            return json.loads(raw) if raw else {}
+
+        @app.post("/local/settings", tags=["local"], summary="Write local model settings")
+        async def set_local_settings(body: dict) -> dict:
+            self._state_store.meta_set("local_settings", json.dumps(body))
+            return {"ok": True, "settings": body}
+
+        # ── V-P3.4: domain ontology ───────────────────────────────────────────
+
+        @app.get("/domain-tree", tags=["telemetry"], summary="Domain ontology tree")
+        async def get_domain_tree() -> dict:
+            """Full ontology with node stats and the candidate queue."""
+            nodes = [
+                {
+                    "node_id": n.node_id,
+                    "parent_id": n.parent_id,
+                    "depth": n.depth,
+                    "display_name": n.display_name,
+                    "alias_count": len(n.aliases),
+                    "query_count": n.query_count,
+                    "is_l0_root": n.is_l0_root,
+                    "promoted_from": n.promoted_from,
+                }
+                for n in sorted(self._domain_tree.all_nodes(), key=lambda n: (n.depth, n.node_id))
+            ]
+            candidates = [
+                {
+                    "raw_string": c.raw_string,
+                    "nearest_node": c.nearest_node,
+                    "similarity": round(c.similarity, 3),
+                    "query_count": c.query_count,
+                    "model_count": len(c.model_sources),
+                }
+                for c in sorted(self._domain_tree.candidates(), key=lambda c: -c.query_count)[:50]
+            ]
+            return {"nodes": nodes, "candidates": candidates}
+
+    def _pricing_table(self) -> dict[str, dict]:
+        """Per-specialist pricing derived from the live model registry (V-P2.2)."""
+        pricing: dict[str, dict] = {}
+        models = self._remote_models.models
+        for spec in self._config.specialists:
+            entry = models.get(spec.model, {})
+            input_cost = entry.get("input_cost_per_1m")
+            output_cost = entry.get("output_cost_per_1m")
+            if input_cost is not None or output_cost is not None:
+                # ~1K in + 1K out per query as the estimation basis
+                est = ((input_cost or 0.0) + (output_cost or 0.0)) / 1000.0
+            else:
+                est = 0.0  # local/self-hosted models: no per-token cost
+            pricing[spec.name] = {
+                "model": spec.model,
+                "input_cost_per_1m": input_cost,
+                "output_cost_per_1m": output_cost,
+                "estimated_cost_per_query": round(est, 6),
+            }
+        return pricing
 
     async def _handle_stream(self, req: QueryRequest) -> AsyncIterator[str]:
         """
@@ -1801,6 +2595,7 @@ class Router:
     ) -> RouterResponse:
         log.info("fanout → %s", [s.name for s in active_specialists])
         _hooks = get_hook_runner()
+        _review_notes: str | None = None  # V-P2.1: populated when arbiter flags issues
 
         # ── pre_specialist_call per specialist (sequential fire, parallel calls) ─
         for s in active_specialists:
@@ -1907,6 +2702,9 @@ class Router:
 
             verdict, winner_field = await self._arbitrate(req.query, spec_a, text_a, spec_b, text_b)
 
+            # V-P2.1: surface reviewer findings instead of discarding them
+            _review_notes = self._parse_review_notes(verdict, reviewer=self._config.arbiter.model)
+
             # ── post_arbiter ──────────────────────────────────────────────────
             await _hooks.fire(
                 "post_arbiter",
@@ -2003,6 +2801,7 @@ class Router:
             latency_ms=_fanout_ms,
             specialist_responses=spec_responses,
             welfare_scores=_vcg_welfare,
+            review_notes=_review_notes,
         )
 
     async def _handle_arbiter(self, req, distribution, t0, _sid="", _tid="") -> RouterResponse:
@@ -2147,6 +2946,99 @@ class Router:
             ),
         )
         return winner_idx, welfare
+
+    # ── v1.1-veritas helpers ──────────────────────────────────────────────────
+
+    async def _generate_backup_text(
+        self,
+        specialist: str,
+        conversation_id: str,
+        prompt: str,
+        history: list[dict],
+    ) -> str:
+        """
+        Ask a specialist to produce a structured context backup (V-P1.2/1.4).
+
+        Full-history rule (V-P0.5): `history` comes from the canonical DB read
+        in ContextBackupManager.build_backup_context(), never the request body.
+        """
+        spec = next((s for s in self._config.specialists if s.name == specialist), None)
+        if spec is None:
+            return ""
+        chat_history = [
+            {"role": m.get("role", "user"), "content": m.get("content") or ""}
+            for m in history
+            if m.get("content")
+        ]
+        text, _conf = await self._call(
+            spec.endpoint,
+            "Write the context handoff note now.",
+            spec.field,
+            history=chat_history,
+            system_prompt=prompt,
+            model_name=spec.serve_model_name,
+        )
+        return text
+
+    @staticmethod
+    def _parse_review_notes(verdict_text: str, reviewer: str) -> str | None:
+        """
+        Surface reviewer findings to the client (V-P2.1).
+
+        Parses REASON:/ISSUES: and CORRECTION: structured sections from the
+        arbiter output. Returns None when nothing useful was flagged —
+        previously the framework discarded these after parsing the verdict.
+        """
+        if not verdict_text:
+            return None
+        sections: list[str] = []
+        for label in ("ISSUES", "REASON", "CORRECTION"):
+            m = re.search(
+                rf"{label}:\s*(.+?)(?=\n[A-Z]+:|\Z)", verdict_text, re.DOTALL | re.IGNORECASE
+            )
+            if m:
+                body = m.group(1).strip()
+                if body and body.lower() not in ("none", "n/a", "-"):
+                    sections.append(f"{label}: {body[:400]}")
+        if not sections:
+            return None
+        return f"Reviewer: {reviewer}. " + " | ".join(sections)
+
+    def _persist_correction(
+        self,
+        assertion: Any,
+        source: str,
+        session_id: str = "",
+    ) -> str:
+        """
+        Dual-write a correction to the state store (V-P2.4) so it has a
+        persistent ID for PATCH/DELETE/evidence, alongside the in-memory
+        AssertionsStore used for prompt injection.
+        """
+        correction_id = self._state_store.append(
+            "corrections",
+            {
+                "subject": assertion.subject,
+                "domain": assertion.domain,
+                "claim": assertion.claim,
+                "rejected": "",
+                "confidence": assertion.confidence_at_write,
+                "source": source,
+                "effective_confidence": round(assertion.effective_confidence(), 4),
+                "decay_class": assertion.decay_class.value,
+                "scope": "global",
+            },
+        )
+        self._state_store.append(
+            "correction_events",
+            {
+                "correction_id": correction_id,
+                "event": "created",
+                "session_id": session_id,
+                "details": json.dumps({"source": source}),
+            },
+        )
+        return correction_id
 
     async def _call(
         self,

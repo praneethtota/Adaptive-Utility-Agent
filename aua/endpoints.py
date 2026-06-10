@@ -103,6 +103,14 @@ class RouterResponse(BaseModel):
             "Populated only when arbitration_mode='vcg'."
         ),
     )
+    review_notes: str | None = Field(
+        None,
+        description=(
+            "Reviewer findings surfaced to the client (V-P2.1): reviewer name, "
+            "ISSUES found, and CORRECTION suggested. Populated when the arbiter "
+            "flags an issue; None when no review ran or nothing was flagged."
+        ),
+    )
 
 
 # ── Batch ─────────────────────────────────────────────────────────────────────
@@ -279,6 +287,13 @@ class CorrectionResponse(BaseModel):
     decay_class: str = Field(
         ...,
         description=("Assigned decay class: " "A (no decay) | B (10yr) | C (3yr) | D (6mo)."),
+    )
+    correction_id: str | None = Field(
+        None,
+        description=(
+            "Persistent ID in the state store (V-P2.4). Use with "
+            "PATCH/DELETE /corrections/{id} and GET /corrections/evidence."
+        ),
     )
 
 
