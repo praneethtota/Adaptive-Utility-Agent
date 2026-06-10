@@ -56,6 +56,10 @@ dev = [
     "mypy>=1.8",
     "types-PyYAML",
     "build>=1.2",
+    # #19: live secrets-provider integration tests (Vault wire API + moto AWS)
+    "hvac>=2.0",
+    "boto3>=1.34",
+    "moto>=5.0",
 ]
 ui = []
 postgres = ["asyncpg>=0.29"]
