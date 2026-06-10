@@ -30,6 +30,7 @@ import time
 import uuid
 from collections import defaultdict, deque
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -242,6 +243,17 @@ class Router:
         self._state_store = SQLiteStateStore(db_path=_db_path)
         self._conf = ConfidenceUpdater()
 
+        # ── F-09/F-10/F-11: YAML-registered extensions ───────────────────────
+        # The expert path: plugins, hooks, and middleware register in
+        # aua_config.yaml — users never edit AUA source files. Each entry is
+        # loaded and contract-validated via aua.plugins.registry.load_plugin;
+        # a bad import_path fails fast at startup with a clear error.
+        from aua.middleware import MiddlewarePipeline
+
+        self._middleware = MiddlewarePipeline()
+        self._custom_scorer: Any | None = None
+        self._load_yaml_extensions()
+
         # ── v1.1-veritas P1–P3 components ────────────────────────────────────
         from aua.context_backup import ContextBackupManager
         from aua.domain_tree import DomainTree, OntologyJob
@@ -441,9 +453,15 @@ class Router:
                 response.headers[k] = v
             return response
 
+        # security.cors_origins (tutorial Part 2/15) overrides router.cors_origins
+        _cors_origins = (
+            self._config.security.cors_origins
+            if getattr(self._config, "security", None) and self._config.security.cors_origins
+            else self._config.router.cors_origins
+        )
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=self._config.router.cors_origins,
+            allow_origins=_cors_origins,
             allow_methods=["GET", "POST", "OPTIONS"],
             allow_headers=["*"],
         )
@@ -2389,6 +2407,69 @@ class Router:
 
     # ── Core routing (buffered) ───────────────────────────────────────────────
 
+    def _load_yaml_extensions(self) -> None:
+        """
+        Load `plugins:`, `hooks:`, and `middleware:` from aua_config.yaml.
+
+        Wiring per kind:
+          field_classifier — replaces self._classifier (classify() shim keeps
+                             the built-in update_history kwarg compatible)
+          utility_scorer   — overrides the final U score via the plugin's
+                             score(response, field, prior_u, confidence,
+                             metadata) after the built-in pipeline runs
+          correction_store — replaces self._store when it exposes the
+                             AssertionsStore-compatible add()/query() surface
+          hooks            — registered on the global HookRunner per entry
+          middleware       — ordered before_query/after_response pipeline
+
+        arbiter_policy, promotion_policy, model_backend, and state_store load
+        and contract-validate (fail-fast on typos) but wire programmatically —
+        see tutorial How-to 13 for the assignment points.
+        """
+        # Make project-local plugin modules importable. `aua` is an installed
+        # entry point, so the project directory is NOT on sys.path the way it
+        # is for `python manage.py` — insert the config file's directory (or
+        # CWD) first, exactly like Django does for the project root.
+        import sys as _sys
+
+        from aua.plugins.registry import load_plugin
+
+        _project_dir = (
+            str(Path(self._config_path).resolve().parent) if self._config_path else os.getcwd()
+        )
+        if _project_dir not in _sys.path:
+            _sys.path.insert(0, _project_dir)
+
+        class _ClassifierShim:
+            """Adapt a FieldClassifierPlugin to the built-in call signature."""
+
+            def __init__(self, plugin: Any) -> None:
+                self._plugin = plugin
+
+            def classify(self, query: str, update_history: bool = False) -> dict[str, float]:
+                return self._plugin.classify(query)
+
+        for kind, spec in (self._config.plugins or {}).items():
+            plugin = load_plugin(spec.import_path, kind, spec.config)
+            if kind == "field_classifier":
+                self._classifier = _ClassifierShim(plugin)  # type: ignore[assignment]
+            elif kind == "utility_scorer":
+                self._custom_scorer = plugin
+            elif kind == "correction_store" and hasattr(plugin, "query"):
+                self._store = plugin
+            log.info("Plugin loaded from config: %s ← %s", kind, spec.import_path)
+
+        runner = get_hook_runner()
+        for h in self._config.hooks or []:
+            hook = load_plugin(h.import_path, "hook", h.config)
+            runner.register(h.hook_point, hook, fail_closed=h.fail_closed)
+            log.info("Hook registered from config: %s ← %s", h.hook_point, h.import_path)
+
+        for m in self._config.middleware or []:
+            mw = load_plugin(m.import_path, "middleware", m.config)
+            self._middleware.add(mw)
+            log.info("Middleware registered from config: %s", m.import_path)
+
     async def _handle(self, req: QueryRequest) -> RouterResponse:
         t0 = time.time()
         log.info("Query: %.80s", req.query)
@@ -2410,6 +2491,17 @@ class Router:
             req.session_id = _ctx.session_id
         _sid = req.session_id
         _tid = _ctx.trace_id
+
+        # ── F-11: middleware before_query (may rewrite the query) ────────────
+        if self._middleware.registered():
+            _mw_req = await self._middleware.before_query(
+                {
+                    "query": req.query,
+                    "session_id": _sid,
+                    "conversation_history": req.conversation_history or [],
+                }
+            )
+            req.query = _mw_req.get("query", req.query)
 
         # ── pre_query: before field classification ────────────────────────────
         await _hooks.fire(
@@ -2464,11 +2556,17 @@ class Router:
         )
 
         if len(active) >= 2:
-            return await self._handle_fanout(req, active, distribution, t0, _sid, _tid)
+            resp = await self._handle_fanout(req, active, distribution, t0, _sid, _tid)
         elif top_prob >= self._single_threshold:
-            return await self._handle_single(req, top_domain, distribution, t0, _sid, _tid)
+            resp = await self._handle_single(req, top_domain, distribution, t0, _sid, _tid)
         else:
-            return await self._handle_arbiter(req, distribution, t0, _sid, _tid)
+            resp = await self._handle_arbiter(req, distribution, t0, _sid, _tid)
+
+        # ── F-11: middleware after_response (reverse order, may rewrite) ─────
+        if self._middleware.registered():
+            _mw_resp = await self._middleware.after_response(resp.model_dump())
+            resp = RouterResponse(**_mw_resp)
+        return resp
 
     def _response_ids(self, trace_id: str) -> dict[str, str | None]:
         """#15: trace/request IDs echoed in every RouterResponse."""
@@ -3202,6 +3300,23 @@ class Router:
             u_adjusted = base_u
         if u_penalty > 0.0:
             u_adjusted = max(0.0, u_adjusted - u_penalty)
+
+        # F-09: a YAML-registered utility_scorer plugin owns the final U score.
+        # It receives the built-in score as prior_u so it can adjust or replace.
+        if self._custom_scorer is not None:
+            try:
+                u_adjusted = float(
+                    self._custom_scorer.score(
+                        response=response,
+                        field=domain,
+                        prior_u=u_adjusted,
+                        confidence=updated_conf,
+                        metadata={"query": query, "contradictions": n_contra},
+                    )
+                )
+                u_adjusted = max(0.0, min(1.0, u_adjusted))
+            except Exception as _scorer_err:  # noqa: BLE001
+                log.error("Custom utility scorer failed (using built-in U): %s", _scorer_err)
 
         return round(u_adjusted, 4), updated_conf, n_contra, n_dpo
 

@@ -25,6 +25,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -196,6 +197,11 @@ _KNOWN_TOP_LEVEL: set[str] = {
     "blue_green",
     "logging",
     "secrets",
+    "state",
+    "security",
+    "plugins",
+    "hooks",
+    "middleware",
 }
 _KNOWN_AUA_KEYS: set[str] = {"version", "mode", "backend", "project_name"}
 _KNOWN_SPECIALIST_KEYS: set[str] = {
@@ -240,6 +246,34 @@ _KNOWN_ROUTER_KEYS: set[str] = {
 _KNOWN_BG_KEYS: set[str] = {"delta", "T_min", "tau"}
 _KNOWN_LOG_KEYS: set[str] = {"level", "format"}
 _KNOWN_SECRETS_KEYS: set[str] = {"provider", "region", "url", "token_env"}
+_KNOWN_STATE_KEYS: set[str] = {"backend", "path"}
+_KNOWN_SECURITY_KEYS: set[str] = {"cors_origins", "mtls", "encryption"}
+_KNOWN_PLUGIN_KINDS: set[str] = {
+    "field_classifier",
+    "utility_scorer",
+    "arbiter_policy",
+    "promotion_policy",
+    "correction_store",
+    "model_backend",
+    "state_store",
+}
+_KNOWN_PLUGIN_ENTRY_KEYS: set[str] = {"import_path", "config"}
+_KNOWN_HOOK_ENTRY_KEYS: set[str] = {"hook_point", "import_path", "config", "fail_closed"}
+_VALID_HOOK_POINTS: set[str] = {
+    "pre_query",
+    "post_query",
+    "pre_route",
+    "post_route",
+    "pre_specialist_call",
+    "post_specialist_call",
+    "pre_arbiter",
+    "post_arbiter",
+    "pre_response",
+    "post_response",
+    "on_correction",
+    "on_promotion",
+    "on_rollback",
+}
 
 
 @dataclass
@@ -448,6 +482,53 @@ class LoggingConfig:
 
 
 @dataclass
+class StateConfig:
+    """State store selection. Documented in tutorial Part 2."""
+
+    backend: str = "sqlite"  # "sqlite" | "files"
+    path: str = ".aua/state/aua.db"
+
+
+@dataclass
+class SecurityConfig:
+    """
+    Security block. cors_origins here overrides router.cors_origins so the
+    tutorial's `security:` examples work; mtls/encryption are validated and
+    surfaced to the certs/encryption modules.
+    """
+
+    cors_origins: list[str] | None = None
+    mtls: dict[str, Any] = field(default_factory=dict)
+    encryption: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class PluginSpec:
+    """One `plugins:` entry — F-09 extension import system."""
+
+    import_path: str
+    config: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class HookSpec:
+    """One `hooks:` entry — F-10 lifecycle hook registration."""
+
+    hook_point: str
+    import_path: str
+    config: dict[str, Any] = field(default_factory=dict)
+    fail_closed: bool = False
+
+
+@dataclass
+class MiddlewareSpec:
+    """One `middleware:` entry — F-11 ordered pipeline."""
+
+    import_path: str
+    config: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class SecretsConfig:
     """
     #19: secrets provider selection. Config references secret NAMES,
@@ -483,6 +564,11 @@ class AUAConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
     secrets: SecretsConfig = field(default_factory=SecretsConfig)
+    state: StateConfig = field(default_factory=StateConfig)
+    security: SecurityConfig = field(default_factory=SecurityConfig)
+    plugins: dict[str, PluginSpec] = field(default_factory=dict)
+    hooks: list[HookSpec] = field(default_factory=list)
+    middleware: list[MiddlewareSpec] = field(default_factory=list)
 
     # Derived — built on load
     _specialist_by_name: dict[str, SpecialistConfig] = field(
@@ -676,6 +762,99 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         token_env=str(raw_secrets.get("token_env", "VAULT_TOKEN")),
     )
 
+    # ── State (F-05) ───────────────────────────────────────────────────────
+    raw_state = raw.get("state", {})
+    _reject_unknown_keys(raw_state, _KNOWN_STATE_KEYS, "state", source)
+    _state_backend = str(raw_state.get("backend", "sqlite"))
+    if _state_backend not in ("sqlite", "files"):
+        raise ValueError(
+            f"[{source}] state.backend must be 'sqlite' or 'files', got {_state_backend!r}"
+        )
+    state_cfg = StateConfig(
+        backend=_state_backend,
+        path=str(raw_state.get("path", ".aua/state/aua.db")),
+    )
+
+    # ── Security ───────────────────────────────────────────────────────────
+    raw_security = raw.get("security", {})
+    _reject_unknown_keys(raw_security, _KNOWN_SECURITY_KEYS, "security", source)
+    _sec_cors = raw_security.get("cors_origins")
+    if _sec_cors is not None and not isinstance(_sec_cors, list):
+        raise ValueError(f"[{source}] security.cors_origins must be a list of origins")
+    security_cfg = SecurityConfig(
+        cors_origins=[str(o) for o in _sec_cors] if _sec_cors is not None else None,
+        mtls=dict(raw_security.get("mtls") or {}),
+        encryption=dict(raw_security.get("encryption") or {}),
+    )
+
+    # ── Plugins (F-09) ─────────────────────────────────────────────────────
+    raw_plugins = raw.get("plugins", {})
+    if not isinstance(raw_plugins, dict):
+        raise ValueError(f"[{source}] plugins must be a mapping of kind -> spec")
+    _reject_unknown_keys(raw_plugins, _KNOWN_PLUGIN_KINDS, "plugins", source)
+    plugins_cfg: dict[str, PluginSpec] = {}
+    for _kind, _spec in raw_plugins.items():
+        if not isinstance(_spec, dict):
+            raise ValueError(f"[{source}] plugins.{_kind} must be a mapping")
+        _reject_unknown_keys(_spec, _KNOWN_PLUGIN_ENTRY_KEYS, f"plugins.{_kind}", source)
+        _ip = _spec.get("import_path", "")
+        if not _ip or ":" not in _ip:
+            raise ValueError(
+                f"[{source}] plugins.{_kind}.import_path must look like "
+                f"'package.module:ClassName', got {_ip!r}"
+            )
+        plugins_cfg[_kind] = PluginSpec(import_path=_ip, config=dict(_spec.get("config") or {}))
+
+    # ── Hooks (F-10) ───────────────────────────────────────────────────────
+    raw_hooks = raw.get("hooks", [])
+    if not isinstance(raw_hooks, list):
+        raise ValueError(f"[{source}] hooks must be a list of hook entries")
+    hooks_cfg: list[HookSpec] = []
+    for i, _h in enumerate(raw_hooks):
+        if not isinstance(_h, dict):
+            raise ValueError(f"[{source}] hooks[{i}] must be a mapping")
+        _reject_unknown_keys(_h, _KNOWN_HOOK_ENTRY_KEYS, f"hooks[{i}]", source)
+        _hp = _h.get("hook_point", "")
+        if _hp not in _VALID_HOOK_POINTS:
+            raise ValueError(
+                f"[{source}] hooks[{i}].hook_point {_hp!r} is not a valid hook point. "
+                f"Valid: {sorted(_VALID_HOOK_POINTS)}"
+            )
+        _ip = _h.get("import_path", "")
+        if not _ip or ":" not in _ip:
+            raise ValueError(
+                f"[{source}] hooks[{i}].import_path must look like "
+                f"'package.module:ClassName', got {_ip!r}"
+            )
+        hooks_cfg.append(
+            HookSpec(
+                hook_point=_hp,
+                import_path=_ip,
+                config=dict(_h.get("config") or {}),
+                fail_closed=bool(_h.get("fail_closed", False)),
+            )
+        )
+
+    # ── Middleware (F-11) ──────────────────────────────────────────────────
+    raw_mw = raw.get("middleware", [])
+    if not isinstance(raw_mw, list):
+        raise ValueError(f"[{source}] middleware must be a list (ordered pipeline)")
+    middleware_cfg: list[MiddlewareSpec] = []
+    for i, _m in enumerate(raw_mw):
+        if isinstance(_m, str):
+            _ip, _mc = _m, {}
+        elif isinstance(_m, dict):
+            _reject_unknown_keys(_m, _KNOWN_PLUGIN_ENTRY_KEYS, f"middleware[{i}]", source)
+            _ip, _mc = _m.get("import_path", ""), dict(_m.get("config") or {})
+        else:
+            raise ValueError(f"[{source}] middleware[{i}] must be a string or mapping")
+        if not _ip or ":" not in _ip:
+            raise ValueError(
+                f"[{source}] middleware[{i}] import path must look like "
+                f"'package.module:ClassName', got {_ip!r}"
+            )
+        middleware_cfg.append(MiddlewareSpec(import_path=_ip, config=_mc))
+
     # ── Validate field names against FIELD_CONFIGS ─────────────────────────
     for s in specialists:
         if s.field not in FIELD_CONFIGS:
@@ -697,6 +876,11 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         blue_green=blue_green,
         logging=logging_cfg,
         secrets=secrets_cfg,
+        state=state_cfg,
+        security=security_cfg,
+        plugins=plugins_cfg,
+        hooks=hooks_cfg,
+        middleware=middleware_cfg,
     )
 
 
