@@ -1,6 +1,6 @@
 # AUA Framework — Permission / Scope Matrix
 
-**Version:** v0.8.0b0  
+**Version:** 1.1.0  
 **Status:** Canonical. Authentication implemented in v0.9-rc1.
 
 ---
@@ -51,6 +51,25 @@
 | `/extensions/reload` | POST | `aua:extensions:write` | Disabled in production |
 | `/extensions/test` | POST | `aua:extensions:write` | Dev only |
 | `/metrics` | GET | `aua:status` | Prometheus scrape endpoint |
+| **v1.1 — persistence, search & production ops** | | | |
+| `/conversations` | POST / GET | `aua:query` | |
+| `/conversations/{id}/title` | PATCH | `aua:query` | |
+| `/conversations/{id}/messages` | GET / POST | `aua:query` | |
+| `/projects` | POST / GET | `aua:query` | |
+| `/search` | GET | `aua:query` | |
+| `/context/backup/coverage` | GET | `aua:status` | |
+| `/context/backup/run-coverage-job` | POST | `aua:query` | |
+| `/corrections/confirm-implicit` | POST | `aua:corrections:write` | |
+| `/corrections/{id}` | PATCH / DELETE | `aua:corrections:write` | DELETE is a soft delete (scope='superseded') |
+| `/corrections/evidence` | GET | `aua:corrections:read` | |
+| `/analytics`, `/reliability`, `/usage`, `/pricing` | GET | `aua:status` | |
+| `/version/check`, `/update/skipped` | GET | none | Public |
+| `/update/skip` | POST | `aua:config:write` | |
+| `/bug-report` | POST | none | Returns 200 even without a PAT configured |
+| `/local/models`, `/local/settings` | GET | `aua:status` | |
+| `/local/models`, `/local/settings` | POST | `aua:config:write` | |
+| `/local/specialist/{id}` | PATCH | `aua:config:write` | |
+| `/domain-tree` | GET | `aua:status` | |
 
 ---
 

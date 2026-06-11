@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Documentation — AUA Framework v1.0</title>
+<title>Documentation — AUA Framework v1.1</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f7f6f2;--paper:#fff;--ink:#18181b;--muted:#6b7280;--line:#e4e1da;--accent:#4338ca;--soft:#f0ede6;--code-bg:#1e1e2e;--code-text:#cdd6f4;--tag-bg:#eef2ff;--tag-text:#4338ca;--green:#0f766e;--green-bg:#ecfdf5}
@@ -55,7 +55,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;font-size:15px;line-height:1.75;
     <a href="index.html" class="here">Docs</a>
   </div>
   <div class="hero">
-    <div class="hero-tag">AUA Framework v1.0 — Documentation</div>
+    <div class="hero-tag">AUA Framework v1.1 — Documentation</div>
     <h1>Technical Documentation</h1>
     <p>Architecture specification, deployment profiles, compatibility matrix, permission scopes, validation report, and supplemental roadmap — all rendered here for easy reading.</p>
   </div>
@@ -71,7 +71,7 @@ body{font-family:'DM Sans',system-ui,sans-serif;font-size:15px;line-height:1.75;
   <div class="panels">
     <div class="tab-panel" id="tab-architecture"><h1>AUA Framework v1 — Architecture Specification</h1>
 <br>
-<p><strong>Version:</strong> 0.8.0b0  </p>
+<p><strong>Version:</strong> 1.1.0  </p>
 <p><strong>Status:</strong> Canonical. Implementation must match this document. Divergence = a bug.</p>
 <br>
 <hr>
@@ -120,6 +120,22 @@ External:
   Arbiter server      (same backends)
   State store         (files / SQLite / Postgres)
   Observability       (stdout / Prometheus / OTEL)</pre>
+<br>
+<h3>2.1 v1.1 production services (AUA-Veritas backport)</h3>
+<br>
+<p>v1.1.0 adds eight services that run inside the router process. Each starts in the FastAPI lifespan and shuts down cleanly; none blocks the query path.</p>
+<br>
+<table>
+<thead><tr><th>Service</th><th>Module</th><th>What it does</th></tr></thead><tbody>
+<tr><td>Keyword index</td><td><code>aua/keywords.py</code></td><td>Message-level inverted index with async batch worker (50&nbsp;ms), startup backfill, and DB fallback. Serves <code>GET /search</code>.</td></tr>
+<tr><td>Context backups</td><td><code>aua/context_backup.py</code></td><td>Per-(specialist, conversation) token counters; 6-section handoff notes on token/message/time-gap triggers; 6-hour coverage sweep.</td></tr>
+<tr><td>Trigger detector</td><td><code>aua/trigger_detector.py</code></td><td>Two-layer correction detection: regex Layer&nbsp;1 ships built-in, Layer&nbsp;2 is pluggable. Feeds <code>POST /corrections/confirm-implicit</code>.</td></tr>
+<tr><td>Crash reporter</td><td><code>aua/crash_reporter.py</code></td><td>Startup sentinel + clean-shutdown marking; previous-session crashes detected (before the new sentinel is written) and reported with a queued-error flush.</td></tr>
+<tr><td>Remote model config</td><td><code>aua/remote_config.py</code></td><td>Model registry refresh with a remote → DB-cache (7-day) → builtin fallback chain; field allowlist; 24-hour refresh job.</td></tr>
+<tr><td>Domain ontology</td><td><code>aua/domain_tree.py</code></td><td>10 fixed L0 roots; alias map + edit-distance resolution; candidate queue with 4-gate promotion (volume, diversity, coverage, divergence); hourly maintenance job. Serves <code>GET /domain-tree</code>.</td></tr>
+<tr><td>Session ID middleware</td><td><code>aua/session.py</code></td><td>Per-request SessionContext (session/trace/request IDs) — client-supplied honored, UUIDs generated, returned as headers on every response, propagated to specialists, hooks, audit, and logs (#15).</td></tr>
+<tr><td>YAML extension loader</td><td><code>aua/router.py</code> + <code>aua/plugins/registry.py</code></td><td>Loads <code>plugins:</code>, <code>hooks:</code>, and <code>middleware:</code> from config at startup with contract validation and Django-style project-dir imports (F-09&ndash;F-11). <code>GET /extensions</code> reports server truth.</td></tr>
+</tbody></table>
 <br>
 <hr>
 <br>
@@ -173,6 +189,10 @@ External:
 
 13. Middleware pipeline — after_response() [pluggable]
     └─ Response transformation, audit logging
+
+Background (off the request path, v1.1):
+    keyword index worker · backup coverage job (6h) · remote config
+    refresh (24h) · ontology job (1h) · crash report on startup
 
 14. Metrics / Logs / Traces / Audit
     └─ Structured JSON to stdout
@@ -308,9 +328,9 @@ backends:
 <br>
 <p><em>Document maintained by: Praneeth Tota. Last updated: v0.8.0b0. For implementation questions, check this document first.</em></p>
 <br></div>
-<div class="tab-panel" id="tab-deployment"><h1>AUA Framework v1 — Deployment Profiles</h1>
+<div class="tab-panel" id="tab-deployment"><h1>AUA Framework v1 — Deployment Profiles</h1><!-- v1.1.0 -->
 <br>
-<p><strong>Version:</strong> 1.0.0  </p>
+<p><strong>Version:</strong> 1.1.0  </p>
 <p><strong>Status:</strong> Canonical. Each profile defines minimum requirements and recommended settings.</p>
 <br>
 <hr>
@@ -540,7 +560,7 @@ extensions:
 <br></div>
 <div class="tab-panel" id="tab-compatibility"><h1>AUA Framework v1 — Compatibility Matrix</h1>
 <br>
-<p><strong>Version:</strong> 1.0.0</p>
+<p><strong>Version:</strong> 1.1.0</p>
 <br>
 <hr>
 <br>
@@ -715,7 +735,7 @@ extensions:
 <br>
 <hr>
 <br>
-<h2>Tested Hardware (v1.0)</h2>
+<h2>Tested Hardware (v1.0 — unchanged in v1.1)</h2>
 <br>
 <table>
 <thead><tr><th>HardwareOSBackendStatus</th></tr></thead><tbody>
@@ -727,7 +747,7 @@ extensions:
 <br></div>
 <div class="tab-panel" id="tab-permissions"><h1>AUA Framework — Permission / Scope Matrix</h1>
 <br>
-<p><strong>Version:</strong> v0.8.0b0  </p>
+<p><strong>Version:</strong> 1.1.0  </p>
 <p><strong>Status:</strong> Canonical. Authentication implemented in v0.9-rc1.</p>
 <br>
 <hr>
@@ -779,6 +799,25 @@ extensions:
 <tr><td><code>/extensions/reload</code></td><td>POST</td><td><code>aua:extensions:write</code></td><td>Disabled in production</td></tr>
 <tr><td><code>/extensions/test</code></td><td>POST</td><td><code>aua:extensions:write</code></td><td>Dev only</td></tr>
 <tr><td><code>/metrics</code></td><td>GET</td><td><code>aua:status</code></td><td>Prometheus scrape endpoint</td></tr>
+<tr><td colspan="4"><strong>v1.1 — persistence, search &amp; production ops</strong></td></tr>
+<tr><td><code>/conversations</code></td><td>POST / GET</td><td><code>aua:query</code></td></tr>
+<tr><td><code>/conversations/{id}/title</code></td><td>PATCH</td><td><code>aua:query</code></td></tr>
+<tr><td><code>/conversations/{id}/messages</code></td><td>GET / POST</td><td><code>aua:query</code></td></tr>
+<tr><td><code>/projects</code></td><td>POST / GET</td><td><code>aua:query</code></td></tr>
+<tr><td><code>/search</code></td><td>GET</td><td><code>aua:query</code></td></tr>
+<tr><td><code>/context/backup/coverage</code></td><td>GET</td><td><code>aua:status</code></td></tr>
+<tr><td><code>/context/backup/run-coverage-job</code></td><td>POST</td><td><code>aua:query</code></td></tr>
+<tr><td><code>/corrections/confirm-implicit</code></td><td>POST</td><td><code>aua:corrections:write</code></td></tr>
+<tr><td><code>/corrections/{id}</code></td><td>PATCH / DELETE</td><td><code>aua:corrections:write</code></td><td>DELETE is a soft delete (scope='superseded')</td></tr>
+<tr><td><code>/corrections/evidence</code></td><td>GET</td><td><code>aua:corrections:read</code></td></tr>
+<tr><td><code>/analytics</code>, <code>/reliability</code>, <code>/usage</code>, <code>/pricing</code></td><td>GET</td><td><code>aua:status</code></td></tr>
+<tr><td><code>/version/check</code>, <code>/update/skipped</code></td><td>GET</td><td>none</td><td>Public</td></tr>
+<tr><td><code>/update/skip</code></td><td>POST</td><td><code>aua:config:write</code></td></tr>
+<tr><td><code>/bug-report</code></td><td>POST</td><td>none</td><td>Returns 200 even without a PAT configured</td></tr>
+<tr><td><code>/local/models</code>, <code>/local/settings</code></td><td>GET</td><td><code>aua:status</code></td></tr>
+<tr><td><code>/local/models</code>, <code>/local/settings</code></td><td>POST</td><td><code>aua:config:write</code></td></tr>
+<tr><td><code>/local/specialist/{id}</code></td><td>PATCH</td><td><code>aua:config:write</code></td></tr>
+<tr><td><code>/domain-tree</code></td><td>GET</td><td><code>aua:status</code></td></tr>
 </tbody></table>
 <br>
 <hr>
@@ -818,6 +857,11 @@ security:
 <p><strong>Version:</strong> 1.0.0  </p>
 <p><strong>Date:</strong> 2026-05-11  </p>
 <p><strong>Status:</strong> All validation criteria met. v1.0.0 shipped.</p>
+<br>
+<div style="border:1px solid #99f6e4;border-left:4px solid #0f766e;border-radius:0 8px 8px 0;padding:1rem 1.25rem;background:#f0fdfa;">
+<p style="margin:0 0 .35rem;font-weight:700;color:#134e4a;">v1.1.0 addendum — shipped 2026-06-10</p>
+<p style="margin:0;font-size:.92rem;color:#065f46;">The report below is the v1.0.0 record, preserved as-is. v1.1.0 adds: the complete AUA-Veritas backport (V-P1&ndash;V-P3 — persistence/search, context backups, correction lifecycle, analytics suite, update management, bug reporting, projects, local models, domain ontology), end-to-end session/trace/request IDs (#15), live Vault + AWS Secrets Manager integration tests and the <code>secrets:</code> config block (#19), and YAML-wired plugins/hooks/middleware with strict config validation (F-09&ndash;F-11). Validation: <strong>297 tests</strong> across Python 3.10/3.11/3.12, a 40-check live-router E2E suite, 28 new REST endpoints (50+ total), and every tutorial command verified against a live router. See the <a href="../aua_roadmap.html#milestone-v1-1" style="color:#0f766e;">v1.1 roadmap section</a> and <code>CHANGELOG.md</code> for the item-by-item record.</p>
+</div>
 <br>
 <hr>
 <br>
@@ -1559,7 +1603,7 @@ curl -X PATCH http://localhost:8000/config \
 <h2>Item 1 — Model incentive transparency via running score feedback</h2>
 <br>
 <p><strong>Origin:</strong> Identified during AUA-Veritas design session (2026-05-14).</p>
-<p>Already implemented in AUA-Veritas Phase 1. Proposed for AUA v1.1+.</p>
+<p>Already implemented in AUA-Veritas Phase 1. Not in the v1.1.0 scope (shipped without it) &mdash; proposed for v1.2+.</p>
 <br>
 <h3>The problem</h3>
 <br>
@@ -1645,14 +1689,14 @@ Be precise. Identify what is specifically wrong, not just which is better.</pre>
 <pre>router:
   model_incentive_transparency: false</pre>
 <br>
-<p><strong>Target version:</strong> v1.1</p>
+<p><strong>Target version:</strong> v1.2+ (not shipped in v1.1.0)</p>
 <br>
 <hr>
 <br>
 <h2>Item 2 — "Look Under the Hood" — user-facing model reliability panel</h2>
 <br>
 <p><strong>Origin:</strong> Identified during AUA-Veritas design session (2026-05-14).</p>
-<p>Already in AUA-Veritas Phase 4 roadmap. Proposed for AUA Chat UI v1.1+.</p>
+<p>Already in AUA-Veritas Phase 4 roadmap. The backing data endpoints (<code>GET /reliability</code>, <code>GET /analytics</code> &mdash; per-specialist win rates and welfare trajectories) shipped in v1.1.0 (V-P2.2); the Chat UI panel itself is proposed for v1.2+.</p>
 <br>
 <h3>The problem</h3>
 <br>
@@ -1699,7 +1743,7 @@ Effect: reliability score −2</pre>
 <tr><td><code>aua/state.py</code></td><td><code>audit_log</code> entries: <code>query_preview</code>, <code>specialist</code>, <code>score_before</code>, <code>score_after</code>, <code>verdict</code>, <code>correction_stored</code></td></tr>
 </tbody></table>
 <br>
-<p><strong>Target version:</strong> AUA Chat UI v1.1 (after model incentive transparency, Item 1)</p>
+<p><strong>Target version:</strong> AUA Chat UI v1.2+ (after model incentive transparency, Item 1). Backend shipped in v1.1.0.</p>
 <br>
 <hr>
 <br>

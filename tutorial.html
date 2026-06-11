@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>AUA Framework — Tutorial v1.0</title>
+<title>AUA Framework — Tutorial v1.1</title>
 <meta name="description" content="Complete tutorial for AUA Framework v1.0 — from a 5-minute quickstart to advanced plugins, security, observability, and the eval harness. Django-style docs for adaptive multi-specialist LLM systems.">
 <meta name="author" content="Praneeth Tota">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -199,7 +199,7 @@ tr:nth-child(even) td{background:#fafaf8}
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-tag">Tutorial · v1.0.0</div>
+  <div class="hero-tag">Tutorial · v1.1.0</div>
   <h1>Your LLM makes the same mistake twice.<br>AUA makes sure it doesn't make it three times.</h1>
   <p class="subtitle">Most frameworks give you a model call. AUA gives you a <em>control layer</em> around that call — routing, scoring, correction, and policy enforcement that runs on every query and gets smarter over time.</p>
 </div>
@@ -351,7 +351,7 @@ curl -s -X POST http://localhost:8000/query \
 <tr><td>Apps</td><td>Specialists</td><td>Units of capability you compose in config.</td></tr>
 <tr><td>URL dispatcher</td><td>Field classifier</td><td>Decides who handles the request — and it's a plugin, so you can replace it (How-to 13).</td></tr>
 <tr><td>Middleware</td><td><code>middleware:</code></td><td>Same idea, same ordering semantics: <code>before_query</code> top-down, <code>after_response</code> bottom-up.</td></tr>
-<tr><td>Signals</td><td>Hooks</td><td>13 named points (<code>pre_query</code>, <code>on_correction</code>, <code>on_promotion</code>…) instead of <code>post_save</code>.</td></tr>
+<tr><td>Signals</td><td>Hooks</td><td>11 named points (<code>pre_query</code>, <code>on_correction</code>, <code>on_promotion</code>…) instead of <code>post_save</code>.</td></tr>
 <tr><td>ORM backends</td><td>Plugins</td><td>Swap the classifier, scorer, correction store, or model backend by import path — no framework edits.</td></tr>
 <tr><td>South/migrations</td><td>Blue-green deploys</td><td>Schema changes vs. model changes — both get a safe, reversible upgrade path.</td></tr>
 </table>
@@ -2436,7 +2436,7 @@ aua extensions inspect plugins.risk_scorer:RiskWeightedScorer
 <p>Hooks fire at 11 named points in the request pipeline. Each hook receives an event dict and returns a (possibly modified) event dict. Register one hook class per point, or one class for multiple points.</p>
 
 <div class="callout green">
-  <p><strong>All 11 hook points are live in v1.0.</strong> Hooks are fail-open by default — if a hook errors or times out, the pipeline continues. Set <code>fail_closed: true</code> in YAML to abort the request on hook failure.</p>
+  <p><strong>All 11 hook points are live in v1.1.</strong> Hooks are fail-open by default — if a hook errors or times out, the pipeline continues. Set <code>fail_closed: true</code> in YAML to abort the request on hook failure.</p>
 </div>
 
 <h3>13.1 The minimal hook</h3>
@@ -3462,7 +3462,7 @@ router:
   host: 127.0.0.1
   single_domain_threshold: 0.75     <span class="c"># top prob ≥ this → single routing</span>
   fanout_threshold: 0.30            <span class="c"># 2+ domains ≥ this → fanout (race + arbiter)</span>
-  specialist_timeout: 120.0         <span class="c"># seconds per specialist call</span>
+  specialist_timeout: 60.0          <span class="c"># seconds per specialist call</span>
   arbitration_mode: verdict         <span class="c"># verdict | vcg (welfare-maximizing winner selection)</span>
   cors_origins: ["http://localhost:3001"]
 
@@ -3497,7 +3497,7 @@ plugins:                            <span class="c"># How-to 13 — kind → spe
     config: {confidence_boost: 1.1} <span class="c"># correction_store, model_backend, state_store</span>
 
 hooks:                              <span class="c"># How-to 14 — a LIST of registrations</span>
-  - hook_point: on_correction       <span class="c"># 13 valid points — see How-to 14</span>
+  - hook_point: on_correction       <span class="c"># 11 valid points — see How-to 14</span>
     import_path: plugins.mine:SlackNotificationHook
     config: {webhook_url: "https://hooks.slack.com/..."}
     fail_closed: false              <span class="c"># true → hook failure aborts the request</span>

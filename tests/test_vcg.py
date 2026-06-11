@@ -178,7 +178,7 @@ def test_vcg_select_single_specialist():
 # ── Version ───────────────────────────────────────────────────────────────────
 
 
-def test_version_is_102():
+def test_version_is_110():
     import aua
 
-    assert aua.__version__ == "1.0.2"
+    assert aua.__version__ == "1.1.0"

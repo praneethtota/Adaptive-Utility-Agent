@@ -5,6 +5,55 @@ Format: [Keep a Changelog](https://keepachangelog.com). Versioning: [SemVer](htt
 
 ---
 
+## [1.1.0] — 2026-06-10
+
+The AUA-Veritas production backport plus the completed expert path.
+
+### Added
+- **Persistence & search (V-P1.1)**: message-level keyword search with async
+  background indexing, startup backfill, and DB fallback (`GET /search`,
+  `POST /conversations/{id}/messages`)
+- **Context backups (V-P1.2/1.4)**: 6-section structured handoff notes,
+  token/message/time-gap triggers, 6-hour coverage job
+  (`POST /context/backup/run-coverage-job`)
+- **Correction lifecycle (V-P1.3/2.1/2.4)**: explicit `correction:` prefix,
+  implicit detection with Accept/Reject (`POST /corrections/confirm-implicit`),
+  CRUD + evidence history (`PATCH/DELETE /corrections/{id}`,
+  `GET /corrections/evidence`), arbiter findings surfaced as `review_notes`
+- **Self-maintenance (V-P1.5/1.6/2.3/3.1)**: crash sentinel + auto-reporting,
+  remote model config with remote→cache→builtin fallback, update management
+  (`GET /version/check`, `POST /update/skip`), structured bug reports
+  (`POST /bug-report`)
+- **Analytics suite (V-P2.2)**: `GET /analytics`, `/reliability`, `/usage`,
+  `/pricing`
+- **Projects & local models (V-P3.2/3.3)**: conversation grouping,
+  Ollama-class model registration and specialist tagging
+- **Dynamic domain ontology (V-P3.4)**: 10 L0 roots, alias map + edit-distance
+  resolution, 4-gate candidate promotion, hourly maintenance job
+  (`GET /domain-tree`)
+- **Session IDs (#15)**: session/trace/request IDs on every request —
+  client-supplied honored, UUIDs generated, returned as headers on every
+  response, propagated to specialists/hooks/audit/logs
+- **Secrets (#19)**: `secrets:` config block (env|vault|aws|gcp) and live
+  Vault + AWS Secrets Manager integration tests in CI
+- **YAML extension wiring (F-09/F-10/F-11)**: `plugins:`, `hooks:`,
+  `middleware:`, `state:`, and `security:` config blocks now parse with
+  strict validation and wire at startup; `GET /extensions` reports what the
+  running server loaded
+- Tutorial: Concepts section, bring-your-own-model walkthrough, complete
+  config reference, troubleshooting guide, How-to 18 (production ops)
+
+### Fixed
+- Audit log writes failed silently (missing `request_id`/`routing_mode`
+  columns)
+- `POST /projects` failed on an injected `id` column
+- Keyword extraction dropped years/numbers (dead code path)
+- Crash reporter could self-report the current session
+- Hook YAML format and 9 plugin constructor examples in the tutorial matched
+  a contract the loader never had
+
+---
+
 ## [1.0.0] — 2026-05-11
 
 First public stable release.

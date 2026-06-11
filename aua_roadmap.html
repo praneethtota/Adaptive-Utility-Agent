@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>AUA Framework v1.0 — Release Roadmap and Validation Matrix</title>
+<title>AUA Framework v1.1 — Release Roadmap and Validation Matrix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
@@ -122,10 +122,10 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 </nav>
 
 <div class="hero">
-  <div class="hero-tag">AUA Framework v1.0 &mdash; Release Roadmap &amp; Validation Matrix</div>
-  <h1>AUA Framework v1.0 &mdash; Release Roadmap and Validation Matrix</h1>
+  <div class="hero-tag">AUA Framework v1.1 &mdash; Release Roadmap &amp; Validation Matrix</div>
+  <h1>AUA Framework v1.1 &mdash; Release Roadmap and Validation Matrix</h1>
   <p class="subtitle">
-    This page records the v1.0 implementation contract, validation criteria, and future roadmap. Items marked <span class="badge done">done</span> are included in v1.0.0. Items marked <span class="badge wip">wip</span> or <span class="badge future">future</span> are deferred to v1.1+ or v2.0. The goal: <strong>Django for adaptive multi-model LLM systems</strong> &mdash; batteries included, deeply configurable, extensible without editing AUA internals.
+    This page records the v1.0/v1.1 implementation contract, validation criteria, and future roadmap. Items marked <span class="badge done">done</span> are included in the shipped releases (v1.0.0 and v1.1.0). Items marked <span class="badge wip">wip</span> or <span class="badge future">future</span> are deferred to v2.0+. The goal: <strong>Django for adaptive multi-model LLM systems</strong> &mdash; batteries included, deeply configurable, extensible without editing AUA internals.
   </p>
   <div class="hero-meta">
     <span><strong>Source documents:</strong> aua_roadmap.html &middot; AUA_Framework_v1_Roadmap.md &middot; objective_v1.md &middot; aua_roadmap_01_10_production_completeness.md &middot; missing_from_v1.md &middot; Front_end_for_UA_Framework_v1.md</span>
@@ -135,8 +135,8 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 <div class="body">
 
 <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-left:4px solid #0f766e;border-radius:0 8px 8px 0;padding:1rem 1.25rem;margin-bottom:1.5rem;">
-  <p style="margin:0 0 .25rem;font-weight:700;color:#134e4a;font-size:1rem;">&#10003; Status: v1.0.0 shipped.</p>
-  <p style="margin:0;font-size:.88rem;color:#065f46;">All items marked <strong>done</strong> are included in v1.0.0 and validated. See <a href="docs/v1_validation_report.md" style="color:#0f766e;">docs/v1_validation_report.md</a> for the full validation record: 197 tests, 23 REST endpoints, 8 plugin protocols, 18 Prometheus metrics, CLI reference, install transcript, Docker Compose, Chat UI, security, and observability.</p>
+  <p style="margin:0 0 .25rem;font-weight:700;color:#134e4a;font-size:1rem;">&#10003; Status: v1.1.0 shipped.</p>
+  <p style="margin:0;font-size:.88rem;color:#065f46;">All items marked <strong>done</strong> are included in v1.0.0/v1.1.0 and validated. v1.1.0 adds the complete AUA-Veritas backport (V-P1&ndash;V-P3), end-to-end session IDs (#15), live secrets-provider tests (#19), and YAML-wired plugins/hooks/middleware (F-09&ndash;F-11): <strong>297 tests</strong>, 50+ REST endpoints, a 40-check live-router E2E suite, and every tutorial command verified as written. v1.0 record: <a href="docs/v1_validation_report.md" style="color:#0f766e;">docs/v1_validation_report.md</a> (197 tests, 23 REST endpoints, 8 plugin protocols, 18 Prometheus metrics).</p>
 </div>
 
 <div class="callout purple">
@@ -979,9 +979,10 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
   These 49 items were discovered, built, and battle-tested in
   <strong>AUA-Veritas</strong> &mdash; a macOS desktop AI assistant
   built on top of the AUA framework. Every item here was required to
-  make a real user-facing product work. P0 items are
-  <span class="badge done">done</span> in this release.
-  P1&ndash;P3 are <span class="badge planned">planned</span>.
+  make a real user-facing product work. All four priorities are
+  <span class="badge done">done</span>: P0 shipped with v1.0.0; P1&ndash;P3
+  were backported and shipped in <strong>v1.1.0</strong> (296+ tests,
+  40-check live-router E2E suite, CI green across Python 3.10&ndash;3.12).
 </p>
 
 <div class="callout purple">
@@ -1110,10 +1111,10 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
     <div class="stage-num">V-P1</div>
     <div>
       <p class="stage-title">Priority 1 &mdash; Required for desktop / long-running sessions</p>
-      <p class="stage-subtitle">All items implemented in AUA-Veritas. Backport to framework pending.</p>
+      <p class="stage-subtitle">Backported and shipped in v1.1.0. Verified by tests/test_v11_veritas.py plus a 40-check live-router E2E suite; CI green on Python 3.10/3.11/3.12.</p>
     </div>
     <div class="stage-meta">
-      <span class="badge planned">planned</span>
+      <span class="badge done">done</span>
       <span class="stage-timeline">v1.1-veritas</span>
     </div>
   </div>
@@ -1244,10 +1245,10 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
     <div class="stage-num">V-P2</div>
     <div>
       <p class="stage-title">Priority 2 &mdash; UX quality</p>
-      <p class="stage-subtitle">Implemented in AUA-Veritas. Backport to framework planned.</p>
+      <p class="stage-subtitle">Backported and shipped in v1.1.0 &mdash; review_notes on RouterResponse, the analytics suite (/analytics, /reliability, /usage, /pricing), update management, and corrections CRUD with event-history evidence.</p>
     </div>
     <div class="stage-meta">
-      <span class="badge planned">planned</span>
+      <span class="badge done">done</span>
       <span class="stage-timeline">v1.1-veritas</span>
     </div>
   </div>
@@ -1323,10 +1324,10 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
     <div class="stage-num">V-P3</div>
     <div>
       <p class="stage-title">Priority 3 &mdash; Production hardening</p>
-      <p class="stage-subtitle">Implemented in AUA-Veritas. Backport to framework planned.</p>
+      <p class="stage-subtitle">Backported and shipped in v1.1.0 &mdash; structured bug reporting, project scoping, local model management, and the dynamic domain ontology with 4-gate candidate promotion.</p>
     </div>
     <div class="stage-meta">
-      <span class="badge planned">planned</span>
+      <span class="badge done">done</span>
       <span class="stage-timeline">v1.1-veritas</span>
     </div>
   </div>
@@ -1406,6 +1407,24 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
   <code>token_counters</code>, <code>message_keywords</code>, <code>context_backups</code>,
   <code>projects</code>. <code>fire_and_forget()</code> schedules background tasks without
   blocking the response path.</p>
+</div>
+
+<div class="callout green">
+  <p><strong>v1.1.0 definition of done &mdash; verified:</strong>
+  All 14 V-P1&ndash;V-P3 items live behind 28 new REST endpoints
+  (<code>/search</code>, <code>/context/backup/run-coverage-job</code>,
+  <code>/corrections/confirm-implicit</code>, corrections CRUD + evidence,
+  <code>/analytics</code> suite, <code>/version/check</code>,
+  <code>/bug-report</code>, <code>/local/*</code>, <code>/domain-tree</code>).
+  Session/trace/request IDs returned on every response and propagated to
+  specialists, hooks, audit, and logs (#15). <code>secrets:</code> config block
+  with live Vault (wire-faithful KV v2 + real hvac) and AWS Secrets Manager
+  (moto + real boto3) integration tests in CI (#19). <code>plugins:</code>,
+  <code>hooks:</code>, <code>middleware:</code>, <code>state:</code>, and
+  <code>security:</code> blocks parse with strict validation and wire at
+  startup; <code>GET /extensions</code> reports server truth (F-09&ndash;F-11).
+  297 tests passing, ruff/black/isort/mypy clean, CI green on
+  Python 3.10/3.11/3.12.</p>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -1552,10 +1571,10 @@ hr { border: none; border-top: 1px solid var(--line); margin: 2.5rem 0; }
       <td>All v1.0 definition-of-done commands pass</td>
     </tr>
     <tr>
-      <td><strong>v1.1-veritas</strong></td>
-      <td>V-P0&ndash;V-P3 (49 items across 4 priorities)</td>
-      <td>AUA-Veritas production backport &mdash; persistence, search, corrections, backup</td>
-      <td>P0 implemented. P1&ndash;P3 planned.</td>
+      <td><strong>v1.1.0 &mdash; Shipped</strong></td>
+      <td>V-P0&ndash;V-P3 (49 items) + #15, #19, F-09&ndash;F-11 completion</td>
+      <td>AUA-Veritas production backport &mdash; persistence, search, corrections, backup, analytics, ontology &mdash; plus end-to-end session IDs, live secrets-provider tests, and YAML-wired plugins/hooks/middleware</td>
+      <td>All 4 priorities shipped. 297 tests passing; every documented endpoint verified against a live router.</td>
     </tr>
     <tr>
       <td><strong>v2.0+</strong></td>

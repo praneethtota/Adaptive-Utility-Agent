@@ -123,15 +123,20 @@ Aliases: `rtx4090` → `single-4090`, `a100` → `a100-cluster`.
 
 ---
 
-## What ships in v1.0
+## What ships in v1.1
 
 | Component | Detail |
 |---|---|
-| **REST API** | 23 endpoints — query, stream, batch, corrections, config, deploy, status, sessions, metrics |
+| **REST API** | 50+ endpoints — query, stream, batch, corrections (full CRUD + evidence), config, deploy, status, sessions, metrics, conversations/messages/projects, keyword search, context backups, analytics suite, update management, bug reports, local models, domain ontology |
 | **CLI** | 22 command groups — `aua init`, `aua serve`, `aua doctor`, `aua status`, `aua eval`, `aua guard`, `aua policy`, `aua calibrate`, `aua logs`, `aua metrics`, and more |
 | **Plugin interfaces** | 8 Protocol interfaces — FieldClassifier, UtilityScorer, ArbiterPolicy, PromotionPolicy, CorrectionStore, ModelBackend, StateStore, HookPlugin |
 | **Hooks** | 11 lifecycle hook points — `pre_query`, `post_route`, `pre_specialist_call`, `post_specialist_call`, `pre_arbiter`, `post_arbiter`, `on_correction`, `pre_response`, `post_response`, `on_promotion`, `on_rollback` |
 | **Middleware** | `AUAMiddleware` — `before_query` / `after_response` wraps every request |
+| **YAML extensions (v1.1)** | `plugins:`, `hooks:`, `middleware:`, `state:`, `security:` config blocks — strict validation, contract-checked imports, `GET /extensions` server truth |
+| **Persistence & search (v1.1)** | Conversations, messages, projects; message-level keyword search with async indexing |
+| **Production ops (v1.1)** | Context backups + coverage job, correction lifecycle (explicit/implicit/CRUD), analytics + reliability endpoints, crash + bug reporting, remote model config, dynamic domain ontology |
+| **Session IDs (v1.1)** | session/trace/request IDs on every response, propagated end-to-end (#15) |
+| **Secrets (v1.1)** | `secrets:` block — env, Vault, AWS SM, GCP; live provider integration tests in CI |
 | **Assertions + Policy** | `@assertion` decorator, `AssertionLevel` (BLOCKING/SOFT/INFO), `Policy` with YAML config, Option B E-bonus, gold-standard DPO session detection |
 | **Calibration** | `aua calibrate --layer 1/2/3` — eval harness, routing weight analysis, DPO pair export |
 | **Prometheus metrics** | 18 metrics including assertion fail rate, E-bonus histogram, retry counter |
@@ -270,7 +275,7 @@ docs/
 
 ---
 
-## Validated results (v1.0, RTX 4090)
+## Validated results (v1.0 baseline, RTX 4090)
 
 | Result | Value | Source |
 |---|---|---|

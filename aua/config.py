@@ -259,10 +259,10 @@ _KNOWN_PLUGIN_KINDS: set[str] = {
 }
 _KNOWN_PLUGIN_ENTRY_KEYS: set[str] = {"import_path", "config"}
 _KNOWN_HOOK_ENTRY_KEYS: set[str] = {"hook_point", "import_path", "config", "fail_closed"}
+# Exactly the 11 points the runtime fires — accepting a point that never
+# fires would let a hook registration silently do nothing.
 _VALID_HOOK_POINTS: set[str] = {
     "pre_query",
-    "post_query",
-    "pre_route",
     "post_route",
     "pre_specialist_call",
     "post_specialist_call",

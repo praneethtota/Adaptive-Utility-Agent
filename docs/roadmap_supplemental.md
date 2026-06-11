@@ -13,7 +13,7 @@ as priorities are assessed.
 ## Item 1 — Model incentive transparency via running score feedback
 
 **Origin:** Identified during AUA-Veritas design session (2026-05-14).
-Already implemented in AUA-Veritas Phase 1. Proposed for AUA v1.1+.
+Already implemented in AUA-Veritas Phase 1. Not in the v1.1.0 scope (shipped without it) — proposed for v1.2+.
 
 ### The problem
 
@@ -104,14 +104,14 @@ router:
   model_incentive_transparency: false
 ```
 
-**Target version:** v1.1
+**Target version:** v1.2+ (not shipped in v1.1.0)
 
 ---
 
 ## Item 2 — "Look Under the Hood" — user-facing model reliability panel
 
 **Origin:** Identified during AUA-Veritas design session (2026-05-14).
-Already in AUA-Veritas Phase 4 roadmap. Proposed for AUA Chat UI v1.1+.
+Already in AUA-Veritas Phase 4 roadmap. The backing data endpoints (`GET /reliability`, `GET /analytics`) shipped in v1.1.0 (V-P2.2); the Chat UI panel itself is proposed for v1.2+.
 
 ### The problem
 
@@ -159,7 +159,7 @@ Effect: reliability score −2
 | `aua/router.py` | New endpoint `GET /reliability` returning per-specialist score history |
 | `aua/state.py` | `audit_log` entries: `query_preview`, `specialist`, `score_before`, `score_after`, `verdict`, `correction_stored` |
 
-**Target version:** AUA Chat UI v1.1 (after model incentive transparency, Item 1)
+**Target version:** AUA Chat UI v1.2+ (after model incentive transparency, Item 1). Backend shipped in v1.1.0.
 
 ---
 
