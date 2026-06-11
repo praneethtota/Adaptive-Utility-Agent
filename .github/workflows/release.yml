@@ -38,6 +38,12 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]*"   # v1.1.0, v1.2.0, v2.0.0-rc1, etc.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v1.1.0) — must already exist on main"
+        required: true
+        default: "v1.1.0"
 
 permissions:
   contents: write      # create releases, upload assets
@@ -100,7 +106,9 @@ jobs:
         run: |
           pip install -e ".[dev]" -q
           PKG_VERSION=$(python -c "from aua.version import __version__; print(__version__)")
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          # On workflow_dispatch, use the input tag; on tag push, use GITHUB_REF_NAME
+          INPUT_TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          TAG_VERSION="${INPUT_TAG#v}"
           echo "Package version : $PKG_VERSION"
           echo "Tag version     : $TAG_VERSION"
           if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
@@ -130,12 +138,14 @@ jobs:
       # ── Extract release notes from CHANGELOG.md ──────────────────────────
       - name: Extract release notes
         id: notes
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           python - <<'PYEOF'
           import re, os, sys
 
           src = open("CHANGELOG.md").read()
-          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          tag = os.environ.get("INPUT_TAG", os.environ["GITHUB_REF_NAME"]).lstrip("v")
 
           # Match the section for exactly this version
           pat = rf"## \[{re.escape(tag)}\][^\n]*\n(.*?)(?=\n## \[|\Z)"
@@ -158,8 +168,8 @@ jobs:
         id: gh_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: "${{ github.ref_name }}"
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: "${{ github.event.inputs.tag || github.ref_name }}"
           body: |
             ${{ steps.notes.outputs.body }}
 
@@ -172,8 +182,8 @@ jobs:
 
             **Links:** [Tutorial](https://praneethtota.github.io/Adaptive-Utility-Agent/tutorial.html) · [Roadmap](https://praneethtota.github.io/Adaptive-Utility-Agent/aua_roadmap.html) · [Changelog](CHANGELOG.md)
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
-          make_latest: ${{ !contains(github.ref_name, '-rc') && !contains(github.ref_name, '-beta') && !contains(github.ref_name, '-alpha') }}
+          prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, '-rc') || contains(github.event.inputs.tag || github.ref_name, '-beta') || contains(github.event.inputs.tag || github.ref_name, '-alpha') }}
+          make_latest: ${{ !contains(github.event.inputs.tag || github.ref_name, '-rc') && !contains(github.event.inputs.tag || github.ref_name, '-beta') && !contains(github.event.inputs.tag || github.ref_name, '-alpha') }}
           files: |
             dist/*.whl
             dist/*.tar.gz
@@ -183,10 +193,11 @@ jobs:
       # ── Announce ─────────────────────────────────────────────────────────
       - name: Summary
         run: |
-          echo "### Release ${{ github.ref_name }} published 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "### Release ${{ github.event.inputs.tag || github.ref_name }} published 🎉" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| | |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| **PyPI** | `pip install --upgrade adaptive-utility-agent` (latest) |" >> $GITHUB_STEP_SUMMARY
           echo "| **GitHub Release** | ${{ steps.gh_release.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **PyPI** | `pip install --upgrade adaptive-utility-agent` (latest) |" >> $GITHUB_STEP_SUMMARY
           echo "| **CI** | Python 3.10 / 3.11 / 3.12 ✅ |" >> $GITHUB_STEP_SUMMARY
