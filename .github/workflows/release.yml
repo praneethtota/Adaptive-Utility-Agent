@@ -166,7 +166,7 @@ jobs:
             ---
             **Install / upgrade:**
             ```bash
-            pip install --upgrade adaptive-utility-agent==${{ github.ref_name && github.ref_name || '' }}
+            pip install --upgrade "adaptive-utility-agent==${GITHUB_REF_NAME#v}"
             ```
             > `pip install --upgrade adaptive-utility-agent` also works — this tag is marked latest.
 
@@ -187,6 +187,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| | |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| **PyPI** | \`pip install adaptive-utility-agent==${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **PyPI** | `pip install --upgrade adaptive-utility-agent` (latest) |" >> $GITHUB_STEP_SUMMARY
           echo "| **GitHub Release** | ${{ steps.gh_release.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **CI** | Python 3.10 / 3.11 / 3.12 ✅ |" >> $GITHUB_STEP_SUMMARY

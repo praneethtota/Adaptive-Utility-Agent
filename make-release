@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# make-release vX.Y.Z
+# Checks preconditions, bumps version, commits, tags, and pushes.
+# The release.yml workflow handles everything after the tag push.
+
+set -euo pipefail
+
+TAG="${1:-}"
+if [[ -z "$TAG" ]]; then
+  echo "Usage: ./make-release vX.Y.Z" >&2; exit 1
+fi
+if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)[0-9]*)?$ ]]; then
+  echo "Error: tag must look like v1.2.0 or v1.2.0-rc1" >&2; exit 1
+fi
+VERSION="${TAG#v}"
+
+echo "==> Checking working tree is clean"
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "Error: uncommitted changes. Commit or stash first." >&2; exit 1
+fi
+
+echo "==> Checking we're on main and up to date"
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$BRANCH" != "main" ]]; then
+  echo "Error: must be on main (currently on $BRANCH)" >&2; exit 1
+fi
+git fetch --quiet origin main
+LOCAL=$(git rev-parse @)
+REMOTE=$(git rev-parse @{u})
+if [[ "$LOCAL" != "$REMOTE" ]]; then
+  echo "Error: branch is not up to date with origin/main. Run: git pull" >&2; exit 1
+fi
+
+echo "==> Checking tag $TAG doesn't already exist"
+if git rev-parse "$TAG" &>/dev/null; then
+  echo "Error: tag $TAG already exists." >&2; exit 1
+fi
+
+echo "==> Checking CHANGELOG.md has an entry for [$VERSION]"
+if ! grep -q "^## \[$VERSION\]" CHANGELOG.md; then
+  echo ""
+  echo "Error: no ## [$VERSION] entry in CHANGELOG.md."
+  echo ""
+  echo "Add an entry like:"
+  echo ""
+  echo "## [$VERSION] — $(date +%Y-%m-%d)"
+  echo ""
+  echo "### Added"
+  echo "- ..."
+  echo ""
+  echo "---"
+  echo ""
+  exit 1
+fi
+
+echo "==> Updating aua/version.py to $VERSION"
+CURRENT=$(python3 -c "exec(open('aua/version.py').read()); print(__version__)")
+if [[ "$CURRENT" == "$VERSION" ]]; then
+  echo "    version.py already at $VERSION, no change needed"
+else
+  sed -i "s/__version__ = \"$CURRENT\"/__version__ = \"$VERSION\"/" aua/version.py
+  echo "    $CURRENT -> $VERSION"
+
+  echo "==> Updating version in test assertions"
+  for f in tests/test_imports.py tests/test_vcg.py tests/test_router_api.py; do
+    if [ -f "$f" ]; then
+      sed -i "s/\"$CURRENT\"/\"$VERSION\"/g" "$f"
+      sed -i "s/'$CURRENT'/'$VERSION'/g" "$f"
+    fi
+  done
+fi
+
+echo "==> Running lint"
+python3 -m ruff check aua tests --quiet
+python3 -m black --check aua tests --quiet
+python3 -m isort --check-only aua tests --quiet
+
+echo "==> Running tests (this takes ~30s)"
+python3 -m pytest tests/ -q --tb=short
+
+echo "==> Building distributions (smoke-check)"
+python3 -m build --wheel --sdist --outdir /tmp/release-check/
+python3 -m twine check /tmp/release-check/adaptive_utility_agent-${VERSION}*
+rm -rf /tmp/release-check/
+
+echo ""
+echo "Everything checks out. About to:"
+echo "  git commit -m 'chore: release $TAG'"
+echo "  git tag $TAG"
+echo "  git push origin main"
+echo "  git push origin $TAG"
+echo ""
+read -p "Proceed? [y/N] " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+  echo "Aborted." >&2; exit 1
+fi
+
+git add aua/version.py CHANGELOG.md tests/test_imports.py tests/test_vcg.py tests/test_router_api.py 2>/dev/null || true
+git add aua/version.py CHANGELOG.md
+if ! git diff --cached --quiet; then
+  git -c user.name="Praneeth Tota" \
+      -c user.email="praneethtota@users.noreply.github.com" \
+      commit -m "chore: release $TAG"
+fi
+
+git tag "$TAG"
+
+echo "==> Pushing main + tag"
+git push origin main
+git push origin "$TAG"
+
+echo ""
+echo "✅ Tag $TAG pushed. Watch the pipeline:"
+echo "   https://github.com/praneethtota/Adaptive-Utility-Agent/actions"
+echo ""
+echo "Release will be live at:"
+echo "   https://github.com/praneethtota/Adaptive-Utility-Agent/releases/tag/$TAG"
+echo "   https://pypi.org/project/adaptive-utility-agent/$VERSION/"
