@@ -199,3 +199,21 @@ def test_config_validation_rejects_typos(project_dir):
     cfg_path.write_text(yaml.dump(raw2))
     with pytest.raises(ValueError, match="pre_qeury"):
         load_config(cfg_path)
+
+
+def test_extensions_endpoint_shows_loaded_state(project_dir, fake_swe_server):
+    from aua.hooks import reset_hook_runner
+
+    reset_hook_runner()
+    tmp_path, raw = project_dir
+    raw["plugins"] = {"field_classifier": {"import_path": "plugins.mine:KeywordClassifier"}}
+    raw["hooks"] = [{"hook_point": "pre_query", "import_path": "plugins.mine:TagHook"}]
+    raw["middleware"] = ["plugins.mine:ShoutMiddleware"]
+    router = _write_and_load(tmp_path, raw)
+    client = TestClient(router.app, raise_server_exceptions=True)
+    ext = client.get("/extensions").json()
+    assert ext["plugins"]["field_classifier"] == "plugins.mine:KeywordClassifier"
+    assert ext["plugins"]["utility_scorer"] is None  # built-in
+    assert "TagHook" in str(ext["hooks"].get("pre_query", []))
+    assert any("Shout" in m for m in ext["middleware"])
+    reset_hook_runner()

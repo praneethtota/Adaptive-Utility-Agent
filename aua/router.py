@@ -1671,6 +1671,28 @@ class Router:
 
         # ── V-P2.3: update management ─────────────────────────────────────────
 
+        @app.get(
+            "/extensions",
+            tags=["meta"],
+            summary="List loaded plugins, hooks, and middleware",
+        )
+        async def list_extensions() -> dict:
+            """
+            Server truth for "did my extension load?" — the CLI's
+            `aua extensions list` runs in a fresh process and cannot see
+            what the running server loaded.
+            """
+            from aua.config import _KNOWN_PLUGIN_KINDS
+
+            plugins: dict[str, str | None] = {k: None for k in sorted(_KNOWN_PLUGIN_KINDS)}
+            for kind, spec in (self._config.plugins or {}).items():
+                plugins[kind] = spec.import_path
+            return {
+                "plugins": plugins,  # null = using the built-in
+                "hooks": get_hook_runner().registered_hooks(),
+                "middleware": self._middleware.registered(),
+            }
+
         @app.get("/version/check", tags=["meta"], summary="Check GitHub for a newer release")
         async def version_check() -> dict:
             """Compare the running version against the latest GitHub release."""
