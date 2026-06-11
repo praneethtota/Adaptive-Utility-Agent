@@ -1,0 +1,192 @@
+# .github/workflows/release.yml
+#
+# AUA Framework — automated release pipeline.
+#
+# Triggers on any tag matching v*.*.* (e.g. v1.1.0, v1.2.0-rc1).
+#
+# Pipeline:
+#   1. full-ci   — run the complete test matrix (3.10 / 3.11 / 3.12).
+#                  Release is blocked if any leg fails.
+#   2. release   — build wheel + sdist, publish to PyPI via OIDC trusted
+#                  publishing (no stored token), then create/update the
+#                  GitHub Release and upload the distributions as assets.
+#
+# PyPI setup (one-time, done in the PyPI web UI):
+#   pypi.org → your account → Publishing → Add a new pending publisher
+#     owner:      praneethtota
+#     repository: Adaptive-Utility-Agent
+#     workflow:   release.yml
+#     environment: pypi           ← must match the environment name below
+#
+# GitHub setup (one-time):
+#   Repo → Settings → Environments → New environment → name it "pypi"
+#   No secrets needed — OIDC handles auth.
+#
+# To cut a release:
+#   git tag v1.2.0 && git push origin v1.2.0
+#
+# The workflow then:
+#   - runs all tests (fail → abort, no release)
+#   - builds the wheel + sdist
+#   - publishes to PyPI via trusted publishing
+#   - creates the GitHub Release, extracts release notes from CHANGELOG.md,
+#     and uploads the wheel + sdist as downloadable assets
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]*"   # v1.1.0, v1.2.0, v2.0.0-rc1, etc.
+
+permissions:
+  contents: write      # create releases, upload assets
+  id-token: write      # OIDC token for PyPI trusted publishing
+
+jobs:
+  # ── 1. Full CI matrix — identical to ci.yml ──────────────────────────────
+  full-ci:
+    name: "CI · Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true           # abort on first failure; don't publish a broken build
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: ruff
+        run: ruff check aua tests
+
+      - name: black
+        run: black --check --line-length 100 aua tests
+
+      - name: isort
+        run: isort --check-only --profile black --line-length 100 aua tests
+
+      - name: mypy
+        run: mypy aua --ignore-missing-imports
+
+      - name: pytest
+        run: pytest -q --tb=short
+
+  # ── 2. Build, publish, and release ───────────────────────────────────────
+  release:
+    name: Release ${{ github.ref_name }}
+    needs: full-ci           # only runs after all three CI legs pass
+    runs-on: ubuntu-latest
+    environment: pypi        # must match the PyPI trusted-publisher environment name
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # needed so git log goes back far enough for changelog
+
+      # ── Validate that the tag matches aua/version.py ─────────────────────
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Validate version consistency
+        run: |
+          pip install -e ".[dev]" -q
+          PKG_VERSION=$(python -c "from aua.version import __version__; print(__version__)")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "Package version : $PKG_VERSION"
+          echo "Tag version     : $TAG_VERSION"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch — aua/version.py says $PKG_VERSION but tag is $TAG_VERSION"
+            echo "::error::Update aua/version.py, commit, retag, and push."
+            exit 1
+          fi
+
+      # ── Build distributions ───────────────────────────────────────────────
+      - name: Build wheel and sdist
+        run: |
+          pip install build twine -q
+          python -m build --wheel --sdist --outdir dist/
+          twine check dist/*
+          ls -lh dist/
+
+      # ── Publish to PyPI (OIDC trusted publishing — no token stored) ──────
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # No password/token — PyPI accepts the OIDC JWT issued by GitHub.
+          # attestations: true adds provenance (PEP 740); safe to disable if
+          # the package predates PyPI attestation support.
+          attestations: true
+          verbose: true
+
+      # ── Extract release notes from CHANGELOG.md ──────────────────────────
+      - name: Extract release notes
+        id: notes
+        run: |
+          python - <<'PYEOF'
+          import re, os, sys
+
+          src = open("CHANGELOG.md").read()
+          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
+
+          # Match the section for exactly this version
+          pat = rf"## \[{re.escape(tag)}\][^\n]*\n(.*?)(?=\n## \[|\Z)"
+          m = re.search(pat, src, re.DOTALL)
+          if not m:
+              print(f"::warning::No CHANGELOG entry found for [{tag}] — using generic notes")
+              body = f"See [CHANGELOG.md](CHANGELOG.md) for the full change record."
+          else:
+              body = m.group(1).strip()
+
+          # GitHub Actions multiline output: use the delimiter trick
+          delimiter = "RELEASE_NOTES_EOF"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"body<<{delimiter}\n{body}\n{delimiter}\n")
+          print(f"Extracted {len(body)} chars of release notes for v{tag}")
+          PYEOF
+
+      # ── Create GitHub Release ─────────────────────────────────────────────
+      - name: Create GitHub Release
+        id: gh_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "${{ github.ref_name }}"
+          body: |
+            ${{ steps.notes.outputs.body }}
+
+            ---
+            **Install / upgrade:**
+            ```bash
+            pip install --upgrade adaptive-utility-agent==${{ github.ref_name && github.ref_name || '' }}
+            ```
+            > `pip install --upgrade adaptive-utility-agent` also works — this tag is marked latest.
+
+            **Links:** [Tutorial](https://praneethtota.github.io/Adaptive-Utility-Agent/tutorial.html) · [Roadmap](https://praneethtota.github.io/Adaptive-Utility-Agent/aua_roadmap.html) · [Changelog](CHANGELOG.md)
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+          make_latest: ${{ !contains(github.ref_name, '-rc') && !contains(github.ref_name, '-beta') && !contains(github.ref_name, '-alpha') }}
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          fail_on_unmatched_files: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Announce ─────────────────────────────────────────────────────────
+      - name: Summary
+        run: |
+          echo "### Release ${{ github.ref_name }} published 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **PyPI** | \`pip install adaptive-utility-agent==${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **GitHub Release** | ${{ steps.gh_release.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **CI** | Python 3.10 / 3.11 / 3.12 ✅ |" >> $GITHUB_STEP_SUMMARY
