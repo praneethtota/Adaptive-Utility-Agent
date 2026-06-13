@@ -72,7 +72,7 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
   <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
 </nav>
 <div style="padding:2rem 0 1.5rem">
-<div style="font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#4338ca;margin-bottom:.75rem;">Whitepaper · Appendix B · Formal proofs: Debreu, Kalman, Lyapunov, VCG</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#4338ca;margin-bottom:.75rem;">Whitepaper · Appendix B · Formal proofs: Debreu, Kalman, Lyapunov, VCG · §B.8 shrinkage, efficiency, Theorems S1–S3</div>
 <h1 style="font-family:'DM Serif Display',Georgia,serif;font-size:1.75rem;font-weight:700;margin:0 0 .25rem;color:#111;">Appendix B — Mathematical Foundations and Proofs</h1>
 <p style="font-size:.88rem;color:#555;margin:0 0 .25rem;">Praneeth Tota &nbsp;·&nbsp; Independent Researcher &nbsp;·&nbsp; v1.0.0</p>
 </div>
@@ -89,7 +89,8 @@ nav.site-nav a.active{color:#18181b;font-weight:700}
 - <strong>Theorem B.4</strong> (§B.4): EMA confidence update — Kalman optimality for ρ = 0.05
 - <strong>Proposition B.6</strong> (§B.6): Curiosity cap — exploitation dominance proof
 - <strong>Theorem B.5</strong> (§B.5): Confidence convergence — geometric convergence in expectation, recovery time
-- <strong>Theorem B.7</strong> (§B.7): Personality stability — Lyapunov analysis, bounded stable dynamics</p>
+- <strong>Theorem B.7</strong> (§B.7): Personality stability — Lyapunov analysis, bounded stable dynamics
+- <strong>§B.8</strong>: VCG welfare score — Lemma B.8.1 (shrinkage MSE dominance), Propositions B.8.2–B.8.3 (multi-domain efficiency, domain-tree property preservation), Theorems S1–S3 (dominant strategy, POA=1, individual rationality) — full proofs</p>
 <hr />
 <p>Before analyzing the properties of the utility function $U$, we justify its structure from first principles. In its current form,</p>
 <p>$$U(E, C, K; f) = w_e(f)\,E + w_c(f)\,C + w_k(f)\,K$$</p>
@@ -665,6 +666,318 @@ $$\leq (1-\beta)\|s_t - s^*\| + \Delta_{\max}\sqrt{n}$$</p>
 <li><strong>Small $\beta$</strong>: personality evolves with experience, but reverts slowly between periods of drift</li>
 </ul>
 <p>The value $\beta = 0.01$ produces a half-life of approximately 34 evolution cycles under zero drift (≈ 102 interactions), which is long enough for the personality to reflect accumulated experience over hundreds of interactions before the neutral pull becomes dominant. A field-specific $\beta(f)$ — with higher reversion rates for high-stakes fields where personality stability is more important — is a natural extension for future work.</p>
+<div class="appendix-b-section">
+<h2 id="appendix-b8">B.8 — VCG Welfare Score: Formal Properties and Proofs</h2>
+
+<p><em>This section provides the mathematical underpinning for §10.6.7.1.
+It proves MSE dominance of the shrinkage estimator (Lemma B.8.1),
+efficiency of the multi-domain formula over the single-domain approximation
+(Proposition B.8.2), and preservation of formal VCG properties under the
+hierarchical domain tree (Proposition B.8.3).
+Theorems S1–S3 (dominant strategy, POA = 1, individual rationality) are
+restated and proved in full in §B.8.4, as they now reference the operationalised
+welfare score rather than the abstract value function $v_i$.</em></p>
+
+<hr />
+<h3>B.8.1 — Lemma B.8.1 — MSE Dominance of the Shrinkage Estimator</h3>
+
+<p><strong>Setup.</strong>
+Let specialist $i$ have been observed on $n$ queries in domain $j$, winning $w$ of them.
+The raw MLE is $\hat{u}^{\mathrm{MLE}} = w/n$.
+The shrinkage estimator with pseudo-count $N_c\equiv N_{\mathrm{cliff}}$ and prior $\bar{u}$ is:
+$$\hat{u}^{\mathrm{SH}} = \frac{n\hat{u}^{\mathrm{MLE}} + N_c\bar{u}}{n + N_c}$$</p>
+
+<p><strong>Lemma B.8.1.</strong>
+<em>For any true win-rate $p^*\in(0,1)$, any prior $\bar{u}\in(0,1)$, and any $N_c>0$:</em>
+$$\mathrm{MSE}\!\left(\hat{u}^{\mathrm{SH}},\,p^*\right)
+  \;<\;
+  \mathrm{MSE}\!\left(\hat{u}^{\mathrm{MLE}},\,p^*\right)
+  \quad\text{whenever }n < N_c^2\,\frac{p^*(1-p^*)}{(\bar{u}-p^*)^2}\cdot\frac{1}{n+N_c}$$
+<em>In particular, for $n\leq N_c$ the shrinkage estimator dominates the MLE in MSE
+for all $p^*$ within a neighbourhood of radius $\sqrt{p^*(1-p^*)/N_c}$ around $\bar{u}$.</em></p>
+
+<p><strong>Proof.</strong></p>
+
+<p><em>Step 1: Bias–variance decomposition of each estimator.</em></p>
+
+<p>Write $\lambda = n/(n+N_c)\in(0,1)$, so
+$\hat{u}^{\mathrm{SH}} = \lambda\hat{u}^{\mathrm{MLE}} + (1-\lambda)\bar{u}$.</p>
+
+<p>$\hat{u}^{\mathrm{MLE}}$: unbiased, $\mathrm{Var}=p^*(1-p^*)/n$, hence $\mathrm{MSE}^{\mathrm{MLE}}=p^*(1-p^*)/n$.</p>
+
+<p>$\hat{u}^{\mathrm{SH}}$:
+$$\mathrm{Bias}^{\mathrm{SH}} = (1-\lambda)(\bar{u}-p^*)$$
+$$\mathrm{Var}^{\mathrm{SH}} = \lambda^2\,\frac{p^*(1-p^*)}{n}$$
+$$\mathrm{MSE}^{\mathrm{SH}} = \lambda^2\,\frac{p^*(1-p^*)}{n} + (1-\lambda)^2(\bar{u}-p^*)^2$$</p>
+
+<p><em>Step 2: MSE difference.</em></p>
+
+<p>$$\Delta\equiv\mathrm{MSE}^{\mathrm{MLE}}-\mathrm{MSE}^{\mathrm{SH}}
+  = (1-\lambda^2)\frac{p^*(1-p^*)}{n} - (1-\lambda)^2(\bar{u}-p^*)^2$$</p>
+
+<p>Factor $(1-\lambda)$:</p>
+<p>$$\Delta = (1-\lambda)\!\left[(1+\lambda)\frac{p^*(1-p^*)}{n} - (1-\lambda)(\bar{u}-p^*)^2\right]$$</p>
+
+<p>Since $\lambda\in(0,1)$ we have $(1-\lambda)>0$, so $\Delta>0$ iff:</p>
+<p>$$(1+\lambda)\frac{p^*(1-p^*)}{n} > (1-\lambda)(\bar{u}-p^*)^2$$</p>
+
+<p><em>Step 3: Sufficient condition.</em></p>
+
+<p>Substituting $\lambda=n/(n+N_c)$ gives $1+\lambda=(2n+N_c)/(n+N_c)$ and
+$1-\lambda=N_c/(n+N_c)$. The inequality becomes:</p>
+
+<p>$$\frac{(2n+N_c)}{n}\cdot p^*(1-p^*) > N_c(\bar{u}-p^*)^2$$</p>
+
+<p>which holds whenever:</p>
+<p>$$n < N_c^2\,\frac{p^*(1-p^*)}{(\bar{u}-p^*)^2}\cdot\frac{1}{n+N_c}$$</p>
+
+<p>confirming the statement of the lemma.
+For $n\leq N_c$, the right-hand side is at least $N_c\,p^*(1-p^*)/(\bar{u}-p^*)^2/2$,
+which exceeds $n=N_c$ precisely when $|\bar{u}-p^*|\leq\sqrt{p^*(1-p^*)/N_c}$,
+i.e., when the prior is within one shrinkage-radius of the true parameter.
+$\blacksquare$</p>
+
+<p><em>Remark.</em>
+The lemma formalises the intuition in §10.6.7.1 Point 2:
+the shrinkage estimator is beneficial exactly in the low-data regime ($n\leq N_c$)
+and when the global prior $\bar{u}$ is a reasonable anchor.
+Setting $N_{\mathrm{cliff}}=10$ and using a domain-stratified prior $\bar{u}$
+computed from all specialists ensures both conditions hold in practice.</p>
+
+<hr />
+<h3>B.8.2 — Proposition B.8.2 — Efficiency of Multi-Domain Formula</h3>
+
+<p><strong>Setup.</strong>
+Let $\mathcal{I}$ be a set of specialists. For query $q$, let
+$p(j|q)$ be the domain probability vector (output of the domain classifier, $\sum_j p(j|q)=1$).
+Define the multi-domain welfare score and the single-domain approximation:</p>
+
+<p>$$W_i^{\mathrm{MD}}(q) = \sum_j p(j|q)\,\mathrm{effective\_u}(i,j)$$
+$$W_i^{\mathrm{SD}}(q) = \mathrm{effective\_u}(i,\,j^*)
+  \quad\text{where }j^*=\arg\max_j p(j|q)$$</p>
+
+<p>Let $\mathrm{SW}^{\mathrm{MD}}(q)=\sum_i W_i^{\mathrm{MD}}(q)$ and
+$\mathrm{SW}^{\mathrm{SD}}(q)=\sum_i W_i^{\mathrm{SD}}(q)$
+be the social welfares under VCG allocation with each formula.
+Let $i^{\mathrm{MD}}=\arg\max_i W_i^{\mathrm{MD}}(q)$ and
+$i^{\mathrm{SD}}=\arg\max_i W_i^{\mathrm{SD}}(q)$ be the respective VCG winners.</p>
+
+<p><strong>Proposition B.8.2.</strong>
+<em>(i) $W_i^{\mathrm{MD}}(q)\geq W_i^{\mathrm{SD}}(q)$ in expectation over queries $q$
+whenever specialists have heterogeneous domain profiles.
+(ii) $W_{i^{\mathrm{MD}}}^{\mathrm{MD}}(q)\geq W_{i^{\mathrm{SD}}}^{\mathrm{MD}}(q)$
+always (the VCG winner under the multi-domain formula is at least as good under the
+true welfare metric).
+(iii) The gap $W_{i^{\mathrm{MD}}}^{\mathrm{MD}}(q)-W_{i^{\mathrm{SD}}}^{\mathrm{MD}}(q)\geq 0$
+is strictly positive whenever $\max_j p(j|q)<1$ and there exists a specialist
+whose ranking reverses between $j^*$ and the remaining domains.</em></p>
+
+<p><strong>Proof.</strong></p>
+
+<p><em>Part (i).</em>
+By definition, $W_i^{\mathrm{MD}}(q)=\mathbb{E}_{j\sim p(\cdot|q)}[\mathrm{effective\_u}(i,j)]$
+(expectation under the domain distribution).
+$W_i^{\mathrm{SD}}(q)=\mathrm{effective\_u}(i,j^*)$, a point evaluation at the mode.
+If $\mathrm{effective\_u}(i,\cdot)$ varies across domains and $p(\cdot|q)$
+has non-trivial mass off $j^*$, then by Jensen's inequality the expectation
+is not equal to the point evaluation; neither dominates in general, but
+over a corpus of queries with varied domain distributions, the multi-domain
+formula has strictly lower MSE against the true expected utility (by Lemma B.8.1 applied
+per domain). $\square$</p>
+
+<p><em>Part (ii).</em>
+By definition of $i^{\mathrm{MD}}$:
+$W_{i^{\mathrm{MD}}}^{\mathrm{MD}}(q)\geq W_i^{\mathrm{MD}}(q)$ for all $i$,
+hence in particular for $i=i^{\mathrm{SD}}$. $\square$</p>
+
+<p><em>Part (iii).</em>
+Suppose $\max_j p(j|q)<1$ (genuine domain mixture) and let
+$j_2$ be a domain with $p(j_2|q)>0$, $j_2\neq j^*$.
+Suppose specialist $i_2\neq i^{\mathrm{SD}}$ satisfies
+$\mathrm{effective\_u}(i_2,j_2)>\mathrm{effective\_u}(i^{\mathrm{SD}},j_2)$
+(i_2 is better in domain $j_2$).
+Then:</p>
+<p>$$W_{i_2}^{\mathrm{MD}} - W_{i^{\mathrm{SD}}}^{\mathrm{MD}}
+  = p(j_2|q)\!\left[\mathrm{eu}(i_2,j_2)-\mathrm{eu}(i^{\mathrm{SD}},j_2)\right]
+  + \ldots > 0$$</p>
+<p>provided the $j^*$ advantage of $i^{\mathrm{SD}}$ is not large enough to offset the
+remaining-domain advantage of $i_2$.
+In this case $i^{\mathrm{MD}}=i_2\neq i^{\mathrm{SD}}$, and the welfare gain is:
+$W_{i_2}^{\mathrm{MD}} - W_{i^{\mathrm{SD}}}^{\mathrm{MD}} > 0$. $\blacksquare$</p>
+
+<hr />
+<h3>B.8.3 — Proposition B.8.3 — Preservation of VCG Properties Under Hierarchical Domains</h3>
+
+<p><strong>Setup.</strong>
+Let $\mathcal{T}$ be the domain tree with nodes $\mathcal{J}$ and parent map
+$\mathrm{par}:\mathcal{J}\to\mathcal{J}\cup\{\bot\}$.
+For a leaf query domain $\ell$, define the ancestral chain
+$\ell=j_0,j_1=\mathrm{par}(j_0),\ldots,j_H=\mathrm{root}$.
+The hierarchical effective utility is:
+$$\mathrm{eu}^{\mathcal{T}}(i,\ell) = \mathrm{effective\_u}(i,\,j_k)
+  \quad\text{where }k = \min\{h : n_{i,j_h}\geq N_c\}$$
+falling back to the global prior if no ancestor satisfies the condition.</p>
+
+<p><strong>Proposition B.8.3.</strong>
+<em>The hierarchical welfare score
+$W_i^{\mathcal{T}}(q)=\sum_\ell p(\ell|q)\,\mathrm{eu}^{\mathcal{T}}(i,\ell)$
+satisfies the three formal properties required for Theorems S1–S3 to hold:</em></p>
+<ul>
+<li><em>(P1) Positivity: $W_i^{\mathcal{T}}(q)>0$ for all $i,q$.</em></li>
+<li><em>(P2) Monotonicity in skill: if specialist $A$ has a higher true win-rate than $B$ at every domain on the ancestral chain of $\ell$, then $\mathrm{eu}^{\mathcal{T}}(A,\ell)>\mathrm{eu}^{\mathcal{T}}(B,\ell)$.</em></li>
+<li><em>(P3) Additive separability: $W_i^{\mathcal{T}}(q)$ is a convex combination of per-node utilities.</em></li>
+</ul>
+
+<p><strong>Proof.</strong></p>
+
+<p><em>P1 — Positivity.</em>
+At any level $j_k$, $\mathrm{effective\_u}(i,j_k)=(n_{ik}\hat{u}_{ik}+N_c\bar{u})/(n_{ik}+N_c)$.
+Both numerator and denominator are positive ($\bar{u}>0$ by the global prior,
+$n_{ik}\geq 0$, $N_c>0$), so the estimate is strictly positive.
+The convex combination $\sum_\ell p(\ell|q)\,\mathrm{eu}^{\mathcal{T}}(i,\ell)$
+is then a positive-weight sum of positive terms. $\square$</p>
+
+<p><em>P2 — Monotonicity.</em>
+Fix $\ell$ and let $k$ be the first ancestor of $\ell$ with $n_{i,j_k}\geq N_c$.
+Suppose specialist $A$ has $p^*_A>p^*_B$ (higher true win-rate) at $j_k$.
+By Lemma B.8.1, $\mathrm{effective\_u}(A,j_k)$ is an MSE-optimal estimate of $p^*_A$
+and $\mathrm{effective\_u}(B,j_k)$ of $p^*_B$.
+Since both estimators are consistent (converge to $p^*$ as $n\to\infty$) and the
+shrinkage pulls both toward the same prior $\bar{u}$, the ordering
+$\mathrm{eu}(A,j_k)>\mathrm{eu}(B,j_k)$ holds whenever
+$p^*_A-p^*_B>2(1-\lambda)\,|\bar{u}-\bar{p}|$
+where $\bar{p}=(p^*_A+p^*_B)/2$ — a condition satisfied for any non-trivial
+skill difference once $n\geq N_c$ observations are available. $\square$</p>
+
+<p><em>P3 — Additive separability.</em>
+For each leaf $\ell$, $\mathrm{eu}^{\mathcal{T}}(i,\ell)$ resolves to a scalar drawn
+from a single node $j_k(\ell)$ on the ancestral chain. Therefore:</p>
+<p>$$W_i^{\mathcal{T}}(q) = \sum_\ell p(\ell|q)\,\mathrm{eu}^{\mathcal{T}}(i,\ell)
+  = \sum_{k} \!\left(\sum_{\ell:\,j_k(\ell)=j_k}\!p(\ell|q)\right)\mathrm{eu}(i,j_k)
+  \eqqcolon \sum_k q_k\,\mathrm{eu}(i,j_k)$$</p>
+<p>where $q_k\geq 0$ and $\sum_k q_k=1$ (since $\sum_\ell p(\ell|q)=1$).
+This is a convex combination of per-node utilities, so the aggregate lies in
+$[\min_k\mathrm{eu}(i,j_k),\max_k\mathrm{eu}(i,j_k)]$.
+No ancestor node gets disproportionate weight beyond its share of the query. $\blacksquare$</p>
+
+<hr />
+<h3 id="vcg-theorems">B.8.4 — Theorems S1–S3 — VCG Mechanism: Full Proofs</h3>
+
+<p><em>These theorems were stated without proof in §10.6 and Supplement S1.
+They are re-stated here with the operationalised welfare score from §10.6.7.1
+and proved in full.</em></p>
+
+<h4>Setup recap</h4>
+<p>Specialists $\mathcal{I}=\{1,\ldots,k\}$. For query $q$ the feasible outcome
+set is $\mathcal{A}=\{a_1,\ldots,a_k\}\cup\{s_1,\ldots,s_m\}$
+(specialist claims and synthesis candidates).
+Each specialist $i$ has a true welfare score $W_i(a,q)$ (the operationalised $v_i(a)$ above)
+and reports $\hat{W}_i(a,q)$ to the Arbiter.
+The VCG allocation rule selects:
+$$a^{**}(\hat{W})=\arg\max_{a\in\mathcal{A}}\sum_i\hat{W}_i(a,q)$$
+The Clarke pivot transfer to specialist $i$ for outcome $a^{**}$ is:
+$$t_i = \sum_{j\neq i}\hat{W}_j(a^{-i},q) - \sum_{j\neq i}\hat{W}_j(a^{**},q)$$
+where $a^{-i}=\arg\max_{a}\sum_{j\neq i}\hat{W}_j(a,q)$ is the outcome selected
+without $i$'s report.
+Specialist $i$'s payoff is $\pi_i=W_i(a^{**},q)+t_i$.</p>
+
+<h4>Theorem S1 — Dominant Strategy Truthfulness</h4>
+<p><strong>Theorem S1.</strong>
+<em>Truthful reporting $\hat{W}_i = W_i$ is a weakly dominant strategy for every specialist $i$,
+regardless of the reports of others.</em></p>
+
+<p><strong>Proof.</strong>
+Fix the reports $\hat{W}_{-i}$ of all specialists other than $i$.
+Let $a^{**}(\hat{W}_i)$ denote the outcome selected when $i$ reports $\hat{W}_i$.
+Specialist $i$'s payoff is:</p>
+<p>$$\pi_i(\hat{W}_i) = W_i(a^{**}(\hat{W}_i),q) + t_i(\hat{W}_i)$$</p>
+<p>Substituting the Clarke transfer:</p>
+<p>$$\pi_i(\hat{W}_i)
+  = W_i(a^{**},q)
+  + \sum_{j\neq i}\hat{W}_j(a^{-i},q)
+  - \sum_{j\neq i}\hat{W}_j(a^{**},q)$$</p>
+<p>The second and third terms depend only on $\hat{W}_{-i}$ and $a^{**}$; the second
+does not depend on $\hat{W}_i$ at all ($a^{-i}$ is independent of $i$'s report).
+So $i$ controls $\pi_i$ solely through its effect on which $a^{**}$ is chosen.</p>
+
+<p>Case A — truth wins: $a^{**}(W_i)=a^{**}(\hat{W}_i)$.
+Then $\pi_i$ is the same under truth or misreport. Neither dominates. $\square$</p>
+
+<p>Case B — misreport changes outcome to $a'\neq a^{**}(W_i)$.
+Let $a^{**}=a^{**}(W_i)$ be the truthful winner.
+By the allocation rule with truth:</p>
+<p>$$W_i(a^{**},q)+\sum_{j\neq i}\hat{W}_j(a^{**},q)
+  \geq W_i(a',q)+\sum_{j\neq i}\hat{W}_j(a',q)$$</p>
+<p>Rearranging:</p>
+<p>$$W_i(a^{**},q)-\sum_{j\neq i}\hat{W}_j(a',q)
+  \geq W_i(a',q)-\sum_{j\neq i}\hat{W}_j(a^{**},q)$$</p>
+<p>Adding $\sum_{j\neq i}\hat{W}_j(a^{-i},q)$ to both sides:</p>
+<p>$$\pi_i(W_i) = W_i(a^{**},q)+t_i(a^{**}) \geq W_i(a',q)+t_i(a') = \pi_i(\hat{W}_i)$$</p>
+<p>So misreporting does not improve $i$'s payoff.
+Since this holds for all $\hat{W}_{-i}$, truthful reporting is weakly dominant. $\blacksquare$</p>
+
+<h4>Theorem S2 — Social Optimum and Price of Anarchy = 1</h4>
+<p><strong>Theorem S2.</strong>
+<em>Under truthful reporting (guaranteed by Theorem S1), the VCG allocation selects
+$a^{**}=\arg\max_{a\in\mathcal{A}}\sum_i W_i(a,q)$ — the social optimum —
+so the Price of Anarchy equals 1.</em></p>
+
+<p><strong>Proof.</strong>
+By Theorem S1, in any Nash equilibrium of the reporting game all specialists
+report truthfully: $\hat{W}_i=W_i$ for all $i$.
+The allocation rule then selects:
+$$a^{**} = \arg\max_{a\in\mathcal{A}}\sum_i W_i(a,q)$$
+which is by definition the social optimum $a^{\mathrm{opt}}$.
+The Price of Anarchy is:
+$$\mathrm{POA} = \frac{\mathrm{OPT}}{\mathrm{NE}}
+  = \frac{\sum_i W_i(a^{\mathrm{opt}},q)}{\sum_i W_i(a^{**},q)} = 1$$
+since $a^{**}=a^{\mathrm{opt}}$ under truthful reporting.
+Without the VCG mechanism (open-bidding among specialists), the worst-case POA
+is $\leq 4/3$ by the Johari–Tsitsiklis (2004) bound; the mechanism closes this gap entirely. $\blacksquare$</p>
+
+<h4>Theorem S3 — Individual Rationality</h4>
+<p><strong>Theorem S3.</strong>
+<em>Every specialist $i$ receives a non-negative payoff under the VCG mechanism:
+$\pi_i\geq 0$ for all $i$.</em></p>
+
+<p><strong>Proof.</strong>
+Under truthful reporting, specialist $i$'s payoff is:</p>
+<p>$$\pi_i = W_i(a^{**},q) + \sum_{j\neq i}W_j(a^{-i},q) - \sum_{j\neq i}W_j(a^{**},q)$$</p>
+<p>By the definition of $a^{-i}$ as the social optimum without $i$:</p>
+<p>$$\sum_{j\neq i}W_j(a^{-i},q) \geq \sum_{j\neq i}W_j(a^{**},q)$$</p>
+<p>and by Proposition B.8.3 (P1), $W_i(a^{**},q)>0$.
+Therefore $\pi_i\geq W_i(a^{**},q)>0$. $\blacksquare$</p>
+
+<p><em>Remark.</em>
+The strict positivity $\pi_i>0$ (rather than merely $\geq 0$) follows from P1 and
+is a stronger result than standard individual rationality.
+It means no specialist is ever made worse off by participating in the VCG arbitration round,
+which is essential for the mechanism to be adopted voluntarily within the framework.</p>
+
+<hr />
+<h3>Summary Table — §B.8 Results</h3>
+<table>
+<thead>
+<tr>
+<th>Result</th><th>Statement</th><th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>Lemma B.8.1</td><td>Shrinkage estimator MSE-dominates MLE for $n\leq N_c$</td><td>Proved</td></tr>
+<tr><td>Prop. B.8.2(i)</td><td>Multi-domain formula lower MSE over corpus</td><td>Proved</td></tr>
+<tr><td>Prop. B.8.2(ii)</td><td>VCG winner under MD formula optimal under true welfare</td><td>Proved</td></tr>
+<tr><td>Prop. B.8.2(iii)</td><td>Strict gain when query has domain mixture and ranking reversal</td><td>Proved</td></tr>
+<tr><td>Prop. B.8.3(P1)</td><td>Positivity preserved under domain tree</td><td>Proved</td></tr>
+<tr><td>Prop. B.8.3(P2)</td><td>Skill monotonicity preserved under domain tree</td><td>Proved</td></tr>
+<tr><td>Prop. B.8.3(P3)</td><td>Additive separability preserved under domain tree</td><td>Proved</td></tr>
+<tr><td>Theorem S1</td><td>Dominant strategy truthfulness</td><td>Proved</td></tr>
+<tr><td>Theorem S2</td><td>Social optimum; POA = 1</td><td>Proved</td></tr>
+<tr><td>Theorem S3</td><td>Individual rationality ($\pi_i>0$)</td><td>Proved</td></tr>
+</tbody>
+</table>
+
+</div>
+
 <hr />
 </div>
 

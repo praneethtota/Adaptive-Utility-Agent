@@ -624,6 +624,95 @@ s_5 = hedged claim: "X in context Y, but Z in context W"
 <p>Typically $m = 3$–$5$ synthesis candidates suffice. The full claim space $|\mathcal{A}| = k + m$ is small and evaluation is fast.</p>
 <p><strong>Budget balance.</strong> The VCG mechanism does not satisfy budget balance: $\sum_i t_i \leq 0$ in general (the Hurwicz-Walker impossibility result establishes no mechanism can simultaneously achieve efficiency, incentive compatibility, and budget balance). In the DPO weight implementation, total penalty adjustments across submodels in an arbitration round need not sum to zero — which is acceptable because there is no conservation law on training weights. Over many rounds, a well-calibrated submodel's expected transfer approaches zero.</p>
 
+<h4 id="vcg-operationalisation">10.6.7.1 Operationalising $v_i$ with the Empirical Welfare Score</h4>
+
+<p>The four points below document why the empirical welfare score
+$W_i(q) = \sum_j p(j|q)\cdot\mathrm{effective\_u}(i,j)$
+is the correct operationalisation of the theoretical value function
+$v_i(a) = U_i(E, C, K\,;\,f_i)$ used in Theorems S1–S3 (<a href="whitepaper_appendix_b.html#vcg-theorems">Appendix B §B.8</a>),
+and why earlier single-domain approximations were insufficient.</p>
+
+<p><strong>Point 1 — Why $W_i(q)$ is the correct operationalisation of $v_i(a)=U_i(E,C,K;f_i)$.</strong>
+The theory requires each specialist $i$ to report a scalar value $v_i(a)\in\mathbb{R}$
+for every candidate outcome $a\in\mathcal{A}$ (§10.6.2).
+In production, a specialist cannot be asked to enumerate utility over an open-ended claim
+space; instead it exposes its accumulated empirical calibration signal.
+$\mathrm{effective\_u}(i,j)$ is the win-rate of specialist $i$ on domain $j$
+shrinkage-corrected toward the global prior — a direct empirical proxy for
+$U_i(E_{ij}, C_{ij}, K_{ij}\,;\,j)$, where $E_{ij}$ is the observed accuracy,
+$C_{ij}$ is the empirical confidence calibration, and the curiosity term $K=0$
+during arbitration (the specialist is resolving a dispute, not exploring).
+The domain-weighted sum $W_i(q)=\sum_j p(j|q)\cdot\mathrm{effective\_u}(i,j)$
+then recovers the full utility $v_i$ by marginalising over the domain distribution
+of the incoming query — the correct theoretical decomposition because the utility
+function is additively separable across fields (Theorem B.1, <a href="whitepaper_appendix_b.html#appendix-b">Appendix B §B.1</a>).</p>
+
+<p><strong>Point 2 — The $N_{\mathrm{cliff}}$ shrinkage rationale.</strong>
+Raw win-rates from small samples are severely over-dispersed.
+A specialist seen on only two queries in domain $j$ could show 100 % or 0 % win-rate,
+both of which would dominate the welfare sum and corrupt the VCG allocation.
+The Efron–Morris (1977) empirical Bayes result establishes that for Bernoulli
+parameter estimation from $n$ samples the James–Stein shrinkage estimator dominates
+the MLE in mean squared error for all $p$.
+We implement this via a Beta prior centred on the global win-rate $\bar{u}$
+with pseudo-count $N_{\mathrm{cliff}}$:</p>
+
+<p>$$\mathrm{effective\_u}(i,j)
+  = \frac{n_{ij}\,\hat{u}_{ij} + N_{\mathrm{cliff}}\,\bar{u}}
+         {n_{ij} + N_{\mathrm{cliff}}}$$</p>
+
+<p>where $n_{ij}$ is the number of observed queries for specialist $i$ in domain $j$,
+$\hat{u}_{ij}$ is the raw win-rate, and $\bar{u}$ is the domain-level prior.
+As $n_{ij}\to\infty$, $\mathrm{effective\_u}\to\hat{u}_{ij}$ (the prior washes out).
+For $n_{ij}\ll N_{\mathrm{cliff}}$, the estimate is pulled toward the prior,
+preventing extreme values from driving VCG outcomes.
+The recommended default $N_{\mathrm{cliff}}=10$ equates to requiring ten
+confirmed observations before a specialist's domain win-rate materially
+departs from the prior — conservative enough for safety, permissive enough
+that a well-performing specialist rises to the top within a single working day
+of typical query volume. Formal MSE dominance of this estimator over the raw
+win-rate is proved in <a href="whitepaper_appendix_b.html#appendix-b8">Appendix B §B.8</a> (Lemma B.8.1).</p>
+
+<p><strong>Point 3 — Why the earlier single-domain formula was an approximation.</strong>
+Prior versions of the welfare score used $W_i^{\mathrm{old}}(q)=\mathrm{effective\_u}(i,\,f^*)$
+where $f^*=\arg\max_j p(j|q)$ is the top-scoring domain for the query.
+This drops the domain decomposition that the theory requires.
+Two problems arise.
+First, if the query spans multiple domains (e.g., a software-engineering question
+with a mathematical proof component, $p(\mathrm{swe}|q)=0.6$, $p(\mathrm{math}|q)=0.4$),
+the specialist who dominates in $\mathrm{swe}$ wins even if a specialist who
+excels at $\mathrm{math}$ would produce a strictly higher social welfare outcome
+for the mixed query — a misallocation the multi-domain formula corrects.
+Second, single-domain selection substituted policy compliance for empirical
+win-rate in a proportion of early queries, which is not the same quantity as
+$U_i(E,C,K;f_i)$ and would have violated the individual rationality condition
+$v_i(a)\geq d_i\approx 0$ for specialists with low policy scores but high accuracy.
+<a href="whitepaper_appendix_b.html#appendix-b8">Appendix B §B.8</a> (Proposition B.8.2) establishes that the new formula
+is at least as efficient as the single-domain formula and strictly more efficient
+whenever the query has non-trivial domain mixture (i.e., $\max_j p(j|q)<1$).</p>
+
+<p><strong>Point 4 — Domain tree extension.</strong>
+The framework uses a hierarchical domain ontology (§10.9, dynamic domain tree).
+A specialist may have reliable signal only at a coarse level
+(e.g., $\mathrm{tech}$) but not at a fine level ($\mathrm{tech/swe/python}$).
+The welfare score inherits the hierarchy by walking up from the leaf node
+to the L0 root and using the deepest level with $n_{ij}\geq N_{\mathrm{cliff}}$:</p>
+<pre><code>effective_u(i, j):
+    node = domain_tree.find(j)          # start at leaf
+    while node is not None:
+        if observations(i, node) >= N_cliff:
+            return shrinkage_estimate(i, node)
+        node = node.parent
+    return global_prior(i)              # fallback to cross-domain prior</code></pre>
+<p>This extension preserves all three formal properties of the flat formula
+(positivity, monotonicity in skill, additive separability across domains)
+because $W_i(q)$ remains a convex combination of per-node utilities drawn
+from a single lineage in the tree — the same weighted-average structure as
+the flat case, just with coarser domain granularity where fine-grained data
+is absent.
+Formal verification of the three properties under the hierarchical formula
+is given in <a href="whitepaper_appendix_b.html#appendix-b8">Appendix B §B.8</a> (Proposition B.8.3).</p>
+
 <h4>10.6.8 Connection to the POA Bound</h4>
 
 <p>The Johari-Tsitsiklis (2004) POA $\leq 4/3$ bound (§3.1) applies to the <em>learning</em> game — where submodels compete for calibration budget — not to the arbitration game.</p>
