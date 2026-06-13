@@ -293,7 +293,7 @@ def _start_specialist(
     log_fh = _open_log(spec.name, runtime)
     p = subprocess.Popen(
         cmd,
-        env=_build_env(spec.gpu, spec.backend),
+        env=_build_env(spec.gpu, spec.backend, gpu_ids=spec.gpu_ids),
         stdout=log_fh,
         stderr=log_fh,
     )
@@ -333,7 +333,7 @@ def _start_arbiter(
     log_fh = _open_log("arbiter", runtime)
     p = subprocess.Popen(
         cmd,
-        env=_build_env(arb.gpu, arb.backend),
+        env=_build_env(arb.gpu, arb.backend, gpu_ids=arb.gpu_ids),
         stdout=log_fh,
         stderr=log_fh,
     )
@@ -583,11 +583,30 @@ def _start_router(
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _build_env(gpu_index: int, backend: str = "vllm") -> dict:
-    """Build environment, setting CUDA_VISIBLE_DEVICES for vLLM/ROCm only."""
+def _build_env(
+    gpu_index: int,
+    backend: str = "vllm",
+    gpu_ids: list[int] | None = None,
+) -> dict:
+    """
+    Build environment, setting CUDA_VISIBLE_DEVICES for vLLM/ROCm only (#66).
+
+    Single-GPU (default):
+        CUDA_VISIBLE_DEVICES=<gpu_index>
+        vLLM sees one GPU remapped to index 0.
+
+    Multi-GPU tensor/pipeline parallel:
+        CUDA_VISIBLE_DEVICES=0,1,2,3  (the gpu_ids list, comma-joined)
+        vLLM sees N GPUs remapped to indices 0..N-1.
+        The --tensor-parallel-size N flag in vllm_command() tells vLLM to
+        use all N visible GPUs for intra-op tensor parallelism via NCCL.
+    """
     env = os.environ.copy()
     if backend == "vllm":
-        env["CUDA_VISIBLE_DEVICES"] = str(gpu_index)
+        if gpu_ids:
+            env["CUDA_VISIBLE_DEVICES"] = ",".join(str(g) for g in gpu_ids)
+        else:
+            env["CUDA_VISIBLE_DEVICES"] = str(gpu_index)
     return env
 
 
@@ -615,11 +634,14 @@ def _print_banner(
     table.add_column("Field")
 
     for s in config.specialists:
+        gpu_col = ",".join(str(g) for g in s.gpu_ids) if s.gpu_ids else str(s.gpu)
+        tp_note = f" TP×{s.tensor_parallel_size}" if s.tensor_parallel_size > 1 else ""
+        pp_note = f" PP×{s.pipeline_parallel_size}" if s.pipeline_parallel_size > 1 else ""
         table.add_row(
             s.name,
             s.model.split("/")[-1],
             str(s.port),
-            str(s.gpu),
+            gpu_col + tp_note + pp_note,
             f"{s.gpu_memory_utilization*100:.0f}%" if s.backend == "vllm" else "—",
             s.field,
         )

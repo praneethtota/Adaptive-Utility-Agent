@@ -79,10 +79,10 @@ def test_all_endpoints(minimal_config):
 
 
 def test_available_tiers():
-    assert set(AVAILABLE_TIERS) == {"macbook", "single-4090", "quad-4090", "a100-cluster"}
+    assert set(AVAILABLE_TIERS) == {"macbook", "gaming-pc", "single-4090", "quad-4090", "a100-cluster", "h100-cluster"}
 
 
-@pytest.mark.parametrize("tier", ["macbook", "single-4090", "quad-4090", "a100-cluster"])
+@pytest.mark.parametrize("tier", ["macbook", "gaming-pc", "single-4090", "quad-4090", "a100-cluster", "h100-cluster"])
 def test_load_tier(tier):
     """Every built-in tier must load without error."""
     cfg = load_tier(tier)

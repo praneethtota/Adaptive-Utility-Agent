@@ -1,0 +1,79 @@
+# Tier: gaming-pc
+# Backend: Ollama (Ollama's llama.cpp runtime handles quantisation natively)
+#
+# Targets Windows and Linux gaming PCs with a single mid-range GPU.
+# Tested configurations:
+#   NVIDIA RTX 3080 10 GB  — fits 7B Q4_K_M models with room to spare
+#   NVIDIA RTX 3080 Ti     — same as above, slightly faster
+#   NVIDIA RTX 4080 16 GB  — fits 7B Q8_0 or two 7B Q4 models at once
+#   NVIDIA RTX 4080 Super  — same as 4080
+#
+# How it works:
+#   Ollama runs a single daemon (`ollama serve`) that serves all models.
+#   The AUA router talks to the same port (11434) for all specialists.
+#   Models are loaded and unloaded from VRAM on demand. With 10-16 GB VRAM,
+#   only one model is active at a time — the router sequential startup ensures
+#   each model gets its turn.
+#
+# Memory requirements (approximate, Ollama Q4_K_M):
+#   qwen2.5-coder:7b  → ~4.5 GB VRAM
+#   qwen2.5:7b        → ~4.5 GB VRAM
+#   qwen2.5:3b        → ~2.0 GB VRAM (arbiter)
+#   Total peak        → ~4.5 GB (only one model active at a time)
+#
+# Performance (RTX 4080, Q4_K_M):
+#   ~40-60 tokens/sec for 7B models
+#   Expect ~10-20 second response times for typical code/math queries
+#
+# For production use or lower latency, use rtx4090 tier (vLLM + AWQ).
+# This tier is for: local development, experimentation, offline use.
+#
+# Prerequisites:
+#   - Ollama installed (https://ollama.com — one-click installer for Windows/Linux)
+#   - NVIDIA drivers 525+ (for CUDA support in Ollama)
+#   - WSL2 not required — Ollama runs natively on Windows
+#
+# Quick start:
+#   aua serve --tier gaming-pc
+#   (Ollama will start automatically and pull models on first run)
+
+aua:
+  version: "1.0"
+  mode: local
+  backend: ollama               # vllm | ollama
+
+specialists:
+  - name: swe
+    model: qwen2.5-coder:7b     # best open-source coding model at 7B class
+    port: 11434                 # all specialists share the Ollama daemon port
+    field: software_engineering
+
+  - name: math
+    model: qwen2.5:7b           # strong at maths and reasoning
+    port: 11434
+    field: mathematics
+
+arbiter:
+  model: qwen2.5:3b             # 3B is fast enough for arbitration decisions
+  port: 11434
+
+router:
+  port: 8000
+  host: "127.0.0.1"             # local only — gaming PCs are not production servers
+  single_domain_threshold: 0.75
+  fanout_threshold: 0.30
+  specialist_timeout: 180.0     # generous timeout — llama.cpp can be slow on first token
+
+blue_green:
+  swe:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+  math:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+
+logging:
+  level: INFO
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"

@@ -211,10 +211,13 @@ _KNOWN_SPECIALIST_KEYS: set[str] = {
     "field",
     "backend",
     "gpu",
+    "gpu_ids",
     "gpu_memory_utilization",
     "max_model_len",
     "quantization",
     "enforce_eager",
+    "tensor_parallel_size",
+    "pipeline_parallel_size",
     "host",
     "scheme",
     "endpoint_override",
@@ -225,10 +228,13 @@ _KNOWN_ARBITER_KEYS: set[str] = {
     "port",
     "backend",
     "gpu",
+    "gpu_ids",
     "gpu_memory_utilization",
     "max_model_len",
     "quantization",
     "enforce_eager",
+    "tensor_parallel_size",
+    "pipeline_parallel_size",
     "host",
     "scheme",
     "endpoint_override",
@@ -291,6 +297,12 @@ class SpecialistConfig:
     quantization: str | None = "awq"  # vLLM only: "awq" | "gptq" | None
     enforce_eager: bool = True  # vLLM only: prevents CUDA graph conflicts
 
+    # #66: tensor and pipeline parallelism (vLLM multi-GPU)
+    tensor_parallel_size: int = 1  # number of GPUs for tensor parallelism (must be power of 2)
+    pipeline_parallel_size: int = 1  # number of pipeline stages across nodes
+    gpu_ids: list[int] | None = None  # explicit GPU indices; overrides gpu when set
+    # e.g. [0,1,2,3] for 4-GPU tensor parallel
+
     # P-05: host/scheme fields replace hardcoded localhost
     host: str = "127.0.0.1"  # bind/connect host for this specialist
     scheme: str = "http"  # "http" | "https"
@@ -329,7 +341,17 @@ class SpecialistConfig:
         return FIELD_CONFIGS.get(self.field, FIELD_CONFIGS["general"])
 
     def vllm_command(self) -> list[str]:
-        """Return the vLLM startup command as an argv list."""
+        """Return the vLLM startup command as an argv list.
+
+        Tensor parallel (#66): --tensor-parallel-size N passes N GPUs to vLLM.
+        vLLM internally handles NCCL communication across those GPUs.
+        CUDA_VISIBLE_DEVICES must expose exactly N GPU indices (handled by
+        _build_env in serve.py using gpu_ids when set, or gpu otherwise).
+
+        Pipeline parallel (#66): --pipeline-parallel-size M splits the model
+        into M pipeline stages across nodes. Requires N×M total GPUs and
+        a distributed vLLM setup (ray is launched automatically by vLLM).
+        """
         cmd = [
             "python",
             "-m",
@@ -349,6 +371,10 @@ class SpecialistConfig:
             cmd += ["--quantization", self.quantization]
         if self.enforce_eager:
             cmd += ["--enforce-eager"]
+        if self.tensor_parallel_size > 1:
+            cmd += ["--tensor-parallel-size", str(self.tensor_parallel_size)]
+        if self.pipeline_parallel_size > 1:
+            cmd += ["--pipeline-parallel-size", str(self.pipeline_parallel_size)]
         return cmd
 
 
@@ -364,6 +390,11 @@ class ArbiterConfig:
     max_model_len: int = 2048
     quantization: str | None = "awq"
     enforce_eager: bool = True
+
+    # #66: tensor and pipeline parallelism (vLLM multi-GPU)
+    tensor_parallel_size: int = 1
+    pipeline_parallel_size: int = 1
+    gpu_ids: list[int] | None = None
 
     # P-05: host/scheme fields replace hardcoded localhost
     host: str = "127.0.0.1"
@@ -412,6 +443,10 @@ class ArbiterConfig:
             cmd += ["--quantization", self.quantization]
         if self.enforce_eager:
             cmd += ["--enforce-eager"]
+        if self.tensor_parallel_size > 1:
+            cmd += ["--tensor-parallel-size", str(self.tensor_parallel_size)]
+        if self.pipeline_parallel_size > 1:
+            cmd += ["--pipeline-parallel-size", str(self.pipeline_parallel_size)]
         return cmd
 
 
@@ -665,6 +700,20 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         _validate_range(
             gpu_util, "gpu_memory_utilization", 0.0, 1.0, exclusive_lo=True, source=source
         )
+        tp = int(s.get("tensor_parallel_size", 1))
+        pp = int(s.get("pipeline_parallel_size", 1))
+        if tp > 1 and (tp & (tp - 1)) != 0:
+            raise ValueError(
+                f"[{source}] specialists[{i}].tensor_parallel_size={tp} "
+                "must be a power of 2 (NVLink/PCIe requirement)."
+            )
+        raw_gpu_ids = s.get("gpu_ids")
+        gpu_ids = [int(g) for g in raw_gpu_ids] if raw_gpu_ids else None
+        if gpu_ids and len(gpu_ids) != tp:
+            raise ValueError(
+                f"[{source}] specialists[{i}].gpu_ids has {len(gpu_ids)} entries "
+                f"but tensor_parallel_size={tp}. They must match."
+            )
         specialists.append(
             SpecialistConfig(
                 name=s["name"],
@@ -673,10 +722,13 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
                 field=s["field"],
                 backend=spec_backend,
                 gpu=int(s.get("gpu", 0)),
+                gpu_ids=gpu_ids,
                 gpu_memory_utilization=gpu_util,
                 max_model_len=int(s.get("max_model_len", 2048)),
                 quantization=s.get("quantization", "awq") or None,
                 enforce_eager=bool(s.get("enforce_eager", True)),
+                tensor_parallel_size=tp,
+                pipeline_parallel_size=pp,
                 host=str(s.get("host", "127.0.0.1")),
                 scheme=str(s.get("scheme", "http")),
                 endpoint_override=s.get("endpoint_override") or None,
@@ -692,15 +744,24 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
     _validate_range(
         arb_gpu_util, "arbiter.gpu_memory_utilization", 0.0, 1.0, exclusive_lo=True, source=source
     )
+    arb_tp = int(raw_arb.get("tensor_parallel_size", 1))
+    arb_pp = int(raw_arb.get("pipeline_parallel_size", 1))
+    if arb_tp > 1 and (arb_tp & (arb_tp - 1)) != 0:
+        raise ValueError(f"[{source}] arbiter.tensor_parallel_size={arb_tp} must be a power of 2.")
+    raw_arb_gpu_ids = raw_arb.get("gpu_ids")
+    arb_gpu_ids = [int(g) for g in raw_arb_gpu_ids] if raw_arb_gpu_ids else None
     arbiter = ArbiterConfig(
         model=raw_arb["model"],
         port=int(raw_arb["port"]),
         backend=str(raw_arb.get("backend", backend)),
         gpu=int(raw_arb.get("gpu", 0)),
+        gpu_ids=arb_gpu_ids,
         gpu_memory_utilization=arb_gpu_util,
         max_model_len=int(raw_arb.get("max_model_len", 2048)),
         quantization=raw_arb.get("quantization", "awq") or None,
         enforce_eager=bool(raw_arb.get("enforce_eager", True)),
+        tensor_parallel_size=arb_tp,
+        pipeline_parallel_size=arb_pp,
         host=str(raw_arb.get("host", "127.0.0.1")),
         scheme=str(raw_arb.get("scheme", "http")),
         endpoint_override=raw_arb.get("endpoint_override") or None,
@@ -959,13 +1020,21 @@ def _validate_no_duplicate_ports(
 # ── Tier loader ───────────────────────────────────────────────────────────────
 
 # Canonical tier names — use these in new code.
-AVAILABLE_TIERS: list[str] = ["macbook", "single-4090", "quad-4090", "a100-cluster"]
+AVAILABLE_TIERS: list[str] = [
+    "macbook",
+    "gaming-pc",
+    "single-4090",
+    "quad-4090",
+    "a100-cluster",
+    "h100-cluster",
+]
 
 # Backward-compatible aliases — resolve to canonical names.
-# Deprecated: will be removed in v1.0.
 TIER_ALIASES: dict[str, str] = {
     "rtx4090": "single-4090",
     "a100": "a100-cluster",
+    "h100": "h100-cluster",
+    "gaming": "gaming-pc",
 }
 
 

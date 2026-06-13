@@ -1,0 +1,98 @@
+# Tier: h100-cluster
+# Backend: vLLM (bf16, no quantization — H100 has HBM3 and BF16 Tensor Cores)
+#
+# 8× NVIDIA H100 80 GB SXM5 connected via NVLink 4.0 (900 GB/s bidirectional).
+# Two specialists share tensor parallelism across 4 GPUs each. The arbiter
+# takes the remaining resources on a single GPU.
+#
+# Layout:
+#   GPU 0-3   → swe specialist  (tensor_parallel_size: 4, 70B model)
+#   GPU 4-7   → math specialist (tensor_parallel_size: 4, 70B model)
+#   GPU 0     → arbiter         (shares GPU 0 with swe at low utilization)
+#
+# VRAM budget per specialist (4 × 80 GB = 320 GB):
+#   swe:     90% × 4 GPUs = 288 GB usable  — fits Llama-3-70B (≈140 GB bf16)
+#   math:    90% × 4 GPUs = 288 GB usable  — fits Qwen2.5-72B (≈144 GB bf16)
+#   arbiter:  8% × 1 GPU  =   6.4 GB        — fits Qwen2.5-7B comfortably
+#
+# Tensor parallelism splits each model's weight matrices column/row-wise
+# across N GPUs using NCCL all-reduce over NVLink. No pipeline bubbles —
+# the entire model fits in memory on each 4-GPU island.
+#
+# Pipeline parallelism (pipeline_parallel_size > 1) would be used for models
+# that cannot fit in a 4-GPU island even in bf16. For 70B-class models at
+# bf16 this is not needed.
+#
+# Cost:  ~$25-30/hr on Lambda Labs / CoreWeave (8×H100 SXM)
+# Use for: frontier model serving, long-context (128K+), highest throughput
+#
+# Prerequisites:
+#   - NCCL 2.18+ (bundled with CUDA 12.2+)
+#   - vLLM 0.4+ (tensor parallel support stable from 0.4.0)
+#   - `pip install vllm` (installs ray for multi-GPU coordination)
+#   - HF_TOKEN env var set if using gated models (Llama-3)
+#
+# Quick start:
+#   export HF_TOKEN=hf_...
+#   aua serve --tier h100-cluster
+
+aua:
+  version: "1.0"
+  mode: local
+  backend: vllm
+
+specialists:
+  - name: swe
+    model: meta-llama/Meta-Llama-3-70B-Instruct  # 70B bf16 — best code quality
+    port: 9001
+    field: software_engineering
+    gpu_ids: [0, 1, 2, 3]                         # explicit GPU assignment
+    tensor_parallel_size: 4                        # NCCL all-reduce across 4 GPUs
+    pipeline_parallel_size: 1                      # 70B fits in 4×80 GB, no pipeline needed
+    gpu_memory_utilization: 0.90                   # 90% of 320 GB = 288 GB usable
+    max_model_len: 32768                           # H100 + 70B supports 32K context
+    quantization: null                             # bf16 native — H100 has 989 TFLOPS bf16
+    enforce_eager: false                           # CUDA graphs are safe and fast on H100
+
+  - name: math
+    model: Qwen/Qwen2.5-72B-Instruct              # 72B bf16 — strongest math/reasoning
+    port: 9002
+    field: mathematics
+    gpu_ids: [4, 5, 6, 7]
+    tensor_parallel_size: 4
+    pipeline_parallel_size: 1
+    gpu_memory_utilization: 0.90
+    max_model_len: 32768
+    quantization: null
+    enforce_eager: false
+
+arbiter:
+  model: Qwen/Qwen2.5-7B-Instruct                # 7B bf16 — fast arbitration
+  port: 9003
+  gpu: 0                                          # shares GPU 0 with swe at low util
+  tensor_parallel_size: 1                         # arbiter runs on a single GPU
+  gpu_memory_utilization: 0.08                    # ~6.4 GB — 7B bf16 fits in ~14 GB
+  max_model_len: 8192
+  quantization: null
+  enforce_eager: false
+
+router:
+  port: 8000
+  host: "0.0.0.0"
+  single_domain_threshold: 0.75
+  fanout_threshold: 0.30
+  specialist_timeout: 30.0                        # H100 is fast — 70B generates ~60 tok/s
+
+blue_green:
+  swe:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+  math:
+    delta: 0.025
+    T_min: 10
+    tau: 0.20
+
+logging:
+  level: INFO
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
