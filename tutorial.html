@@ -748,57 +748,192 @@ print(verdict.external_response) <span class="c"># safe to return to user</span>
 
 <h3>4.6 VCG welfare maximization — picking the best specialist</h3>
 
-<p>The default arbitration mode runs a pairwise 4-check arbiter between two specialists when fanout routing activates. VCG mode replaces pairwise selection with <strong>welfare maximization</strong>: select the specialist with the highest social welfare score across all fanout candidates.</p>
+<p>The default arbitration mode runs the 4-check arbiter in full verdict mode between two specialists. <strong>VCG mode</strong> replaces pairwise selection with welfare maximization: after all specialists in the fanout respond, the router computes a welfare score for each one and picks the highest — regardless of how many specialists are competing. The 4-check arbiter still runs, but only for contradiction detection and DPO pair accumulation; it does not override the VCG winner.</p>
 
-<p>This is the mechanism that produced the <strong>+43.3pp correctness gain</strong> (p = 0.0003, d = 1.02) in the RTX 4090 hardware experiment — Arm D (VCG) vs Arm A (no routing).</p>
+<p>This is the mechanism tested in the RTX 4090 hardware pilot (Appendix A.1): Arm D (VCG routing) vs Arm A (no routing) showed a <strong>+43.4 pp correctness gain</strong> (95&nbsp;% CI&nbsp;[19.5,&nbsp;61.2]&nbsp;pp; Fisher exact p&nbsp;=&nbsp;0.0009; Cohen's d&nbsp;=&nbsp;1.02; n&nbsp;=&nbsp;30/arm). The direction of the effect is robust; the interval is wide at this sample size, so treat it as a strong directional signal rather than a precise point estimate.</p>
 
-<h4>The welfare formula</h4>
+<h4>How the welfare score is computed</h4>
+
+<p>The formula has two layers. The outer layer is a <strong>multi-domain convex combination</strong> — because a query can straddle domains, the welfare score integrates over the classifier's probability distribution rather than committing to a single domain:</p>
 
 <div class="code-block">
-<div class="code-header">Welfare signal per specialist</div>
-<pre>W_i = P(domain_i) × confidence_i × prior_mean_u_i
+<div class="code-header">Welfare formula (router._vcg_welfare)</div>
+<pre>W_i(q) = Σ_j  p(j|q) · effective_u(i, j)
 
-P(domain_i)       — field classifier probability for this specialist's domain
-                    (how confident the router is that this specialist is right for this query)
-confidence_i      — base confidence returned by the specialist call
-                    (how internally consistent the response appears)
-prior_mean_u_i    — running mean U score for this specialist over all past sessions
-                    (how good this specialist has been historically)
-                    defaults to 1.0 if no history exists yet
+  i              — specialist (e.g. "swe", "math")
+  j              — domain (e.g. "software_engineering", "mathematics")
+  p(j|q)         — field classifier probability for domain j on query q
+                   only domains with p(j|q) ≥ 0.05 contribute (below that
+                   the term is negligible and the DB lookup is wasteful)
+  effective_u(i,j) — shrinkage-corrected win-rate (see below)
 
-Winner            — argmax(W_i) across all specialists in the fanout
-Tie-breaking      — confidence, then P(domain)
-
-Example (two specialists, no prior history):
-  W_swe  = P(0.85) × C(0.82) × U_mean(1.0) = 0.697   ← wins
-  W_math = P(0.15) × C(0.91) × U_mean(1.0) = 0.137</pre>
+Winner           — argmax W_i(q) across all specialists in the fanout
+Tie-breaking     — raw confidence returned by the specialist, then P(top domain)</pre>
 </div>
 
-<p>Key property: a specialist with lower classifier probability but high confidence and a strong history can beat a specialist the router is more certain about. This is why VCG outperforms "always route to the most likely domain" — it incorporates track record.</p>
+<p>The inner layer is the <strong>shrinkage-corrected win-rate</strong> (Efron–Morris estimator, Lemma B.8.1). When a specialist has seen many queries in domain j the raw win-rate is reliable; when it has seen only a few, the estimate is pulled toward the global cross-domain prior to prevent early flukes from dominating:</p>
 
-<p>The 4-check arbiter still runs in <strong>contradiction-detection mode</strong> — it stores corrections and DPO pairs but does not override the VCG winner.</p>
+<div class="code-block">
+<div class="code-header">Shrinkage estimator (router._vcg_effective_u)</div>
+<pre>effective_u(i, j) = (n_ij · û_ij  +  N_cliff · ū) / (n_ij + N_cliff)
+
+  n_ij     — number of past queries where specialist i answered in domain j
+  û_ij     — raw win-rate: fraction of those queries where i was the VCG winner
+  N_cliff  — Efron-Morris pseudo-count  (default: 10)
+  ū        — global cross-domain prior  (default: 0.65)
+
+Cold start  (n_ij = 0):   effective_u = 0.65   ← pure prior
+Converging  (n_ij = 10):  effective_u ≈ halfway between û and 0.65
+Converged   (n_ij → ∞):   effective_u → û      ← pure observed win-rate
+
+Data source: model_runs table (vcg_winner flag, specialist and domain columns).
+Falls back to ū = 0.65 if the DB lookup fails.</pre>
+</div>
+
+<div class="callout blue">
+  <p><strong>Why shrinkage?</strong> Without it, a specialist that wins its very first query in a new domain gets effective_u = 1.0 — instantly beating every established specialist. The Efron-Morris estimator prevents this: N_cliff = 10 means a new specialist needs roughly 10 wins before its estimate clearly separates from the prior. The prior ū = 0.65 matches the empirical cross-domain baseline from the hardware pilot (Arm B matched-routing accuracy).</p>
+</div>
+
+<h4>A worked example</h4>
+
+<p>Query: <em>"Is this gradient descent implementation correct? It claims O(n) but loops over all weights."</em> The classifier splits probability mass across two domains.</p>
+
+<div class="code-block">
+<div class="code-header">Step 1 — classifier distribution</div>
+<pre>p("software_engineering" | q) = 0.72
+p("mathematics"          | q) = 0.28
+(all other domains below 0.05 threshold — skipped)</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Step 2 — effective_u per (specialist, domain)</div>
+<pre>                     swe specialist       math specialist
+                     ─────────────────    ─────────────────
+software_engineering n=18, wins=14        n=3,  wins=2
+                     û = 14/18 = 0.778    û = 2/3  = 0.667
+  effective_u =   (18·0.778 + 10·0.65)   (3·0.667 + 10·0.65)
+                  ──────────────────── =  ─────────────────── = 0.711
+                         18 + 10                  3 + 10
+                       = 0.732
+
+mathematics          n=2,  wins=1         n=31, wins=24
+                     û = 1/2  = 0.500     û = 24/31 = 0.774
+  effective_u =   (2·0.500 + 10·0.65)    (31·0.774 + 10·0.65)
+                  ──────────────────── =  ─────────────────── = 0.759
+                          2 + 10                  31 + 10
+                        = 0.625</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Step 3 — welfare scores (convex combination)</div>
+<pre>W_swe  = 0.72 · 0.732  +  0.28 · 0.625  =  0.527  +  0.175  =  0.702
+W_math = 0.72 · 0.711  +  0.28 · 0.759  =  0.512  +  0.213  =  0.725
+
+Winner: math specialist  (W = 0.725 > 0.702)
+
+The classifier slightly favoured swe (72 % probability), but the math
+specialist's stronger domain-specific track record (31 wins vs 18) overcame
+the classifier advantage. This is the key property VCG mode adds over
+"always route to the most probable domain".</pre>
+</div>
+
+<h4>How the prior builds up over time</h4>
+
+<p>Every VCG query writes one row per specialist to the <code>model_runs</code> table with <code>vcg_winner</code> (boolean), <code>vcg_welfare_score</code>, <code>specialist</code>, and <code>domain</code>. The next query reads those rows to compute effective_u. There is no separate training phase — the prior accumulates automatically from production traffic.</p>
+
+<div class="code-block">
+<div class="code-header">What gets persisted per query (model_runs row)</div>
+<pre>{
+  "run_id":            "uuid-...",
+  "specialist":        "math",
+  "domain":            "mathematics",
+  "round":             "answer",
+  "vcg_winner":        true,          <span class="c">← used to compute û_ij on future queries</span>
+  "vcg_welfare_score": 0.725,         <span class="c">← W_i for this query</span>
+  "confidence_score":  0.81,
+  "utility_score":     0.744,
+  "conversation_id":   "uuid-...",
+  "latency_ms":        312.4
+}</pre>
+</div>
+
+<p>After about 10–15 queries per specialist-domain pair (the N_cliff = 10 convergence point) the effective_u estimates stabilise and VCG routing becomes meaningfully better than the cold-start prior. In the hardware pilot this threshold was crossed within the first 30 queries per arm.</p>
+
+<h4>Reading the prior from the analytics API</h4>
+
+<div class="code-block">
+<div class="code-header">Per-specialist win-rate and welfare snapshot</div>
+<pre><span class="c"># Current snapshot: win rates and average welfare per specialist</span>
+curl http://localhost:8000/analytics/specialists
+
+{
+  "specialists": {
+    "swe": {
+      "total_runs":        42,
+      "vcg_wins":          31,
+      "win_rate":          0.738,
+      "avg_welfare_score": 0.701,
+      "avg_utility_score": 0.731
+    },
+    "math": {
+      "total_runs":        38,
+      "vcg_wins":          27,
+      "win_rate":          0.711,
+      "avg_welfare_score": 0.724,
+      "avg_utility_score": 0.748
+    }
+  }
+}
+
+<span class="c"># Welfare trajectory over time (useful for spotting drift)</span>
+curl http://localhost:8000/analytics/welfare-trajectory</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Python — monitor welfare convergence</div>
+<pre>import requests
+
+r = requests.get("http://localhost:8000/analytics/specialists")
+stats = r.json()["specialists"]
+
+N_CLIFF = 10  # effective_u convergence threshold
+print(f"{'Specialist':<12} {'Runs':>6} {'Win%':>6} {'Avg W':>7} {'Status':>12}")
+print("-" * 48)
+for name, s in sorted(stats.items()):
+    status = "converged" if s["total_runs"] >= N_CLIFF else "warming up"
+    print(
+        f"{name:<12} {s['total_runs']:>6} "
+        f"{s['win_rate']*100:>5.1f}% {s['avg_welfare_score']:>7.4f} "
+        f"{status:>12}"
+    )
+
+<span class="c"># After 40+ queries per specialist:</span>
+<span class="c"># Specialist    Runs   Win%   Avg W       Status</span>
+<span class="c"># ------------------------------------------------</span>
+<span class="c"># math            38  71.1%  0.7240    converged</span>
+<span class="c"># swe             42  73.8%  0.7010    converged</span></pre>
+</div>
 
 <h4>Activating VCG</h4>
 
 <div class="code-block">
-<div class="code-header">Option 1 — YAML (persistent, recommended)</div>
+<div class="code-header">Option 1 — YAML (persistent, recommended for production)</div>
 <pre>router:
   arbitration_mode: vcg   <span class="c"># "pairwise" (default) | "vcg"</span></pre>
 </div>
 
 <div class="code-block">
-<div class="code-header">Option 2 — CLI flag (session-only, good for testing)</div>
+<div class="code-header">Option 2 — CLI flag (session-only, good for A/B testing)</div>
 <pre>aua serve --arbitration-mode vcg</pre>
 </div>
 
 <div class="code-block">
-<div class="code-header">Option 3 — REST (hot-swap without restart)</div>
-<pre><span class="c"># Enable VCG, persist to aua_config.yaml</span>
+<div class="code-header">Option 3 — REST hot-swap (no restart required)</div>
+<pre><span class="c"># Enable VCG</span>
 curl -X PATCH http://localhost:8000/config \
   -H "Content-Type: application/json" \
   -d '{"arbitration_mode": "vcg", "persist": true}'
 
-<span class="c"># Response</span>
 {"patched": {"arbitration_mode": "vcg"}, "persisted": true}
 
 <span class="c"># Revert to pairwise</span>
@@ -806,64 +941,70 @@ curl -X PATCH http://localhost:8000/config \
   -d '{"arbitration_mode": "pairwise", "persist": true}'</pre>
 </div>
 
-<h4>What changes in the response</h4>
+<h4>What changes in the response envelope</h4>
 
 <div class="code-block">
-<div class="code-header">VCG response (routing_mode and welfare_scores)</div>
+<div class="code-header">VCG response — routing_mode and welfare_scores fields</div>
 <pre>curl -s -X POST http://localhost:8000/query \
-  -d '{"query": "What is the complexity of merge sort?"}'
+  -d '{"query": "Is gradient descent O(n) per step?"}'
 
 {
-  "routing_mode":    "vcg",                  <span class="c">← distinct from "fanout" or "arbiter"</span>
-  "primary_domain":  "software_engineering",
-  "response":        "Merge sort is O(n log n)...",
-  "u_score":         0.748,
-  "welfare_scores": {                        <span class="c">← only in VCG mode</span>
-    "swe":  0.5440,                          <span class="c">← winner (highest W)</span>
-    "math": 0.1800
+  "routing_mode":    "vcg",                     <span class="c">← "fanout" in pairwise mode</span>
+  "primary_domain":  "mathematics",
+  "response":        "Per-step complexity is O(n) where n = number of params...",
+  "u_score":         0.744,
+  "welfare_scores": {                           <span class="c">← present only in VCG mode</span>
+    "math": 0.7250,                             <span class="c">← winner</span>
+    "swe":  0.7020
   }
 }</pre>
 </div>
 
 <div class="code-block">
-<div class="code-header">Python — read welfare scores</div>
+<div class="code-header">Python — read welfare scores and winner</div>
 <pre>r = requests.post("http://localhost:8000/query", json={
-    "query": "What is the time complexity of heapsort?"
+    "query": "Is the gradient descent update O(n) per step?"
 })
 data = r.json()
 
 if data["routing_mode"] == "vcg":
-    print("VCG mode — welfare scores:")
-    for name, w in sorted(data["welfare_scores"].items(), key=lambda x: -x[1]):
-        winner = "← winner" if w == max(data["welfare_scores"].values()) else ""
-        print(f"  {name}: {w:.4f} {winner}")
-</pre>
+    scores = data["welfare_scores"]
+    winner = max(scores, key=scores.get)
+    print(f"VCG selected: {winner}")
+    for name, w in sorted(scores.items(), key=lambda x: -x[1]):
+        marker = " ← winner" if name == winner else ""
+        print(f"  {name}: W = {w:.4f}{marker}")</pre>
 </div>
 
 <h4>When to use VCG vs pairwise</h4>
 
 <table>
-<tr><th>Scenario</th><th>Recommended mode</th></tr>
-<tr><td>Single specialist per domain, queries rarely trigger fanout</td><td>Pairwise (default) — VCG never fires</td></tr>
-<tr><td>2+ specialists configured, want best-of-N selection</td><td><strong>VCG</strong> — welfare maximization across all candidates</td></tr>
-<tr><td>3+ specialists, some with longer track records</td><td><strong>VCG</strong> — prior_mean_u provides meaningful differentiation</td></tr>
-<tr><td>Safety-critical domain, want conservative pairwise checks</td><td>Pairwise — 4-check arbiter runs in full verdict mode</td></tr>
+<tr><th>Scenario</th><th>Recommended mode</th><th>Why</th></tr>
+<tr><td>Single specialist, queries rarely trigger fanout</td><td>Pairwise (default)</td><td>VCG fires only when fanout does; no benefit from switching</td></tr>
+<tr><td>2–3 specialists, traffic just starting</td><td>Pairwise first, then VCG</td><td>Wait until ~10 queries per specialist per domain; switch via REST without restart</td></tr>
+<tr><td>2+ specialists with 10+ queries of history</td><td><strong>VCG</strong></td><td>Shrinkage estimates are reliable; track record differentiates specialists the classifier treats as equally likely</td></tr>
+<tr><td>3+ specialists, overlapping domains</td><td><strong>VCG</strong></td><td>Multi-domain convex combination handles ambiguous queries; pairwise can only compare two</td></tr>
+<tr><td>Safety-critical domain, need full 4-check verdict</td><td>Pairwise</td><td>Pairwise runs the arbiter in full verdict mode (case_1–4); VCG uses it for contradiction detection only</td></tr>
 </table>
 
 <div class="callout green">
-  <p><strong>Chat UI toggle.</strong> The AUA Controls drawer (⚙ button) has a Pairwise / VCG segmented toggle. It's greyed out if you have fewer than 2 specialists in your config. Switching to VCG sends a <code>PATCH /config</code> call and persists the change. When VCG is active, the Framework Debugger shifts from mint-green to indigo and shows the per-specialist welfare scores alongside the winner.</p>
+  <p><strong>Gradual rollout pattern.</strong> Start with pairwise to accumulate model_runs history. After ~50 queries across your specialists, switch to VCG via <code>PATCH /config</code> — no restart, no disruption. Watch <code>/analytics/specialists</code> for win-rate divergence; once one specialist is clearly ahead, VCG's welfare scores will reflect that on every query.</p>
+</div>
+
+<div class="callout amber">
+  <p><strong>What VCG does not do.</strong> VCG selects the best specialist from those that responded — it does not re-route if all specialists perform poorly. If every welfare score is near the prior (0.65), the specialists haven't accumulated enough history yet; check <code>total_runs</code> in <code>/analytics/specialists</code>. VCG also does not guarantee the incentive-theoretic properties of Theorems S1–S3 in deployment — those hold for the idealized mechanism where specialists report explicit utility bids; here welfare is inferred from historical win-rates (see Appendix A.1.2 and §B.8 remark).</p>
 </div>
 
 <details class="build-details">
   <summary>What you can build with this</summary>
   <div class="build-body">
     <ul>
-      <li>A system that doesn't just pick the most likely specialist — it picks the one with the best track record for this type of query. The more it runs, the better the prior_mean_u signal becomes.</li>
-      <li>Interpretable routing decisions: every VCG response shows exactly why each specialist was or wasn't chosen, as a number.</li>
-      <li>Validated +43.3pp correctness improvement over no routing, on real hardware — not simulation. Activate it with one config line.</li>
-      <li>Hot-swap between pairwise and VCG without restarting — try VCG on a subset of traffic, compare U scores, commit to it when the numbers support it.</li>
+      <li><strong>Self-improving routing.</strong> Every VCG query makes the next one slightly better. A specialist with a bad run accumulates losses in model_runs; its effective_u falls and the router naturally routes away from it without any manual intervention.</li>
+      <li><strong>Interpretable decisions.</strong> Every response includes per-specialist welfare scores. Log them and you get a complete audit trail of exactly why each query went where it did.</li>
+      <li><strong>Graceful cold starts.</strong> The shrinkage prior (0.65) means a brand-new specialist competes at a fair baseline — not zero. It won't dominate until it earns it, but it won't be shut out on day one either.</li>
+      <li><strong>Hot A/B testing.</strong> Run pairwise on one process and VCG on another; compare U scores in their respective <code>/analytics</code> endpoints before committing to either mode in production.</li>
     </ul>
-    <p class="build-hook">Part 5 shows how specialists get promoted and rolled back — the prior_mean_u that VCG uses is built from those sessions.</p>
+    <p class="build-hook">Part 5 shows how U scores gate model promotion — the model_runs welfare trajectory VCG builds is an input to the blue-green promotion decision.</p>
   </div>
 </details>
 
