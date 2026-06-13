@@ -28,19 +28,16 @@ and #57 (model auto-download).
 from __future__ import annotations
 
 import asyncio
-import json
-import os
 import time
 import uuid
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from aua.batch_queue import BatchQueue, BatchWorker
 from aua.state import SQLiteStateStore
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -122,7 +119,7 @@ class TestBatchQueuePriority:
     def test_fifo_within_same_priority(self, bq: BatchQueue) -> None:
         id1 = bq.submit(["first"], priority="normal")
         time.sleep(0.01)
-        id2 = bq.submit(["second"], priority="normal")
+        _ = bq.submit(["second"], priority="normal")
 
         first = bq.next_pending_job()
         assert first["job_id"] == id1
@@ -419,7 +416,9 @@ class TestHfDownload:
 class TestNoDownloadFlag:
     def test_no_download_skips_hf_download_on_vllm(self) -> None:
         """When no_download=True, _hf_download should not be called."""
-        from aua.config import AUAConfig, SpecialistConfig, ArbiterConfig, RouterConfig, RuntimeConfig
+        from aua.config import (
+            SpecialistConfig,
+        )
 
         spec = SpecialistConfig(
             name="swe",
@@ -429,8 +428,8 @@ class TestNoDownloadFlag:
             backend="vllm",
         )
 
-        from aua.serve import _start_specialist
         import aua.serve as serve_mod
+        from aua.serve import _start_specialist
 
         with patch.object(serve_mod, "_hf_download") as mock_hf:
             # dry_run=True so no actual subprocess, but no_download should gate _hf_download
@@ -439,9 +438,9 @@ class TestNoDownloadFlag:
             mock_hf.assert_not_called()
 
     def test_download_called_when_flag_absent(self) -> None:
+        import aua.serve as serve_mod
         from aua.config import SpecialistConfig
         from aua.serve import _start_specialist
-        import aua.serve as serve_mod
 
         spec = SpecialistConfig(
             name="swe",
