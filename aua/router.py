@@ -2855,8 +2855,7 @@ class Router:
                 async def _write_run(
                     sname=_s.name, sfield=_s.field, is_w=_is_winner, wf=_wf, c=_c
                 ) -> None:
-                    self._state_store.append(
-                        "model_runs",
+                    self._state_store.record_model_run(
                         {
                             "conversation_id": req.session_id or "",
                             "specialist": sname,
@@ -2867,7 +2866,7 @@ class Router:
                             "confidence_score": round(c, 4),
                             "latency_ms": round((time.time() - _vcg_run_time) * 1000, 1),
                             "created_at": _vcg_run_time,
-                        },
+                        }
                     )
 
                 _faf(_write_run())
