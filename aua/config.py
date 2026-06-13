@@ -223,6 +223,7 @@ _KNOWN_SPECIALIST_KEYS: set[str] = {
     "scheme",
     "endpoint_override",
     "models_url_override",
+    "mlflow_tracking_uri",
 }
 _KNOWN_ARBITER_KEYS: set[str] = {
     "model",
@@ -240,6 +241,7 @@ _KNOWN_ARBITER_KEYS: set[str] = {
     "scheme",
     "endpoint_override",
     "models_url_override",
+    "mlflow_tracking_uri",
 }
 _KNOWN_ROUTER_KEYS: set[str] = {
     "port",
@@ -310,6 +312,7 @@ class SpecialistConfig:
     scheme: str = "http"  # "http" | "https"
     endpoint_override: str | None = None  # full URL override (ignores host/scheme/port)
     models_url_override: str | None = None  # full models URL override
+    mlflow_tracking_uri: str | None = None  # #46: MLflow tracking URI for models:/ URIs
 
     @property
     def endpoint(self) -> str:
@@ -403,6 +406,7 @@ class ArbiterConfig:
     scheme: str = "http"
     endpoint_override: str | None = None
     models_url_override: str | None = None
+    mlflow_tracking_uri: str | None = None  # #46
 
     @property
     def endpoint(self) -> str:
@@ -740,6 +744,7 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
                 scheme=str(s.get("scheme", "http")),
                 endpoint_override=s.get("endpoint_override") or None,
                 models_url_override=s.get("models_url_override") or None,
+                mlflow_tracking_uri=s.get("mlflow_tracking_uri") or None,
             )
         )
 
@@ -773,6 +778,7 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         scheme=str(raw_arb.get("scheme", "http")),
         endpoint_override=raw_arb.get("endpoint_override") or None,
         models_url_override=raw_arb.get("models_url_override") or None,
+        mlflow_tracking_uri=raw_arb.get("mlflow_tracking_uri") or None,
     )
 
     # ── Router ─────────────────────────────────────────────────────────────

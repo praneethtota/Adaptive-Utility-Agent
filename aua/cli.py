@@ -712,6 +712,136 @@ def models_inspect(alias, as_json):
     console.print(yaml.dump(entry, default_flow_style=False, sort_keys=False))
 
 
+@models.command("pin")
+@click.argument("specialist_or_repo")
+@click.option(
+    "--revision",
+    "-r",
+    default=None,
+    help="Branch, tag, or commit SHA to pin (HuggingFace). " "Omit to list available revisions.",
+)
+@click.option(
+    "--mlflow-uri",
+    default=None,
+    help="MLflow model URI e.g. 'models:/my-model/Production'. "
+    "List versions if no --revision given.",
+)
+@click.option(
+    "--mlflow-tracking-uri",
+    default=None,
+    help="MLflow tracking server URL (overrides MLFLOW_TRACKING_URI env var).",
+)
+@click.option("--json", "as_json", is_flag=True, default=False)
+def models_pin(specialist_or_repo, revision, mlflow_uri, mlflow_tracking_uri, as_json):
+    """Pin a specialist model to a specific version or list available versions.
+
+    \b
+    List HF revisions:
+        aua models pin Qwen/Qwen2.5-7B-Instruct
+
+    Pin to a specific tag (writes @revision syntax for your aua_config.yaml):
+        aua models pin Qwen/Qwen2.5-7B-Instruct --revision v0.3
+
+    List MLflow model versions:
+        aua models pin my-specialist --mlflow-uri models:/my-specialist
+
+    Show the models:/ URI for a specific version:
+        aua models pin my-specialist --mlflow-uri models:/my-specialist --revision 3
+    """
+    import json as _json
+
+    from aua.model_registry import list_hf_revisions, list_mlflow_versions, parse_model_ref
+
+    # ── MLflow mode ────────────────────────────────────────────────────────
+    if mlflow_uri:
+        model_name = mlflow_uri.replace("models:/", "").split("/")[0]
+        try:
+            versions = list_mlflow_versions(model_name, tracking_uri=mlflow_tracking_uri)
+        except Exception as e:
+            console.print(f"[red]✗ MLflow error:[/red] {e}")
+            sys.exit(1)
+
+        if revision:
+            match = next((v for v in versions if v.version == revision), None)
+            if match:
+                uri = f"models:/{model_name}/{match.version}"
+                if as_json:
+                    print(_json.dumps({"uri": uri, "stage": match.stage, "run_id": match.run_id}))
+                else:
+                    console.print("\n[bold]Add to aua_config.yaml:[/bold]")
+                    console.print(f"  model: {uri}")
+                    console.print(f"  [dim]stage={match.stage}  run_id={match.run_id}[/dim]")
+            else:
+                console.print(f"[red]✗ Version {revision!r} not found for {model_name}[/red]")
+                sys.exit(1)
+            return
+
+        if as_json:
+            print(_json.dumps([v.__dict__ for v in versions], indent=2))
+            return
+
+        console.print(f"\n[bold]MLflow model versions: {model_name}[/bold]")
+        from rich.table import Table as _Table
+
+        tbl = _Table(show_header=True, header_style="bold dim", box=None)
+        tbl.add_column("Version")
+        tbl.add_column("Stage")
+        tbl.add_column("Status")
+        tbl.add_column("URI")
+        for v in versions:
+            tbl.add_row(v.version, v.stage, v.status, f"models:/{model_name}/{v.version}")
+        console.print(tbl)
+        console.print(
+            f"\n[dim]To pin: aua models pin {specialist_or_repo} "
+            f"--mlflow-uri {mlflow_uri} --revision <VERSION>[/dim]"
+        )
+        return
+
+    # ── HuggingFace mode ───────────────────────────────────────────────────
+    ref = parse_model_ref(specialist_or_repo)
+    repo_id = ref.repo_id or specialist_or_repo
+
+    if revision:
+        pinned = f"{repo_id}@{revision}"
+        if as_json:
+            print(_json.dumps({"pinned": pinned}))
+        else:
+            console.print("\n[bold]Add to aua_config.yaml:[/bold]")
+            console.print(f"  model: {pinned}")
+            console.print(
+                f"  [dim]vLLM will use HF cache for {repo_id} at revision {revision}[/dim]"
+            )
+        return
+
+    # List revisions
+    console.print(f"[dim]Fetching revisions for [cyan]{repo_id}[/cyan]...[/dim]")
+    try:
+        revisions = list_hf_revisions(repo_id)
+    except RuntimeError as e:
+        console.print(f"[red]✗[/red] {e}")
+        sys.exit(1)
+
+    if as_json:
+        print(_json.dumps([r.__dict__ for r in revisions], indent=2))
+        return
+
+    if not revisions:
+        console.print(f"[yellow]No branches or tags found for {repo_id}[/yellow]")
+        return
+
+    from rich.table import Table as _Table
+
+    tbl = _Table(show_header=True, header_style="bold dim", box=None)
+    tbl.add_column("Type")
+    tbl.add_column("Name")
+    tbl.add_column("Commit", style="dim")
+    for r in revisions:
+        tbl.add_row(r.ref_type, r.name, r.commit[:12])
+    console.print(f"\n[bold]Revisions for {repo_id}[/bold]")
+    console.print(tbl)
+    console.print(f"\n[dim]To pin: aua models pin {repo_id} --revision <NAME>[/dim]")
+
+
 # ── aua fields ────────────────────────────────────────────────────────────────
 
 

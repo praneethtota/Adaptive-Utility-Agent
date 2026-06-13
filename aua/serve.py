@@ -27,6 +27,7 @@ Usage (CLI — preferred):
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import shutil
 import signal
@@ -272,9 +273,25 @@ def _start_specialist(
 ) -> subprocess.Popen | None:
     cmd = spec.vllm_command()
 
-    # #57: download model before starting the process
-    if not dry_run and not no_download and spec.backend == "vllm":
-        _hf_download(spec.model)
+    # #46/#57: resolve version-pinned / MLflow model refs, then download
+    if not dry_run and spec.backend == "vllm":
+        from aua.model_registry import parse_model_ref, resolve_model_ref
+
+        ref = parse_model_ref(spec.model)
+        if ref.revision is not None or (ref.mlflow_uri is not None):
+            # Has a pinned revision or MLflow URI — resolve to local path
+            try:
+                resolved = resolve_model_ref(
+                    spec.model, mlflow_tracking_uri=spec.mlflow_tracking_uri
+                )
+                if resolved != spec.model:
+                    console.print(f"  [dim]Resolved [cyan]{spec.model}[/cyan] → {resolved}[/dim]")
+                    spec = dataclasses.replace(spec, model=resolved)
+            except Exception as _reg_err:
+                console.print(f"  [red]✗ Model registry error:[/red] {_reg_err}")
+                sys.exit(1)
+        if not no_download:
+            _hf_download(spec.model)
 
     hw_detail = (
         f"GPU {spec.gpu} ({spec.gpu_memory_utilization*100:.0f}% VRAM)"
@@ -312,9 +329,22 @@ def _start_arbiter(
 ) -> subprocess.Popen | None:
     cmd = arb.vllm_command()
 
-    # #57: download model before starting the process
-    if not dry_run and not no_download and arb.backend == "vllm":
-        _hf_download(arb.model)
+    # #46/#57: resolve version-pinned / MLflow model refs, then download
+    if not dry_run and arb.backend == "vllm":
+        from aua.model_registry import parse_model_ref, resolve_model_ref
+
+        ref = parse_model_ref(arb.model)
+        if ref.revision is not None or (ref.mlflow_uri is not None):
+            try:
+                resolved = resolve_model_ref(arb.model, mlflow_tracking_uri=arb.mlflow_tracking_uri)
+                if resolved != arb.model:
+                    console.print(f"  [dim]Resolved [cyan]{arb.model}[/cyan] → {resolved}[/dim]")
+                    arb = dataclasses.replace(arb, model=resolved)
+            except Exception as _reg_err:
+                console.print(f"  [red]✗ Model registry error:[/red] {_reg_err}")
+                sys.exit(1)
+        if not no_download:
+            _hf_download(arb.model)
 
     hw_detail_arb = (
         f"GPU {arb.gpu} ({arb.gpu_memory_utilization*100:.0f}% VRAM)"
