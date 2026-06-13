@@ -123,7 +123,7 @@ For all $\lambda \in (0, 1]$ such that $(\lambda E, \lambda C, \lambda K) \in [0
 <hr />
 <h3>Proof</h3>
 <p><strong>Step 1 — Additive representation from A1–A3.</strong></p>
-<p>A3 states that each argument is preferentially independent of the others. Applying this pairwise — $E$ independent of $(C,K)$, $C$ independent of $(E,K)$, $K$ independent of $(E,C)$ — gives mutual preferential independence. By the theorem of Debreu (1960, Theorem 3): a continuous utility function on a connected domain with mutually preferentially independent components admits an additively separable representation. Therefore there exist continuous strictly increasing functions $\phi_E, \phi_C, \phi_K : [0,1] \to \mathbb{R}$ such that:</p>
+<p>A3 states a <strong>cardinal difference-independence</strong> condition: the change in $U$ from improving one argument is unaffected by the fixed levels of the others. This is strictly stronger than the ordinal preferential-independence hypothesis required by Debreu's additive representation theorem — cardinal difference independence implies preferential independence, since equality of utility <em>differences</em> across levels of the other arguments implies the corresponding preference orderings are unaffected by those levels. Applying A3 pairwise — $E$ independent of $(C,K)$, $C$ independent of $(E,K)$, $K$ independent of $(E,C)$ — therefore yields the mutual preferential independence Debreu requires. By the theorem of Debreu (1960, Theorem 3): a continuous utility function on a connected domain with mutually preferentially independent components (of dimension $\geq 3$, which holds here) admits an additively separable representation. Therefore there exist continuous strictly increasing functions $\phi_E, \phi_C, \phi_K : [0,1] \to \mathbb{R}$ such that:</p>
 <p>$$U(E, C, K) = \phi_E(E) + \phi_C(C) + \phi_K(K)$$</p>
 <p><strong>Step 2 — Linearity from A5 via the Cauchy functional equation.</strong></p>
 <p>Substitute the additive form into A5:</p>
@@ -146,8 +146,8 @@ For all $\lambda \in (0, 1]$ such that $(\lambda E, \lambda C, \lambda K) \in [0
 <p>Setting $w_E = \phi_E(1) + c$ and $c_E = -c$, we obtain $\phi_E(E) = w_E E + c_E$ for all $E \in (0,1]$, and by continuity at $E = 0$ as well. This derivation uses only continuity (A2); no differentiability of $\phi_E$ is required.</p>
 <p>By the same argument applied separately to $C_0$ and $K_0$:</p>
 <p>$$\phi_C(C) = w_C\,C + c_C, \qquad \phi_K(K) = w_K\,K + c_K$$</p>
-<p><strong>Step 3 — Normalization.</strong></p>
-<p>With $U(0,0,0) = 0$, we get $c_E + c_C + c_K = 0$. Under A4, the functional form is the same across fields, so field dependence enters only through $w_i(f)$, not through $c_i$. The natural convention $\phi_i(0) = 0$ (zero contribution from a zero-valued dimension) gives $c_i = 0$ individually. Normalizing so that $U(1,1,1) = 1$ yields $w_E + w_C + w_K = 1$. Strict monotonicity (A1) requires $w_i > 0$.</p>
+<p><strong>Step 3 — Normalization (conventions).</strong></p>
+<p>The two normalizations below are <em>conventions</em>, not consequences of A1–A5; they fix the otherwise-free origin and scale of the (cardinal) utility, which any additive representation leaves undetermined up to a positive affine transformation. First, adopting the convention $U(0,0,0) = 0$ gives $c_E + c_C + c_K = 0$. Under A4, the functional form is the same across fields, so field dependence enters only through $w_i(f)$, not through $c_i$. The natural convention $\phi_i(0) = 0$ (zero contribution from a zero-valued dimension) gives $c_i = 0$ individually. Second, adopting the convention $U(1,1,1) = 1$ fixes the scale and yields $w_E + w_C + w_K = 1$. Strict monotonicity (A1) requires $w_i > 0$. These conventions do not affect the <em>form</em> of $U$ — only its origin and scale — so the linear additive structure is the substantive result and the unit simplex constraint is a labelling choice.</p>
 <p>Therefore:</p>
 <p>$$U(E, C, K; f) = w_e(f)\,E + w_c(f)\,C + w_k(f)\,K \qquad \blacksquare$$</p>
 <hr />
@@ -256,15 +256,21 @@ For all $\lambda \in (0, 1]$ such that $(\lambda E, \lambda C, \lambda K) \in [0
 </tbody>
 </table>
 <h3>Mann–Whitney Interpretation</h3>
-<p>Under the <strong>log-logistic performance model</strong>, $E(r)$ equals the Mann–Whitney dominance probability exactly — not merely analogously.</p>
-<p><strong>Proposition B.3.</strong> <em>Let $X_{\text{agent}} \sim \text{LogLogistic}(\mu_a, s)$ and $X_{\text{human}} \sim \text{LogLogistic}(\mu_h, s)$ with the same scale $s=1$, and let $r = e^{\mu_a - \mu_h}$ be the ratio of medians. Then:</em></p>
+<p>Under an <strong>extreme-value (Gumbel) performance model</strong> — the standard latent-utility model of McFadden (1974) and Luce (1959) — $E(r)$ equals the Mann–Whitney dominance probability <em>exactly</em>, not merely analogously.</p>
+<p><strong>Choice of model.</strong> We model the log-performance of each agent as a Gumbel (type-I extreme value) random variable with common scale. This is the canonical random-utility specification: it arises whenever performance on a task is the maximum of many independent sub-task contributions (the extremal-types theorem makes Gumbel the limiting distribution of a maximum), and it is the unique location-family model whose pairwise dominance probability is the Bradley–Terry / softmax form. We note explicitly that the earlier log-logistic specification does <em>not</em> yield this closed form: for two independent log-logistic variables the dominance probability is not $r/(1+r)$ (it can be checked numerically that, e.g., $\mu_a-\mu_h = 1$ gives $\approx 0.662$, not $e/(1+e)\approx 0.731$). The Gumbel model is therefore the correct foundation for the softmax form, and we adopt it.</p>
+<p><strong>Proposition B.3.</strong> <em>Let the log-performances $Y_{\text{agent}} = \log X_{\text{agent}} \sim \text{Gumbel}(\mu_a, \beta)$ and $Y_{\text{human}} = \log X_{\text{human}} \sim \text{Gumbel}(\mu_h, \beta)$ be independent with common scale $\beta$, and let $r = e^{(\mu_a - \mu_h)/\beta}$. Then:</em></p>
 <p>$$P(X_{\text{agent}} > X_{\text{human}}) = \frac{r}{1+r} = E(r)$$</p>
-<p><strong>Proof.</strong> The log-logistic distribution has CDF $F(x; \mu, s) = 1/(1 + e^{-(\log x - \mu)/s})$. For $s=1$:</p>
-<p>$$P(X_a > X_h) = P(\log X_a > \log X_h) = \int_0^\infty F_{X_h}(x)\,f_{X_a}(x)\,dx$$</p>
-<p>Under the log-logistic model with $\mu_a$ and $\mu_h$, this integral yields the closed-form expression (under the log-logistic assumption):</p>
-<p>$$P(X_a > X_h) = \frac{e^{\mu_a}}{e^{\mu_a} + e^{\mu_h}} = \frac{e^{\mu_a - \mu_h}}{1 + e^{\mu_a - \mu_h}} = \frac{r}{1+r} \qquad \blacksquare$$</p>
-<p><em>Note:</em> The result uses the specific structure of the log-logistic CDF. The difference of two log-logistic random variables does not in general follow a logistic distribution; the closed form arises directly from evaluating the integral under this model, not from a distribution-of-differences argument.</p>
-<p><strong>Scope of the claim.</strong> The equality $E(r) = P(X_a > X_h)$ holds under the log-logistic model with equal scale. Under different distributional assumptions (e.g., log-normal), the dominance probability takes a different form. The log-logistic assumption is standard for ratio comparisons in non-parametric statistics and produces the simplest closed form consistent with the boundary conditions $E(0) = 0$, $E(1) = 0.5$, $E(\infty) = 1$. We adopt this model and the resulting formula; the choice of distribution is a modelling assumption, not a mathematical necessity.</p>
+<p><em>(With the normalization $\beta = 1$ this is $r = e^{\mu_a - \mu_h}$, the ratio of medians.)</em></p>
+<p><strong>Proof.</strong> Since $x \mapsto \log x$ is strictly increasing, $P(X_a > X_h) = P(Y_a > Y_h) = P(Y_a - Y_h > 0)$. We use the standard lemma that the difference of two independent Gumbel variables with common scale is logistic:</p>
+<p><em>Lemma (difference of Gumbels).</em> If $Y_a \sim \text{Gumbel}(\mu_a,\beta)$ and $Y_h \sim \text{Gumbel}(\mu_h,\beta)$ are independent, then $Y_a - Y_h \sim \text{Logistic}(\mu_a - \mu_h,\ \beta)$.</p>
+<p><em>Proof of lemma.</em> The Gumbel CDF is $F_Y(y;\mu,\beta) = \exp\!\big(-e^{-(y-\mu)/\beta}\big)$ with density $f_Y(y) = \tfrac1\beta e^{-(y-\mu)/\beta}\exp\!\big(-e^{-(y-\mu)/\beta}\big)$. For $D = Y_a - Y_h$, condition on $Y_h = y$ and integrate. Writing $a = e^{-(\,\cdot\,-\mu_a)/\beta}$ and $b = e^{-(y-\mu_h)/\beta}$, the convolution</p>
+<p>$$F_D(d) = \int_{-\infty}^{\infty} F_{Y_a}(d + y)\, f_{Y_h}(y)\, dy$$</p>
+<p>evaluates, after the substitution $u = e^{-(y-\mu_h)/\beta}$ (so $du = -\tfrac1\beta u\,dy$), to</p>
+<p>$$F_D(d) = \int_0^\infty \exp\!\Big(-u\,e^{-(d-(\mu_a-\mu_h))/\beta}\Big)\,e^{-u}\,du = \frac{1}{1 + e^{-(d-(\mu_a-\mu_h))/\beta}},$$</p>
+<p>using $\int_0^\infty e^{-u(1+c)}\,du = 1/(1+c)$ with $c = e^{-(d-(\mu_a-\mu_h))/\beta}$. This is exactly the $\text{Logistic}(\mu_a-\mu_h,\beta)$ CDF. $\square$</p>
+<p>Applying the lemma at $d = 0$:</p>
+<p>$$P(Y_a - Y_h > 0) = 1 - F_D(0) = 1 - \frac{1}{1 + e^{(\mu_a-\mu_h)/\beta}} = \frac{e^{(\mu_a-\mu_h)/\beta}}{1 + e^{(\mu_a-\mu_h)/\beta}} = \frac{r}{1+r} = E(r). \qquad \blacksquare$$</p>
+<p><strong>Scope of the claim.</strong> The equality $E(r) = P(X_a > X_h)$ holds under the Gumbel (extreme-value) log-performance model with common scale. This is the same latent-variable structure that produces the multinomial-logit choice model, so the softmax form is not an arbitrary convenience but the dominance probability implied by extreme-value performance. Under a different latent family (e.g. Gaussian log-performance, giving a probit form $\Phi((\mu_a-\mu_h)/\sqrt{2}\,\sigma)$) the dominance probability has a different closed form; the Gumbel choice is a modelling assumption, justified by the extremal-types argument above, not a mathematical necessity.</p>
 <h3>Comparison to Linear Normalization</h3>
 <p>A linear normalization $E_{\text{lin}}(r) = \min(r, 1)$ has a discontinuous derivative at $r=1$, gives zero marginal utility for any superhuman improvement, and lacks a probabilistic interpretation. The sigmoid form $r/(1+r)$ avoids all three issues and is the natural functional form for a dominance probability under a location-scale family of performance distributions.</p>
 <hr />
@@ -401,8 +407,8 @@ For all $\lambda \in (0, 1]$ such that $(\lambda E, \lambda C, \lambda K) \in [0
 </tr>
 <tr>
 <td>Efficacy $E(r) = r/(1+r)$</td>
-<td>Mann-Whitney probability under log-logistic model</td>
-<td>Proved under named assumption</td>
+<td>Mann-Whitney dominance probability under Gumbel (extreme-value) model</td>
+<td>Proved (difference-of-Gumbels lemma)</td>
 </tr>
 <tr>
 <td>Confidence EMA, $\alpha=0.2$</td>
@@ -442,17 +448,17 @@ $$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-k}\tilde{s}_k + \a
 $$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t}(1-\alpha)^{t-k}\tilde{s}_k \qquad \blacksquare$$</p>
 <hr />
 <h4>B.5 — Theorem B.5 — Convergence, Uniqueness, and Recovery</h4>
-<p><strong>Theorem.</strong> <em>Let $\{\tilde{s}_t\}$ be a stationary sequence with constant expectation $\bar{s} \in [0,1]$ and noise $\sigma_{\tilde{s}} = \mathrm{Std}(\tilde{s}_t - \tilde{s}^*) \geq 0$. Assume $0 \leq \lambda\mu(f) < 1$ (the penalty regime is sub-maximal: contradictions are rare relative to the pass rate, so the effective signal retains positive mean). Let $\tilde{s}^* = \bar{s}(1 - \lambda\mu(f)) \in (0, 1]$ be the expected effective signal. Then:</em></p>
+<p><strong>Theorem.</strong> <em>Let $\{\tilde{s}_t\}$ be a stationary sequence with constant expectation $\bar{s} \in [0,1]$ and innovation noise $\sigma_{\tilde{s}} = \mathrm{Std}(\tilde{s}_t - \tilde{s}^*) \geq 0$. Assume the innovations $\eta_t \triangleq \tilde{s}_t - \tilde{s}^*$ are zero-mean and serially uncorrelated ($\mathbb{E}[\eta_t \eta_{t'}] = 0$ for $t \neq t'$); i.i.d. is a sufficient special case. Assume $0 \leq \lambda\mu(f) < 1$ (the penalty regime is sub-maximal: contradictions are rare relative to the pass rate, so the effective signal retains positive mean). Let $\tilde{s}^* = \bar{s}(1 - \lambda\mu(f)) \in (0, 1]$ be the expected effective signal. Then:</em></p>
 <p><em>(<strong>Boundary note.</strong> At $\lambda\mu(f) = 1$, $C^* = 0$ and Part 3 fails: monotonicity collapses to a horizontal steady state regardless of $\bar{s}$. At $\lambda\mu(f) > 1$, $\tilde{s}^* < 0$, which is outside the natural domain of confidence and signals that the agent cannot achieve stable positive confidence — the correct response is to trigger abstention. The system design prevents this regime by construction: $\lambda$ is per-interaction contradiction magnitude, which in practice is small, and the field gate $C < C_{\min}(f)$ triggers abstention before accumulated penalties drive $C$ negative.)</em></p>
 <ol>
 <li><strong>Existence and uniqueness of steady state.</strong> There exists a unique fixed point $C^*$ of the update rule, given by:</li>
 </ol>
 <p>$$C^* = \bar{s}\,(1 - \lambda\mu(f)) = \tilde{s}^*$$</p>
 <ol>
-<li><strong>Geometric convergence in expectation.</strong> For all $t \geq 0$, letting $\sigma_{\tilde{s}} = \mathrm{Std}(\tilde{s}_t - \tilde{s}^*)$ denote the noise level of the effective signal:</li>
+<li><strong>Geometric convergence in mean-square.</strong> For all $t \geq 0$, the root-mean-square error satisfies:</li>
 </ol>
-<p>$$\mathbb{E}[|C_t - C^*|] \leq (1-\alpha)^t\,|C_0 - C^*| + \sigma_{\tilde{s}}\sqrt{\frac{\alpha}{2-\alpha}}$$</p>
-<p>The first term decays geometrically at rate $(1-\alpha)$ per interaction. The second is a constant noise floor proportional to signal variance; it is zero in the deterministic (zero-noise) case and small when $\sigma_{\tilde{s}}$ is small. For $\alpha = 0.2$: $\sqrt{\alpha/(2-\alpha)} = 1/3$, so the floor is $\sigma_{\tilde{s}}/3$. <em>Note:</em> the cleaner geometric bound without the noise floor, $\mathbb{E}[|C_t - C^*|] \leq (1-\alpha)^t|C_0 - C^*|$, holds for the bias $|\mathbb{E}[C_t - C^*]|$ but not for the mean absolute error $\mathbb{E}[|C_t - C^*|]$ when $\sigma_{\tilde{s}} > 0$, because $\mathbb{E}[|X|] \geq |\mathbb{E}[X]|$ does not provide an upper bound on $\mathbb{E}[|X|]$. With $\alpha = 0.2$ and small $\sigma_{\tilde{s}}$, the expected error halves every $\lceil\log(0.5)/\log(0.8)\rceil = 3$ interactions before hitting the noise floor.</p>
+<p>$$\sqrt{\mathbb{E}\big[(C_t - C^*)^2\big]} \leq (1-\alpha)^t\,|C_0 - C^*| + \sigma_{\tilde{s}}\sqrt{\frac{\alpha}{2-\alpha}}$$</p>
+<p>The first term decays geometrically at rate $(1-\alpha)$ per interaction. The second is a constant noise floor equal to the stationary standard deviation of an AR(1) process; it is zero in the deterministic (zero-noise) case and small when $\sigma_{\tilde{s}}$ is small. For $\alpha = 0.2$: $\sqrt{\alpha/(2-\alpha)} = 1/3$, so the floor is $\sigma_{\tilde{s}}/3$. <em>Note:</em> because the root-mean-square dominates the mean absolute error, $\mathbb{E}[|C_t - C^*|] \leq \sqrt{\mathbb{E}[(C_t-C^*)^2]}$ (Jensen / Cauchy–Schwarz), the same bound holds verbatim for the mean absolute error. The pure geometric bound $\sqrt{\mathbb{E}[(C_t - C^*)^2]} \leq (1-\alpha)^t|C_0 - C^*|$ holds exactly in the deterministic case $\sigma_{\tilde{s}} = 0$. With $\alpha = 0.2$ and small $\sigma_{\tilde{s}}$, the transient halves every $\lceil\log(0.5)/\log(0.8)\rceil = 3$ interactions before hitting the noise floor.</p>
 <ol>
 <li><strong>Monotonicity</strong> (under the assumption $\lambda\mu(f) < 1$). $C^*$ is strictly increasing in $\bar{s}$:</li>
 </ol>
@@ -469,18 +475,19 @@ $$= (1-\alpha)^{t+1}C_0 + \alpha\sum_{k=0}^{t}(1-\alpha)^{t-k}\tilde{s}_k \qquad
 <p>$$t_{\text{recovery}} = \left\lceil\frac{\log(\varepsilon/\delta)}{\log(1-\alpha)}\right\rceil$$</p>
 <p><strong>Proof.</strong></p>
 <p><em>Part 1 — Existence and uniqueness.</em> The fixed point satisfies $C^* = (1-\alpha)C^* + \alpha\tilde{s}^*$, giving $\alpha C^* = \alpha\tilde{s}^*$, hence $C^* = \tilde{s}^* = \bar{s}(1-\lambda\mu(f))$. This is unique since the equation is linear in $C^*$.</p>
-<p><em>Part 2 — Geometric convergence in expectation.</em> Define the error $e_t = C_t - C^*$. Subtracting the fixed-point equation from the update rule:</p>
-<p>$$e_{t+1} = (1-\alpha)\,e_t + \alpha(\tilde{s}_t - \tilde{s}^*)$$</p>
-<p>The noise term $\eta_t \triangleq \alpha(\tilde{s}_t - \tilde{s}^*)$ has zero mean under the stationary distribution (since $\mathbb{E}[\tilde{s}_t] = \tilde{s}^*$) but does not vanish pathwise. Taking expectations:</p>
-<p>$$\mathbb{E}[e_{t+1}] = (1-\alpha)\,\mathbb{E}[e_t] + \alpha\,\mathbb{E}[\tilde{s}_t - \tilde{s}^*] = (1-\alpha)\,\mathbb{E}[e_t]$$</p>
-<p>Iterating from $t=0$ with $e_0 = C_0 - C^*$ deterministic:</p>
-<p>$$\mathbb{E}[e_t] = (1-\alpha)^t\,(C_0 - C^*)$$</p>
-<p>By Jensen's inequality $|\mathbb{E}[e_t]| \leq \mathbb{E}[|e_t|]$, and applying the triangle inequality to the closed-form solution:</p>
-<p>$$\mathbb{E}[|e_t|] \leq (1-\alpha)^t\,|C_0 - C^*| + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k}\,\mathbb{E}[|\tilde{s}_k - \tilde{s}^*|]$$</p>
-<p>The second term represents the expected accumulated noise. Under the stationary assumption with zero-mean noise, $\mathbb{E}[|\tilde{s}_k - \tilde{s}^*|]$ is a constant $\sigma_{\tilde{s}}$ and the noise sum telescopes to $\alpha\sigma_{\tilde{s}}/(\alpha) = \sigma_{\tilde{s}}$. This gives the tighter statement:</p>
-<p>$$\mathbb{E}[|e_t|] \leq (1-\alpha)^t\,|C_0 - C^*| + \sigma_{\tilde{s}}$$</p>
-<p>where $\sigma_{\tilde{s}} = \mathbb{E}[|\tilde{s}_t - \tilde{s}^*|]$ is the mean absolute deviation of the effective signal. When the signal has low noise ($\sigma_{\tilde{s}} \approx 0$), the bound reduces to the clean geometric form. <strong>The bound $\mathbb{E}[|e_t|] \leq (1-\alpha)^t |C_0 - C^*|$ holds exactly when $\sigma_{\tilde{s}} = 0$ (deterministic signal) and approximately when noise is small.</strong></p>
-<p>The half-life of the mean error is $t_{1/2} = \log(1/2)/\log(1-\alpha)$. For $\alpha = 0.2$: $t_{1/2} = \log(0.5)/\log(0.8) = 3.11$, so $\lceil t_{1/2} \rceil = 3$ interactions.</p>
+<p><em>Part 2 — Geometric convergence in mean-square.</em> Define the error $e_t = C_t - C^*$. Subtracting the fixed-point equation from the update rule:</p>
+<p>$$e_{t+1} = (1-\alpha)\,e_t + \alpha\,\eta_t, \qquad \eta_t = \tilde{s}_t - \tilde{s}^*$$</p>
+<p>The innovation $\eta_t$ has zero mean ($\mathbb{E}[\tilde{s}_t] = \tilde{s}^*$) and variance $\sigma_{\tilde{s}}^2$, and is uncorrelated across time by assumption. <em>Mean.</em> Taking expectations and using $\mathbb{E}[\eta_t]=0$:</p>
+<p>$$\mathbb{E}[e_{t+1}] = (1-\alpha)\,\mathbb{E}[e_t] \;\Longrightarrow\; \mathbb{E}[e_t] = (1-\alpha)^t (C_0 - C^*),$$</p>
+<p>with $e_0 = C_0 - C^*$ deterministic — so the bias decays geometrically.</p>
+<p><em>Variance.</em> From the closed-form solution, $e_t = (1-\alpha)^t e_0 + \alpha\sum_{k=0}^{t-1}(1-\alpha)^{t-1-k}\eta_k$. Since $e_0$ is deterministic and the $\eta_k$ are zero-mean and uncorrelated, the variance is a sum of per-term variances (all cross terms vanish):</p>
+<p>$$\mathrm{Var}(e_t) = \alpha^2 \sum_{k=0}^{t-1}(1-\alpha)^{2(t-1-k)}\,\sigma_{\tilde{s}}^2 = \alpha^2\sigma_{\tilde{s}}^2 \sum_{j=0}^{t-1}(1-\alpha)^{2j} = \alpha^2\sigma_{\tilde{s}}^2\,\frac{1-(1-\alpha)^{2t}}{1-(1-\alpha)^2}.$$</p>
+<p>Since $1-(1-\alpha)^2 = \alpha(2-\alpha)$, this simplifies to the exact transient variance</p>
+<p>$$\mathrm{Var}(e_t) = \frac{\alpha}{2-\alpha}\,\big(1-(1-\alpha)^{2t}\big)\,\sigma_{\tilde{s}}^2 \;\xrightarrow{t\to\infty}\; \frac{\alpha}{2-\alpha}\,\sigma_{\tilde{s}}^2,$$</p>
+<p>which is precisely the stationary variance of an AR(1) process with coefficient $(1-\alpha)$ and innovation variance $\alpha^2\sigma_{\tilde{s}}^2$. <em>Combining mean and variance.</em> Using $\mathbb{E}[e_t^2] = (\mathbb{E}[e_t])^2 + \mathrm{Var}(e_t)$ and the subadditivity of the square root $\sqrt{a+b}\le\sqrt a+\sqrt b$:</p>
+<p>$$\sqrt{\mathbb{E}[e_t^2]} = \sqrt{(1-\alpha)^{2t}(C_0-C^*)^2 + \tfrac{\alpha}{2-\alpha}\big(1-(1-\alpha)^{2t}\big)\sigma_{\tilde{s}}^2} \;\le\; (1-\alpha)^t|C_0-C^*| + \sigma_{\tilde{s}}\sqrt{\tfrac{\alpha}{2-\alpha}}.$$</p>
+<p>This establishes the stated bound. By Jensen's inequality $\mathbb{E}[|e_t|] \le \sqrt{\mathbb{E}[e_t^2]}$, so the same right-hand side bounds the mean absolute error; and when $\sigma_{\tilde{s}} = 0$ the floor vanishes and both quantities reduce to the pure geometric form $(1-\alpha)^t|C_0-C^*|$.</p>
+<p>The half-life of the transient is $t_{1/2} = \log(1/2)/\log(1-\alpha)$. For $\alpha = 0.2$: $t_{1/2} = \log(0.5)/\log(0.8) = 3.11$, so $\lceil t_{1/2} \rceil = 3$ interactions.</p>
 <p><em>Part 3 — Monotonicity.</em> $\partial C^*/\partial\bar{s} = (1 - \lambda\mu(f))$. Since $\lambda \in [0,1]$ and $\mu(f) \geq 1$ but $\lambda\mu(f) < 1$ for any non-degenerate field (confidence cannot be driven to zero by a single contradiction), this derivative is strictly positive.</p>
 <p><em>Part 4 — Field sensitivity.</em> $\partial C^*/\partial\mu(f) = -\bar{s}\lambda \leq 0$, with strict inequality whenever $\bar{s} > 0$ and $\lambda > 0$. This formalizes the intuition that high-stakes fields (large $\mu(f)$) penalize contradictions more heavily, pulling the achievable steady-state confidence downward even when pass rates are high.</p>
 <p><em>Part 5 — Recovery time.</em> After the contradiction, $e_{\tau} = -\delta$ (deterministic drop). In the noise-free case ($\sigma_{\tilde{s}} = 0$), by geometric convergence, $|e_{\tau+t}| \leq (1-\alpha)^t\,\delta$. We want this below $\varepsilon$:</p>
@@ -611,7 +618,9 @@ $$\leq \|(1-\beta)s_t + \beta s^* + \Delta_t - s^*\|$$
 $$= \|(1-\beta)(s_t - s^*) + \Delta_t\|$$
 $$\leq (1-\beta)\|s_t - s^*\| + \|\Delta_t\|$$
 $$\leq (1-\beta)\|s_t - s^*\| + \Delta_{\max}\sqrt{n}$$</p>
-<p>Let $d_t = \|s_t - s^*\|$. The recurrence $d_{t+1} \leq (1-\beta)d_t + \Delta_{\max}\sqrt{n}$ has fixed point $d^* = \Delta_{\max}\sqrt{n}/\beta$. By the theory of contractive linear recurrences:</p>
+<p>Let $d_t = \|s_t - s^*\|$. The recurrence $d_{t+1} \leq (1-\beta)d_t + \Delta_{\max}\sqrt{n}$ has fixed point $d^* = \Delta_{\max}\sqrt{n}/\beta$. Unrolling the linear recurrence gives the exact closed form for the dominating sequence:</p>
+<p>$$d_t \leq (1-\beta)^t\,d_0 + \frac{\Delta_{\max}\sqrt{n}}{\beta}\big(1 - (1-\beta)^t\big),$$</p>
+<p>which is the standard solution of a first-order linear recurrence (homogeneous part $(1-\beta)^t d_0$ plus the particular solution $d^*(1-(1-\beta)^t)$). Since $0 < 1-\beta < 1$, the first term vanishes and the second rises to $d^*$. By the theory of contractive linear recurrences:</p>
 <ul>
 <li>If $d_t > d^*$: $d_{t+1} < d_t$ (distance decreasing toward $d^*$)</li>
 <li>If $d_t \leq d^*$: $d_{t+1} \leq d^*$ (distance stays within neighborhood)</li>
@@ -1004,7 +1013,9 @@ which is essential for the mechanism to be adopted voluntarily within the framew
 <li>Koutsoupias, E., &amp; Papadimitriou, C. H. (1999). Worst-case equilibria. In <em>STACS</em>.</li>
 <li>Lamport, L. (1998). The part-time parliament. <em>ACM Transactions on Computer Systems</em>, 16(2), 133–169.</li>
 <li>Li, X., et al. (2022). Branch-Train-Merge: Embarrassingly parallel training of expert language models. <em>arXiv preprint</em>.</li>
+<li>Luce, R. D. (1959). <em>Individual Choice Behavior: A Theoretical Analysis</em>. Wiley.</li>
 <li>Mann, H. B., &amp; Whitney, D. R. (1947). On a test of whether one of two random variables is stochastically larger than the other. <em>Annals of Mathematical Statistics</em>, 18(1), 50–60.</li>
+<li>McFadden, D. (1974). Conditional logit analysis of qualitative choice behavior. In P. Zarembka (Ed.), <em>Frontiers in Econometrics</em>. Academic Press.</li>
 <li>Nash, J. F. (1950). The bargaining problem. <em>Econometrica</em>, 18(2), 155–162.</li>
 <li>NHTSA. (2020). <em>Automated Vehicles 4.0: Ensuring American Leadership in Automated Vehicle Technologies</em>.</li>
 <li>NIST. (2020). <em>Special Publication 800-207: Zero Trust Architecture</em>.</li>
