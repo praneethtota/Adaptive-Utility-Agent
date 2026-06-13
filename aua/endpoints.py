@@ -102,8 +102,10 @@ class RouterResponse(BaseModel):
     welfare_scores: dict[str, float] | None = Field(
         None,
         description=(
-            "VCG welfare scores per specialist: W_i = P(domain_i) × confidence_i × prior_mean_u_i. "
-            "Populated only when arbitration_mode='vcg'."
+            "VCG welfare scores per specialist: W_i(q) = Σ_j p(j|q) · effective_u(i,j), "
+            "where effective_u is a shrinkage-corrected win-rate (Efron-Morris, N_cliff=10). "
+            "Populated only when arbitration_mode='vcg'. "
+            "See §10.6.7.1 and Appendix B §B.8 of the AUA whitepaper."
         ),
     )
     review_notes: str | None = Field(

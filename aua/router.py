@@ -2841,6 +2841,37 @@ class Router:
             )
             n_contra += nc_win
             n_dpo += nd_win
+            # ── Persist per-specialist VCG run data to model_runs ────────────
+            # vcg_winner, vcg_welfare_score, specialist, domain, confidence_score
+            # are queried by /analytics and /reliability. fire_and_forget keeps
+            # the response path non-blocking.
+            from aua.state import fire_and_forget as _faf
+
+            _vcg_run_time = time.time()
+            for _s, _t, _c in responses:
+                _is_winner = _s.name == winner_spec.name
+                _wf = _vcg_welfare.get(_s.name, 0.0)
+
+                async def _write_run(
+                    sname=_s.name, sfield=_s.field, is_w=_is_winner, wf=_wf, c=_c
+                ) -> None:
+                    self._state_store.append(
+                        "model_runs",
+                        {
+                            "conversation_id": req.session_id or "",
+                            "specialist": sname,
+                            "domain": sfield,
+                            "round": "answer",
+                            "vcg_winner": 1 if is_w else 0,
+                            "vcg_welfare_score": round(wf, 6),
+                            "confidence_score": round(c, 4),
+                            "latency_ms": round((time.time() - _vcg_run_time) * 1000, 1),
+                            "created_at": _vcg_run_time,
+                        },
+                    )
+
+                _faf(_write_run())
+
             spec_responses = [
                 {
                     "domain": s.field,
@@ -3073,41 +3104,110 @@ class Router:
 
     # ── Specialist call (buffered) ────────────────────────────────────────────
 
+    # ── VCG constants (§10.6.7.1 / Appendix B §B.8) ──────────────────────────
+    _VCG_N_CLIFF: int = 10  # Efron-Morris pseudo-count; see Lemma B.8.1
+    _VCG_GLOBAL_PRIOR: float = 0.65  # cross-domain win-rate prior
+
+    def _vcg_effective_u(self, specialist_name: str, domain: str) -> float:
+        """
+        Shrinkage-corrected win-rate for specialist i in domain j (§10.6.7.1 Point 2).
+
+        eu(i, j) = (n_ij * u_hat_ij + N_cliff * u_bar) / (n_ij + N_cliff)
+
+        where:
+          n_ij    — observations of specialist i answering queries in domain j
+          u_hat_ij — raw win-rate (fraction of queries where this specialist won)
+          N_cliff  — Efron-Morris pseudo-count (default 10)
+          u_bar    — global cross-domain prior (default 0.65)
+
+        When n_ij >= N_cliff the estimate converges to the raw win-rate.
+        When n_ij < N_cliff it is pulled toward the prior, preventing extreme
+        values from dominating the welfare sum (Lemma B.8.1).
+
+        Data source: model_runs table (vcg_winner flag, specialist + domain columns).
+        Falls back to the prior when no data is available.
+        """
+        N_c = self._VCG_N_CLIFF
+        u_bar = self._VCG_GLOBAL_PRIOR
+        try:
+            runs = self._state_store.query(
+                "model_runs",
+                filters={"specialist": specialist_name, "domain": domain, "round": "answer"},
+                limit=500,
+            )
+            n = len(runs)
+            if n == 0:
+                return u_bar
+            wins = sum(1 for r in runs if r.get("vcg_winner"))
+            u_hat = wins / n
+            return (n * u_hat + N_c * u_bar) / (n + N_c)
+        except Exception as _eu_err:
+            log.debug("effective_u lookup failed for %s/%s: %s", specialist_name, domain, _eu_err)
+            return u_bar
+
+    def _vcg_welfare(
+        self,
+        spec_name: str,
+        distribution: dict[str, float],
+    ) -> tuple[float, dict[str, float]]:
+        """
+        Multi-domain welfare score (§10.6.7.1 Point 1):
+
+        W_i(q) = Σ_j  p(j|q) · effective_u(i, j)
+
+        Only domains with p(j|q) >= 0.05 contribute (below that the term is
+        negligible and the DB lookup is wasteful). The result is a convex
+        combination of per-domain utilities (Proposition B.8.3 P3).
+
+        Returns (W_i, per_domain_breakdown) for logging.
+        """
+        total_weight = 0.0
+        weighted_sum = 0.0
+        breakdown: dict[str, float] = {}
+        for domain, p in distribution.items():
+            if p < 0.05:
+                continue
+            eu = self._vcg_effective_u(spec_name, domain)
+            breakdown[domain] = round(eu, 4)
+            weighted_sum += p * eu
+            total_weight += p
+        # Re-normalise if we dropped low-probability domains
+        if total_weight > 0.0:
+            welfare = weighted_sum / total_weight
+        else:
+            welfare = self._VCG_GLOBAL_PRIOR
+        return round(welfare, 6), breakdown
+
     def _vcg_select(
         self,
         responses: list[tuple],  # [(SpecialistConfig, text, confidence), ...]
         distribution: dict[str, float],
     ) -> tuple[int, dict[str, float]]:
         """
-        VCG welfare maximization: select the specialist with the highest welfare score.
+        VCG welfare maximization: select the specialist with the highest
+        multi-domain welfare score (§10.6.7.1, Theorems S1-S3, Appendix B §B.8).
 
-        W_i = P(domain_i) × confidence_i × prior_mean_u_i
+        W_i(q) = Σ_j  p(j|q) · effective_u(i, j)
 
-          P(domain_i)     — field classifier probability for this specialist's domain
-          confidence_i    — base confidence returned by the specialist call
-          prior_mean_u_i  — running mean U score for this specialist (1.0 if no history)
+          effective_u(i, j) — shrinkage-corrected win-rate (Lemma B.8.1)
+          p(j|q)            — field classifier domain probability
 
         Returns (winner_index, welfare_scores_dict).
-        Ties are broken by confidence, then by classifier probability.
+        Ties are broken by raw confidence, then by top-domain classifier probability.
         """
         welfare: dict[str, float] = {}
         for spec, _text, conf in responses:
-            p_domain = distribution.get(spec.field, 0.0)
-            # Get running mean U from scorer history
-            history = [s.utility for s in self._scorer.history if s.field == spec.field]
-            prior_u = round(sum(history) / len(history), 4) if history else 1.0
-            w = round(p_domain * conf * prior_u, 6)
+            w, breakdown = self._vcg_welfare(spec.name, distribution)
             welfare[spec.name] = w
             log.debug(
-                "VCG W(%s) = P(%.3f) × C(%.3f) × U_mean(%.3f) = %.4f",
+                "VCG W(%s) = %.4f  breakdown=%s  conf=%.3f",
                 spec.name,
-                p_domain,
-                conf,
-                prior_u,
                 w,
+                breakdown,
+                conf,
             )
 
-        # argmax by welfare, tie-break: confidence, then P(domain)
+        # argmax by welfare, tie-break: confidence, then P(top domain)
         winner_idx = max(
             range(len(responses)),
             key=lambda i: (
