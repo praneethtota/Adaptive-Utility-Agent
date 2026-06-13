@@ -470,15 +470,47 @@ class ArbiterAgent:
         self, subject: str, domain: str, output_A: str, output_B: str
     ) -> CheckResult:
         """
-        Empirical check against external ground truth.
-        In the MVP this is a stub — the live system calls external APIs.
-        Returns no verdict (not converged) to avoid false positives.
+        Empirical check against external ground truth (#61).
+
+        Dispatches to the appropriate source by domain:
+          mathematics / structural_engineering  → SymPy symbolic verification
+          software_engineering / stem_research  → arXiv abstract search
+          surgery / aviation / medicine         → PubMed abstract search
+          law / art / creative_writing          → not-converged (no free source)
+
+        Never raises — all errors return not-converged so a flaky external
+        API never breaks the arbitration pipeline.
         """
-        # TODO Phase 1: integrate external knowledge APIs per field
-        # e.g. PubMed for medicine, arXiv for CS, SymPy for math
-        return CheckResult(
-            "empirical", False, None, "Empirical check not yet implemented (Phase 1 item)", 0.0
-        )
+        try:
+            from aua.empirical import empirical_check
+
+            result = empirical_check(subject, domain, output_A, output_B)
+
+            if not result.converged:
+                return CheckResult(
+                    "empirical",
+                    False,
+                    None,
+                    result.explanation
+                    or f"Empirical check did not converge (source={result.source})",
+                    0.0,
+                )
+
+            return CheckResult(
+                "empirical",
+                True,
+                result.winner,
+                result.explanation,
+                result.confidence,
+            )
+        except Exception as e:  # noqa: BLE001
+            return CheckResult(
+                "empirical",
+                False,
+                None,
+                f"Empirical check error: {e}",
+                0.0,
+            )
 
     # ── Confidence and case logic ─────────────────────────────────────────────
 
