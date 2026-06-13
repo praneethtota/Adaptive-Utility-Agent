@@ -86,6 +86,7 @@ packages = ["aua"]
 include = [
     "aua/**/*.py",
     "aua/tiers/*.yaml",
+    "aua/fixtures/*.yaml",
     "aua/py.typed",
 ]
 

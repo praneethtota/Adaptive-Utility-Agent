@@ -1926,6 +1926,190 @@ def _start_chat_ui(port: int = 3001) -> None:
     )
 
 
+# ── aua test (#54) ────────────────────────────────────────────────────────────
+
+
+@main.command("test")
+@click.option(
+    "--suite",
+    default="smoke",
+    show_default=True,
+    type=click.Choice(["smoke", "full", "routing"]),
+    help="Built-in test suite to run.",
+)
+@click.option(
+    "--url",
+    "--router-url",
+    "router_url",
+    default="http://localhost:8000",
+    show_default=True,
+    help="Router URL.",
+)
+@click.option(
+    "--timeout",
+    default=120.0,
+    show_default=True,
+    type=float,
+    help="Per-case timeout in seconds.",
+)
+@click.option(
+    "--dataset",
+    "-d",
+    default=None,
+    help="Path to a custom YAML fixture file (overrides --suite).",
+)
+@click.option(
+    "--case",
+    "case_ids",
+    multiple=True,
+    help="Run only specific case IDs (repeatable). Default: all.",
+)
+@click.option("--json", "as_json", is_flag=True, default=False, help="Emit JSON report to stdout.")
+@click.option(
+    "--output",
+    "-o",
+    default=None,
+    help="Save JSON report to this file path.",
+)
+@click.option(
+    "--no-liveness",
+    is_flag=True,
+    default=False,
+    help="Skip the router liveness check before running.",
+)
+def test_command(suite, router_url, timeout, dataset, case_ids, as_json, output, no_liveness):
+    """Run the built-in integration test suite against a live router.
+
+    \b
+    Suites:
+        smoke    — 6 cases, < 60 s  — liveness + basic routing (default)
+        full     — 15 cases, 3-10 min — regression and edge cases
+        routing  — 9 cases, 1-3 min  — domain classification correctness
+
+    \b
+    Examples:
+        aua test                              # smoke suite, localhost:8000
+        aua test --suite full
+        aua test --suite routing --url http://prod:8000
+        aua test --dataset my_cases.yaml
+        aua test --suite smoke --case swe_binary_search --case math_derivative
+        aua test --suite full --json --output report.json
+    """
+    import json as _json
+
+    from aua.test_harness import (
+        SUITES,
+        check_router_live,
+        run_custom_dataset,
+        run_suite,
+    )
+
+    # ── Liveness check ─────────────────────────────────────────────────────
+    if not no_liveness:
+        console.print(f"[dim]Checking router at {router_url}...[/dim]")
+        live, msg = check_router_live(router_url, timeout=5.0)
+        if not live:
+            console.print(f"[red]✗ Router not reachable:[/red] {msg}")
+            console.print(
+                "[dim]Start the router with [cyan]aua serve[/cyan] "
+                "or pass [cyan]--url[/cyan] for a different address.[/dim]"
+            )
+            sys.exit(1)
+        console.print(f"[green]✓[/green] Router live at [cyan]{router_url}[/cyan]")
+
+    # ── Run ────────────────────────────────────────────────────────────────
+    if dataset:
+        console.print(f"[dim]Dataset: {dataset}[/dim]")
+        try:
+            report = run_custom_dataset(dataset, router_url=router_url, timeout=timeout)
+        except Exception as e:
+            console.print(f"[red]✗ Failed to load dataset:[/red] {e}")
+            sys.exit(1)
+    else:
+        n_cases = len(__import__("yaml").safe_load(SUITES[suite].read_text()).get("cases", []))
+        filter_note = f" ({len(case_ids)} filtered)" if case_ids else ""
+        console.print(
+            f"[dim]Suite: [bold]{suite}[/bold]  "
+            f"{n_cases} cases{filter_note}  "
+            f"timeout={timeout:.0f}s[/dim]"
+        )
+        try:
+            report = run_suite(
+                suite=suite,
+                router_url=router_url,
+                timeout=timeout,
+                case_ids=list(case_ids) if case_ids else None,
+            )
+        except Exception as e:
+            console.print(f"[red]✗ Test run failed:[/red] {e}")
+            sys.exit(1)
+
+    # ── Save report ────────────────────────────────────────────────────────
+    if output:
+        import pathlib
+
+        out_path = pathlib.Path(output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(_json.dumps(report.to_dict(), indent=2))
+        console.print(f"[dim]Report saved: {out_path}[/dim]")
+
+    # ── JSON output ────────────────────────────────────────────────────────
+    if as_json:
+        print(_json.dumps(report.to_dict(), indent=2))
+        sys.exit(0 if report.ok else 1)
+
+    # ── Pretty output ──────────────────────────────────────────────────────
+    from rich.table import Table
+
+    total = report.total
+    rate_color = (
+        "green" if report.pass_rate == 1.0 else "yellow" if report.pass_rate >= 0.75 else "red"
+    )
+
+    console.print()
+    console.print(
+        f"[bold]aua test — {report.suite}[/bold]  "
+        f"[{rate_color}]{report.passed}/{total} passed[/{rate_color}]  "
+        f"U={report.mean_u_score:.4f}  "
+        f"latency={report.mean_latency_ms:.0f}ms"
+    )
+
+    tbl = Table(show_header=True, header_style="bold dim", box=None, padding=(0, 1))
+    tbl.add_column("", width=2)  # pass/fail icon
+    tbl.add_column("Case ID", style="cyan", no_wrap=True)
+    tbl.add_column("Domain", style="dim")
+    tbl.add_column("Mode", style="dim")
+    tbl.add_column("U", justify="right")
+    tbl.add_column("ms", justify="right")
+    tbl.add_column("Failures / Error", style="red")
+
+    for c in report.cases:
+        icon = "[green]✓[/green]" if c.passed else "[red]✗[/red]"
+        detail = ""
+        if c.error:
+            detail = c.error[:60]
+        elif c.failures:
+            detail = "; ".join(c.failures)[:60]
+        tbl.add_row(
+            icon,
+            c.case_id,
+            c.domain,
+            c.routing_mode,
+            f"{c.u_score:.3f}",
+            f"{c.latency_ms:.0f}",
+            detail,
+        )
+
+    console.print(tbl)
+
+    if report.ok:
+        console.print(f"\n[bold green]✓ All {total} tests passed.[/bold green]")
+    else:
+        n_fail = report.failed + report.errored
+        console.print(f"\n[bold red]✗ {n_fail} of {total} tests failed.[/bold red]")
+        sys.exit(1)
+
+
 @main.command("ui")
 @click.option("--port", default=3001, show_default=True, type=int)
 @click.option("--install-only", is_flag=True, default=False, help="Only install dependencies.")

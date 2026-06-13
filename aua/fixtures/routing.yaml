@@ -1,0 +1,73 @@
+# aua built-in test fixture: routing suite
+# Focused on verifying the field classifier routes to the right domain.
+# Each case has a clear single-domain answer — useful for diagnosing
+# mis-routing after config changes or new model deployments.
+# Run with: aua test --suite routing
+
+name: routing
+description: >
+  Routing correctness suite. Every case has a clear expected domain.
+  Failures indicate field classifier misconfiguration or model drift.
+
+cases:
+
+  - id: route_swe_python_function
+    prompt: "Write a Python function that reverses a string."
+    expected_properties:
+      - expected_domain: software_engineering
+      - contains: "def "
+      - min_length: 30
+
+  - id: route_swe_algorithm
+    prompt: "Explain the quicksort algorithm and its average-case time complexity."
+    expected_properties:
+      - expected_domain: software_engineering
+      - contains_any: ["O(n log n)", "pivot", "partition"]
+      - min_length: 40
+
+  - id: route_swe_data_structure
+    prompt: "What is the difference between a stack and a queue?"
+    expected_properties:
+      - expected_domain: software_engineering
+      - contains_any: ["LIFO", "FIFO", "stack", "queue", "last in", "first in"]
+      - min_length: 30
+
+  - id: route_math_algebra
+    prompt: "Solve for x: 3x + 7 = 22."
+    expected_properties:
+      - expected_domain: mathematics
+      - contains_any: ["x = 5", "5", "x=5"]
+      - min_length: 5
+
+  - id: route_math_geometry
+    prompt: "What is the area of a circle with radius 4?"
+    expected_properties:
+      - expected_domain: mathematics
+      - contains_any: ["16π", "16 π", "50.26", "50.3", "pi"]
+      - min_length: 10
+
+  - id: route_math_calculus
+    prompt: "Find the limit of (sin x)/x as x approaches 0."
+    expected_properties:
+      - expected_domain: mathematics
+      - contains_any: ["1", "equals 1", "limit is 1", "L'Hôpital", "L'Hopital"]
+      - min_length: 10
+
+  - id: route_math_statistics
+    prompt: "What is the standard deviation of [2, 4, 4, 4, 5, 5, 7, 9]?"
+    expected_properties:
+      - expected_domain: mathematics
+      - contains_any: ["2", "standard deviation", "σ"]
+      - min_length: 10
+
+  - id: route_general_history
+    prompt: "In what year did World War II end?"
+    expected_properties:
+      - contains: "1945"
+      - min_length: 4
+
+  - id: route_general_science
+    prompt: "What is the chemical formula for water?"
+    expected_properties:
+      - contains_any: ["H2O", "H₂O"]
+      - min_length: 3

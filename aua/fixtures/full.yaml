@@ -1,0 +1,130 @@
+# aua built-in test fixture: full suite
+# Thorough coverage — 10+ cases per supported domain group.
+# Purpose: regression testing before blue-green promotion or release.
+# Run with: aua test --suite full
+
+name: full
+description: >
+  Full integration test suite. Covers correctness, routing edge cases,
+  multi-turn correction behaviour, and utility score floors.
+  Expected runtime: 3-10 minutes depending on hardware tier.
+
+cases:
+
+  # ── software_engineering ──────────────────────────────────────────────────
+
+  - id: swe_binary_search
+    prompt: "Write a Python function for binary search on a sorted list."
+    expected_properties:
+      - contains: "def "
+      - contains_any: ["binary", "search", "mid"]
+      - min_length: 80
+      - expected_domain: software_engineering
+      - not_contains: "I cannot"
+
+  - id: swe_merge_sort
+    prompt: "Implement merge sort in Python and state its time complexity."
+    expected_properties:
+      - contains: "def "
+      - contains_any: ["O(n log n)", "n log n", "merge"]
+      - min_length: 100
+      - expected_domain: software_engineering
+
+  - id: swe_linked_list
+    prompt: "Write a Python class for a singly linked list with append and display methods."
+    expected_properties:
+      - contains: "class "
+      - contains_any: ["append", "next", "Node", "head"]
+      - min_length: 100
+      - expected_domain: software_engineering
+
+  - id: swe_big_o_definition
+    prompt: "What does O(n^2) mean in algorithm complexity?"
+    expected_properties:
+      - contains_any: ["quadratic", "n squared", "n^2", "proportional"]
+      - min_length: 30
+      - expected_domain: software_engineering
+
+  - id: swe_recursion
+    prompt: "Write a recursive Python function to compute Fibonacci numbers."
+    expected_properties:
+      - contains: "def "
+      - contains_any: ["fib", "fibonacci", "n - 1", "n-1"]
+      - min_length: 60
+      - expected_domain: software_engineering
+
+  # ── mathematics ──────────────────────────────────────────────────────────
+
+  - id: math_derivative_polynomial
+    prompt: "What is the derivative of x^3 + 2x with respect to x?"
+    expected_properties:
+      - contains_any: ["3x^2", "3x²", "3x^{2}", "6x", "2"]
+      - min_length: 10
+      - expected_domain: mathematics
+
+  - id: math_integral
+    prompt: "What is the integral of 2x with respect to x?"
+    expected_properties:
+      - contains_any: ["x^2", "x²", "x^{2}", "+ C", "constant"]
+      - min_length: 10
+      - expected_domain: mathematics
+
+  - id: math_prime_97
+    prompt: "Is 97 a prime number? Show your reasoning."
+    expected_properties:
+      - contains_any: ["yes", "prime", "97 is"]
+      - min_length: 30
+      - expected_domain: mathematics
+
+  - id: math_quadratic
+    prompt: "Solve x^2 - 5x + 6 = 0."
+    expected_properties:
+      - contains_any: ["x = 2", "x = 3", "2 and 3", "roots are"]
+      - min_length: 20
+      - expected_domain: mathematics
+
+  - id: math_pythagorean
+    prompt: "State the Pythagorean theorem and give an example."
+    expected_properties:
+      - contains_any: ["a^2 + b^2", "a² + b²", "hypotenuse", "right triangle"]
+      - min_length: 40
+      - expected_domain: mathematics
+
+  # ── routing edge cases ────────────────────────────────────────────────────
+
+  - id: routing_ambiguous_cs_math
+    prompt: "What is the time complexity of computing the nth Fibonacci number with dynamic programming?"
+    expected_properties:
+      - contains_any: ["O(n)", "linear", "memoization", "dynamic"]
+      - min_length: 30
+      - expected_domain_any: [software_engineering, mathematics]
+
+  - id: routing_nonempty_response
+    prompt: "Explain what a hash table is."
+    expected_properties:
+      - min_length: 50
+      - contains_any: ["hash", "key", "bucket", "collision"]
+      - not_contains: "I cannot"
+
+  # ── general ───────────────────────────────────────────────────────────────
+
+  - id: general_capital
+    prompt: "What is the capital of Japan?"
+    expected_properties:
+      - contains: "Tokyo"
+      - min_length: 5
+
+  - id: general_rest_api
+    prompt: "Explain what a REST API is in two sentences."
+    expected_properties:
+      - min_length: 40
+      - contains_any: ["HTTP", "request", "endpoint", "resource", "representational"]
+      - not_contains: "I cannot"
+
+  - id: general_norefusal
+    prompt: "What are the four main OOP principles?"
+    expected_properties:
+      - contains_any: ["encapsulation", "inheritance", "polymorphism", "abstraction"]
+      - min_length: 50
+      - not_contains: "I cannot"
+      - not_contains: "I'm unable"

@@ -1,0 +1,61 @@
+# aua built-in test fixture: smoke suite
+# 2-3 cases per domain, designed to complete in < 60 s.
+# Purpose: verify the router is up and routing to the right specialists.
+# Run with: aua test --suite smoke
+
+name: smoke
+description: >
+  Quick smoke test — 2-3 cases per supported domain. Verifies router
+  liveness, basic routing correctness, and non-empty responses.
+  Designed to complete in under 60 seconds on any hardware tier.
+
+cases:
+
+  # ── software_engineering ──────────────────────────────────────────────────
+
+  - id: swe_binary_search
+    prompt: "Write a Python function for binary search on a sorted list."
+    expected_properties:
+      - contains: "def "
+      - contains_any: ["binary", "search", "mid", "low", "high"]
+      - min_length: 80
+      - expected_domain: software_engineering
+      - not_contains: "I cannot"
+      - not_contains: "I'm unable"
+
+  - id: swe_complexity_question
+    prompt: "What is the time complexity of merge sort?"
+    expected_properties:
+      - contains_any: ["O(n log n)", "n log n", "nlogn"]
+      - min_length: 20
+      - expected_domain: software_engineering
+
+  # ── mathematics ──────────────────────────────────────────────────────────
+
+  - id: math_derivative
+    prompt: "What is the derivative of x^3 + 2x with respect to x?"
+    expected_properties:
+      - contains_any: ["3x^2", "3x²", "3x^{2}", "6x", "2"]
+      - min_length: 10
+      - expected_domain: mathematics
+
+  - id: math_prime_check
+    prompt: "Is 97 a prime number? Explain briefly."
+    expected_properties:
+      - contains_any: ["yes", "prime", "97 is"]
+      - min_length: 20
+      - expected_domain: mathematics
+
+  # ── general (router fallback / ambiguous) ─────────────────────────────────
+
+  - id: general_capital
+    prompt: "What is the capital of France?"
+    expected_properties:
+      - contains: "Paris"
+      - min_length: 5
+
+  - id: general_nonempty
+    prompt: "Explain what a REST API is in one sentence."
+    expected_properties:
+      - min_length: 30
+      - not_contains: "I cannot"
