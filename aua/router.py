@@ -279,6 +279,11 @@ class Router:
         self._batch_queue = BatchQueue(self._state_store)
         self._batch_worker: _BatchWorker | None = None  # started in lifespan
 
+        # #47: experiment tracking
+        from aua.experiment_tracker import ExperimentTracker
+
+        self._experiment_tracker = ExperimentTracker(config.experiment_tracking)
+
         self._domain_confidence: dict[str, float] = {s.field: 0.5 for s in config.specialists}
         self._field_to_url: dict[str, str] = {s.field: s.endpoint for s in config.specialists}
         self._arbiter_url = config.arbiter.endpoint
@@ -406,6 +411,7 @@ class Router:
             for task in self._background_tasks:
                 task.cancel()
             self._background_tasks.clear()
+            self._experiment_tracker.finish()
             if self._crash_session_id:
                 _crash.record_shutdown(self._state_store, self._crash_session_id)
 
@@ -2658,6 +2664,26 @@ class Router:
         if self._middleware.registered():
             _mw_resp = await self._middleware.after_response(resp.model_dump())
             resp = RouterResponse(**_mw_resp)
+
+        # #47: experiment tracking — fire-and-forget, never blocks the response
+        try:
+            self._experiment_tracker.log(
+                {
+                    "u_score": resp.u_score,
+                    "confidence": resp.confidence,
+                    "latency_ms": resp.latency_ms,
+                    "contradictions_detected": resp.contradictions_detected,
+                    "corrections_injected": resp.corrections_injected,
+                    "dpo_pairs_generated": resp.dpo_pairs_generated,
+                    "routing_mode": resp.routing_mode,
+                    "primary_domain": resp.primary_domain,
+                    "session_id": resp.session_id,
+                    "trace_id": resp.trace_id,
+                }
+            )
+        except Exception as _et_err:  # noqa: BLE001
+            log.debug("experiment_tracker.log failed: %s", _et_err)
+
         return resp
 
     def _response_ids(self, trace_id: str) -> dict[str, str | None]:

@@ -202,6 +202,7 @@ _KNOWN_TOP_LEVEL: set[str] = {
     "plugins",
     "hooks",
     "middleware",
+    "experiment_tracking",
 }
 _KNOWN_AUA_KEYS: set[str] = {"version", "mode", "backend", "project_name"}
 _KNOWN_SPECIALIST_KEYS: set[str] = {
@@ -254,6 +255,7 @@ _KNOWN_LOG_KEYS: set[str] = {"level", "format"}
 _KNOWN_SECRETS_KEYS: set[str] = {"provider", "region", "url", "token_env"}
 _KNOWN_STATE_KEYS: set[str] = {"backend", "path"}
 _KNOWN_SECURITY_KEYS: set[str] = {"cors_origins", "mtls", "encryption"}
+_KNOWN_EXPERIMENT_KEYS: set[str] = {"enabled", "mlflow", "wandb"}
 _KNOWN_PLUGIN_KINDS: set[str] = {
     "field_classifier",
     "utility_scorer",
@@ -604,6 +606,11 @@ class AUAConfig:
     plugins: dict[str, PluginSpec] = field(default_factory=dict)
     hooks: list[HookSpec] = field(default_factory=list)
     middleware: list[MiddlewareSpec] = field(default_factory=list)
+    experiment_tracking: Any = field(
+        default_factory=lambda: __import__(
+            "aua.experiment_tracker", fromlist=["ExperimentConfig"]
+        ).ExperimentConfig()
+    )  # ExperimentConfig — typed as Any to avoid circular import
 
     # Derived — built on load
     _specialist_by_name: dict[str, SpecialistConfig] = field(
@@ -916,6 +923,14 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
             )
         middleware_cfg.append(MiddlewareSpec(import_path=_ip, config=_mc))
 
+    # ── Experiment tracking (#47) ──────────────────────────────────────────
+    raw_exp = raw.get("experiment_tracking", {}) or {}
+    if raw_exp:
+        _reject_unknown_keys(raw_exp, _KNOWN_EXPERIMENT_KEYS, "experiment_tracking", source)
+    from aua.experiment_tracker import experiment_config_from_dict
+
+    experiment_cfg = experiment_config_from_dict(raw_exp)
+
     # ── Validate field names against FIELD_CONFIGS ─────────────────────────
     for s in specialists:
         if s.field not in FIELD_CONFIGS:
@@ -942,6 +957,7 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         plugins=plugins_cfg,
         hooks=hooks_cfg,
         middleware=middleware_cfg,
+        experiment_tracking=experiment_cfg,
     )
 
 
