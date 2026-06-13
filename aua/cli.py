@@ -82,6 +82,13 @@ def main():
     type=click.Choice(["pairwise", "vcg"], case_sensitive=False),
     help="Override arbitration mode: 'pairwise' (default) or 'vcg' (welfare maximization).",
 )
+@click.option(
+    "--no-download",
+    "no_download",
+    is_flag=True,
+    default=False,
+    help="Skip automatic model download (vLLM: HF Hub; Ollama: ollama pull). Use for air-gapped or pre-cached setups.",
+)
 def serve(
     config,
     dry_run,
@@ -92,6 +99,7 @@ def serve(
     with_ui,
     ui_port,
     arbitration_mode,
+    no_download,
 ):
     """Start all specialists + router from aua_config.yaml.
 
@@ -129,6 +137,7 @@ def serve(
         router_only=router_only,
         startup_timeout=startup_timeout,
         config_path=config if not tier else None,
+        no_download=no_download,
     )
 
     if with_ui and not dry_run:

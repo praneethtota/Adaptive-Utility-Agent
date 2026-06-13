@@ -48,6 +48,7 @@ from aua.endpoints import (
     ArbiterInfo,
     BatchQueryRequest,
     BatchQueryResponse,
+    BatchSubmitRequest,
     ConfigResponse,
     CorrectionListItem,
     CorrectionListResponse,
@@ -271,6 +272,13 @@ class Router:
         self._crash_session_id: str | None = None  # V-P1.5
         self._background_tasks: list = []  # cancelled on shutdown
 
+        # #56: persistent batch queue + background worker
+        from aua.batch_queue import BatchQueue
+        from aua.batch_queue import BatchWorker as _BatchWorker
+
+        self._batch_queue = BatchQueue(self._state_store)
+        self._batch_worker: _BatchWorker | None = None  # started in lifespan
+
         self._domain_confidence: dict[str, float] = {s.field: 0.5 for s in config.specialists}
         self._field_to_url: dict[str, str] = {s.field: s.endpoint for s in config.specialists}
         self._arbiter_url = config.arbiter.endpoint
@@ -378,6 +386,13 @@ class Router:
 
                 # V-P3.4: hourly ontology maintenance
                 self._ontology_job.start()
+
+                # #56: persistent batch worker — recover interrupted jobs then start
+                from aua.batch_queue import BatchWorker as _BW
+
+                self._batch_queue.recover_interrupted()
+                self._batch_worker = _BW(self._batch_queue, self._handle)
+                self._batch_worker.start()
             except Exception as e:  # noqa: BLE001
                 log.warning("v1.1 startup tasks failed (continuing): %s", e)
 
@@ -386,6 +401,8 @@ class Router:
             # ── Shutdown ──────────────────────────────────────────────────────
             self._keyword_index.stop()
             self._ontology_job.stop()
+            if self._batch_worker is not None:
+                self._batch_worker.stop()
             for task in self._background_tasks:
                 task.cancel()
             self._background_tasks.clear()
@@ -572,6 +589,59 @@ class Router:
             Failed queries are excluded from results and counted in n_errors.
             """
             return await self._handle_batch(req)
+
+        # ── Persistent batch queue (#56) ────────────────────────────────────
+
+        @app.post(
+            "/batch/jobs",
+            tags=["batch"],
+            summary="Submit a batch job — returns job_id immediately",
+            status_code=202,
+        )
+        async def batch_submit(req: BatchSubmitRequest) -> dict:
+            loop = _asyncio.get_event_loop()
+            job_id = await loop.run_in_executor(
+                None,
+                lambda: self._batch_queue.submit(
+                    queries=req.queries,
+                    priority=req.priority,
+                    session_id=req.session_id,
+                    max_parallel=req.max_parallel,
+                    meta=req.meta,
+                ),
+            )
+            return {"job_id": job_id, "status": "pending", "n_queries": len(req.queries)}
+
+        @app.get(
+            "/batch/jobs/{job_id}",
+            tags=["batch"],
+            summary="Poll a batch job — status and partial results",
+        )
+        async def batch_poll(job_id: str) -> dict:
+            loop = _asyncio.get_event_loop()
+            data = await loop.run_in_executor(
+                None,
+                lambda: self._batch_queue.get_job(job_id),
+            )
+            if data is None:
+                raise HTTPException(404, f"Batch job '{job_id}' not found")
+            return data
+
+        @app.get(
+            "/batch/jobs",
+            tags=["batch"],
+            summary="List recent batch jobs",
+        )
+        async def batch_list(
+            status: str | None = None,
+            limit: int = 50,
+        ) -> dict:
+            loop = _asyncio.get_event_loop()
+            jobs = await loop.run_in_executor(
+                None,
+                lambda: self._batch_queue.list_jobs(status=status, limit=limit),
+            )
+            return {"jobs": jobs, "n": len(jobs)}
 
         # ── Health ─────────────────────────────────────────────────────────
 

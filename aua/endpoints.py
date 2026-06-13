@@ -181,6 +181,49 @@ class BatchQueryResponse(BaseModel):
     )
 
 
+# ── Persistent batch queue (#56) ─────────────────────────────────────────────
+
+
+class BatchSubmitRequest(BaseModel):
+    """Submit a batch job to the persistent queue."""
+
+    queries: list[str] = Field(
+        ...,
+        description="Queries to process. Each is routed independently.",
+        min_length=1,
+        max_length=500,
+    )
+    priority: str = Field(
+        "normal",
+        description="Dispatch priority: 'high' | 'normal' | 'low'.",
+        pattern="^(high|normal|low)$",
+    )
+    session_id: str | None = Field(
+        None,
+        description="Shared session ID for all queries. Auto-generated if omitted.",
+    )
+    max_parallel: int = Field(
+        4,
+        ge=1,
+        le=32,
+        description="Max concurrent specialist calls within this job.",
+    )
+    meta: dict | None = Field(
+        None,
+        description="Arbitrary caller metadata stored with the job.",
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "queries": ["Write binary search in Python.", "Implement quicksort."],
+                "priority": "normal",
+                "max_parallel": 4,
+            }
+        }
+    }
+
+
 # ── Stream ────────────────────────────────────────────────────────────────────
 # Server-Sent Events payload models for POST /query/stream.
 # Wire format per event:  data: {json}\n\n

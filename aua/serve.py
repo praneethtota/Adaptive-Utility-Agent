@@ -68,6 +68,7 @@ def serve(
     startup_timeout: int = DEFAULT_STARTUP_TIMEOUT,
     reuse_running: bool = False,
     config_path: str | None = None,
+    no_download: bool = False,
 ) -> None:
     """
     Start all specialists and the router from config.
@@ -130,17 +131,21 @@ def serve(
     # ── Start specialists ──────────────────────────────────────────────────
     if not router_only:
         if config.backend == "ollama":
-            p = _start_ollama(config, dry_run, startup_timeout)
+            p = _start_ollama(config, dry_run, startup_timeout, no_download=no_download)
             if p:
                 processes.append(p)
         else:
             for spec in config.specialists:
-                p = _start_specialist(spec, dry_run, startup_timeout, config.runtime)
+                p = _start_specialist(
+                    spec, dry_run, startup_timeout, config.runtime, no_download=no_download
+                )
                 if p:
                     processes.append(p)
 
             # Arbiter
-            p = _start_arbiter(config.arbiter, dry_run, startup_timeout, config.runtime)
+            p = _start_arbiter(
+                config.arbiter, dry_run, startup_timeout, config.runtime, no_download=no_download
+            )
             if p:
                 processes.append(p)
 
@@ -263,8 +268,13 @@ def _start_specialist(
     dry_run: bool,
     timeout: int,
     runtime: RuntimeConfig,
+    no_download: bool = False,
 ) -> subprocess.Popen | None:
     cmd = spec.vllm_command()
+
+    # #57: download model before starting the process
+    if not dry_run and not no_download and spec.backend == "vllm":
+        _hf_download(spec.model)
 
     hw_detail = (
         f"GPU {spec.gpu} ({spec.gpu_memory_utilization*100:.0f}% VRAM)"
@@ -298,8 +308,13 @@ def _start_arbiter(
     dry_run: bool,
     timeout: int,
     runtime: RuntimeConfig,
+    no_download: bool = False,
 ) -> subprocess.Popen | None:
     cmd = arb.vllm_command()
+
+    # #57: download model before starting the process
+    if not dry_run and not no_download and arb.backend == "vllm":
+        _hf_download(arb.model)
 
     hw_detail_arb = (
         f"GPU {arb.gpu} ({arb.gpu_memory_utilization*100:.0f}% VRAM)"
@@ -384,6 +399,7 @@ def _start_ollama(
     config: AUAConfig,
     dry_run: bool,
     timeout: int,
+    no_download: bool = False,
 ) -> subprocess.Popen | None:
     """
     Ensure Ollama is running and all required models are pulled.
@@ -428,34 +444,105 @@ def _start_ollama(
         )
         _wait_healthy("ollama", ollama_url, proc, timeout)
 
-    all_models = list(dict.fromkeys([s.model for s in config.specialists] + [config.arbiter.model]))
-    for model in all_models:
-        _ollama_pull(model)
+    if not no_download:
+        all_models = list(
+            dict.fromkeys([s.model for s in config.specialists] + [config.arbiter.model])
+        )
+        for model in all_models:
+            _ollama_pull(model)
 
     return proc
 
 
-def _ollama_pull(model: str) -> None:
-    """Pull an Ollama model if not already present."""
-    console.print(f"  Checking model [cyan]{model}[/cyan]...")
-    result = subprocess.run(
-        ["ollama", "list"],
-        capture_output=True,
-        text=True,
-    )
-    if model in result.stdout:
-        console.print(f"  [green]✓ {model} already pulled[/green]")
+def _ollama_model_present(model: str, base_url: str = "http://127.0.0.1:11434") -> bool:
+    """Return True if the model tag is already present in Ollama."""
+    try:
+        r = httpx.get(f"{base_url}/api/tags", timeout=3.0)
+        tags = r.json().get("models", [])
+        return any(m.get("name", "") == model or m.get("name", "").startswith(model) for m in tags)
+    except Exception:
+        return False
+
+
+def _ollama_pull(model: str, base_url: str = "http://127.0.0.1:11434") -> None:
+    """Pull an Ollama model if not already present, with Rich progress display."""
+    if _ollama_model_present(model, base_url):
+        console.print(f"  [green]✓ {model} already present[/green]")
         return
 
-    console.print(f"  Pulling [cyan]{model}[/cyan] (this may take a while)...")
-    pull = subprocess.run(
-        ["ollama", "pull", model],
-        capture_output=False,
-    )
+    console.print(f"  Pulling [cyan]{model}[/cyan]...")
+    pull = subprocess.run(["ollama", "pull", model])
     if pull.returncode != 0:
         console.print(f"  [red]✗ Failed to pull {model}[/red]")
         sys.exit(1)
     console.print(f"  [green]✓ {model} ready[/green]")
+
+
+def _hf_download(model_repo: str) -> None:
+    """
+    Download a HuggingFace model with progress display (#57).
+
+    Steps:
+      1. Check HF_TOKEN env var (required for gated models, optional otherwise)
+      2. Check local cache — skip download if already present
+      3. Pre-flight disk space check (~5 GB minimum as a heuristic)
+      4. snapshot_download() with Rich progress
+    """
+    try:
+        from huggingface_hub import snapshot_download, try_to_load_from_cache
+    except ImportError:
+        console.print(
+            "  [yellow]⚠ huggingface_hub not installed — skipping download.[/yellow]\n"
+            "  [dim]Install with: pip install huggingface_hub[/dim]"
+        )
+        return
+
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+
+    # Check cache first (free — no network required)
+    cached = try_to_load_from_cache(model_repo, filename="config.json", token=token)
+    if cached and cached != "not_cached_path_but_exists":
+        console.print(f"  [green]✓ {model_repo} already in HF cache[/green]")
+        return
+
+    # Disk space heuristic — warn if < 10 GB free
+    import shutil as _shutil
+
+    free_gb = _shutil.disk_usage("/").free / 1024**3
+    if free_gb < 10:
+        console.print(
+            f"  [yellow]⚠ Low disk space ({free_gb:.1f} GB free). "
+            "Download may fail if the model is large.[/yellow]"
+        )
+
+    if not token:
+        console.print(
+            f"  [dim]HF_TOKEN not set — downloading {model_repo} as anonymous user.\n"
+            "  Gated models (Llama, Gemma) require: export HF_TOKEN=hf_...[/dim]"
+        )
+
+    console.print(f"  Downloading [cyan]{model_repo}[/cyan] from HuggingFace Hub...")
+    try:
+        with console.status(
+            f"  [dim]Downloading {model_repo} (this may take several minutes)...[/dim]",
+            spinner="dots",
+        ):
+            snapshot_download(
+                repo_id=model_repo,
+                token=token,
+                ignore_patterns=["*.msgpack", "flax_model*", "tf_model*", "rust_model*"],
+            )
+        console.print(f"  [green]✓ {model_repo} downloaded[/green]")
+    except Exception as e:
+        if "401" in str(e) or "403" in str(e):
+            console.print(
+                f"  [red]✗ Access denied for {model_repo}.[/red]\n"
+                "  [dim]This is a gated model. Set HF_TOKEN=hf_... and accept the "
+                f"model's terms at https://huggingface.co/{model_repo}[/dim]"
+            )
+        else:
+            console.print(f"  [red]✗ Download failed for {model_repo}: {e}[/red]")
+        sys.exit(1)
 
 
 # ── Router startup ────────────────────────────────────────────────────────────
