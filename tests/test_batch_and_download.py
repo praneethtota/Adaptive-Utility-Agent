@@ -354,63 +354,72 @@ class TestOllamaPull:
 
 
 class TestHfDownload:
+    """
+    Tests for _hf_download().
+
+    huggingface_hub is an optional dependency (not in [dev] extras), so
+    every test injects a fake module into sys.modules before calling
+    _hf_download(). This makes the suite pass in clean CI environments.
+    """
+
+    def _fake_hf_module(self, cached_path=None, download_side_effect=None):
+        """Return a MagicMock that stands in for the huggingface_hub module."""
+        fake = MagicMock()
+        fake.try_to_load_from_cache.return_value = cached_path
+        if download_side_effect is not None:
+            fake.snapshot_download.side_effect = download_side_effect
+        return fake
+
     def test_skips_when_cached(self, tmp_path: Path) -> None:
         from aua.serve import _hf_download
 
-        fake_cache_path = str(tmp_path / "config.json")
-        with patch("huggingface_hub.try_to_load_from_cache", return_value=fake_cache_path):
-            with patch("huggingface_hub.snapshot_download") as mock_dl:
-                _hf_download("meta-llama/Llama-3-8B")
-                mock_dl.assert_not_called()
+        fake_hf = self._fake_hf_module(cached_path=str(tmp_path / "config.json"))
+        with patch.dict("sys.modules", {"huggingface_hub": fake_hf}):
+            _hf_download("meta-llama/Llama-3-8B")
+        fake_hf.snapshot_download.assert_not_called()
 
     def test_downloads_when_not_cached(self) -> None:
         from aua.serve import _hf_download
 
-        # try_to_load_from_cache returns None when not cached
-        with patch("huggingface_hub.try_to_load_from_cache", return_value=None):
-            with patch("huggingface_hub.snapshot_download") as mock_dl:
-                with patch("shutil.disk_usage") as mock_du:
-                    mock_du.return_value = MagicMock(free=50 * 1024**3)
-                    _hf_download("Qwen/Qwen2.5-Coder-7B-AWQ")
-                    mock_dl.assert_called_once()
-                    call_kwargs = mock_dl.call_args[1]
-                    assert call_kwargs["repo_id"] == "Qwen/Qwen2.5-Coder-7B-AWQ"
+        fake_hf = self._fake_hf_module(cached_path=None)
+        with patch.dict("sys.modules", {"huggingface_hub": fake_hf}):
+            with patch("shutil.disk_usage") as mock_du:
+                mock_du.return_value = MagicMock(free=50 * 1024**3)
+                _hf_download("Qwen/Qwen2.5-Coder-7B-AWQ")
+        fake_hf.snapshot_download.assert_called_once()
+        call_kwargs = fake_hf.snapshot_download.call_args[1]
+        assert call_kwargs["repo_id"] == "Qwen/Qwen2.5-Coder-7B-AWQ"
 
     def test_exits_on_401_gated_model(self) -> None:
         from aua.serve import _hf_download
 
-        with patch("huggingface_hub.try_to_load_from_cache", return_value=None):
+        fake_hf = self._fake_hf_module(
+            cached_path=None,
+            download_side_effect=Exception("401 Unauthorized"),
+        )
+        with patch.dict("sys.modules", {"huggingface_hub": fake_hf}):
             with patch("shutil.disk_usage") as mock_du:
                 mock_du.return_value = MagicMock(free=50 * 1024**3)
-                # Use a generic Exception with "401" in message instead of HfHubHTTPError
-                # (its constructor requires a real httpx.Response object)
-                with patch(
-                    "huggingface_hub.snapshot_download",
-                    side_effect=Exception("401 Unauthorized"),
-                ):
-                    with pytest.raises(SystemExit):
-                        _hf_download("meta-llama/Llama-3-8B")
+                with pytest.raises(SystemExit):
+                    _hf_download("meta-llama/Llama-3-8B")
 
-    def test_warns_on_low_disk_space(self, capsys) -> None:
+    def test_warns_on_low_disk_space(self) -> None:
         from aua.serve import _hf_download
 
-        with patch("huggingface_hub.try_to_load_from_cache", return_value=None):
+        fake_hf = self._fake_hf_module(cached_path=None)
+        with patch.dict("sys.modules", {"huggingface_hub": fake_hf}):
             with patch("shutil.disk_usage") as mock_du:
                 mock_du.return_value = MagicMock(free=2 * 1024**3)  # only 2 GB
-                with patch("huggingface_hub.snapshot_download"):
-                    # Should complete without raising, but print a warning
-                    _hf_download("small/model")
+                # Should complete without raising (warning only)
+                _hf_download("small/model")
 
     def test_graceful_when_huggingface_hub_missing(self) -> None:
         from aua.serve import _hf_download
 
+        # Simulate package not installed: inject None so the import raises ImportError
         with patch.dict("sys.modules", {"huggingface_hub": None}):
-            with patch("builtins.__import__", side_effect=ImportError("No module")):
-                # Should not raise — just print a warning and return
-                try:
-                    _hf_download("any/model")
-                except ImportError:
-                    pass  # acceptable — just can't import the module
+            # Should not raise — prints a warning and returns
+            _hf_download("any/model")
 
 
 class TestNoDownloadFlag:
