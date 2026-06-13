@@ -176,7 +176,7 @@ class TestBatchQueueItemLifecycle:
 
         data = bq.get_job(job_id)
         assert data["status"] == "running"  # not finished yet
-        assert len(data["results"]) == 1    # but result is visible now
+        assert len(data["results"]) == 1  # but result is visible now
 
     def test_finish_job_sets_done(self, bq: BatchQueue) -> None:
         job_id = bq.submit(["q"])
@@ -433,8 +433,7 @@ class TestNoDownloadFlag:
 
         with patch.object(serve_mod, "_hf_download") as mock_hf:
             # dry_run=True so no actual subprocess, but no_download should gate _hf_download
-            _start_specialist(spec, dry_run=True, timeout=10,
-                              runtime=MagicMock(), no_download=True)
+            _start_specialist(spec, dry_run=True, timeout=10, runtime=MagicMock(), no_download=True)
             mock_hf.assert_not_called()
 
     def test_download_called_when_flag_absent(self) -> None:
@@ -457,6 +456,11 @@ class TestNoDownloadFlag:
                 with patch.object(serve_mod, "_wait_healthy"):
                     with patch.object(serve_mod, "_write_pid_file"):
                         with patch.object(serve_mod, "_open_log", return_value=None):
-                            _start_specialist(spec, dry_run=False, timeout=5,
-                                              runtime=MagicMock(), no_download=False)
+                            _start_specialist(
+                                spec,
+                                dry_run=False,
+                                timeout=5,
+                                runtime=MagicMock(),
+                                no_download=False,
+                            )
             mock_hf.assert_called_once_with("Qwen/Qwen2.5-Coder-7B-AWQ")
