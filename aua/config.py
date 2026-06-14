@@ -250,6 +250,7 @@ _KNOWN_ROUTER_KEYS: set[str] = {
     "fanout_threshold",
     "specialist_timeout",
     "arbitration_mode",
+    "tau",
     "cors_origins",
 }
 _KNOWN_BG_KEYS: set[str] = {
@@ -264,7 +265,14 @@ _KNOWN_BG_KEYS: set[str] = {
 _KNOWN_LOG_KEYS: set[str] = {"level", "format"}
 _KNOWN_SECRETS_KEYS: set[str] = {"provider", "region", "url", "token_env"}
 _KNOWN_STATE_KEYS: set[str] = {"backend", "path"}
-_KNOWN_SECURITY_KEYS: set[str] = {"cors_origins", "mtls", "encryption"}
+_KNOWN_SECURITY_KEYS: set[str] = {
+    "cors_origins",
+    "mtls",
+    "encryption",
+    "auth_enabled",
+    "token_secret_env",
+    "token_expiry_days",
+}
 _KNOWN_EXPERIMENT_KEYS: set[str] = {"enabled", "mlflow", "wandb"}
 _KNOWN_PLUGIN_KINDS: set[str] = {
     "field_classifier",
@@ -483,7 +491,8 @@ class RouterConfig:
     specialist_timeout: float = 60.0  # seconds per specialist call
     host: str = "0.0.0.0"
     cors_origins: list[str] = field(default_factory=lambda: ["*"])
-    arbitration_mode: str = "pairwise"  # "pairwise" | "vcg"
+    arbitration_mode: str = "pairwise"  # "pairwise" | "vcg" | "llm"
+    tau: float = 1.0  # softmax temperature for routing; 1.0=off, <1=sharper, >1=softer
 
 
 @dataclass
@@ -564,6 +573,10 @@ class SecurityConfig:
     cors_origins: list[str] | None = None
     mtls: dict[str, Any] = field(default_factory=dict)
     encryption: dict[str, Any] = field(default_factory=dict)
+    # #auth: bearer token auth
+    auth_enabled: bool = False
+    token_secret_env: str = "AUA_TOKEN_SECRET"
+    token_expiry_days: int = 30
 
 
 @dataclass
@@ -822,6 +835,7 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         host=str(raw_router.get("host", "0.0.0.0")),
         cors_origins=list(cors),
         arbitration_mode=str(raw_router.get("arbitration_mode", "pairwise")),
+        tau=float(raw_router.get("tau", 1.0)),
     )
 
     # ── Blue-green per specialist ──────────────────────────────────────────
@@ -886,6 +900,9 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         cors_origins=[str(o) for o in _sec_cors] if _sec_cors is not None else None,
         mtls=dict(raw_security.get("mtls") or {}),
         encryption=dict(raw_security.get("encryption") or {}),
+        auth_enabled=bool(raw_security.get("auth_enabled", False)),
+        token_secret_env=str(raw_security.get("token_secret_env", "AUA_TOKEN_SECRET")),
+        token_expiry_days=int(raw_security.get("token_expiry_days", 30)),
     )
 
     # ── Plugins (F-09) ─────────────────────────────────────────────────────

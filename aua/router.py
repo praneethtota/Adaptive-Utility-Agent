@@ -236,6 +236,18 @@ class Router:
         self._store = AssertionsStore()
         self._detector = ContradictionDetector(penalty_multiplier=2.0)
 
+        # ArbiterAgent — the full 4-check pipeline (logical, mathematical,
+        # cross-session, empirical). Default for all routing arbitration.
+        # Set arbitration_mode: "llm" in config to use the simplified LLM path.
+        from aua.arbiter import ArbiterAgent
+        from aua.config import FIELD_CONFIGS as _FC
+
+        _field_penalties = {field: fc.penalty_multiplier for field, fc in _FC.items()}
+        self._arbiter_agent = ArbiterAgent(
+            assertions_store=self._store,
+            field_penalty_multipliers=_field_penalties,
+        )
+
         # P0: persistent state store (conversations, messages, model_runs, etc.)
         from aua.state import SQLiteStateStore
 
@@ -513,6 +525,23 @@ class Router:
             allow_methods=["GET", "POST", "OPTIONS"],
             allow_headers=["*"],
         )
+
+        # ── Bearer token auth middleware ───────────────────────────────────
+        if getattr(self._config.security, "auth_enabled", False):
+            from aua.auth import init_token_manager
+            from aua.auth_middleware import AUAAuthMiddleware
+
+            init_token_manager(self._config)
+            app.add_middleware(AUAAuthMiddleware, config=self._config)
+            log.info(
+                "AUA bearer token auth enabled (token_secret_env=%s)",
+                self._config.security.token_secret_env,
+            )
+        else:
+            log.warning(
+                "auth_enabled=false — all endpoints are open. "
+                "Set security.auth_enabled: true in production."
+            )
 
         # ── Query ──────────────────────────────────────────────────────────
 
@@ -1072,10 +1101,12 @@ class Router:
 
             if "arbitration_mode" in body:
                 mode = str(body["arbitration_mode"])
-                if mode not in ("pairwise", "vcg"):
+                if mode not in ("pairwise", "vcg", "llm"):
                     from fastapi import HTTPException as _HE
 
-                    raise _HE(422, f"arbitration_mode must be 'pairwise' or 'vcg', got {mode!r}")
+                    raise _HE(
+                        422, f"arbitration_mode must be 'pairwise', 'vcg', or 'llm', got {mode!r}"
+                    )
                 self._arbitration_mode = mode
                 self._config.router.arbitration_mode = mode
                 changed["arbitration_mode"] = mode
@@ -2739,6 +2770,29 @@ class Router:
 
         u_delta = round(green_u - blue_u, 4)
 
+        # T_min gate — require a minimum number of shadow/eval queries before promotion.
+        # This prevents premature promotion from a small unrepresentative sample.
+        _t_min = bg_cfg.T_min
+        _n_actual = (
+            shadow_report.n_queries if shadow_report.n_queries > 0 else (req.n_eval_queries or 3)
+        )
+        if not dry and _n_actual < _t_min:
+            return DeployGreenResponse(
+                specialist=req.specialist,
+                promoted=False,
+                u_delta=u_delta,
+                blue_u=blue_u,
+                green_u=green_u,
+                threshold=threshold,
+                dry_run_only=False,
+                message=(
+                    f"PROMOTION DEFERRED — T_min gate: need {_t_min} queries, "
+                    f"have {_n_actual}. Accumulate more shadow traffic or set "
+                    f"a lower T_min in blue_green config."
+                ),
+                regression=regression_result,
+            )
+
         # promotion_policy plugin — replaces the built-in u_delta >= threshold gate
         if self._custom_promotion_policy is not None and not dry:
             try:
@@ -2976,6 +3030,23 @@ class Router:
                 log.debug("Routing strategy plugin failed, using classifier: %s", _rs_err)
 
         log.debug("Distribution: %s", distribution)
+
+        # tau softmax: re-weight distribution using softmax temperature.
+        # tau < 1.0 → sharper routing (approaches argmax — one clear winner)
+        # tau > 1.0 → softer routing (spreads traffic, more fanout / arbiter)
+        # tau = 1.0 → identity (no change — default)
+        # Configured via router.tau in aua_config.yaml.
+        _tau = getattr(self._config.router, "tau", 1.0)
+        if _tau != 1.0 and distribution and not req.force_domain:
+            import math as _math
+
+            _fields = list(distribution.keys())
+            _logits = [distribution[f] for f in _fields]
+            _max_l = max(_logits)
+            _exp = [_math.exp((_l - _max_l) / max(_tau, 1e-6)) for _l in _logits]
+            _sum = sum(_exp)
+            distribution = {f: _e / _sum for f, _e in zip(_fields, _exp)}
+            log.debug("tau=%.2f softmax distribution: %s", _tau, distribution)
 
         top_domain = max(distribution, key=lambda k: distribution.get(k, 0.0))
         top_prob = distribution[top_domain]
@@ -4049,6 +4120,83 @@ class Router:
             except Exception as _arb_err:  # noqa: BLE001
                 log.debug("Arbiter policy plugin failed, using built-in: %s", _arb_err)
 
+        # Default: ArbiterAgent 4-check pipeline (logical, mathematical,
+        # cross-session, empirical). Switch to simplified LLM-only path by setting
+        # arbitration_mode: "llm" in router config.
+        if self._arbitration_mode == "llm":
+            return await self._arbitrate_llm(query, spec_a, text_a, spec_b, text_b)
+
+        # ── ArbiterAgent pipeline ─────────────────────────────────────────
+        try:
+            loop = asyncio.get_event_loop()
+            verdict = await loop.run_in_executor(
+                None,
+                lambda: self._arbiter_agent.arbitrate(
+                    subject=query[:200],
+                    domain=spec_a.field,
+                    output_A=text_a,
+                    output_B=text_b,
+                    field_penalty_multiplier=self._config.blue_green_for(spec_a.name).delta,
+                ),
+            )
+            from aua.arbiter import VerdictCase
+
+            if verdict.case == VerdictCase.CASE_1:
+                winner_field = spec_a.field
+            elif verdict.case == VerdictCase.CASE_2:
+                winner_field = spec_b.field
+            elif verdict.case == VerdictCase.CASE_3:
+                winner_field = spec_a.field  # Case 3: both right, A wins by position
+            else:
+                winner_field = "both_wrong"  # Case 4: escalate
+
+            # Format verdict text for downstream parsing
+            verdict_text = (
+                f"VERDICT: {'A' if winner_field == spec_a.field else 'B' if winner_field == spec_b.field else 'BOTH_WRONG'}\n"
+                f"REASON: {verdict.evidence_summary or 'ArbiterAgent consensus'}\n"
+                f"CORRECTION: {verdict.external_response}\n"
+                f"CASE: {verdict.case.value}\n"
+                f"CONFIDENCE: {verdict.arbiter_confidence:.4f}\n"
+                f"GAP_BONUS: {verdict.gap_bonus_active}"
+            )
+            log.info(
+                "ArbiterAgent verdict: %s (case=%s conf=%.3f gap=%s)",
+                winner_field,
+                verdict.case.value,
+                verdict.arbiter_confidence,
+                verdict.gap_bonus_active,
+            )
+            return verdict_text, winner_field
+        except Exception as _arb_agent_err:  # noqa: BLE001
+            log.warning(
+                "ArbiterAgent failed (%s) — falling back to LLM arbiter",
+                _arb_agent_err,
+            )
+            return await self._arbitrate_llm(query, spec_a, text_a, spec_b, text_b)
+
+    async def _arbitrate_llm(
+        self, query: str, spec_a: Any, text_a: str, spec_b: Any, text_b: str
+    ) -> tuple[str, str]:
+        """
+        Simplified LLM-only arbitration.
+
+        Activated when arbitration_mode: "llm" in router config, or as a
+        fallback when ArbiterAgent raises an exception.
+
+        When to prefer this over ArbiterAgent:
+          - Domains where formal checks are not meaningful (creative_writing, law)
+          - When arXiv/PubMed calls would add too much latency for your SLA
+          - When the assertion store has no prior context and cross-session
+            checks would always be inconclusive
+          - Ultra-low-latency deployments where p99 > 2s is unacceptable
+
+        Switch via config (no restart needed after hot-reload):
+            router:
+              arbitration_mode: "llm"
+
+        Or at runtime:
+            PATCH /config   body: {"arbitration_mode": "llm"}
+        """
         prompt = (
             f"Two specialist models produced different responses.\n\n"
             f"Query: {query}\n\n"
@@ -4070,5 +4218,5 @@ class Router:
             if "VERDICT: B" in verdict_text
             else "both_wrong" if "BOTH_WRONG" in verdict_text else spec_a.field
         )
-        log.info("Arbiter verdict: %s", winner)
+        log.info("LLM arbiter verdict: %s", winner)
         return verdict_text, winner

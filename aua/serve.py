@@ -602,12 +602,38 @@ def _start_router(
     _write_pid_file("router", os.getpid(), config.runtime)
 
     router = Router.from_config(config, config_path=config_path)
-    uvicorn.run(
-        router.app,
-        host=host,
-        port=port,
-        log_level=config.logging.level.lower(),
-    )
+
+    # ── mTLS / TLS configuration ──────────────────────────────────────────
+    _uvicorn_kwargs: dict = {
+        "host": host,
+        "port": port,
+        "log_level": config.logging.level.lower(),
+    }
+    _mtls = getattr(config.security, "mtls", {}) or {}
+    if _mtls:
+        _ssl_keyfile = _mtls.get("key_file") or _mtls.get("keyfile")
+        _ssl_certfile = _mtls.get("cert_file") or _mtls.get("certfile")
+        _ssl_ca = _mtls.get("ca_file") or _mtls.get("ca_cert")
+        if _ssl_keyfile and _ssl_certfile:
+            _uvicorn_kwargs["ssl_keyfile"] = _ssl_keyfile
+            _uvicorn_kwargs["ssl_certfile"] = _ssl_certfile
+            if _ssl_ca:
+                import ssl as _ssl_mod
+
+                # require client certs (mutual TLS)
+                _uvicorn_kwargs["ssl_ca_certs"] = _ssl_ca
+                _uvicorn_kwargs["ssl_cert_reqs"] = _ssl_mod.CERT_REQUIRED
+            console.print(
+                f"  [green]TLS enabled[/green] cert={_ssl_certfile} key={_ssl_keyfile} "
+                f"ca={_ssl_ca or '(none — server TLS only)'}"
+            )
+        else:
+            console.print(
+                "[yellow]⚠ security.mtls configured but key_file/cert_file missing "
+                "— TLS not active.[/yellow]"
+            )
+
+    uvicorn.run(router.app, **_uvicorn_kwargs)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

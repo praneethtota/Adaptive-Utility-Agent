@@ -216,7 +216,7 @@ class TestArbiterPolicyPlugin:
         assert meta["specialist_b"] == "math"
 
     def test_plugin_fallback_on_exception(self, tmp_path: Path) -> None:
-        """When plugin raises, falls back to built-in LLM call."""
+        """When plugin raises AND ArbiterAgent fails, falls back to built-in LLM call."""
         router = _make_router(tmp_path)
         llm_called = []
 
@@ -225,6 +225,10 @@ class TestArbiterPolicyPlugin:
                 raise RuntimeError("arbiter exploded")
 
         router._custom_arbiter_policy = CrashingArbiter()
+
+        # Also mock ArbiterAgent to fail so LLM is the final fallback
+        router._arbiter_agent = MagicMock()
+        router._arbiter_agent.arbitrate.side_effect = RuntimeError("agent also crashed")
 
         async def fake_call(url, prompt, *a, **kw):
             llm_called.append(True)
@@ -236,7 +240,7 @@ class TestArbiterPolicyPlugin:
         spec_b = router._config.specialists[1]
 
         _, winner = asyncio.run(router._arbitrate("query", spec_a, "A", spec_b, "B"))
-        # Built-in LLM path was used as fallback
+        # Built-in LLM path was used as final fallback
         assert len(llm_called) >= 1
         assert winner == spec_a.field  # "VERDICT: A" → spec_a wins
 

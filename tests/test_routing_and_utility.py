@@ -107,12 +107,29 @@ async def test_single_domain_routes_to_math_specialist(routing_router, monkeypat
 async def test_fanout_activates_both_specialists(routing_router, monkeypatch):
     """
     A cross-domain query (both domains ≥ fanout_threshold) fans out to BOTH
-    specialists. In pairwise mode the arbiter is also called.
+    specialists. In pairwise mode the ArbiterAgent (or LLM) is also called.
     """
+    from unittest.mock import MagicMock
+
+    from aua.arbiter import ArbiterVerdict, VerdictCase
+
     r = routing_router
     r._arbitration_mode = "pairwise"
     _patch_distribution(monkeypatch, r, {"software_engineering": 0.55, "mathematics": 0.45})
     called = _patch_call_recorder(monkeypatch, r)
+
+    # Mock ArbiterAgent so it returns a deterministic verdict without network calls
+    mock_agent = MagicMock()
+    mock_verdict = ArbiterVerdict(
+        subject="test",
+        domain="software_engineering",
+        case=VerdictCase.CASE_1,
+        arbiter_confidence=0.90,
+    )
+    mock_verdict.correct_B = True
+    mock_verdict.evidence_summary = "A is better"
+    mock_agent.arbitrate.return_value = mock_verdict
+    r._arbiter_agent = mock_agent
 
     resp = await r.query("write code to compute eigenvalues and explain the math")
 
@@ -121,8 +138,8 @@ async def test_fanout_activates_both_specialists(routing_router, monkeypatch):
     # both specialists must have been called
     assert "software_engineering" in domains_called
     assert "mathematics" in domains_called
-    # arbiter must have been called to resolve (pairwise mode)
-    assert "arbiter" in domains_called
+    # ArbiterAgent was invoked (pairwise mode)
+    assert mock_agent.arbitrate.called
 
 
 @pytest.mark.asyncio
