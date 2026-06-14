@@ -2575,17 +2575,15 @@ class Router:
                 else:
                     # Fresh eval against GREEN directly (score only, no routing)
                     green_scores: list[float] = []
-                    for case in (blue_report.results or [])[: min(10, len(blue_report.results))]:
+                    for case in (blue_report.cases or [])[: min(10, len(blue_report.cases))]:
                         try:
                             text, conf = await self._call(
                                 green_endpoint,
-                                getattr(case, "query", getattr(case, "prompt", "")),
+                                case.get("id", case.get("prompt", "")),
                                 spec.field,
                                 model_name="green",
                             )
-                            gu, *_ = await self._score(
-                                getattr(case, "query", ""), text, spec.field, conf
-                            )
+                            gu, *_ = await self._score(case.get("id", ""), text, spec.field, conf)
                             green_scores.append(float(gu))
                         except Exception:
                             green_scores.append(0.0)
@@ -2599,16 +2597,19 @@ class Router:
                 from aua.eval import EvalReport
 
                 green_report_mock = EvalReport(
-                    name="green",
+                    dataset_name="green",
                     field=blue_report.field,
                     description="GREEN evaluation",
-                    results=blue_report.results,
+                    run_at=blue_report.run_at,
+                    router_url=blue_report.router_url,
+                    total=blue_report.total,
                     passed=blue_report.passed,
                     failed=blue_report.failed,
-                    errors=blue_report.errors,
+                    error=blue_report.error,
                     mean_u_score=green_u_for_regression,
                     mean_latency_ms=blue_report.mean_latency_ms,
                     pass_rate=blue_report.pass_rate,
+                    cases=blue_report.cases,
                 )
                 reg = green_report_mock.regression_vs(blue_report)
             else:

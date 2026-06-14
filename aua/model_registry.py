@@ -187,12 +187,15 @@ def _resolve_hf_revision(repo_id: str, revision: str, cache_dir: str | None) -> 
 
     log.info("model_registry: pinning %s to revision %s", repo_id, revision)
     try:
+        dl_kwargs: dict = {}
+        if cache_dir:
+            dl_kwargs["cache_dir"] = cache_dir
         local_dir = snapshot_download(
             repo_id=repo_id,
             revision=hf_revision,
             token=token,
             ignore_patterns=["*.msgpack", "flax_model*", "tf_model*", "rust_model*"],
-            **({"cache_dir": cache_dir} if cache_dir else {}),
+            **dl_kwargs,
         )
         log.info("model_registry: %s@%s → %s", repo_id, revision, local_dir)
         return local_dir

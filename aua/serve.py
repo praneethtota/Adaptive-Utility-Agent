@@ -530,7 +530,7 @@ def _hf_download(model_repo: str) -> None:
     token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
 
     # Check cache first (free — no network required)
-    cached = try_to_load_from_cache(model_repo, filename="config.json", token=token)
+    cached = try_to_load_from_cache(model_repo, filename="config.json")
     if cached and cached != "not_cached_path_but_exists":
         console.print(f"  [green]✓ {model_repo} already in HF cache[/green]")
         return
