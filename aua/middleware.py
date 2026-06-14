@@ -160,37 +160,104 @@ class AuditMiddleware:
 
 class TenantPolicyMiddleware:
     """
-    Applies per-tenant routing and field restrictions.
+    Per-tenant isolation — field restrictions, rate limits, model bindings (#44).
 
-    Reads the X-Tenant-ID header and enforces field allowlists.
-    Tenants not in the allowlist are rejected.
+    Reads the X-Tenant-ID request header, enforces policy, and sets the
+    tenant context (via aua.tenancy) so state writes are namespaced.
 
     YAML:
         middleware:
           - import_path: aua.middleware:TenantPolicyMiddleware
             config:
+              reject_unknown: true   # 403 for unknown tenants (default: false)
               tenants:
                 tenant-a:
                   allowed_fields: [software_engineering, mathematics]
+                  rate_limit_rpm: 60        # requests per minute
+                  model_binding: swe        # force all queries to this specialist
                 tenant-b:
                   allowed_fields: [law, software_engineering]
+                  rate_limit_rpm: 120
+
+    Enforcement:
+      - allowed_fields: queries routed outside these fields get a 403-equivalent
+        error via _tenant_allowed_fields (checked by the router)
+      - model_binding: _tenant_model_binding is set on the request; the router
+        uses it as a force_domain override
+      - rate_limit_rpm: enforced via a per-tenant sliding window (one per tenant
+        ID); 429 raised before the query reaches the router
+      - reject_unknown: if true, requests with an unrecognised X-Tenant-ID get
+        a 403 error rather than falling through as anonymous
     """
 
-    def __init__(self, tenants: dict[str, dict[str, Any]] | None = None) -> None:
-        self._tenants = tenants or {}
+    def __init__(
+        self,
+        tenants: dict[str, dict[str, Any]] | None = None,
+        reject_unknown: bool = False,
+    ) -> None:
+        from aua.tenancy import parse_tenant_policies
+
+        self._policies = parse_tenant_policies(tenants or {})
+        self._reject_unknown = reject_unknown
+        # Per-tenant sliding-window rate limiters (created on demand)
+        self._limiters: dict[str, Any] = {}
+
+    def _get_limiter(self, tenant_id: str, rpm: int):
+        if tenant_id not in self._limiters:
+            from aua.rate_limit import SlidingWindowRateLimiter
+
+            self._limiters[tenant_id] = SlidingWindowRateLimiter(rpm)
+        return self._limiters[tenant_id]
 
     async def before_query(self, request: dict[str, Any]) -> dict[str, Any]:
         tenant_id = request.get("headers", {}).get("x-tenant-id")
-        if tenant_id is None or tenant_id not in self._tenants:
-            return request  # No tenant restriction
 
-        policy = self._tenants[tenant_id]
-        allowed_fields = policy.get("allowed_fields", [])
-        if allowed_fields:
-            request = {**request, "_tenant_allowed_fields": allowed_fields}
+        # Unknown tenant handling
+        if tenant_id and tenant_id not in self._policies:
+            if self._reject_unknown:
+                raise PermissionError(
+                    f"Unknown tenant '{tenant_id}'. "
+                    "Contact your administrator to register this tenant ID."
+                )
+            # Unknown tenant but reject_unknown=false → pass through as anonymous
+            tenant_id = None
+
+        if tenant_id is None:
+            return request  # Anonymous — no tenant policy
+
+        # Set context variable so state writes are namespaced
+        from aua.tenancy import set_tenant_id
+
+        set_tenant_id(tenant_id)
+
+        policy = self._policies[tenant_id]
+        request = {**request, "_tenant_id": tenant_id}
+
+        # Field allowlist
+        if policy.allowed_fields:
+            request = {**request, "_tenant_allowed_fields": policy.allowed_fields}
+
+        # Model binding (force_domain equivalent)
+        if policy.model_binding:
+            request = {**request, "_tenant_model_binding": policy.model_binding}
+
+        # Per-tenant rate limiting
+        if policy.rate_limit_rpm:
+            limiter = self._get_limiter(tenant_id, policy.rate_limit_rpm)
+            allowed, retry_after = limiter.is_allowed(tenant_id)
+            if not allowed:
+                raise PermissionError(
+                    f"Rate limit exceeded for tenant '{tenant_id}'. "
+                    f"Retry after {retry_after:.1f}s."
+                )
+
         return request
 
     async def after_response(self, response: dict[str, Any]) -> dict[str, Any]:
+        # Clear tenant context after response — keeps contextvars clean
+        from aua.tenancy import set_tenant_id
+
+        set_tenant_id(None)
         return response
 
 

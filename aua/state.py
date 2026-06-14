@@ -304,6 +304,11 @@ _MIGRATIONS = [
     "ALTER TABLE audit_log ADD COLUMN request_id TEXT",
     "ALTER TABLE audit_log ADD COLUMN routing_mode TEXT",
     "ALTER TABLE token_counters ADD COLUMN last_backup_at REAL",
+    # #44: multi-tenancy — tenant_id column on data tables
+    "ALTER TABLE corrections ADD COLUMN tenant_id TEXT DEFAULT NULL",
+    "ALTER TABLE promotions ADD COLUMN tenant_id TEXT DEFAULT NULL",
+    "ALTER TABLE audit_log ADD COLUMN tenant_id TEXT DEFAULT NULL",
+    "ALTER TABLE model_runs ADD COLUMN tenant_id TEXT DEFAULT NULL",
 ]
 
 
@@ -366,7 +371,21 @@ class SQLiteStateStore:
                 list(value.values()),
             )
 
+    # Tables that carry tenant_id for multi-tenancy (#44)
+    _TENANT_SCOPED_TABLES = frozenset({"corrections", "promotions", "audit_log", "model_runs"})
+
     def append(self, table: str, record: dict[str, Any]) -> str:
+        # #44: auto-inject tenant_id from contextvar for scoped tables
+        if table in self._TENANT_SCOPED_TABLES and "tenant_id" not in record:
+            try:
+                from aua.tenancy import get_tenant_id
+
+                tid = get_tenant_id()
+                if tid:
+                    record = {**record, "tenant_id": tid}
+            except Exception:
+                pass  # tenancy module unavailable — skip silently
+
         record_id = record.get("id") or str(uuid.uuid4())
         record = {
             **record,
@@ -408,6 +427,13 @@ class SQLiteStateStore:
 
     def append_audit(self, event: dict[str, Any]) -> str:
         """Append to audit log with hash chain for tamper detection."""
+        # #44: inject tenant_id from context when present
+        from aua.tenancy import get_tenant_id
+
+        tenant_id = get_tenant_id()
+        if tenant_id and "tenant_id" not in event:
+            event = {**event, "tenant_id": tenant_id}
+
         # Get last hash
         rows = self.query("audit_log", limit=1, order_by="created_at DESC")
         prev_hash = rows[0]["curr_hash"] if rows else "genesis"
@@ -614,6 +640,13 @@ class SQLiteStateStore:
                   domain_path, vcg_welfare_score, vcg_winner, corrections_applied,
                   latency_ms, raw_response.
         """
+        # #44: inject tenant_id from context when present
+        from aua.tenancy import get_tenant_id
+
+        tenant_id = get_tenant_id()
+        if tenant_id and "tenant_id" not in run:
+            run = {**run, "tenant_id": tenant_id}
+
         run_id = run.get("run_id") or str(uuid.uuid4())
         record = {**run, "run_id": run_id, "created_at": run.get("created_at") or time.time()}
         serialized = {

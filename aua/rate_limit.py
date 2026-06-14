@@ -135,9 +135,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         client_id = self._get_client_id(request)
+        # #44: prefix key with tenant ID when X-Tenant-ID is present so
+        # per-tenant traffic is rate-limited independently of other tenants
+        tenant_id = request.headers.get("x-tenant-id", "")
         # Derive scope from path (simplified — full auth integration in v1.0)
         scope = _path_to_scope(path)
-        key = f"{client_id}:{scope}"
+        key = f"{tenant_id}:{client_id}:{scope}" if tenant_id else f"{client_id}:{scope}"
 
         limiter = self._get_limiter(scope)
         allowed, retry_after = limiter.is_allowed(key)
