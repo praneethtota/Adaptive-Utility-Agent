@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import re
+import statistics
 import time
 import uuid
 from collections import defaultdict, deque
@@ -259,6 +260,8 @@ class Router:
         self._custom_assertion_store: Any | None = None  # assertion_store plugin
         self._routing_strategy: Any | None = None  # routing_strategy plugin
         self._scoring_component: Any | None = None  # scoring_component plugin
+        self._custom_arbiter_policy: Any | None = None  # arbiter_policy plugin
+        self._custom_promotion_policy: Any | None = None  # promotion_policy plugin
         self._load_yaml_extensions()
 
         # ── v1.1-veritas P1–P3 components ────────────────────────────────────
@@ -2735,7 +2738,73 @@ class Router:
             dry = True
 
         u_delta = round(green_u - blue_u, 4)
-        promoted = not dry and u_delta >= threshold
+
+        # promotion_policy plugin — replaces the built-in u_delta >= threshold gate
+        if self._custom_promotion_policy is not None and not dry:
+            try:
+                # Build full context for should_promote_full() / should_promote()
+                _shadow_rows = self._shadow_store.get_scores(req.specialist)
+                _shadow_deltas = [r["u_delta"] for r in _shadow_rows]
+                _shadow_std = statistics.stdev(_shadow_deltas) if len(_shadow_deltas) >= 2 else 0.0
+                _promotion_context = {
+                    "specialist": req.specialist,
+                    "blue_u": blue_u,
+                    "green_u": green_u,
+                    "u_delta": u_delta,
+                    "mean_delta": (
+                        shadow_report.mean_delta if not shadow_report.n_queries == 0 else u_delta
+                    ),
+                    "n_queries": (
+                        shadow_report.n_queries
+                        if shadow_report.n_queries > 0
+                        else (req.n_eval_queries or 3)
+                    ),
+                    "min_queries": bg_cfg.shadow_min_queries,
+                    "threshold": threshold,
+                    "shadow_scores": _shadow_rows,
+                    "shadow_std_delta": _shadow_std,
+                    "regression_result": regression_result,
+                    "dry": dry,
+                    "source": source,
+                    "specialist_config": spec,
+                    "bg_config": bg_cfg,
+                }
+                if hasattr(self._custom_promotion_policy, "should_promote_full") and callable(
+                    getattr(self._custom_promotion_policy, "should_promote_full")
+                ):
+                    try:
+                        promoted = bool(
+                            self._custom_promotion_policy.should_promote_full(_promotion_context)
+                        )
+                    except Exception as _sf_err:  # noqa: BLE001
+                        log.debug(
+                            "should_promote_full() failed, falling back to should_promote(): %s",
+                            _sf_err,
+                        )
+                        promoted = bool(
+                            self._custom_promotion_policy.should_promote(
+                                specialist=req.specialist,
+                                blue_mean_u=blue_u,
+                                green_mean_u=green_u,
+                                n_queries=_promotion_context["n_queries"],
+                                metadata=_promotion_context,
+                            )
+                        )
+                else:
+                    promoted = bool(
+                        self._custom_promotion_policy.should_promote(
+                            specialist=req.specialist,
+                            blue_mean_u=blue_u,
+                            green_mean_u=green_u,
+                            n_queries=_promotion_context["n_queries"],
+                            metadata=_promotion_context,
+                        )
+                    )
+            except Exception as _pp_err:  # noqa: BLE001
+                log.debug("Promotion policy plugin failed, using built-in: %s", _pp_err)
+                promoted = not dry and u_delta >= threshold
+        else:
+            promoted = not dry and u_delta >= threshold
 
         shadow_note = (
             f" Shadow: {shadow_report.n_queries}/{bg_cfg.shadow_min_queries} queries."
@@ -2827,6 +2896,12 @@ class Router:
             elif kind == "scoring_component":
                 self._scoring_component = plugin
                 log.info("Scoring component plugin registered: %s", spec.import_path)
+            elif kind == "arbiter_policy":
+                self._custom_arbiter_policy = plugin
+                log.info("Arbiter policy replaced by plugin: %s", spec.import_path)
+            elif kind in ("promotion_policy", "full_promotion_policy"):
+                self._custom_promotion_policy = plugin
+                log.info("Promotion policy replaced by plugin: %s", spec.import_path)
             log.info("Plugin loaded from config: %s ← %s", kind, spec.import_path)
 
         runner = get_hook_runner()
@@ -3942,6 +4017,38 @@ class Router:
     async def _arbitrate(
         self, query: str, spec_a, text_a: str, spec_b, text_b: str
     ) -> tuple[str, str]:
+        # arbiter_policy plugin — replaces the built-in LLM arbitration call
+        if self._custom_arbiter_policy is not None:
+            try:
+                _arb_meta = {
+                    "domain_a": spec_a.field,
+                    "domain_b": spec_b.field,
+                    "specialist_a": spec_a.name,
+                    "specialist_b": spec_b.name,
+                }
+                _arb_result = self._custom_arbiter_policy.arbitrate(
+                    subject=query[:100],
+                    domain=spec_a.field,
+                    output_a=text_a,
+                    output_b=text_b,
+                    metadata=_arb_meta,
+                )
+                _winner_key = _arb_result.get("winner", "A").upper()
+                _winner_field = (
+                    spec_b.field
+                    if _winner_key == "B"
+                    else "both_wrong" if _winner_key == "BOTH_WRONG" else spec_a.field
+                )
+                _verdict_text = (
+                    f"VERDICT: {_winner_key}\n"
+                    f"REASON: {_arb_result.get('reason', '')}\n"
+                    f"CORRECTION: {_arb_result.get('external_response', '')}"
+                )
+                log.info("Custom arbiter policy verdict: %s", _winner_field)
+                return _verdict_text, _winner_field
+            except Exception as _arb_err:  # noqa: BLE001
+                log.debug("Arbiter policy plugin failed, using built-in: %s", _arb_err)
+
         prompt = (
             f"Two specialist models produced different responses.\n\n"
             f"Query: {query}\n\n"

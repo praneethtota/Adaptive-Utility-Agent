@@ -279,6 +279,10 @@ _KNOWN_PLUGIN_KINDS: set[str] = {
     "assertion_store",
     "routing_strategy",
     "scoring_component",
+    # now wired (previously load-only)
+    "arbiter_policy",
+    "promotion_policy",
+    "full_promotion_policy",
 }
 _KNOWN_PLUGIN_ENTRY_KEYS: set[str] = {"import_path", "config"}
 _KNOWN_HOOK_ENTRY_KEYS: set[str] = {"hook_point", "import_path", "config", "fail_closed"}

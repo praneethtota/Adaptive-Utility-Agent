@@ -40,6 +40,7 @@ from aua.plugins.interfaces import (
     ContradictionDetectorPlugin,
     CorrectionStorePlugin,
     FieldClassifierPlugin,
+    FullPromotionPolicyPlugin,
     FullUtilityScorerPlugin,
     HookPlugin,
     ModelBackendPlugin,
@@ -69,6 +70,7 @@ _PROTOCOL_MAP: dict[str, type] = {
     "routing_strategy": RoutingStrategyPlugin,
     "scoring_component": ScoringComponentPlugin,
     "full_utility_scorer": FullUtilityScorerPlugin,
+    "full_promotion_policy": FullPromotionPolicyPlugin,
 }
 
 

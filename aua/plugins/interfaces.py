@@ -168,6 +168,81 @@ class PromotionPolicyPlugin(Protocol):
         ...
 
 
+# ── Full Promotion Policy (#51 wire-up) ──────────────────────────────────────
+
+
+@runtime_checkable
+class FullPromotionPolicyPlugin(Protocol):
+    """
+    Optional extension of PromotionPolicyPlugin for arbitrary promotion functions.
+
+    Mirrors the FullUtilityScorerPlugin pattern: PromotionPolicyPlugin.should_promote()
+    gives a simple boolean based on pre-computed scalars. This Protocol adds
+    should_promote_full() which receives the complete promotion context — raw
+    scores, shadow history, regression results, field config — so any function
+    of those inputs can drive the decision.
+
+    The router checks for should_promote_full() via hasattr() at call time.
+    Implement should_promote_full() to opt into full context mode.
+    Implement should_promote() as a fallback if should_promote_full() raises.
+
+    Non-linear promotion functions this enables:
+
+        Confidence-interval gate — require green_u > blue_u + 2*std_dev:
+            def should_promote_full(self, context):
+                std = context["shadow_std_delta"]
+                return context["mean_delta"] > 2 * std
+
+        Sample-size adaptive threshold — stricter when n is small:
+            def should_promote_full(self, context):
+                n = context["n_queries"]
+                # Wilson-style: require larger delta when sample is small
+                adaptive = 0.025 + 0.5 / max(n, 1)
+                return context["mean_delta"] >= adaptive
+
+        Multi-factor gate — regression + delta + minimum n:
+            def should_promote_full(self, context):
+                if context["regression_result"] and context["regression_result"]["regressed"]:
+                    return False
+                if context["n_queries"] < context["min_queries"]:
+                    return False
+                return context["mean_delta"] >= context["threshold"]
+
+    YAML: register as promotion_policy — no separate key needed.
+
+        plugins:
+          promotion_policy:
+            import_path: my_plugins:AdaptivePromoter
+    """
+
+    def should_promote_full(self, context: dict[str, Any]) -> bool:
+        """
+        Decide whether GREEN should replace BLUE given full promotion context.
+
+        Args:
+            context: dict with the following keys:
+                specialist (str):         specialist name
+                blue_u (float):           BLUE model mean U score
+                green_u (float):          GREEN candidate mean U score
+                u_delta (float):          green_u - blue_u
+                mean_delta (float):       mean U_delta across shadow queries
+                n_queries (int):          number of shadow/eval queries completed
+                min_queries (int):        configured minimum (shadow_min_queries)
+                threshold (float):        configured delta threshold (bg_cfg.delta)
+                shadow_scores (list):     raw shadow score dicts from ShadowStore
+                shadow_std_delta (float): std dev of U_delta across shadow queries
+                regression_result (dict|None): regression gate output (or None)
+                dry (bool):               True if no green_endpoint was available
+                source (str):             "shadow (N queries)" | "synthetic eval" | "dry-run"
+                specialist_config (Any):  SpecialistConfig for this specialist
+                bg_config (Any):          BlueGreenFieldConfig for this specialist
+
+        Returns:
+            True to promote GREEN → BLUE, False to keep BLUE.
+        """
+        ...
+
+
 # ── Correction Store ──────────────────────────────────────────────────────────
 
 
