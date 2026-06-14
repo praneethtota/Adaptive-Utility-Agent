@@ -2240,6 +2240,216 @@ def test_command(suite, router_url, timeout, dataset, case_ids, as_json, output,
         sys.exit(1)
 
 
+# ── aua loadtest (#50) ────────────────────────────────────────────────────────
+
+
+@main.command("loadtest")
+@click.option(
+    "--url",
+    "--router-url",
+    "router_url",
+    default="http://localhost:8000",
+    show_default=True,
+    help="Router URL.",
+)
+@click.option(
+    "--concurrency",
+    "-c",
+    default=10,
+    show_default=True,
+    type=int,
+    help="Number of concurrent workers (simultaneous requests).",
+)
+@click.option(
+    "--duration",
+    "-d",
+    default=30.0,
+    show_default=True,
+    type=float,
+    help="Test duration in seconds.",
+)
+@click.option(
+    "--ramp",
+    default=0.0,
+    show_default=True,
+    type=float,
+    help="Ramp-up time in seconds (linearly add workers). 0 = full concurrency from start.",
+)
+@click.option(
+    "--suite",
+    default="smoke",
+    show_default=True,
+    type=click.Choice(["smoke", "full", "routing"]),
+    help="Built-in fixture suite to use as query mix.",
+)
+@click.option(
+    "--dataset", default=None, help="Path to custom YAML query fixture (overrides --suite)."
+)
+@click.option(
+    "--timeout", default=60.0, show_default=True, type=float, help="Per-request timeout in seconds."
+)
+@click.option(
+    "--think-ms",
+    default=0.0,
+    show_default=True,
+    type=float,
+    help="Milliseconds each worker waits between requests (0 = fire continuously).",
+)
+@click.option(
+    "--json", "as_json", is_flag=True, default=False, help="Emit full JSON report to stdout."
+)
+@click.option("--output", "-o", default=None, help="Save JSON report to this file path.")
+@click.option(
+    "--no-liveness", is_flag=True, default=False, help="Skip router liveness check before starting."
+)
+def loadtest_command(
+    router_url,
+    concurrency,
+    duration,
+    ramp,
+    suite,
+    dataset,
+    timeout,
+    think_ms,
+    as_json,
+    output,
+    no_liveness,
+):
+    """Fire concurrent requests against a running router and report latency stats.
+
+    \b
+    Metrics reported:
+        p50 / p95 / p99 latency     — percentile distribution
+        throughput (req/s)           — total requests / wall time
+        error rate                   — fraction of non-2xx / network errors
+        mean U score                 — average utility score from successful responses
+
+    \b
+    Examples:
+        aua loadtest                             # 10 workers, 30s, smoke queries
+        aua loadtest -c 20 -d 60               # 20 workers, 60s
+        aua loadtest --suite full -c 5          # full fixture suite
+        aua loadtest --dataset my_queries.yaml  # custom query mix
+        aua loadtest --ramp 10 -c 20 -d 60     # ramp from 0 to 20 workers over 10s
+        aua loadtest --json --output results.json
+    """
+    import asyncio as _asyncio
+    import json as _json
+    import pathlib
+
+    from rich.table import Table
+
+    from aua.loadtest import LoadTestConfig, run_loadtest
+    from aua.test_harness import check_router_live
+
+    # ── Liveness ──────────────────────────────────────────────────────────────
+    if not no_liveness:
+        live, msg = check_router_live(router_url, timeout=5.0)
+        if not live:
+            console.print(f"[red]✗ Router not reachable:[/red] {msg}")
+            sys.exit(1)
+        console.print(f"[green]✓[/green] Router live at [cyan]{router_url}[/cyan]")
+
+    cfg = LoadTestConfig(
+        router_url=router_url,
+        concurrency=concurrency,
+        duration_s=duration,
+        ramp_s=ramp,
+        suite=suite,
+        dataset=dataset,
+        timeout_s=timeout,
+        think_ms=think_ms,
+    )
+
+    query_src = dataset or suite
+    console.print(
+        f"[dim]Starting load test — "
+        f"workers={concurrency} duration={duration:.0f}s "
+        f"ramp={ramp:.0f}s queries={query_src}[/dim]"
+    )
+
+    try:
+        with console.status(
+            f"[dim]Running {concurrency} workers for {duration:.0f}s...[/dim]",
+            spinner="dots",
+        ):
+            report = _asyncio.run(run_loadtest(cfg))
+    except ValueError as e:
+        console.print(f"[red]✗[/red] {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗ Load test failed:[/red] {e}")
+        sys.exit(1)
+
+    # ── Save ──────────────────────────────────────────────────────────────────
+    if output:
+        out = pathlib.Path(output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(_json.dumps(report.to_dict(), indent=2))
+        console.print(f"[dim]Report saved: {out}[/dim]")
+
+    if as_json:
+        print(_json.dumps(report.to_dict(), indent=2))
+        sys.exit(0 if report.ok else 1)
+
+    # ── Pretty output ─────────────────────────────────────────────────────────
+    wall_s = report.finished_at - report.started_at
+    rate_color = (
+        "green" if report.error_rate < 0.01 else "yellow" if report.error_rate < 0.05 else "red"
+    )
+
+    console.print()
+    console.print(
+        f"[bold]aua loadtest[/bold]  "
+        f"{report.total_requests} requests in {wall_s:.1f}s  "
+        f"[{rate_color}]{report.ok_requests} ok / {report.error_requests} errors "
+        f"({report.error_rate*100:.1f}% error rate)[/{rate_color}]"
+    )
+
+    # Latency table
+    lat_tbl = Table(show_header=True, header_style="bold dim", box=None, padding=(0, 2))
+    lat_tbl.add_column("p50")
+    lat_tbl.add_column("p95")
+    lat_tbl.add_column("p99")
+    lat_tbl.add_column("mean")
+    lat_tbl.add_column("min")
+    lat_tbl.add_column("max")
+    lat_tbl.add_column("RPS", justify="right")
+    lat_tbl.add_column("mean U", justify="right")
+    lat_tbl.add_row(
+        f"{report.p50_ms:.0f}ms",
+        f"{report.p95_ms:.0f}ms",
+        f"{report.p99_ms:.0f}ms",
+        f"{report.mean_ms:.0f}ms",
+        f"{report.min_ms:.0f}ms",
+        f"{report.max_ms:.0f}ms",
+        f"{report.throughput_rps:.1f}",
+        f"{report.mean_u_score:.3f}",
+    )
+    console.print(lat_tbl)
+
+    if report.routing_mode_counts:
+        modes = "  ".join(f"{k}: {v}" for k, v in sorted(report.routing_mode_counts.items()))
+        console.print(f"[dim]Routing: {modes}[/dim]")
+
+    if report.errors:
+        console.print(f"\n[yellow]⚠ Sample errors ({len(report.errors)} distinct):[/yellow]")
+        for err in report.errors[:5]:
+            console.print(f"  [dim]{err}[/dim]")
+
+    if report.ok:
+        console.print(
+            f"\n[bold green]✓ Load test passed[/bold green] "
+            f"(error rate {report.error_rate*100:.1f}% < 5%)"
+        )
+    else:
+        console.print(
+            f"\n[bold red]✗ Load test failed[/bold red] "
+            f"(error rate {report.error_rate*100:.1f}% >= 5%)"
+        )
+        sys.exit(1)
+
+
 @main.command("ui")
 @click.option("--port", default=3001, show_default=True, type=int)
 @click.option("--install-only", is_flag=True, default=False, help="Only install dependencies.")
