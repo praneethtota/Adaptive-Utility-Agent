@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>AUA Framework — Tutorial v1.1</title>
+<title>AUA Framework — Tutorial v1.2</title>
 <meta name="description" content="Complete tutorial for AUA Framework v1.0 — from a 5-minute quickstart to advanced plugins, security, observability, and the eval harness. Django-style docs for adaptive multi-specialist LLM systems.">
 <meta name="author" content="Praneeth Tota">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -201,7 +201,7 @@ tr:nth-child(even) td{background:#fafaf8}
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-tag">Tutorial · v1.1.0</div>
+  <div class="hero-tag">Tutorial · v1.2.0</div>
   <h1>Your LLM makes the same mistake twice.<br>AUA makes sure it doesn't make it three times.</h1>
   <p class="subtitle">Most frameworks give you a model call. AUA gives you a <em>control layer</em> around that call — routing, scoring, correction, and policy enforcement that runs on every query and gets smarter over time.</p>
 </div>
@@ -685,8 +685,17 @@ curl http://localhost:8000/status | python3 -m json.tool</pre>
 <tr><td>Logical</td><td>0.30</td><td>Output contradicts its own premises</td></tr>
 <tr><td>Mathematical</td><td>0.40</td><td>Complexity or numerical claims provably wrong</td></tr>
 <tr><td>Cross-session</td><td>0.20</td><td>Contradicts a prior verified assertion</td></tr>
-<tr><td>Empirical <span style="font-size:.75rem;background:#fff7ed;color:#c2410c;padding:1px 5px;border-radius:3px;font-family:monospace;">v2.0</span></td><td>0.10</td><td>External ground truth check (v2.0)</td></tr>
+<tr><td>Empirical</td><td>0.10</td><td>External ground truth check — SymPy (maths), arXiv (SWE/STEM), PubMed (medicine/surgery)</td></tr>
 </table>
+
+<div class="callout green">
+  <p><strong>ArbiterAgent is the live arbitration path.</strong> When two specialists disagree (fanout routing), AUA runs all four checks via the <code>ArbiterAgent</code> pipeline — logical, mathematical, cross-session, and empirical. The empirical check (SymPy, arXiv, PubMed) fires automatically based on domain; no configuration required.</p>
+  <p><strong>Simplified LLM-only arbitration is available</strong> for scenarios where you want lower latency and don't need the formal checks — creative domains where all four checks are always inconclusive, or deployments where p99 latency &lt; 500ms matters more than structured evidence chains. Switch with one config line:</p>
+  <pre style="margin:.5rem 0 0;font-size:.8rem;background:#f2f0eb;padding:.5rem .75rem;border-radius:6px;">router:
+  arbitration_mode: "llm"   <span class="c"># simplified: one LLM call, VERDICT: A/B/BOTH_WRONG</span>
+                             <span class="c"># default: "pairwise" (uses ArbiterAgent)</span></pre>
+  <p style="margin-top:.5rem;">Or switch at runtime without restarting: <code>PATCH /config</code> with body <code>{"arbitration_mode": "llm"}</code>. The LLM path is also the automatic fallback if ArbiterAgent raises an exception.</p>
+</div>
 
 <h3>4.2 The four verdict cases</h3>
 <table>
@@ -1015,16 +1024,27 @@ if data["routing_mode"] == "vcg":
 <!-- ═══════════════════════════════════════════ PART 5 -->
 <h2 id="part-5" class="part-heading"><span class="part-badge">Part 5</span> Blue-green deployment <span class="time-badge">~20 min</span></h2>
 
-<p>BLUE is in production. GREEN is the candidate running on canary traffic. When GREEN's U score exceeds BLUE by <code>delta</code> over at least <code>T_min</code> interactions, it promotes automatically.</p>
+<p>BLUE is in production. GREEN is the candidate evaluated via shadow mode or a synthetic eval run. When GREEN's U score exceeds BLUE by <code>delta</code> and at least <code>T_min</code> queries have been evaluated, the promotion gate opens. Promotion is triggered manually via <code>POST /deploy/green</code> or through shadow mode accumulation — see How-to 20 for the full workflow.</p>
 
 <h3>5.1 Promotion thresholds</h3>
 <div class="code-block">
 <div class="code-header">aua_config.yaml</div>
 <pre>blue_green:
   swe:
-    delta: 0.025    <span class="c"># GREEN must beat BLUE by +2.5% U</span>
-    T_min: 10       <span class="c"># need at least 10 canary interactions</span>
-    tau: 0.20       <span class="c"># softmax temperature for traffic split</span></pre>
+    delta: 0.025    <span class="c"># GREEN must beat BLUE by at least +2.5% U</span>
+    T_min: 10       <span class="c"># minimum queries before promotion is considered (gate)</span>
+
+router:
+  tau: 1.0          <span class="c"># routing softmax temperature: 1.0=off, &lt;1=sharper, &gt;1=softer</span></pre>
+
+<p><strong><code>T_min</code></strong> is a minimum-sample gate. If you trigger <code>POST /deploy/green</code> before accumulating <code>T_min</code> shadow queries, the router returns <code>promoted: false</code> with a <em>"PROMOTION DEFERRED — T_min gate"</em> message. Accumulate more shadow traffic first.</p>
+
+<p><strong><code>tau</code></strong> (in the <code>router:</code> block, not <code>blue_green:</code>) is a softmax temperature applied to the field classifier's probability distribution before routing thresholds are checked:</p>
+<ul>
+  <li><strong>tau &lt; 1.0</strong> — sharpens routing: the highest-probability domain gets boosted, making single-specialist routing more likely</li>
+  <li><strong>tau &gt; 1.0</strong> — softens routing: probabilities spread more evenly, increasing fanout and arbiter traffic</li>
+  <li><strong>tau = 1.0</strong> — no effect (default)</li>
+</ul>
 </div>
 
 <h3>5.2 Promote and rollback</h3>
@@ -1835,7 +1855,7 @@ aua calibrate --layer 3 --force --output dpo_pairs/early_export.jsonl
 
 <p>The assertion events store gives you a time-series view of how your policy is performing. These commands let you answer "is my AI actually getting better at following my policy?"</p>
 
-<h3>12.1 Viewing assertion events</h3>
+<h3>15.1 Viewing assertion events</h3>
 
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -1855,7 +1875,7 @@ aua logs assertions --filter domain=software_engineering
 aua logs assertions --json > my_assertions.json</pre>
 </div>
 
-<h3>12.2 Viewing session history</h3>
+<h3>15.2 Viewing session history</h3>
 
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -1866,7 +1886,7 @@ aua logs sessions
 aua logs export --table audit_log --output sessions.json</pre>
 </div>
 
-<h3>12.3 Comparing metrics over time</h3>
+<h3>15.3 Comparing metrics over time</h3>
 
 <p>This is the "is it working?" command. It compares the current window against the prior window of the same length and shows whether the key signals are moving in the right direction.</p>
 
@@ -1903,7 +1923,7 @@ aua metrics --compare 30d --json</pre>
   <p style="margin-top:.5rem;margin-bottom:0;"><strong>What stagnation looks like.</strong> The same assertions failing week over week. This means either the assertion is too strict for the model's capability, or the model isn't receiving enough signal to learn. Check: is <code>max_retries</code> too low? Is the policy active on enough queries to accumulate data?</p>
 </div>
 
-<h3>12.4 The full policy workflow in practice</h3>
+<h3>15.4 The full policy workflow in practice</h3>
 
 <p>Putting it all together — this is the cycle for designing and refining your AI over time:</p>
 
@@ -2327,7 +2347,12 @@ curl -s localhost:8000/extensions | python3 -m json.tool</pre>
 <!-- ── 6. ModelBackendPlugin ──────────────────────────────────────────── -->
 <h3 id="plugin-modelbackend">6. ModelBackendPlugin — connect any LLM serving infrastructure</h3>
 
-<p><strong>What it replaces:</strong> The built-in vLLM and Ollama HTTP clients.</p>
+<div class="callout orange">
+  <p><strong>Not yet wired for per-specialist dispatch — roadmap #74.</strong> The framework loads and validates your plugin class at startup (a bad import path fails fast), but the router's <code>_call()</code> does not yet dispatch to the plugin at query time. All traffic still goes through the built-in vLLM/Ollama HTTP path. The prebuilt plugins (OpenAI, Anthropic, etc.) are also affected. Planned for #74.</p>
+  <p>Workaround: use a <code>routing_strategy</code> plugin (section 19.4) to redirect traffic to an external HTTP endpoint of your choice, or use a <code>field_classifier</code> plugin that maps queries to a specialist already backed by a frontier API endpoint.</p>
+</div>
+
+<p><strong>What it will replace:</strong> The built-in vLLM and Ollama HTTP clients.</p>
 <p><strong>When to write one:</strong> You want to route to a commercial API (OpenAI, Anthropic, Cohere), an internal gateway, or any serving stack that isn't vLLM or Ollama.</p>
 
 <div class="callout green">
@@ -2425,7 +2450,12 @@ class OpenAIBackend:
 <!-- ── 7. StateStorePlugin ────────────────────────────────────────────── -->
 <h3 id="plugin-statestore">7. StateStorePlugin — custom session/state backend</h3>
 
-<p><strong>What it replaces:</strong> The built-in SQLite state store.</p>
+<div class="callout orange">
+  <p><strong>Not yet wired — roadmap #75.</strong> The framework loads and validates your plugin class at startup, but all state writes (corrections, audit log, model_runs, sessions) still go to the built-in SQLite store. The init ordering constraint (BatchQueue, ShadowStore, DomainTree, and others all receive <code>self._state_store</code> at construction time) must be resolved before this plugin can be activated. Planned for #75.</p>
+  <p>Workaround: for persistence across instances, configure Postgres or Redis at the OS level and point SQLite to a shared path via NFS, or use the <code>correction_store</code> plugin (which <em>is</em> wired) to redirect DPO pair storage specifically.</p>
+</div>
+
+<p><strong>What it will replace:</strong> The built-in SQLite state store.</p>
 <p><strong>When to write one:</strong> You want sessions, corrections, and audit events stored in Postgres, Redis, or a shared datastore across multiple router instances.</p>
 
 <p style="margin:.25rem 0 1rem">
@@ -2582,7 +2612,7 @@ aua extensions inspect plugins.risk_scorer:RiskWeightedScorer
   <p><strong>All 11 hook points are live in v1.1.</strong> Hooks are fail-open by default — if a hook errors or times out, the pipeline continues. Set <code>fail_closed: true</code> in YAML to abort the request on hook failure.</p>
 </div>
 
-<h3>13.1 The minimal hook</h3>
+<h3>16.1 The minimal hook</h3>
 
 <div class="code-block">
 <div class="code-header">plugins/my_hook.py — minimum viable</div>
@@ -2603,7 +2633,7 @@ aua extensions inspect plugins.risk_scorer:RiskWeightedScorer
     config: {}           <span class="c"># optional — splatted as constructor kwargs</span></pre>
 </div>
 
-<h3>13.2 All 11 hook points — event fields</h3>
+<h3>16.2 All 11 hook points — event fields</h3>
 
 <p>Each hook receives a specific event dict. Here are the fields available at each point, shown as the dict your <code>__call__</code> method receives:</p>
 
@@ -2846,7 +2876,7 @@ class SlackNotificationHook:
 </div>
 </details>
 
-<h3>13.3 One hook for multiple points</h3>
+<h3>16.3 One hook for multiple points</h3>
 
 <div class="code-block">
 <div class="code-header">plugins/analytics_hook.py</div>
@@ -2895,8 +2925,26 @@ class SlackNotificationHook:
 <!-- ═══════════════════════════════════════════ PART 15 -->
 <h2 id="part-15" class="part-heading"><span class="how-badge">How-to 15</span> Security <span class="time-badge">~25 min</span></h2>
 
-<h3>12.1 Bearer tokens and scopes</h3>
-<p>AUA uses HMAC-SHA256 bearer tokens with 15 fine-grained scopes. Create tokens with the CLI:</p>
+<h3>15.1 Bearer tokens and scopes</h3>
+<p>AUA uses HMAC-SHA256 bearer tokens with 15 fine-grained scopes. Auth is <strong>off by default</strong> (for local development); enable it in production with one config line:</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — enable auth</div>
+<pre>security:
+  auth_enabled: true                   <span class="c"># false by default — open in dev</span>
+  token_secret_env: AUA_TOKEN_SECRET   <span class="c"># env var holding your signing secret</span>
+  token_expiry_days: 30
+
+<span class="c"># Generate a signing secret:</span>
+<span class="c"># python3 -c "import secrets; print(secrets.token_hex(32))"</span>
+<span class="c"># export AUA_TOKEN_SECRET=&lt;output&gt;</span></pre>
+</div>
+
+<div class="callout orange">
+  <p>When <code>auth_enabled: false</code> (the default), AUA logs a WARNING on startup and all endpoints are open. Never run a public deployment with <code>auth_enabled: false</code>.</p>
+</div>
+
+<p>Create and manage tokens with the CLI:</p>
 
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -2937,28 +2985,40 @@ curl -X POST http://localhost:8000/query \
   -d '{"query": "Explain quicksort", "session_id": "s1"}'</pre>
 </div>
 
-<h3>12.2 mTLS — encrypted internal communication</h3>
+<h3>15.2 mTLS — encrypted communication</h3>
+<p>AUA supports TLS (server-side) and mutual TLS (both sides). Configure cert paths in <code>security.mtls</code>:</p>
+
 <div class="code-block">
-<div class="code-header">bash</div>
-<pre><span class="c"># Generate dev certs (self-signed, router + specialists + arbiter)</span>
+<div class="code-header">aua_config.yaml — TLS (server-only)</div>
+<pre>security:
+  mtls:
+    key_file: certs/server.key      <span class="c"># or keyfile:</span>
+    cert_file: certs/server.crt     <span class="c"># or certfile:</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — mutual TLS (require client certs)</div>
+<pre>security:
+  mtls:
+    key_file: certs/server.key
+    cert_file: certs/server.crt
+    ca_file: certs/ca.crt           <span class="c"># presence triggers CERT_REQUIRED</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">bash — generate dev certs</div>
+<pre><span class="c"># Generate self-signed dev certs</span>
 aua certs generate
 
 <span class="c"># Inspect cert details</span>
-aua certs inspect
-
-<span class="c"># Rotate certs (hot-reloaded, no restart needed)</span></pre>
+aua certs inspect</pre>
 </div>
 
-<div class="code-block">
-<div class="code-header">aua_config.yaml</div>
-<pre>security:
-  mtls:
-    enabled: true
-    cert_dir: .aua/certs
-    auto_generate: true    <span class="c"># false in production — bring your own CA</span></pre>
+<div class="callout blue">
+  <p>When <code>key_file</code> and <code>cert_file</code> are set, AUA passes them directly to uvicorn's SSL arguments. If <code>ca_file</code> is also set, client certificates are required on every connection (mutual TLS). AUA logs which certs are active at startup.</p>
 </div>
 
-<h3>12.3 Secrets management</h3>
+<h3>15.3 Secrets management</h3>
 <p>AUA never stores plaintext secrets in config. Instead, config references a secret name, and the secrets provider resolves it at startup:</p>
 
 <div class="code-block">
@@ -2988,7 +3048,7 @@ specialists:
 
 <p>Resolution order is always <em>environment variable first</em>, then the configured provider; values are cached for the process lifetime and never appear in logs, <code>repr()</code>, or <code>GET /config</code>. Vault secrets are read from the KV v2 path matching the secret name, taking the <code>value</code> key (or a key named after the secret). Both providers are covered by live integration tests in CI — a wire-faithful Vault KV v2 server driven by the real <code>hvac</code> client, and <code>moto</code> intercepting the real <code>boto3</code> client (<code>tests/test_secrets_live.py</code>).</p>
 
-<h3>12.4 Encryption at rest</h3>
+<h3>15.4 Encryption at rest</h3>
 <p>Correction payloads, assertions, DPO pairs, token metadata, and sensitive audit fields are encrypted at rest with AES-256-GCM:</p>
 
 <div class="code-block">
@@ -2999,7 +3059,7 @@ specialists:
     key_secret: AUA_ENCRYPTION_KEY   <span class="c"># 64-char hex key — see §14.3 for generation</span></pre>
 </div>
 
-<h3>12.5 Audit log</h3>
+<h3>15.5 Audit log</h3>
 <p>The audit log is append-only with a tamper-evident SHA-256 hash chain. Every security-relevant event is recorded:</p>
 
 <div class="code-block">
@@ -3011,7 +3071,7 @@ tail -f .aua/audit.log
 aua corrections export --format jsonl</pre>
 </div>
 
-<h3>12.6 Session, trace &amp; request IDs (#15)</h3>
+<h3>15.6 Session, trace &amp; request IDs (#15)</h3>
 <p>Every HTTP request gets three IDs: <code>session_id</code> (logical conversation — persistent across queries), <code>trace_id</code> (one per request, W3C-compatible 48-hex format, used by OTEL/audit/logs), and <code>request_id</code> (one per HTTP request, never reused). Client-supplied IDs are honored via the <code>X-Session-ID</code>, <code>X-Trace-ID</code> (or <code>traceparent</code>), and <code>X-Request-ID</code> headers; UUIDs are generated otherwise. All three come back as headers on <em>every</em> response, and <code>/query</code> additionally echoes them in the body.</p>
 
 <div class="code-block">
@@ -3033,14 +3093,14 @@ curl -s -X POST localhost:8000/query -H "Content-Type: application/json" \
   <p><strong>Production checklist:</strong> <code>aua doctor --strict</code> validates that if <code>cors_origins</code> is <code>*</code> <em>and</em> the host is <code>0.0.0.0</code> <em>and</em> auth is disabled, a loud warning is emitted. Use the Team Server or Enterprise deployment profile to enforce auth + mTLS requirements.</p>
 </div>
 
-<div class="next-part"><p><strong>Part 12 done.</strong> Part 13 covers observability — Prometheus, Grafana, OTEL, and structured logging.</p></div>
+<div class="next-part"><p><strong>Part 15 done.</strong> Part 16 covers observability — Prometheus, Grafana, OTEL, and structured logging.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 16 -->
 <h2 id="part-16" class="part-heading"><span class="how-badge">How-to 16</span> Observability <span class="time-badge">~25 min</span></h2>
 
 <p>AUA emits three observability streams out of the box: structured JSON logs (every query, assertion, and error), Prometheus metrics (18 gauges/counters/histograms), and optional OpenTelemetry distributed traces. All three are designed to ship directly to ELK, Splunk, Grafana, or any OTEL-compatible backend — no code changes required.</p>
 
-<h3>13.1 Structured JSON logging</h3>
+<h3>16.1 Structured JSON logging</h3>
 
 <p>Every log line the framework emits is a single-line JSON object. Every line automatically includes the current request's <code>session_id</code>, <code>trace_id</code>, and <code>request_id</code> — so a Kibana or Splunk search on a session ID returns the complete picture of everything that happened in that request.</p>
 
@@ -3079,7 +3139,7 @@ curl -s -X POST localhost:8000/query -H "Content-Type: application/json" \
 <tr><td><code>verdict</code></td><td>Arbiter verdict case (A/B/C/D) when arbiter fires</td></tr>
 </table>
 
-<h3>13.2 Shipping logs to ELK (Elasticsearch / Kibana)</h3>
+<h3>16.2 Shipping logs to ELK (Elasticsearch / Kibana)</h3>
 
 <p>AUA's JSON output is Filebeat-native. No parsing config needed — all fields are already top-level JSON keys that become indexed Elasticsearch fields automatically.</p>
 
@@ -3135,7 +3195,7 @@ routing_mode: "arbiter" AND verdict: *</pre>
   <p><strong>Logstash pipeline alternative.</strong> If you're using Logstash instead of Filebeat, pipe <code>aua serve</code> stdout directly: <code>aua serve 2>&amp;1 | logstash -f aua.conf</code>. In the pipeline filter: <code>json { source =&gt; "message" }</code> then <code>date { match =&gt; ["ts", "UNIX"] }</code>. The JSON structure needs no grok patterns.</p>
 </div>
 
-<h3>13.3 Shipping logs to Splunk</h3>
+<h3>16.3 Shipping logs to Splunk</h3>
 
 <p>Two options depending on your Splunk setup:</p>
 
@@ -3195,7 +3255,7 @@ index=aua sourcetype=aua_json latency_ms=*
 | stats perc95(latency_ms) by routing_mode</pre>
 </div>
 
-<h3>13.4 Prometheus metrics</h3>
+<h3>16.4 Prometheus metrics</h3>
 
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -3224,7 +3284,7 @@ index=aua sourcetype=aua_json latency_ms=*
 <tr><td><code>aua_assertion_bonus_applied</code></td><td>Histogram</td><td>E-score bonus applied by INFO assertions</td></tr>
 </table>
 
-<h3>13.5 Cost tracking</h3>
+<h3>16.5 Cost tracking</h3>
 
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -3239,7 +3299,7 @@ index=aua sourcetype=aua_json latency_ms=*
 }</pre>
 </div>
 
-<h3>13.6 Grafana dashboard</h3>
+<h3>16.6 Grafana dashboard</h3>
 
 <div class="code-block">
 <div class="code-header">bash — start with observability profile</div>
@@ -3252,7 +3312,7 @@ index=aua sourcetype=aua_json latency_ms=*
 # DPO pairs accumulated, auth failures, cost per specialist</span></pre>
 </div>
 
-<h3>13.7 OpenTelemetry — distributed traces</h3>
+<h3>16.7 OpenTelemetry — distributed traces</h3>
 
 <p>Optional. Sends full request traces to Jaeger, Tempo, Elastic APM, Splunk Observability, or any OTLP-compatible backend. Each trace covers the complete request path: router → classifier → routing decision → specialist calls → utility scoring → arbiter → hooks → policy assertions → response.</p>
 
@@ -3285,7 +3345,7 @@ index=aua sourcetype=aua_json latency_ms=*
   <p><strong>Log + trace correlation.</strong> The <code>trace_id</code> in every JSON log line is W3C-compatible. When OTEL is enabled, clicking a log line in Kibana or Splunk and following its <code>trace_id</code> jumps directly to the corresponding distributed trace in Jaeger or Elastic APM — showing the exact specialist calls, latencies, and assertion checks for that request.</p>
 </div>
 
-<h3>13.8 Structured logging in Docker / Kubernetes</h3>
+<h3>16.8 Structured logging in Docker / Kubernetes</h3>
 
 <div class="code-block">
 <div class="code-header">docker-compose.yml — ship stdout to Loki via Grafana Alloy</div>
@@ -3320,12 +3380,12 @@ index=aua sourcetype=aua_json latency_ms=*
     Type              _doc</pre>
 </div>
 
-<div class="next-part"><p><strong>Part 13 done.</strong> Part 14 covers Docker deployment profiles.</p></div>
+<div class="next-part"><p><strong>Part 16 done.</strong> Part 17 covers Docker deployment profiles.</p></div>
 
 <!-- ═══════════════════════════════════════════ PART 17 -->
 <h2 id="part-17" class="part-heading"><span class="how-badge">How-to 17</span> Docker deployment <span class="time-badge">~20 min</span></h2>
 
-<h3>14.1 Docker Compose profiles</h3>
+<h3>17.1 Docker Compose profiles</h3>
 <p class="caption">All examples use the modern <code>docker compose</code> (V2) command. If your system only has the legacy binary, replace with <code>docker-compose</code>.</p>
 <div class="code-block">
 <div class="code-header">bash</div>
@@ -3345,7 +3405,7 @@ docker compose --profile ollama --profile obs up
 docker compose -f docker compose.gpu.yml up</pre>
 </div>
 
-<h3>14.2 Deployment profiles</h3>
+<h3>17.2 Deployment profiles</h3>
 <table>
 <tr><th>Profile</th><th>Auth</th><th>mTLS</th><th>State</th><th>Use for</th></tr>
 <tr><td>Local Developer</td><td>Optional</td><td>No</td><td>SQLite</td><td>localhost only</td></tr>
@@ -3354,7 +3414,7 @@ docker compose -f docker compose.gpu.yml up</pre>
 <tr><td>Enterprise</td><td>IAM + scopes</td><td>Required</td><td>Postgres</td><td>Custom backends, strict audit</td></tr>
 </table>
 
-<h3>14.3 Environment configuration</h3>
+<h3>17.3 Environment configuration</h3>
 
 <p>Generate your encryption key before deploying — it must be a 32-byte value encoded as 64 hex characters. Run either command once and store the output:</p>
 <div class="code-block">
