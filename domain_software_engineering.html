@@ -116,7 +116,7 @@ hr{border:none;border-top:1px solid var(--line);margin:2.5rem 0}
     <li><a href="#loop">The 10-step MVP feedback loop</a></li>
     <li><a href="#extensions">Extensions: multi-agent, dev-tools, infra engineering</a></li>
     <li><a href="#mvp">Running it today</a></li>
-    <li><a href="#build-with-aua">Build it with AUA v1.0</a></li>
+    <li><a href="#build-with-aua">Build it with AUA v1.2</a></li>
   </ol>
 </div>
 
@@ -477,9 +477,9 @@ python3 harness.py
 
 <hr style="margin:2.5rem 0;border:none;border-top:2px solid var(--line)">
 
-  <span class="hero-tag" style="margin-bottom:.75rem;display:inline-block;">Build it with AUA v1.0</span>
+  <span class="hero-tag" style="margin-bottom:.75rem;display:inline-block;">Build it with AUA v1.2</span>
   <h2 id="build-with-aua">Configure this domain today</h2>
-  <p>AUA v1.0 provides the full routing, correction, and evaluation stack for code-generation agents. Configure with <code>aua init --preset coding</code>. The routing experiment that validated the framework ran exactly this domain on a single RTX 4090.</p>
+  <p>AUA v1.2 provides the full routing, correction, and evaluation stack for code-generation agents. Configure with <code>aua init --preset coding</code>. The routing experiment that validated the framework ran exactly this domain on a single RTX 4090.</p>
   
 
   <h3>1. Install</h3>
@@ -520,18 +520,46 @@ curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
   -d '{"prompt": "...", "session_id": "demo"}'</pre>
 
-  <h3>5. What AUA handles vs. what you bring</h3>
+  <h3>5. v1.2 additions for this domain</h3>
+
+  <p>The software_engineering domain benefits from two v1.2 features specifically:</p>
+
+  <p><strong>arXiv empirical check (Arbiter Stage 4).</strong> When the Arbiter arbitrates between two software_engineering responses, Stage 4 searches arXiv for papers related to the query and scores each response by keyword overlap with the top-3 abstracts. This gives the arbiter external ground truth for algorithm claims, complexity analysis, and research-backed code patterns — no API key required.</p>
+
+  <p><strong>ContradictionDetectorPlugin.</strong> Replace the built-in contradiction checker with your own validator. For software engineering, this could be a static analysis tool, a unit-test runner, or a complexity verifier using SymPy:</p>
+
+  <pre>from aua.empirical import empirical_check
+
+class ArXivBackedDetector:
+    def check(self, problem, solution, claimed_complexity=None):
+        result = empirical_check(problem, "software_engineering", solution, "")
+        if result.converged and result.winner == "B":
+            return {
+                "contradictions": [{"type": "arxiv", "description": result.explanation, "severity": 0.5}],
+                "confidence_penalty": 0.1, "is_clean": False
+            }
+        return {"contradictions": [], "confidence_penalty": 0.0, "is_clean": True}
+
+# aua_config.yaml:
+# plugins:
+#   contradiction_detector:
+#     import_path: plugins:ArXivBackedDetector</pre>
+
+  <h3>6. What AUA handles vs. what you bring</h3>
   <table>
-    <tr><th>AUA v1.0 provides</th><th>You bring</th></tr>
+    <tr><th>AUA v1.2 provides</th><th>You bring</th></tr>
     <tr><td>Multi-specialist routing + utility scoring</td><td>Domain-specific specialist models</td></tr>
     <tr><td>Arbiter + contradiction detection</td><td>Domain-specific quality criteria</td></tr>
     <tr><td>Correction loop + DPO pair export</td><td>Fine-tuning infrastructure (TRL, Axolotl, …)</td></tr>
     <tr><td>Blue-green deployment + rollback</td><td>Evaluation datasets for your domain</td></tr>
     <tr><td>Append-only audit log with hash chain</td><td>Your test runner and CI pipeline</td></tr>
     <tr><td>Prometheus + Grafana + OTEL</td><td>Your monitoring infrastructure</td></tr>
+    <tr><td>arXiv + SymPy empirical check (Arbiter Stage 4)</td><td>Domain-specific evaluation datasets</td></tr>
+    <tr><td>shadow mode + regression gate + aua test</td><td>Production rollout gating criteria</td></tr>
+    <tr><td>11 plugin Protocol interfaces</td><td>Custom routing, scoring, detection logic</td></tr>
   </table>
 
-  <p class="caption">Full instructions: <a href="tutorial.html">AUA Tutorial</a> · <a href="whitepaper.html">Framework v1.0</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
+  <p class="caption">Full instructions: <a href="tutorial.html#part-19">Tutorial Part 19 — Plugin system</a> · <a href="tutorial.html#part-20">Part 20 — Operations toolkit</a> · <a href="whitepaper.html">Framework v1.2</a> · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub ↗</a>
   </p>
 
 </div></div>

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Adaptive Utility Agents — Production Framework v1.0</title>
-<meta name="description" content="AUA Framework v1.0: open-source production framework for multi-specialist LLM routing, self-correction, and utility-governed learning. pip install adaptive-utility-agent. 197 tests, 23 REST endpoints, 8 plugin interfaces, 11 hook points, Prometheus + Grafana observability.">
+<title>Adaptive Utility Agents — Production Framework v1.2</title>
+<meta name="description" content="AUA Framework v1.2: open-source production framework for multi-specialist LLM routing, self-correction, and utility-governed learning. pip install adaptive-utility-agent. 197 tests, 23 REST endpoints, 8 plugin interfaces, 11 hook points, Prometheus + Grafana observability.">
 <meta name="author" content="Praneeth Tota">
 <meta name="keywords" content="Adaptive Utility Agents, AUA, LLM framework, multi-specialist routing, utility function, self-optimizing AI, VCG arbitration, DPO calibration, Praneeth Tota, AI systems, production LLM framework">
 <link rel="canonical" href="https://praneethtota.github.io/Adaptive-Utility-Agent/whitepaper.html">
@@ -554,7 +554,7 @@ footer a:hover { text-decoration: underline; }
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <span class="topbar-brand">Adaptive Utility Agents · v1.0.2</span>
+  <span class="topbar-brand">Adaptive Utility Agents · v1.2.0</span>
   <div class="topbar-links">
     <a href="whitepaper_overview.html">Whitepaper</a>
     <a href="tutorial.html">Tutorial</a>
@@ -571,7 +571,7 @@ footer a:hover { text-decoration: underline; }
 <div class="hero">
   <div class="hero-eyebrow">
     <span>Praneeth Tota · May 2026</span>
-    <span class="v1-badge">v1.0.2 Shipped</span>
+    <span class="v1-badge">v1.2.0 Shipped</span>
   </div>
   <h1>A production framework for<br><em>self-correcting</em> multi-specialist AI</h1>
   <p class="hero-lead">
@@ -633,7 +633,53 @@ footer a:hover { text-decoration: underline; }
   <span class="scope-item"><span class="dot-measured"></span> Simulation: 69.6% error reduction, U↔quality correlation (r=0.461, p&lt;10⁻⁴⁰)</span>
   <span class="scope-item"><span class="dot-measured"></span> RTX 4090: VCG +43.3pp routing gain, 502 DPO pairs, full blue-green pipeline (p=0.0003, d=1.02)</span>
   <span class="scope-item"><span class="dot-analytical"></span> Analytical: 2–6× cost advantage on consumer hardware</span>
-  <span class="scope-item"><span class="dot-shipped"></span> Shipped v1.0: 197 tests · 23 endpoints · 8 plugin interfaces · 18 Prometheus metrics</span>
+  <span class="scope-item"><span class="dot-shipped"></span> Shipped v1.2: 651 tests · 28 endpoints · 11 plugin interfaces · 18 Prometheus metrics</span>
+</div>
+
+<!-- V1.2 ADDITIONS -->
+<div class="section">
+  <div class="section-label">What's new in v1.2</div>
+  <h2>Eleven plugin types · Operations toolkit · Multi-tenancy</h2>
+  <p style="max-width:700px;font-size:1.02rem;color:#333;">
+    v1.2 adds the full plugin system, shadow mode, regression gating, experiment tracking,
+    the batch queue, model version pinning, hardware tiers, and the empirical arbiter check.
+    651 tests, all passing. CI green across Python 3.10/3.11/3.12.
+  </p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <span class="fc-icon">🔌</span>
+      <div class="fc-title">11 plugin Protocol interfaces</div>
+      <div class="fc-desc">
+        ContradictionDetectorPlugin, AssertionStorePlugin, RoutingStrategyPlugin,
+        ScoringComponentPlugin, FullUtilityScorerPlugin, FullPromotionPolicyPlugin,
+        plus wired ArbiterPolicyPlugin and PromotionPolicyPlugin.
+        Every plugin has a safe fallback — exceptions log at DEBUG, never block traffic.
+      </div>
+      <div class="fc-stat">Non-linear utility models · Structural typing · Zero-fork extension</div>
+    </div>
+    <div class="feature-card">
+      <span class="fc-icon">🎯</span>
+      <div class="fc-title">Shadow mode + regression gate</div>
+      <div class="fc-desc">
+        Shadow mode silently sends production queries to a GREEN candidate and accumulates
+        (blue_u, green_u) pairs via fire-and-forget — zero latency impact.
+        The regression gate runs an eval dataset against BLUE and GREEN before promotion;
+        blocks if quality drops.
+      </div>
+      <div class="fc-stat">Real-traffic promotion evidence · /deploy/shadow/* REST endpoints</div>
+    </div>
+    <div class="feature-card">
+      <span class="fc-icon">🏗️</span>
+      <div class="fc-title">Operations toolkit</div>
+      <div class="fc-desc">
+        <code>aua test</code> (3 built-in suites), <code>aua loadtest</code> (p50/p95/p99 + RPS),
+        persistent batch queue (/batch/jobs), model version pinning (@revision / models:/),
+        MLflow + W&amp;B experiment tracking, 6 hardware tier templates,
+        tensor parallelism per specialist (TP=1/2/4/8).
+      </div>
+      <div class="fc-stat">aua models pin · Multi-tenant isolation · arXiv + PubMed + SymPy empirical check</div>
+    </div>
+  </div>
 </div>
 
 <!-- FRAMEWORK OVERVIEW -->
@@ -656,7 +702,7 @@ footer a:hover { text-decoration: underline; }
 
     <div class="feature-card">
       <span class="fc-icon">🔌</span>
-      <div class="fc-title">Plugin system — 8 Protocol interfaces</div>
+      <div class="fc-title">Plugin system — 11 Protocol interfaces</div>
       <div class="fc-desc">
         Replace any layer without editing AUA source. <code>FieldClassifierPlugin</code>, <code>UtilityScorerPlugin</code>, <code>ArbiterPolicyPlugin</code>, <code>PromotionPolicyPlugin</code>, <code>CorrectionStorePlugin</code>, <code>ModelBackendPlugin</code>, <code>HookPlugin</code>, <code>AUAMiddleware</code> — all with type hints, docstrings, and example implementations.
       </div>
@@ -1069,7 +1115,7 @@ Field-specific penalty multipliers route into DPO training:
         </li>
         <li>
           <a href="aua_roadmap.html">Full v1 Roadmap</a>
-          <span class="wp-desc">All 73 original items + 55 new items across 7 milestones — v1.0 complete, v2.0+ planned</span>
+          <span class="wp-desc">All 75 roadmap items tracked — #44–#54, #56–#58, #61, #65–#67 shipped in v1.2; #74–#75 planned</span>
         </li>
         <li>
           <a href="whitepaper_results.html#open-questions">§13 — Open Questions</a>
@@ -1184,7 +1230,7 @@ aua serve --dry-run</pre>
       <a href="aua_roadmap.html">Roadmap</a>
       <a href="https://github.com/praneethtota/Adaptive-Utility-Agent" target="_blank">GitHub</a>
     </div>
-    <div>Adaptive Utility Agents v1.0.2 · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/CITATION.cff" target="_blank">Cite this work</a></div>
+    <div>Adaptive Utility Agents v1.2.0 · <a href="https://github.com/praneethtota/Adaptive-Utility-Agent/blob/main/CITATION.cff" target="_blank">Cite this work</a></div>
   </div>
 </footer>
 

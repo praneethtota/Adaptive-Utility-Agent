@@ -169,6 +169,8 @@ tr:nth-child(even) td{background:#fafaf8}
     <a href="#part-16">16 · Observability</a>
     <a href="#part-17">17 · Docker deployment</a>
     <a href="#part-18">18 · Persistence &amp; search</a>
+    <a href="#part-19">19 · Plugin system deep-dive</a>
+    <a href="#part-20">20 · Operations toolkit</a>
   </nav>
 
   <div class="sb-section">Reference</div>
@@ -186,7 +188,7 @@ tr:nth-child(even) td{background:#fafaf8}
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <span class="topbar-brand">AUA Framework · Tutorial v1.0.0</span>
+  <span class="topbar-brand">AUA Framework · Tutorial v1.2.0</span>
   <div class="topbar-links">
     <a href="whitepaper.html">Home</a>
     <a href="whitepaper_overview.html">Whitepaper</a>
@@ -3559,7 +3561,839 @@ curl -s -X POST localhost:8000/local/settings -H "Content-Type: application/json
 <p><strong>Why this matters for routing:</strong> each promoted node gets its own effective-utility cell, so "compiler design" queries can route to a different winner than generic "software engineering" once the evidence says the models genuinely diverge there.</p>
 </div>
 
-<div class="next-part"><p><strong>Part 18 done.</strong> That's the full v1.1 surface. The reference sections below list every CLI command and REST endpoint.</p></div>
+<div class="next-part"><p><strong>Part 18 done.</strong> Parts 19 and 20 cover the v1.2 plugin system and operations toolkit.</p></div>
+<!-- ═══════════════════════════════════════════ PART 19 -->
+<h2 id="part-19" class="part-heading"><span class="how-badge">How-to 19</span> Plugin system deep-dive — extend without forking <span class="time-badge">~45 min</span></h2>
+
+<p>Every major decision point in AUA — routing, scoring, arbitration, promotion, contradiction detection, assertion storage — has a formal Python Protocol interface you can replace by registering a class in <code>aua_config.yaml</code>. You never fork the source. You write a class, register it, and the router wires it at startup.</p>
+
+<p>This How-to walks through all plugin types from scratch, with working examples. By the end you will have replaced the utility scorer, added a custom routing strategy, implemented a non-linear utility function, and configured multi-tenancy. Each section can be read independently if you only need one plugin type.</p>
+
+<h3>19.1 How plugins are loaded — the five-step lifecycle</h3>
+
+<p>When the router starts, it reads <code>plugins:</code> from <code>aua_config.yaml</code>, then for each entry:</p>
+
+<ol>
+  <li>Parses <code>import_path</code> as <code>module.path:ClassName</code></li>
+  <li>Adds your project root to <code>sys.path</code> (so <code>plugins.scoring:MyScorer</code> resolves to <code>{project}/plugins/scoring.py</code>)</li>
+  <li>Imports the module and instantiates the class, passing <code>config:</code> dict as kwargs</li>
+  <li>Validates the instance against its Protocol using <code>isinstance()</code> — fails fast at startup, not silently at query time</li>
+  <li>Wires the plugin into the relevant decision point (e.g. replaces <code>self._custom_scorer</code>)</li>
+</ol>
+
+<div class="code-block">
+<div class="code-header">Minimal plugin registration — aua_config.yaml</div>
+<pre>plugins:
+  utility_scorer:                         <span class="c"># which slot</span>
+    import_path: plugins.scoring:MyScorer <span class="c"># module:ClassName</span>
+    config:                               <span class="c"># passed as **kwargs to __init__</span>
+      risk_weight: 0.7</pre>
+</div>
+
+<div class="callout green">
+  <p><strong>Structural typing — no inheritance needed.</strong> AUA uses Python Protocols. Your class does not import or extend anything from AUA. It just needs the right method name and signature. This means you can wrap any existing class — an sklearn model, a FastAPI endpoint, a numpy function — as a plugin with a thin adapter.</p>
+</div>
+
+<h3>19.2 Plugin types at a glance</h3>
+
+<table>
+<tr><th>YAML key</th><th>Protocol class</th><th>What it replaces</th><th>Required method</th><th>Fallback on error</th></tr>
+<tr><td><code>field_classifier</code></td><td><code>FieldClassifierPlugin</code></td><td>Domain classifier</td><td><code>classify(query) → dict[str,float]</code></td><td>Built-in classifier</td></tr>
+<tr><td><code>utility_scorer</code></td><td><code>UtilityScorerPlugin</code></td><td>Final U score (adjustment)</td><td><code>score(response, field, prior_u, confidence, metadata) → float</code></td><td>Built-in U</td></tr>
+<tr><td><code>full_utility_scorer</code></td><td><code>FullUtilityScorerPlugin</code></td><td>Entire U computation</td><td><code>score_full(field, efficacy, confidence, curiosity, weights, metadata) → float</code></td><td>Falls back to <code>score()</code> then built-in</td></tr>
+<tr><td><code>contradiction_detector</code></td><td><code>ContradictionDetectorPlugin</code></td><td>Built-in code checker</td><td><code>check(problem, solution, claimed_complexity=None) → dict</code></td><td>Built-in detector</td></tr>
+<tr><td><code>assertion_store</code></td><td><code>AssertionStorePlugin</code></td><td>In-memory AssertionsStore</td><td><code>add(), query(), query_contradictions()</code></td><td>—</td></tr>
+<tr><td><code>routing_strategy</code></td><td><code>RoutingStrategyPlugin</code></td><td>Post-classifier distribution</td><td><code>route(query, distribution, metadata) → dict[str,float]</code></td><td>Classifier output</td></tr>
+<tr><td><code>scoring_component</code></td><td><code>ScoringComponentPlugin</code></td><td>One sub-score (E, C, or K)</td><td><code>compute(component, value, field, metadata) → float</code></td><td>Built-in sub-score</td></tr>
+<tr><td><code>arbiter_policy</code></td><td><code>ArbiterPolicyPlugin</code></td><td>LLM arbitration call</td><td><code>arbitrate(subject, domain, output_a, output_b, metadata) → dict</code></td><td>Built-in LLM arbiter</td></tr>
+<tr><td><code>promotion_policy</code></td><td><code>PromotionPolicyPlugin</code></td><td>Promotion gate (simple)</td><td><code>should_promote(specialist, blue_mean_u, green_mean_u, n_queries, metadata) → bool</code></td><td>Built-in threshold</td></tr>
+<tr><td><code>full_promotion_policy</code></td><td><code>FullPromotionPolicyPlugin</code></td><td>Promotion gate (full context)</td><td><code>should_promote_full(context: dict) → bool</code></td><td>Falls back to <code>should_promote()</code></td></tr>
+<tr><td><code>correction_store</code></td><td><code>CorrectionStorePlugin</code></td><td>DPO pair / correction storage</td><td><code>store(), query(), export_dpo_pairs()</code></td><td>—</td></tr>
+</table>
+
+<div class="callout blue">
+  <p><strong>Every plugin has a safe fallback.</strong> If your plugin raises an unhandled exception at query time, AUA logs it at DEBUG level and falls back to the built-in implementation. Your production traffic is never blocked by a plugin bug. Fix and redeploy at your own pace.</p>
+</div>
+
+<h3>19.3 Field classifier plugin — route queries differently</h3>
+
+<p>The built-in classifier uses a keyword/embedding model trained on the 11 built-in fields. Replace it when you have tenant-specific routing rules, a proprietary domain taxonomy, or an external classification service.</p>
+
+<div class="code-block">
+<div class="code-header">plugins/routing.py</div>
+<pre>class TenantAwareClassifier:
+    """
+    Route based on tenant context first, then keyword fallback.
+    Reads the tenant ID set by TenantPolicyMiddleware.
+    """
+    def __init__(self, tenant_overrides: dict):
+        self.overrides = tenant_overrides   <span class="c"># e.g. {"tenant-finance": "mathematics"}</span>
+
+    def classify(self, query: str) -> dict[str, float]:
+        from aua.tenancy import get_tenant_id
+        tenant = get_tenant_id()
+        if tenant and tenant in self.overrides:
+            return {self.overrides[tenant]: 1.0}
+        if any(w in query.lower() for w in ["integral", "derivative", "proof"]):
+            return {"mathematics": 0.92, "software_engineering": 0.05}
+        return {"software_engineering": 0.85, "mathematics": 0.10}</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  field_classifier:
+    import_path: plugins.routing:TenantAwareClassifier
+    config:
+      tenant_overrides:
+        tenant-finance: mathematics
+        tenant-devtools: software_engineering</pre>
+</div>
+
+<p>Your <code>classify()</code> receives the raw query string and must return a dict mapping field names to probabilities (0.0–1.0). Probabilities should sum to ≤ 1.0 (the remainder is treated as "unknown" and routes to the arbiter). Returning <code>{"software_engineering": 1.0}</code> forces single-specialist routing to the swe specialist.</p>
+
+<h3>19.4 Routing strategy plugin — intercept after classification</h3>
+
+<p>A <code>routing_strategy</code> plugin sits between the classifier and the routing threshold decision. It receives the probability distribution and can reorder, cap, or override it. This runs <em>after</em> the classifier and <em>before</em> the single/fanout/arbiter threshold check — so the router's mode decision uses your adjusted distribution.</p>
+
+<div class="code-block">
+<div class="code-header">plugins/routing.py — deterministic domain lock for certain query prefixes</div>
+<pre>class PrefixRouter:
+    """
+    Queries starting with [math] always go to the mathematics specialist.
+    Useful for power users who know which specialist they want.
+    """
+    def route(self, query: str, distribution: dict, metadata: dict) -> dict:
+        q = query.strip()
+        if q.startswith("[math]"):
+            return {"mathematics": 1.0}
+        if q.startswith("[code]"):
+            return {"software_engineering": 1.0}
+        return distribution   <span class="c"># pass through unchanged</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  routing_strategy:
+    import_path: plugins.routing:PrefixRouter</pre>
+</div>
+
+<p>The <code>metadata</code> dict contains <code>session_id</code>. When <code>force_domain</code> is set on a request, the routing strategy is skipped — explicit overrides always win.</p>
+
+<h3>19.5 Contradiction detector plugin — custom validation</h3>
+
+<p>The built-in detector catches syntax errors, logical contradictions, and cross-session conflicts in code generation. Replace it when you need domain-specific validation — checking medical claims against a drug database, verifying proofs with SymPy, or using a fine-tuned classifier.</p>
+
+<div class="code-block">
+<div class="code-header">Return contract — what your check() must return</div>
+<pre>def check(self, problem: str, solution: str,
+          claimed_complexity: str | None = None) -> dict:
+    return {
+        "contradictions": [
+            {
+                "type": "domain_specific",         <span class="c"># any string label</span>
+                "description": "Claim contradicts known literature",
+                "severity": 0.8,                  <span class="c"># 0.0 to 1.0</span>
+            }
+        ],
+        "confidence_penalty": 0.3,   <span class="c"># total deducted from confidence score</span>
+        "is_clean": False,           <span class="c"># True when contradictions list is empty</span>
+    }</pre>
+</div>
+
+<div class="callout green">
+  <p><strong>Tip: use the built-in empirical module inside your plugin.</strong> <code>from aua.empirical import empirical_check</code> gives you the same SymPy / arXiv / PubMed cross-check the Arbiter Stage 4 uses. Call it from your detector to get external ground-truth verification at the per-response level.</p>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  contradiction_detector:
+    import_path: plugins.validation:MyDomainDetector</pre>
+</div>
+
+<h3>19.6 Assertion store plugin — persistent claim memory</h3>
+
+<p>The built-in <code>AssertionsStore</code> is in-memory and resets on restart. Replace it when you want verified claims to survive restarts, be shared across instances, or be queryable from outside AUA — for example, via a Postgres database that a reporting tool can also read.</p>
+
+<div class="code-block">
+<div class="code-header">plugins/stores.py — minimal Postgres assertion store</div>
+<pre>import psycopg2
+
+class PostgresAssertionStore:
+    def __init__(self, dsn: str):
+        self.conn = psycopg2.connect(dsn)
+
+    def add(self, subject, domain, claim, confidence,
+            source="arbiter", evidence_summary=""):
+        with self.conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO assertions (subject, domain, claim, confidence, source)"
+                " VALUES (%s,%s,%s,%s,%s) ON CONFLICT (subject,domain) DO UPDATE"
+                " SET claim=EXCLUDED.claim, confidence=EXCLUDED.confidence",
+                (subject, domain, claim, confidence, source)
+            )
+        self.conn.commit()
+
+    def query(self, subject, domain=None, min_confidence=None):
+        ...  <span class="c"># SELECT WHERE subject ILIKE %s AND confidence >= %s</span>
+
+    def query_contradictions(self, subject, new_claim, domain=None):
+        ...  <span class="c"># compare new_claim against stored claims</span></pre>
+</div>
+
+<div class="callout orange">
+  <p><strong>assertion_store vs correction_store.</strong> These are two different stores. <code>assertion_store</code> holds knowledge-level verified claims (what the arbiter learned is true about "bubble sort complexity"). <code>correction_store</code> holds DPO training pairs (which response was better and why). They are independent plugin slots with different interfaces.</p>
+</div>
+
+<h3>19.7 Scoring component plugin — adjust one sub-score</h3>
+
+<p>The utility function is <code>U = w_e·E + w_c·C + w_k·K</code>. A <code>scoring_component</code> plugin intercepts one component (E, C, or K) after the built-in pipeline computes it, applies your adjustment, then the weighted sum is recomputed with your adjusted value. This is right when you want to bias one dimension without touching the overall architecture.</p>
+
+<div class="code-block">
+<div class="code-header">plugins/scoring.py — penalise short responses via efficacy</div>
+<pre>class LengthAwareEfficacy:
+    """
+    Responses shorter than min_chars get an efficacy penalty.
+    Encourages the specialist to give complete answers.
+    """
+    def __init__(self, min_chars: int = 200):
+        self.min_chars = min_chars
+
+    def compute(self, component: str, value: float,
+                field: str, metadata: dict) -> float:
+        if component != "efficacy":
+            return value   <span class="c"># pass C and K through unchanged</span>
+        response = metadata.get("response", "")
+        if len(response) < self.min_chars:
+            shortfall = 1.0 - len(response) / self.min_chars
+            return max(0.0, value * (1.0 - 0.4 * shortfall))
+        return value</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  scoring_component:
+    import_path: plugins.scoring:LengthAwareEfficacy
+    config:
+      min_chars: 300</pre>
+</div>
+
+<p>The <code>metadata</code> dict available inside <code>compute()</code> contains: <code>query</code>, <code>response</code>, <code>pass_rate</code>, and <code>contradiction_penalty</code>.</p>
+
+<h3>19.8 Utility scorer — adjustment mode vs full replacement</h3>
+
+<p>There are two ways to customise the utility score. Understanding the difference is important before choosing one.</p>
+
+<p><strong>Adjustment mode (<code>utility_scorer</code>)</strong> — the built-in pipeline runs first, produces a U score, passes it to your plugin as <code>prior_u</code>. Your plugin returns a scalar. Use this when you want to post-process the built-in score — multiplying by a risk factor, capping on confidence, or blending with an external signal.</p>
+
+<p><strong>Full replacement mode (<code>full_utility_scorer</code>)</strong> — the built-in <code>w_e·E + w_c·C + w_k·K</code> step is <em>skipped entirely</em>. Your plugin receives the raw E, C, K components and can compute any function of them. Use this when the linear form is wrong for your domain.</p>
+
+<h4>Why the built-in is linear — Axiom A5</h4>
+
+<p>The linear form is not arbitrary. It follows necessarily from five axioms proved in Appendix B.1 of the whitepaper. The load-bearing axiom is <strong>A5 (linear scaling)</strong>: if you scale all three inputs by the same factor λ, utility scales by the same factor. A5 forces the component functions to be linear. It is what makes the additive representation theorem (Theorem B.1) work.</p>
+
+<p><code>score_full()</code> deliberately bypasses A5. You lose the theoretical guarantee of Theorem B.1 but gain the freedom to express any utility model. Non-linear models often outperform the linear form empirically even when they lack the formal proof — the Appendix B.1 Remark on A5 as the "load-bearing axiom" is exactly about this tradeoff.</p>
+
+<h4>What score_full() receives</h4>
+
+<table>
+<tr><th>Argument</th><th>Type</th><th>What it is</th></tr>
+<tr><td><code>field</code></td><td>str</td><td>Domain name — "surgery", "mathematics", "software_engineering" …</td></tr>
+<tr><td><code>efficacy</code></td><td>float 0–1</td><td>E_ema — EMA-accumulated efficacy (α=0.2): tracks how well the specialist performs over time</td></tr>
+<tr><td><code>confidence</code></td><td>float 0–1</td><td>Kalman-filtered confidence after contradiction penalty has been applied</td></tr>
+<tr><td><code>curiosity</code></td><td>float 0–1</td><td>K_effective = K_base + gap_bonus from Arbiter Case 3</td></tr>
+<tr><td><code>weights</code></td><td>dict</td><td><code>{"w_e": float, "w_c": float, "w_k": float}</code> from this field's config</td></tr>
+<tr><td><code>metadata</code></td><td>dict</td><td>query, response, pass_rate, task_score (the full built-in TaskScore object)</td></tr>
+</table>
+
+<h4>Non-linear utility functions you can implement</h4>
+
+<div class="code-block">
+<div class="code-header">Quadratic — safety-critical domains where low confidence tanks the score</div>
+<pre>def score_full(self, field, efficacy, confidence, curiosity, weights, metadata):
+    if field == "surgery":
+        <span class="c"># C=0.9 → multiplier 0.81; C=0.5 → multiplier 0.25</span>
+        return min(1.0, efficacy * (confidence ** 2) * (1 + 0.1 * curiosity))
+    <span class="c"># all other fields: standard linear</span>
+    return (weights["w_e"]*efficacy + weights["w_c"]*confidence + weights["w_k"]*curiosity)</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Multiplicative — all three dimensions must be high; one weak component collapses U</div>
+<pre>def score_full(self, field, efficacy, confidence, curiosity, weights, metadata):
+    return min(1.0, efficacy * confidence * (1 + weights["w_k"] * curiosity))</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Cobb-Douglas — diminishing returns; common in welfare economics</div>
+<pre>def score_full(self, field, efficacy, confidence, curiosity, weights, metadata):
+    e = max(0.001, efficacy)
+    c = max(0.001, confidence)
+    k = max(0.001, curiosity)
+    <span class="c"># w_e + w_c + w_k = 1.0 so this is a proper weighted geometric mean</span>
+    return min(1.0, (e ** weights["w_e"]) * (c ** weights["w_c"]) * (k ** weights["w_k"]))</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Rawlsian min — score equals the weakest component (pessimistic welfare)</div>
+<pre>def score_full(self, field, efficacy, confidence, curiosity, weights, metadata):
+    return min(efficacy, confidence)   <span class="c"># curiosity is excluded from the minimum</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Threshold gate — confidence must exceed c_min or U near-zeroes</div>
+<pre>from aua.config import FIELD_CONFIGS
+
+def score_full(self, field, efficacy, confidence, curiosity, weights, metadata):
+    c_min = FIELD_CONFIGS.get(field, FIELD_CONFIGS["general"]).c_min
+    if confidence &lt; c_min:
+        return confidence * 0.1   <span class="c"># near-zero: this answer should not reach the user</span>
+    return (weights["w_e"]*efficacy + weights["w_c"]*confidence + weights["w_k"]*curiosity)</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Full class implementing both score() and score_full()</div>
+<pre>class SurgeryAwareScorer:
+    def score(self, response, field, prior_u, confidence, metadata) -> float:
+        return prior_u   <span class="c"># fallback: return built-in unchanged</span>
+
+    def score_full(self, field, efficacy, confidence, curiosity,
+                   weights, metadata) -> float:
+        if field == "surgery":
+            return min(1.0, efficacy * (confidence ** 2))
+        return (weights["w_e"]*efficacy
+                + weights["w_c"]*confidence
+                + weights["w_k"]*curiosity)</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  full_utility_scorer:
+    import_path: plugins.scoring:SurgeryAwareScorer</pre>
+</div>
+
+<div class="callout orange">
+  <p><strong>Fallback chain.</strong> If <code>score_full()</code> raises, AUA falls back to <code>score()</code>. If that raises, it uses the built-in linear U. Always implement <code>score()</code> returning <code>prior_u</code> unchanged as a safety net — it costs you nothing and guarantees traffic is never blocked by a scoring bug.</p>
+</div>
+
+<h3>19.9 Arbiter policy plugin — replace the LLM arbitration call</h3>
+
+<p>When two specialists disagree (fanout routing), AUA calls the arbiter LLM to decide the winner. Replace this with a deterministic rule, a faster heuristic, or a domain-specific logic layer to cut latency or use stronger domain knowledge.</p>
+
+<div class="code-block">
+<div class="code-header">Return contract — what arbitrate() must return</div>
+<pre>def arbitrate(self, subject: str, domain: str,
+              output_a: str, output_b: str, metadata: dict) -> dict:
+    return {
+        "winner":            "A",          <span class="c"># "A" | "B" | "BOTH_WRONG"</span>
+        "reason":            "A includes the time complexity proof",
+        "external_response": "",           <span class="c"># shown to user only when BOTH_WRONG</span>
+        "case":              "case_1",     <span class="c"># optional metadata for DPO labelling</span>
+    }</pre>
+</div>
+
+<p><code>metadata</code> contains: <code>domain_a</code>, <code>domain_b</code>, <code>specialist_a</code>, <code>specialist_b</code>.</p>
+
+<div class="code-block">
+<div class="code-header">plugins/arbitration.py — response-length heuristic (no LLM, no latency)</div>
+<pre>class LengthHeuristicArbiter:
+    """
+    Pick the more detailed response. Fast, deterministic, zero-cost.
+    Good baseline before you have enough DPO data to train a judge.
+    """
+    def arbitrate(self, subject, domain, output_a, output_b, metadata):
+        winner = "A" if len(output_a) >= len(output_b) else "B"
+        return {
+            "winner":  winner,
+            "reason":  f"{winner} is more complete ({len(output_a)} vs {len(output_b)} chars)",
+            "external_response": "",
+        }</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  arbiter_policy:
+    import_path: plugins.arbitration:LengthHeuristicArbiter</pre>
+</div>
+
+<h3>19.10 Promotion policy plugin — any function of any signal</h3>
+
+<p>The default promotion gate is <code>green_u - blue_u &gt;= threshold</code> — a simple scalar comparison. Replace it when you need multi-factor gating, confidence intervals, minimum sample sizes, or non-linear combinations of the available signals.</p>
+
+<p>Two modes — same pattern as the utility scorer:</p>
+
+<p><strong>Simple mode (<code>promotion_policy</code>)</strong> — receives pre-computed scalars. Good for straightforward rules.</p>
+
+<p><strong>Full context mode (<code>full_promotion_policy</code>)</strong> — receives the complete promotion context dict including raw shadow score rows, std dev of the delta distribution, regression results, and the full config objects. Use this for anything statistical.</p>
+
+<h4>Full context dict — every key explained</h4>
+
+<table>
+<tr><th>Key</th><th>Type</th><th>What it is</th></tr>
+<tr><td><code>specialist</code></td><td>str</td><td>Specialist name</td></tr>
+<tr><td><code>blue_u</code> / <code>green_u</code></td><td>float</td><td>Mean U for BLUE (current production) and GREEN (candidate)</td></tr>
+<tr><td><code>u_delta</code></td><td>float</td><td>green_u - blue_u</td></tr>
+<tr><td><code>mean_delta</code></td><td>float</td><td>Mean U_delta across all shadow queries (real traffic)</td></tr>
+<tr><td><code>n_queries</code></td><td>int</td><td>Number of shadow/eval queries used</td></tr>
+<tr><td><code>min_queries</code></td><td>int</td><td><code>shadow_min_queries</code> from config</td></tr>
+<tr><td><code>threshold</code></td><td>float</td><td><code>delta</code> from blue_green config</td></tr>
+<tr><td><code>shadow_scores</code></td><td>list[dict]</td><td>Raw rows from ShadowStore — each has <code>blue_u</code>, <code>green_u</code>, <code>u_delta</code>, <code>domain</code></td></tr>
+<tr><td><code>shadow_std_delta</code></td><td>float</td><td>Std dev of U_delta across shadow queries — 0.0 when n &lt; 2</td></tr>
+<tr><td><code>regression_result</code></td><td>dict or None</td><td>Regression gate output: <code>regressed</code>, <code>delta_pass_rate</code>, <code>delta_u_score</code></td></tr>
+<tr><td><code>dry</code></td><td>bool</td><td>True when no green_endpoint was available (dry-run scores only)</td></tr>
+<tr><td><code>source</code></td><td>str</td><td>"shadow (N queries)" | "synthetic eval" | "dry-run"</td></tr>
+<tr><td><code>bg_config</code></td><td>BlueGreenFieldConfig</td><td>Full blue_green config for this specialist</td></tr>
+</table>
+
+<div class="code-block">
+<div class="code-header">plugins/promotion.py — three non-linear promotion functions</div>
+<pre>class CIGatePromoter:
+    """Promote only when mean_delta > 2 standard deviations — statistically significant."""
+    def should_promote(self, specialist, blue_mean_u, green_mean_u, n_queries, metadata):
+        return True   <span class="c"># fallback if should_promote_full raises</span>
+
+    def should_promote_full(self, context: dict) -> bool:
+        std = context["shadow_std_delta"]
+        mean = context["mean_delta"]
+        if std == 0:
+            return mean > 0
+        return mean > 2 * std
+
+
+class AdaptiveThresholdPromoter:
+    """Require a larger delta when we have fewer queries — conservative early, liberal later."""
+    def should_promote(self, *a, **kw): return False
+    def should_promote_full(self, context: dict) -> bool:
+        n = context["n_queries"]
+        adaptive = context["threshold"] + 0.5 / max(n, 1)
+        return context["mean_delta"] >= adaptive
+
+
+class MultiFactorGate:
+    """All three conditions must pass: no regression, enough queries, positive delta."""
+    def should_promote(self, *a, **kw): return False
+    def should_promote_full(self, context: dict) -> bool:
+        if context.get("regression_result") and context["regression_result"].get("regressed"):
+            return False
+        if context["n_queries"] &lt; context["min_queries"]:
+            return False
+        return context["mean_delta"] >= context["threshold"]</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>plugins:
+  full_promotion_policy:
+    import_path: plugins.promotion:MultiFactorGate</pre>
+</div>
+
+<h3>19.11 Multi-tenancy — isolated namespaces per tenant</h3>
+
+<p>AUA supports full per-tenant isolation: separate rate limits, field allowlists, model bindings, and namespaced writes across all four persistent tables (corrections, promotions, audit_log, model_runs each carry a <code>tenant_id</code> column). Isolation is enforced at the database level — one tenant's queries cannot interfere with another's corrections or promotion history.</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — full multi-tenant configuration</div>
+<pre>middleware:
+  - import_path: aua.middleware:TenantPolicyMiddleware
+    config:
+      reject_unknown: true     <span class="c"># 403 for any X-Tenant-ID not listed below</span>
+      tenants:
+        tenant-a:
+          allowed_fields: [software_engineering, mathematics]
+          rate_limit_rpm: 60       <span class="c"># requests per minute for this tenant</span>
+          model_binding: swe       <span class="c"># force ALL queries to the swe specialist</span>
+        tenant-b:
+          allowed_fields: [law, software_engineering]
+          rate_limit_rpm: 120
+          model_binding: null      <span class="c"># normal routing for tenant-b</span></pre>
+</div>
+
+<p>Clients pass their tenant ID in the <code>X-Tenant-ID</code> HTTP header. The middleware runs before any routing — the tenant's allowlist and rate limit are enforced before the query reaches the field classifier.</p>
+
+<div class="code-block">
+<div class="code-header">Reading tenant context inside your own plugin</div>
+<pre>from aua.tenancy import get_tenant_id
+
+class TenantScoringComponent:
+    def compute(self, component: str, value: float, field: str, metadata: dict) -> float:
+        tenant = get_tenant_id()   <span class="c"># None for anonymous / no middleware</span>
+        if tenant == "tenant-premium" and component == "curiosity":
+            return min(1.0, value * 1.3)   <span class="c"># premium tenants get +30% curiosity</span>
+        return value</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Querying tenant-scoped data</div>
+<pre><span class="c"># Only tenant-a's corrections</span>
+rows = store.query("corrections", filters={"tenant_id": "tenant-a"})
+
+<span class="c"># All anonymous queries (no tenant header)</span>
+rows = store.query("model_runs", filters={"tenant_id": None})</pre>
+</div>
+
+<div class="next-part"><p><strong>Part 19 done.</strong> You now understand all eleven plugin types — from simple adjustments to full replacements and multi-tenancy isolation. Part 20 covers the operations toolkit: testing, load testing, batch inference, model downloads, shadow mode, experiment tracking, hardware tiers, and the empirical arbiter.</p></div>
+
+<!-- ═══════════════════════════════════════════ PART 20 -->
+<h2 id="part-20" class="part-heading"><span class="how-badge">How-to 20</span> Operations toolkit <span class="time-badge">~40 min</span></h2>
+
+<p>This How-to covers every operational feature added in v1.2: <code>aua test</code>, <code>aua loadtest</code>, batch inference, model registry and version pinning, shadow mode, regression gating, experiment tracking, the empirical arbiter check, and hardware deployment tiers. These features are independent — read the sections that apply to your current task.</p>
+
+<h3>20.1 aua test — built-in integration test suite</h3>
+
+<p><code>aua test</code> runs fixture datasets against a live router and reports pass/fail per case. It is the fastest way to verify routing, utility scoring, and specialist responses are working after a deployment, config change, or model swap.</p>
+
+<div class="code-block">
+<div class="code-header">The three built-in suites</div>
+<pre>aua test                        <span class="c"># smoke — 6 cases, under 60 seconds (default)</span>
+aua test --suite full           <span class="c"># full  — 15 cases, 3-10 minutes</span>
+aua test --suite routing        <span class="c"># routing — 9 cases, all with expected_domain checks</span></pre>
+</div>
+
+<p><strong>smoke:</strong> Run after every deployment. Checks basic routing and non-empty responses for software_engineering, mathematics, and general. Designed to finish in under 60 seconds on any hardware.</p>
+
+<p><strong>full:</strong> Run before promoting a GREEN candidate. Covers edge cases, routing boundary queries (queries that could belong to two domains), and refusal detection (confirms the router does not say "I cannot help").</p>
+
+<p><strong>routing:</strong> Run after changing field weights, swapping the classifier, or registering a routing_strategy plugin. Every case in this suite has an <code>expected_domain</code> property — a failure means the classifier changed behavior on that query type.</p>
+
+<div class="code-block">
+<div class="code-header">Key flags</div>
+<pre>aua test --url http://prod:8000       <span class="c"># target a non-local router</span>
+aua test --case swe_binary_search     <span class="c"># run one specific case (repeatable)</span>
+aua test --dataset my_cases.yaml      <span class="c"># custom fixture file (same format as built-ins)</span>
+aua test --suite full --json --output report.json
+aua test --no-liveness                <span class="c"># skip the pre-flight GET /health/live check</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Custom fixture file format — my_cases.yaml</div>
+<pre>name: my_coding_suite
+description: "Regression suite for the swe specialist after model update"
+cases:
+  - id: sort_complexity
+    prompt: "Write bubble sort in Python and state its O complexity."
+    expected_properties:
+      - contains: "def "
+      - contains_any: ["O(n^2)", "n squared", "n*n", "quadratic"]
+      - min_length: 100
+      - expected_domain: software_engineering
+      - not_contains: "I cannot"
+      - not_contains: "I'm unable"
+
+  - id: math_domain_check
+    prompt: "Solve the quadratic equation x^2 - 5x + 6 = 0."
+    expected_properties:
+      - contains_any: ["x = 2", "x = 3", "roots are"]
+      - min_length: 20
+      - expected_domain: mathematics</pre>
+</div>
+
+<p>Property types you can use: <code>contains</code> (substring, case-insensitive), <code>contains_any</code> (list of substrings — at least one must match), <code>not_contains</code>, <code>min_length</code> (character count), <code>expected_domain</code> (exact match), <code>expected_domain_any</code> (list — any match).</p>
+
+<p>Exit code 0 on all pass, exit code 1 on any failure. Use <code>--json</code> to get machine-readable output for CI pipelines.</p>
+
+<h3>20.2 aua loadtest — latency and throughput benchmarking</h3>
+
+<p><code>aua loadtest</code> fires concurrent POST /query requests and reports the full latency distribution. Run it before going to production, after scaling hardware, or whenever you suspect a latency regression after a model or config change.</p>
+
+<div class="code-block">
+<div class="code-header">Common invocations</div>
+<pre>aua loadtest                              <span class="c"># 10 workers, 30 s, smoke query mix</span>
+aua loadtest -c 20 -d 60                 <span class="c"># 20 concurrent workers, 60 seconds</span>
+aua loadtest --suite full -c 5           <span class="c"># full fixture suite as query mix</span>
+aua loadtest --dataset my_queries.yaml   <span class="c"># custom query mix from a fixture file</span>
+aua loadtest --ramp 10 -c 20 -d 120     <span class="c"># ramp from 0 → 20 workers over 10 s, run 120 s</span>
+aua loadtest --think-ms 200 -c 10       <span class="c"># 200 ms pause between requests per worker</span>
+aua loadtest --json --output bench.json  <span class="c"># machine-readable output for CI</span>
+aua loadtest --url http://prod:8000      <span class="c"># target production router</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Example output</div>
+<pre>✓ Router live at http://localhost:8000
+Starting load test — workers=10 duration=30s queries=smoke
+
+aua loadtest  150 requests in 30.1s   148 ok / 2 errors (1.3% error rate)
+
+  p50     p95     p99     mean    min    max     RPS    mean U
+  312ms   890ms   1.2s    425ms   98ms   1.4s    4.9    0.741
+
+Routing: single: 148
+
+✓ Load test passed (error rate 1.3% &lt; 5%)</pre>
+</div>
+
+<p>The test exits 0 when error rate &lt; 5%, exits 1 otherwise — suitable for CI gates. <strong>Watch the mean U score</strong>: a drop in mean U without a matching latency drop usually means routing quality degraded (e.g. more queries hitting the arbiter fallback instead of a confident single specialist).</p>
+
+<div class="code-block">
+<div class="code-header">Flags reference</div>
+<pre>-c / --concurrency  INT    simultaneous in-flight requests (default: 10)
+-d / --duration     FLOAT  wall-clock test duration in seconds (default: 30)
+--ramp              FLOAT  seconds to linearly ramp up workers (default: 0)
+--think-ms          FLOAT  pause between requests per worker (default: 0, continuous)
+--timeout           FLOAT  per-request timeout in seconds (default: 60)
+--suite             STR    smoke | full | routing (default: smoke)
+--dataset / -d      PATH   custom YAML fixture file (overrides --suite)
+--json                     emit full JSON report to stdout
+--output / -o       PATH   save JSON report to file
+--no-liveness              skip GET /health/live pre-flight check
+--url               URL    router URL (default: http://localhost:8000)</pre>
+</div>
+
+<h3>20.3 Persistent batch queue — /batch/jobs</h3>
+
+<p>The batch queue lets you submit hundreds of queries asynchronously and poll for results as they complete. Jobs survive server restarts (results live in SQLite), support three priority lanes, and expose partial results before a batch finishes.</p>
+
+<div class="code-block">
+<div class="code-header">Submit a batch and poll for results</div>
+<pre><span class="c"># POST /batch/jobs — returns immediately</span>
+curl -X POST http://localhost:8000/batch/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "queries": ["Write binary search.", "Implement merge sort.", "Explain quicksort."],
+    "priority": "high",
+    "max_parallel": 4
+  }'
+<span class="c"># → {"job_id": "b3c1a2...", "status": "pending", "n_queries": 3}</span>
+
+<span class="c"># GET /batch/jobs/{id} — partial results available immediately as queries complete</span>
+curl http://localhost:8000/batch/jobs/b3c1a2...
+<span class="c"># → {"status": "running", "n_done": 2, "n_pending": 1,</span>
+<span class="c">#    "results": [{"response": "def binary_search...", "u_score": 0.78}, ...]}</span>
+
+<span class="c"># GET /batch/jobs — list recent jobs</span>
+curl "http://localhost:8000/batch/jobs?status=done&amp;limit=10"</pre>
+</div>
+
+<p><strong>Priority lanes:</strong> <code>"high"</code> dispatches before <code>"normal"</code> before <code>"low"</code>. Within a lane, FIFO by submission time.</p>
+
+<p><strong>Restart recovery:</strong> When the server restarts, interrupted <code>"running"</code> jobs are automatically reset to <code>"pending"</code> and will be reprocessed. Completed results are never lost.</p>
+
+<p><strong>Partial results:</strong> You can poll at any time. Completed items are returned even while the batch is still processing. A status of <code>"running"</code> with <code>n_pending: 0</code> means all items are done but the job record has not yet been marked <code>"done"</code> — poll once more.</p>
+
+<h3>20.4 Model registry and version pinning</h3>
+
+<p>AUA downloads models automatically when you run <code>aua serve</code>. For production deployments, you almost certainly want to pin to a specific revision so a model update on HuggingFace Hub doesn't silently change your system's behavior.</p>
+
+<div class="code-block">
+<div class="code-header">Version pinning syntax in aua_config.yaml</div>
+<pre>specialists:
+  - name: swe
+    model: Qwen/Qwen2.5-7B-Instruct            <span class="c"># latest (dev/prototyping only)</span>
+    model: Qwen/Qwen2.5-7B-Instruct@v0.3       <span class="c"># pin to a branch or tag</span>
+    model: Qwen/Qwen2.5-7B-Instruct@sha256:abc <span class="c"># pin to exact commit (production)</span>
+    model: models:/my-specialist/Production     <span class="c"># MLflow model registry stage</span>
+    model: models:/my-specialist/3              <span class="c"># MLflow specific version number</span>
+
+    <span class="c"># For MLflow URIs, also add:</span>
+    mlflow_tracking_uri: http://mlflow:5000</pre>
+</div>
+
+<p>For gated models (Llama, Gemma), set <code>HF_TOKEN</code> in your environment and accept the license on HuggingFace. AUA checks disk space before downloading — it warns if less than 10 GB is free.</p>
+
+<div class="code-block">
+<div class="code-header">aua models pin — discover and pin revisions</div>
+<pre><span class="c"># List all branches and tags for a HuggingFace repo</span>
+aua models pin Qwen/Qwen2.5-7B-Instruct
+
+<span class="c"># Get the exact config snippet to paste into aua_config.yaml</span>
+aua models pin Qwen/Qwen2.5-7B-Instruct --revision v0.3
+<span class="c"># Output: model: Qwen/Qwen2.5-7B-Instruct@v0.3</span>
+
+<span class="c"># List MLflow registered versions</span>
+aua models pin swe --mlflow-uri models:/my-specialist --mlflow-tracking-uri http://mlflow:5000
+
+<span class="c"># Skip downloads entirely (air-gapped or pre-cached setup)</span>
+aua serve --no-download</pre>
+</div>
+
+<div class="callout green">
+  <p><strong>Production pinning recommendation.</strong> Use <code>@sha256:&lt;commit&gt;</code> in production — it is immutable. Branch names like <code>@main</code> can be silently updated by the model author. <code>aua models pin Qwen/Qwen2.5-7B --revision main</code> will show you the current commit hash under "main" so you can hardcode it.</p>
+</div>
+
+<h3>20.5 Experiment tracking — MLflow and W&amp;B</h3>
+
+<p>AUA logs per-query metrics automatically after every response — no code changes needed. Add the <code>experiment_tracking:</code> block to your config and the router starts writing to MLflow or W&amp;B.</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — full experiment tracking configuration</div>
+<pre>experiment_tracking:
+  enabled: true
+
+  mlflow:
+    enabled: true
+    tracking_uri: http://localhost:5000   <span class="c"># or file:///absolute/path/to/mlruns</span>
+    experiment_name: aua-production       <span class="c"># created automatically if it doesn't exist</span>
+    run_name: router-v1.2                 <span class="c"># optional; auto-named if omitted</span>
+    log_artifacts: false                  <span class="c"># set true to also log response text</span>
+
+  wandb:
+    enabled: true
+    project: aua-framework
+    entity: my-team                       <span class="c"># optional; uses your W&amp;B default entity</span>
+    run_name: production-run              <span class="c"># optional</span>
+    tags: [production, v1.2]</pre>
+</div>
+
+<p>Metrics logged per query: <code>u_score</code>, <code>confidence</code>, <code>latency_ms</code>, <code>contradictions_detected</code>, <code>corrections_injected</code>, <code>dpo_pairs_generated</code>.</p>
+<p>Tags logged per query (for filtering in the UI): <code>routing_mode</code>, <code>primary_domain</code>, <code>specialist</code>, <code>session_id</code>, <code>trace_id</code>.</p>
+
+<p>Both backends are lazy-loaded — if <code>mlflow</code> or <code>wandb</code> is not installed, a warning is logged and that backend silently disables. <code>pip install mlflow</code> or <code>pip install wandb</code> is all you need. Neither is a required dependency of AUA.</p>
+
+<h3>20.6 Shadow mode — real-traffic evaluation before promotion</h3>
+
+<p>Shadow mode lets a GREEN (candidate) model receive real production traffic silently. The user always gets BLUE's (production) response. GREEN's response is evaluated and the (blue_u, green_u) pair is written to the shadow_scores table. Once enough queries accumulate, you have real-traffic evidence for the promotion decision — not just a synthetic eval.</p>
+
+<div class="code-block">
+<div class="code-header">Option A — static config (shadow starts on serve)</div>
+<pre>blue_green:
+  swe:
+    delta: 0.025
+    shadow_endpoint: http://localhost:9011/v1/chat/completions
+    shadow_min_queries: 50    <span class="c"># minimum before promotion is considered ready</span></pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Option B — activate at runtime, no restart needed</div>
+<pre><span class="c"># Activate shadow mode</span>
+curl -X POST http://localhost:8000/deploy/shadow/swe \
+  -H "Content-Type: application/json" \
+  -d '{"green_endpoint": "http://localhost:9011/v1/chat/completions",
+       "min_queries": 50, "threshold": 0.025}'
+
+<span class="c"># Check progress — poll as frequently as you like, no side effects</span>
+curl http://localhost:8000/deploy/shadow/swe
+<span class="c"># → {"active": true, "n_queries": 23, "min_queries": 50,</span>
+<span class="c">#    "progress": "23/50 shadow queries", "mean_delta": 0.031,</span>
+<span class="c">#    "blue_mean_u": 0.741, "green_mean_u": 0.772, "ready_to_promote": false}</span>
+
+<span class="c"># Deactivate (optionally clear accumulated scores)</span>
+curl -X DELETE "http://localhost:8000/deploy/shadow/swe?clear_scores=true"</pre>
+</div>
+
+<p>Once <code>ready_to_promote: true</code>, call <code>POST /deploy/green</code>. The router automatically uses accumulated shadow scores (real traffic data) instead of running a synthetic eval from scratch.</p>
+
+<h3>20.7 Regression gate — block promotion on quality drops</h3>
+
+<p>The regression gate runs an eval dataset against both BLUE and GREEN before allowing promotion. If GREEN's pass rate or U score drops relative to BLUE, the promotion is blocked.</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml</div>
+<pre>blue_green:
+  swe:
+    delta: 0.025
+    regression_dataset: evals/coding_smoke.yaml   <span class="c"># eval YAML in aua test fixture format</span>
+    regression_block: true     <span class="c"># true = block promotion; false = log warning only</span>
+    shadow_endpoint: http://localhost:9011/v1/chat/completions
+    shadow_min_queries: 50</pre>
+</div>
+
+<div class="code-block">
+<div class="code-header">Triggering promotion — the response tells you what happened</div>
+<pre>curl -X POST http://localhost:8000/deploy/green \
+  -d '{"specialist": "swe", "green_model": "./models/swe_v2",
+       "green_endpoint": "http://localhost:9011/v1/chat/completions"}'
+
+<span class="c"># Blocked by regression:</span>
+<span class="c"># → {"promoted": false,</span>
+<span class="c">#    "message": "PROMOTION BLOCKED — regression detected on evals/coding_smoke.yaml.",</span>
+<span class="c">#    "regression": {"regressed": true, "delta_pass_rate": -0.15, "blocked": true}}</span>
+
+<span class="c"># Override the dataset per request (useful for testing):</span>
+curl -X POST http://localhost:8000/deploy/green \
+  -d '{"specialist": "swe", "green_model": "...",
+       "regression_dataset": "evals/quick_check.yaml"}'</pre>
+</div>
+
+<h3>20.8 Arbiter empirical check — external ground truth</h3>
+
+<p>Arbiter Stage 4 cross-checks claims against external sources before issuing a verdict. No configuration is required — it activates automatically for the relevant domains.</p>
+
+<table>
+<tr><th>Domain</th><th>Source</th><th>What it checks</th></tr>
+<tr><td>mathematics, structural_engineering</td><td>SymPy</td><td>Extracts complexity claims (O(n²), O(log n) …), tests algebraic equivalence and asymptotic ordering</td></tr>
+<tr><td>software_engineering, stem_research</td><td>arXiv Atom API</td><td>Keyword search returns top-3 abstracts; scores by keyword overlap with the response</td></tr>
+<tr><td>surgery, aviation, medicine</td><td>PubMed E-utilities</td><td>esearch → efetch pipeline; same keyword-overlap scoring</td></tr>
+<tr><td>law, art, creative_writing, general</td><td>None</td><td>Returns "not converged — no external source for this domain"</td></tr>
+</table>
+
+<p>No API keys are required for basic arXiv and PubMed use. Set <code>NCBI_API_KEY</code> in your environment to increase PubMed rate limits above 3 requests/second. The empirical check never blocks — a flaky external API returns "not converged", not an error that breaks the query.</p>
+
+<div class="code-block">
+<div class="code-header">Using the empirical module directly from a plugin</div>
+<pre>from aua.empirical import empirical_check
+
+class EmpiricalContradictionDetector:
+    """Cross-check every response against external literature."""
+
+    def check(self, problem: str, solution: str, claimed_complexity=None) -> dict:
+        result = empirical_check(problem, "software_engineering", solution, "")
+        if result.converged and result.winner not in ("neither", None, "both"):
+            return {
+                "contradictions": [{
+                    "type": "empirical",
+                    "description": result.explanation,
+                    "severity": 0.6,
+                }],
+                "confidence_penalty": 0.15,
+                "is_clean": False,
+            }
+        return {"contradictions": [], "confidence_penalty": 0.0, "is_clean": True}</pre>
+</div>
+
+<h3>20.9 Hardware deployment tiers</h3>
+
+<p>AUA ships six hardware tier templates. Pass <code>--tier</code> to <code>aua serve</code> to use a preconfigured specialist layout for your hardware — no need to write a full <code>aua_config.yaml</code> from scratch.</p>
+
+<table>
+<tr><th>Tier flag</th><th>Hardware</th><th>Backend</th><th>Specialists</th><th>Best for</th></tr>
+<tr><td><code>gaming-pc</code></td><td>RTX 3080/4080 (10–16 GB VRAM)</td><td>Ollama</td><td>qwen2.5-coder:7b + qwen2.5:7b</td><td>Local dev, offline, Windows/Linux</td></tr>
+<tr><td><code>macbook</code></td><td>Apple Silicon M-series (16–64 GB)</td><td>Ollama</td><td>qwen2.5-coder:7b + qwen2.5:7b</td><td>Local dev, macOS</td></tr>
+<tr><td><code>single-4090</code></td><td>RTX 4090 (24 GB VRAM)</td><td>vLLM + AWQ</td><td>Qwen2.5-7B-AWQ + Qwen2.5-Math-7B-AWQ</td><td>High-quality single-GPU serving</td></tr>
+<tr><td><code>quad-4090</code></td><td>4× RTX 4090 (96 GB total)</td><td>vLLM + AWQ</td><td>14B specialists, TP=2</td><td>Multi-specialist parallel serving</td></tr>
+<tr><td><code>a100-cluster</code></td><td>8× A100 80 GB</td><td>vLLM bf16</td><td>Llama-3-70B + Qwen-72B, TP=4</td><td>Production, 70B class models</td></tr>
+<tr><td><code>h100-cluster</code></td><td>8× H100 SXM5 NVLink</td><td>vLLM bf16</td><td>Llama-3.1-70B + Qwen2.5-72B, TP=4</td><td>Frontier models, highest throughput</td></tr>
+</table>
+
+<div class="code-block">
+<div class="code-header">Using a tier</div>
+<pre>aua serve --tier gaming-pc      <span class="c"># Ollama, laptop-friendly 7B models</span>
+aua serve --tier h100-cluster   <span class="c"># 8×H100 NVLink, 70B+ bf16 specialists</span>
+
+<span class="c"># Tier aliases (shorter to type):</span>
+aua serve --tier gaming         <span class="c"># → gaming-pc</span>
+aua serve --tier h100           <span class="c"># → h100-cluster</span>
+aua serve --tier a100           <span class="c"># → a100-cluster</span></pre>
+</div>
+
+<h4>Tensor parallelism for models that don't fit on one GPU</h4>
+
+<p>When a model requires more VRAM than a single GPU has, vLLM can split it across multiple GPUs using tensor parallelism — each GPU holds a subset of the weight matrices and they synchronise via NCCL all-reduce over NVLink (fast) or PCIe (slower). Configure it per specialist in your <code>aua_config.yaml</code>:</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — 4-GPU tensor parallel specialist</div>
+<pre>specialists:
+  - name: math
+    model: Qwen/Qwen2.5-72B-Instruct   <span class="c"># 72B bf16 ≈ 144 GB — needs 4× A100 or 2× H100</span>
+    port: 9002
+    field: mathematics
+    gpu_ids: [0, 1, 2, 3]             <span class="c"># expose these 4 GPUs to vLLM</span>
+    tensor_parallel_size: 4            <span class="c"># must be a power of 2: 1, 2, 4, or 8</span>
+    pipeline_parallel_size: 1          <span class="c"># for single-node, always 1</span>
+    gpu_memory_utilization: 0.90
+    max_model_len: 8192</pre>
+</div>
+
+<p>Constraints: <code>tensor_parallel_size</code> must be a power of 2. <code>len(gpu_ids)</code> must equal <code>tensor_parallel_size</code>. On startup, the banner prints <code>GPU 0,1,2,3 TP×4</code> to confirm the layout.</p>
+
+<p>NVLink (H100 SXM5, A100 SXM) is 600 GB/s — tensor parallelism is fast here. PCIe (consumer GPUs) is 64 GB/s — use tensor parallelism only when necessary, prefer pipeline parallelism or smaller models on consumer hardware.</p>
+
+<div class="next-part"><p><strong>Part 20 done.</strong> That completes the v1.2 surface. The reference sections below list every CLI command and REST endpoint including the new ones from v1.2.</p></div>
+
 
 <hr class="section-divider">
 <h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:1.4rem;color:#444;margin:1.5rem 0 .5rem;">Reference</h2>
@@ -3715,7 +4549,12 @@ aua config reload</pre>
 aua fields list | inspect &lt;name&gt;
 aua presets list | inspect &lt;name&gt;
 aua defaults show [&lt;category&gt;]</pre>
-</div>
+
+<p>Pin a model revision:</p>
+<div class="code-block"><pre>aua models pin Qwen/Qwen2.5-7B-Instruct                 # list available revisions
+aua models pin Qwen/Qwen2.5-7B-Instruct --revision v0.3 # show config snippet to paste
+aua models pin swe --mlflow-uri models:/swe              # list MLflow registered versions
+aua models pin swe --mlflow-uri models:/swe --revision 3 # get MLflow URI snippet</pre></div></div>
 
 <h3>aua token</h3>
 <div class="code-block">
@@ -3732,6 +4571,28 @@ aua token inspect &lt;token-id&gt;</pre>
 <pre>aua certs generate [--ca-cert &lt;path&gt;] [--ca-key &lt;path&gt;]
 aua certs inspect</pre>
 </div>
+
+<h3>aua test</h3>
+<p>Run the built-in integration test suite against a live router.</p>
+<div class="code-block"><pre>aua test                              # smoke suite (default) against localhost:8000
+aua test --suite full                 # full regression suite
+aua test --suite routing              # domain classification correctness
+aua test --url http://prod:8000       # target a different router
+aua test --dataset my_cases.yaml      # custom fixture file
+aua test --case swe_binary_search     # run one specific case (repeatable)
+aua test --json --output report.json  # machine-readable JSON report
+aua test --no-liveness                # skip GET /health/live pre-flight</pre></div>
+
+<h3>aua loadtest</h3>
+<p>Fire concurrent requests and report p50/p95/p99 latency, throughput, and U score.</p>
+<div class="code-block"><pre>aua loadtest                              # 10 workers, 30 s, smoke query mix
+aua loadtest -c 20 -d 60                 # 20 workers, 60 s
+aua loadtest --suite full -c 5           # full fixture suite as query mix
+aua loadtest --dataset my_queries.yaml   # custom query mix
+aua loadtest --ramp 10 -c 20 -d 120     # ramp from 0→20 workers over 10 s
+aua loadtest --think-ms 200 -c 10       # 200 ms pause between each request per worker
+aua loadtest --json --output bench.json
+aua loadtest --url http://prod:8000</pre></div>
 
 <h3>aua eval</h3>
 <div class="code-block">
@@ -4382,6 +5243,22 @@ else:
 </div>
 
 <!-- ── 6. Observability ────────────────────────────────────────────────────── -->
+
+<h3 style="margin-top:2rem;">5b. Shadow mode</h3>
+<table>
+<tr><th>Method</th><th>Path</th><th>Description</th></tr>
+<tr><td>POST</td><td><code>/deploy/shadow/{specialist}</code></td><td>Activate shadow mode — GREEN receives production traffic silently. Body: <code>green_endpoint</code> (required), <code>min_queries</code>, <code>threshold</code></td></tr>
+<tr><td>GET</td><td><code>/deploy/shadow/{specialist}</code></td><td>Report accumulated shadow scores: n_queries, mean_delta, blue/green mean U, ready_to_promote, progress string</td></tr>
+<tr><td>DELETE</td><td><code>/deploy/shadow/{specialist}</code></td><td>Deactivate shadow mode. Query param: <code>clear_scores=true</code> to also purge accumulated scores</td></tr>
+</table>
+
+<h3 style="margin-top:2rem;">5c. Batch queue</h3>
+<table>
+<tr><th>Method</th><th>Path</th><th>Description</th></tr>
+<tr><td>POST</td><td><code>/batch/jobs</code></td><td>Submit a batch job. Body: <code>queries</code> (list), <code>priority</code> (high|normal|low), <code>max_parallel</code>. Returns <code>job_id</code> immediately.</td></tr>
+<tr><td>GET</td><td><code>/batch/jobs/{job_id}</code></td><td>Poll job status and partial results. Returns <code>status</code>, <code>n_done</code>, <code>n_pending</code>, <code>n_errors</code>, <code>results</code> (list of completed responses)</td></tr>
+<tr><td>GET</td><td><code>/batch/jobs</code></td><td>List recent batch jobs. Query params: <code>status</code> (pending|running|done|error), <code>limit</code></td></tr>
+</table>
 <h3 style="margin-top:2rem;">6. Observability</h3>
 
 <h4>GET /metrics</h4>

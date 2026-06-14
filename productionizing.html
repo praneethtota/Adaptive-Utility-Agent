@@ -86,7 +86,7 @@ tr:nth-child(even) td{background:#fafaf8}
 <div class="hero">
   <div class="hero-tag">Systems Architecture · v1.0</div>
   <h1>Productionizing the Adaptive Utility Agent</h1>
-  <p class="subtitle">AUA v1.0 <em>is</em> the production control plane. This document covers how it works end-to-end: the request lifecycle, plugin and hook system, all four deployment profiles, state store backends (SQLite → Postgres), security wiring, observability pipeline, failure modes, and scaling discipline.</p>
+  <p class="subtitle">AUA v1.2 <em>is</em> the production control plane. This document covers how it works end-to-end: the request lifecycle, plugin and hook system, all four deployment profiles, state store backends (SQLite → Postgres), security wiring, observability pipeline, failure modes, and scaling discipline.</p>
   <div class="audience-pills">
     <span class="pill">Staff / Senior SWE</span>
     <span class="pill">AI infrastructure teams</span>
@@ -838,6 +838,46 @@ Traffic %
 
 <p>Full results are in <a href="whitepaper_overview.html#appendix-a1">Appendix A.1 of the full whitepaper</a>.</p>
 
+<h2 id="v12-features">16. v1.2 Feature Additions</h2>
+
+<p>AUA v1.2 extended the production surface with eight new operational capabilities. This section provides a concise production-design reference for each one.</p>
+
+<h3>16.1 Plugin system — eleven extension points</h3>
+
+<p>Every major decision in the routing pipeline is now replaceable via a YAML plugin registration. The framework validates plugins against their Protocol interface at startup — broken plugins fail fast, never at query time. All plugins have safe fallbacks: an exception in your plugin at query time causes a DEBUG log and fallback to the built-in implementation.</p>
+
+<p>New plugin types in v1.2 (all in <code>aua.plugins.interfaces</code>):</p>
+
+<ul>
+  <li><strong>ContradictionDetectorPlugin</strong> — replaces the built-in code-generation checker. Return <code>{"contradictions": [...], "confidence_penalty": float, "is_clean": bool}</code>.</li>
+  <li><strong>AssertionStorePlugin</strong> — replaces the in-memory AssertionsStore with any persistent backend (Postgres, Redis, etc.). Implements <code>add()</code>, <code>query()</code>, <code>query_contradictions()</code>.</li>
+  <li><strong>RoutingStrategyPlugin</strong> — intercepts the classifier's probability distribution before the single/fanout/arbiter threshold decision. Return the distribution unchanged to pass through.</li>
+  <li><strong>ScoringComponentPlugin</strong> — adjusts one sub-score (E, C, or K) within the built-in pipeline. The weighted sum is recomputed with your adjusted component.</li>
+  <li><strong>FullUtilityScorerPlugin</strong> — bypasses the built-in <code>w_e·E + w_c·C + w_k·K</code> step entirely. Receives raw E, C, K components and returns any scalar in [0, 1]. Enables non-linear utility models (quadratic, multiplicative, Cobb-Douglas, Rawlsian min).</li>
+  <li><strong>ArbiterPolicyPlugin</strong> (now wired) — replaces the LLM arbitration call in fanout routing. Return <code>{"winner": "A"|"B"|"BOTH_WRONG", "reason": str}</code>.</li>
+  <li><strong>FullPromotionPolicyPlugin</strong> (now wired) — replaces the <code>u_delta ≥ threshold</code> promotion gate with any function of the full promotion context (shadow scores, std_delta, regression results, config objects).</li>
+</ul>
+
+<p>See <a href="tutorial.html#part-19">Tutorial Part 19</a> for complete examples of each plugin type.</p>
+
+<h3>16.2 Shadow mode — real-traffic validation before promotion</h3>
+
+<p>Shadow mode silently sends every production query to a GREEN (candidate) model in the background. The user always receives BLUE's response; GREEN's response is scored and the <code>(blue_u, green_u)</code> pair is written to the <code>shadow_scores</code> table. Promotion decisions made with shadow data are grounded in real traffic distribution, not synthetic evals.</p>
+
+<p><strong>Production design:</strong> Activate via <code>POST /deploy/shadow/{specialist}</code> or statically in config. Poll progress via <code>GET /deploy/shadow/{specialist}</code>. Fire <code>POST /deploy/green</code> once <code>ready_to_promote: true</code> — the router uses shadow scores automatically. Shadow calls use <code>fire_and_forget()</code> — they never affect query latency.</p>
+
+<h3>16.3 Regression gate — prevent quality regressions on promotion</h3>
+
+<p>When <code>regression_dataset</code> is configured in the <code>blue_green:</code> block, the router runs the eval dataset against both BLUE and GREEN before any promotion. If GREEN's pass rate or U score drops relative to BLUE and <code>regression_block: true</code>, the <code>POST /deploy/green</code> response returns <code>promoted: false</code> with a detailed regression summary. Set <code>regression_block: false</code> for warn-only mode (promotion proceeds but the regression is logged).</p>
+
+<h3>16.4 Multi-tenancy — isolated namespaces</h3>
+
+<p>Four database tables carry a <code>tenant_id</code> column: <code>corrections</code>, <code>promotions</code>, <code>audit_log</code>, <code>model_runs</code>. The <code>TenantPolicyMiddleware</code> reads the <code>X-Tenant-ID</code> header, sets a contextvar, and all subsequent state writes in that request are automatically namespaced. Rate limits are enforced per-tenant via per-tenant <code>SlidingWindowRateLimiter</code> instances. The rate-limit key includes the tenant ID as a prefix, so tenant-A traffic cannot consume tenant-B's quota.</p>
+
+<h3>16.5 Tensor parallelism for large models</h3>
+
+<p>For models that exceed a single GPU's VRAM, configure tensor parallelism per specialist. vLLM splits each weight matrix across <code>tensor_parallel_size</code> GPUs using NCCL all-reduce. On H100 SXM5 (NVLink 600 GB/s) this adds minimal latency; on PCIe (consumer GPUs, 64 GB/s) it adds measurable overhead. Use the minimum tensor_parallel_size that fits the model. Valid values: 1, 2, 4, 8.</p>
+
 <div class="read-next">
   <h3>Read next</h3>
   <ul>
@@ -845,6 +885,8 @@ Traffic %
     <li><a href="whitepaper_overview.html">Read the full research whitepaper</a></li>
     <li><a href="domain_software_engineering.html">See the MVP domain deep-dive: software engineering</a></li>
     <li><a href="tutorial.html">Walk through the tutorial version of the framework</a></li>
+    <li><a href="tutorial.html#part-19">Tutorial Part 19 — Plugin system deep-dive</a></li>
+    <li><a href="tutorial.html#part-20">Tutorial Part 20 — Operations toolkit (shadow mode, testing, batch, tiers)</a></li>
     <li><a href="whitepaper_overview.html#bluegreen">§10.7 — Blue-Green Deployment (full specification)</a></li>
     <li><a href="whitepaper_architecture.html#distributed-graph">§10 — Distributed Model Graph Architecture</a></li>
     <li><a href="whitepaper_overview.html#arbiter">§10.5 — The Arbiter Agent</a></li>
