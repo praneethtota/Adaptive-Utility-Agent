@@ -274,6 +274,11 @@ _KNOWN_PLUGIN_KINDS: set[str] = {
     "correction_store",
     "model_backend",
     "state_store",
+    # #51: extended plugin types
+    "contradiction_detector",
+    "assertion_store",
+    "routing_strategy",
+    "scoring_component",
 }
 _KNOWN_PLUGIN_ENTRY_KEYS: set[str] = {"import_path", "config"}
 _KNOWN_HOOK_ENTRY_KEYS: set[str] = {"hook_point", "import_path", "config", "fail_closed"}

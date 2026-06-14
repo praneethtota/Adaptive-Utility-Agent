@@ -35,12 +35,17 @@ from typing import Any
 from aua.plugins.errors import AUA_PLUGIN_CONTRACT_INVALID, AUA_PLUGIN_LOAD_FAILED
 from aua.plugins.interfaces import (
     ArbiterPolicyPlugin,
+    AssertionStorePlugin,
     AUAMiddleware,
+    ContradictionDetectorPlugin,
     CorrectionStorePlugin,
     FieldClassifierPlugin,
+    FullUtilityScorerPlugin,
     HookPlugin,
     ModelBackendPlugin,
     PromotionPolicyPlugin,
+    RoutingStrategyPlugin,
+    ScoringComponentPlugin,
     StateStorePlugin,
     UtilityScorerPlugin,
 )
@@ -58,6 +63,12 @@ _PROTOCOL_MAP: dict[str, type] = {
     "state_store": StateStorePlugin,
     "hook": HookPlugin,
     "middleware": AUAMiddleware,
+    # #51: extended plugin types
+    "contradiction_detector": ContradictionDetectorPlugin,
+    "assertion_store": AssertionStorePlugin,
+    "routing_strategy": RoutingStrategyPlugin,
+    "scoring_component": ScoringComponentPlugin,
+    "full_utility_scorer": FullUtilityScorerPlugin,
 }
 
 

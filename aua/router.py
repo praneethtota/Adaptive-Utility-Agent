@@ -253,7 +253,12 @@ class Router:
         from aua.middleware import MiddlewarePipeline
 
         self._middleware = MiddlewarePipeline()
-        self._custom_scorer: Any | None = None
+        self._custom_scorer: Any | None = None  # utility_scorer plugin
+        # #51: extended plugin slots
+        self._custom_detector: Any | None = None  # contradiction_detector plugin
+        self._custom_assertion_store: Any | None = None  # assertion_store plugin
+        self._routing_strategy: Any | None = None  # routing_strategy plugin
+        self._scoring_component: Any | None = None  # scoring_component plugin
         self._load_yaml_extensions()
 
         # ── v1.1-veritas P1–P3 components ────────────────────────────────────
@@ -2142,6 +2147,16 @@ class Router:
             else self._classifier.classify(req.query, update_history=True)
         )
 
+        # #51: routing strategy plugin — may reorder or override distribution
+        if self._routing_strategy is not None and not req.force_domain:
+            try:
+                _route_meta = {
+                    "session_id": req.session_id,
+                }
+                distribution = self._routing_strategy.route(req.query, distribution, _route_meta)
+            except Exception as _rs_err:  # noqa: BLE001
+                log.debug("Routing strategy plugin failed, using classifier: %s", _rs_err)
+
         top_domain = max(distribution, key=lambda k: distribution.get(k, 0.0))
         top_prob = distribution[top_domain]
         active = [
@@ -2799,6 +2814,19 @@ class Router:
                 self._custom_scorer = plugin
             elif kind == "correction_store" and hasattr(plugin, "query"):
                 self._store = plugin
+            # #51: wire new plugin types
+            elif kind == "contradiction_detector":
+                self._custom_detector = plugin
+                log.info("Contradiction detector replaced by plugin: %s", spec.import_path)
+            elif kind == "assertion_store":
+                self._custom_assertion_store = plugin
+                log.info("Assertion store replaced by plugin: %s", spec.import_path)
+            elif kind == "routing_strategy":
+                self._routing_strategy = plugin
+                log.info("Routing strategy plugin registered: %s", spec.import_path)
+            elif kind == "scoring_component":
+                self._scoring_component = plugin
+                log.info("Scoring component plugin registered: %s", spec.import_path)
             log.info("Plugin loaded from config: %s ← %s", kind, spec.import_path)
 
         runner = get_hook_runner()
@@ -2863,6 +2891,15 @@ class Router:
             if req.force_domain
             else self._classifier.classify(req.query, update_history=True)
         )
+
+        # #51: routing strategy plugin — may reorder or override distribution
+        if self._routing_strategy is not None and not req.force_domain:
+            try:
+                _route_meta = {"session_id": req.session_id}
+                distribution = self._routing_strategy.route(req.query, distribution, _route_meta)
+            except Exception as _rs_err:  # noqa: BLE001
+                log.debug("Routing strategy plugin failed, using classifier: %s", _rs_err)
+
         log.debug("Distribution: %s", distribution)
 
         top_domain = max(distribution, key=lambda k: distribution.get(k, 0.0))
@@ -3734,7 +3771,31 @@ class Router:
         u_penalty: float = 0.0,
     ) -> tuple[float, float, int, int]:
         field_cfg = FIELD_CONFIGS.get(domain, FIELD_CONFIGS["general"])
-        result = self._detector.check(problem=query, solution=response)
+        # #51: custom contradiction detector plugin
+        if self._custom_detector is not None:
+            try:
+                _det_raw = self._custom_detector.check(problem=query, solution=response)
+                # Wrap dict result in a ContradictionResult-compatible object
+                from aua.contradiction_detector import Contradiction, ContradictionResult
+
+                result = ContradictionResult()
+                for c in _det_raw.get("contradictions", []):
+                    if isinstance(c, Contradiction):
+                        result.contradictions.append(c)
+                    else:
+                        result.contradictions.append(
+                            Contradiction(
+                                type=c.get("type", "custom"),
+                                description=c.get("description", str(c)),
+                                severity=float(c.get("severity", 0.5)),
+                            )
+                        )
+                result.confidence_penalty = float(_det_raw.get("confidence_penalty", 0.0))
+            except Exception as _det_err:  # noqa: BLE001
+                log.debug("Custom detector failed, using built-in: %s", _det_err)
+                result = self._detector.check(problem=query, solution=response)
+        else:
+            result = self._detector.check(problem=query, solution=response)
         n_contra = len(result.contradictions)
         updated_conf = self._conf.update(
             prior=base_conf,
@@ -3766,8 +3827,41 @@ class Router:
                 n_dpo += 1
             log.info("[%s] %d contradiction(s) → %d DPO pair(s)", domain, n_contra, n_dpo)
 
-        # Apply policy bonus/penalty to final U score
+        # #51: scoring component plugin — adjusts individual E/C/K components
         base_u = task_score.utility
+        if self._scoring_component is not None:
+            try:
+                _comp_meta = {
+                    "query": query,
+                    "response": response,
+                    "pass_rate": base_conf,
+                    "contradiction_penalty": result.confidence_penalty,
+                }
+                _e = self._scoring_component.compute(
+                    "efficacy", task_score.efficacy_ema, domain, _comp_meta
+                )
+                _c = self._scoring_component.compute(
+                    "confidence", task_score.confidence, domain, _comp_meta
+                )
+                _k = self._scoring_component.compute(
+                    "curiosity", task_score.curiosity_effective, domain, _comp_meta
+                )
+                fc = FIELD_CONFIGS.get(domain, FIELD_CONFIGS["general"])
+                base_u = max(
+                    0.0,
+                    min(
+                        1.0,
+                        fc.w_efficacy * float(_e)
+                        + fc.w_confidence * float(_c)
+                        + fc.w_curiosity * float(_k),
+                    ),
+                )
+            except Exception as _sc_err:  # noqa: BLE001
+                log.debug("Scoring component plugin failed, using built-in: %s", _sc_err)
+                base_u = task_score.utility
+
+        # Apply policy bonus/penalty to final U score
+        base_u = base_u  # reassignment for clarity after component override
         if e_bonus > 0.0:
             # Boost E component: U = w_e*(E+bonus) + rest
             from aua.config import FIELD_CONFIGS as _FC
@@ -3779,22 +3873,67 @@ class Router:
         if u_penalty > 0.0:
             u_adjusted = max(0.0, u_adjusted - u_penalty)
 
-        # F-09: a YAML-registered utility_scorer plugin owns the final U score.
-        # It receives the built-in score as prior_u so it can adjust or replace.
+        # F-09 / #53: utility_scorer plugin — adjustment or full replacement.
+        # score_full() (#53): receives raw E/C/K + weights, replaces built-in U.
+        # score() (F-09):     receives prior_u (built-in result), adjusts it.
         if self._custom_scorer is not None:
-            try:
-                u_adjusted = float(
-                    self._custom_scorer.score(
-                        response=response,
-                        field=domain,
-                        prior_u=u_adjusted,
-                        confidence=updated_conf,
-                        metadata={"query": query, "contradictions": n_contra},
+            _scorer_meta = {
+                "query": query,
+                "response": response,
+                "contradictions": n_contra,
+                "task_score": task_score,
+            }
+            if hasattr(self._custom_scorer, "score_full") and callable(
+                getattr(self._custom_scorer, "score_full")
+            ):
+                # #53: full replacement — skip built-in U, compute from components
+                try:
+                    fc = FIELD_CONFIGS.get(domain, FIELD_CONFIGS["general"])
+                    u_adjusted = float(
+                        self._custom_scorer.score_full(
+                            field=domain,
+                            efficacy=task_score.efficacy_ema,
+                            confidence=task_score.confidence,
+                            curiosity=task_score.curiosity_effective,
+                            weights={
+                                "w_e": fc.w_efficacy,
+                                "w_c": fc.w_confidence,
+                                "w_k": fc.w_curiosity,
+                            },
+                            metadata=_scorer_meta,
+                        )
                     )
-                )
-                u_adjusted = max(0.0, min(1.0, u_adjusted))
-            except Exception as _scorer_err:  # noqa: BLE001
-                log.error("Custom utility scorer failed (using built-in U): %s", _scorer_err)
+                    u_adjusted = max(0.0, min(1.0, u_adjusted))
+                except Exception as _sf_err:  # noqa: BLE001
+                    log.debug("score_full() failed, falling back to score(): %s", _sf_err)
+                    try:
+                        u_adjusted = float(
+                            self._custom_scorer.score(
+                                response=response,
+                                field=domain,
+                                prior_u=u_adjusted,
+                                confidence=updated_conf,
+                                metadata=_scorer_meta,
+                            )
+                        )
+                        u_adjusted = max(0.0, min(1.0, u_adjusted))
+                    except Exception as _scorer_err:  # noqa: BLE001
+                        log.error("Custom scorer failed (using built-in U): %s", _scorer_err)
+            else:
+                # Adjustment mode: plugin receives built-in U and adjusts
+                try:
+                    u_adjusted = float(
+                        self._custom_scorer.score(
+                            response=response,
+                            field=domain,
+                            prior_u=u_adjusted,
+                            confidence=updated_conf,
+                            metadata=_scorer_meta,
+                        )
+                    )
+                    u_adjusted = max(0.0, min(1.0, u_adjusted))
+                except Exception as _scorer_err:  # noqa: BLE001
+                    log.error("Custom utility scorer failed (using built-in U): %s", _scorer_err)
 
         return round(u_adjusted, 4), updated_conf, n_contra, n_dpo
 

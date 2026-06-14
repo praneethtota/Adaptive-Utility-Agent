@@ -60,7 +60,13 @@ class UtilityScorerPlugin(Protocol):
     """
     Replaces the built-in U = w_e·E + w_c·C + w_k·K scorer.
 
-    Receives a specialist response and domain context, returns a scalar U score.
+    Adjustment mode: the plugin receives the built-in U as prior_u and may
+    adjust it. The built-in pipeline still runs; the plugin gets the last word.
+
+    For full U replacement (bypassing the built-in w_e·E + w_c·C + w_k·K
+    computation), also implement FullUtilityScorerPlugin.score_full(). The
+    router checks for score_full() at call time via hasattr(), so the two
+    Protocols are independent — you can implement both on the same class.
     """
 
     def score(
@@ -72,14 +78,14 @@ class UtilityScorerPlugin(Protocol):
         metadata: dict[str, Any],
     ) -> float:
         """
-        Compute utility score for a specialist response.
+        Adjust the built-in U score (mode 1 — adjustment).
 
         Args:
             response:   the specialist's text output
             field:      field name (e.g. "software_engineering")
-            prior_u:    the running mean U for this specialist
+            prior_u:    the built-in U score (w_e·E + w_c·C + w_k·K result)
             confidence: Kalman-filtered confidence estimate (0.0–1.0)
-            metadata:   arbitrary context (session_id, query, latency_ms, etc.)
+            metadata:   context: {query, contradictions, latency_ms, ...}
 
         Returns:
             U score in [0.0, 1.0]
@@ -315,5 +321,278 @@ class AUAMiddleware(Protocol):
         Process a response after the query pipeline completes.
 
         Return the (possibly modified) response dict.
+        """
+        ...
+
+
+# ── Full Utility Function Replacement (#53) ───────────────────────────────────
+
+
+@runtime_checkable
+class FullUtilityScorerPlugin(Protocol):
+    """
+    Optional extension of UtilityScorerPlugin for full U replacement (#53).
+
+    Implement this Protocol in addition to (or instead of) UtilityScorerPlugin
+    to bypass the built-in w_e·E + w_c·C + w_k·K computation entirely.
+
+    The router checks for score_full() via hasattr() at call time, so any
+    class that implements score_full() will use full replacement mode even
+    without inheriting or registering this Protocol explicitly.
+
+    Use case: non-linear utility models, field-specific scoring architectures,
+    multi-objective utility functions.
+
+    YAML: register the class as utility_scorer — no separate config key needed.
+
+    Example (surgery domain penalises low confidence quadratically):
+
+        class SurgeryAwareScorer:
+            # score() required by UtilityScorerPlugin
+            def score(self, response, field, prior_u, confidence, metadata):
+                return prior_u
+
+            # score_full() opts into full replacement (#53)
+            def score_full(self, field, efficacy, confidence, curiosity,
+                           weights, metadata):
+                if field == "surgery":
+                    return min(1.0, efficacy * (confidence ** 2))
+                return (weights["w_e"]*efficacy
+                        + weights["w_c"]*confidence
+                        + weights["w_k"]*curiosity)
+    """
+
+    def score_full(
+        self,
+        field: str,
+        efficacy: float,
+        confidence: float,
+        curiosity: float,
+        weights: dict[str, float],
+        metadata: dict[str, Any],
+    ) -> float:
+        """
+        Replace the built-in utility function entirely.
+
+        Args:
+            field:      field name (e.g. "surgery", "software_engineering")
+            efficacy:   E component from the built-in efficacy pipeline (0.0–1.0)
+            confidence: C component from the built-in confidence pipeline (0.0–1.0)
+            curiosity:  K component from the built-in curiosity pipeline (0.0–1.0)
+            weights:    field config weights {"w_e": float, "w_c": float, "w_k": float}
+            metadata:   context dict — query, response, pass_rate, task_score, etc.
+
+        Returns:
+            U score in [0.0, 1.0]
+        """
+        ...
+
+
+# ── Contradiction Detector (#51) ──────────────────────────────────────────────
+
+
+@runtime_checkable
+class ContradictionDetectorPlugin(Protocol):
+    """
+    Replaces the built-in contradiction detector.
+
+    Receives a (problem, solution) pair and returns a result dict indicating
+    any contradictions found and the total confidence penalty to apply.
+
+    YAML:
+        plugins:
+          contradiction_detector:
+            import_path: my_plugins:MyContradictionDetector
+    """
+
+    def check(
+        self,
+        problem: str,
+        solution: str,
+        claimed_complexity: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Check a solution for contradictions.
+
+        Args:
+            problem:             the original query / problem statement
+            solution:            the specialist's response text
+            claimed_complexity:  optional big-O claim extracted from the solution
+
+        Returns:
+            dict with keys:
+                contradictions (list[dict]): each dict has 'type', 'description'
+                confidence_penalty (float):  total penalty to subtract from confidence
+                is_clean (bool):             True when no contradictions found
+        """
+        ...
+
+
+# ── Assertion Store (#51) ─────────────────────────────────────────────────────
+
+
+@runtime_checkable
+class AssertionStorePlugin(Protocol):
+    """
+    Replaces the built-in in-memory AssertionsStore.
+
+    Provides a persistent, queryable store for verified claims (assertions)
+    used to inject prior knowledge into specialist prompts.
+
+    Note: this is distinct from CorrectionStorePlugin which stores DPO pairs.
+    AssertionStorePlugin stores claim-level knowledge; CorrectionStorePlugin
+    stores training signal.
+
+    YAML:
+        plugins:
+          assertion_store:
+            import_path: my_plugins:PostgresAssertionStore
+            config:
+              dsn: postgresql://localhost/aua
+    """
+
+    def add(
+        self,
+        subject: str,
+        domain: str,
+        claim: str,
+        confidence: float,
+        source: str = "arbiter",
+        evidence_summary: str = "",
+    ) -> Any:
+        """
+        Persist a verified claim.
+
+        Args:
+            subject:          short identifier (e.g. "bubble_sort_complexity")
+            domain:           field name (e.g. "software_engineering")
+            claim:            the verified claim text
+            confidence:       claim confidence 0.0–1.0
+            source:           who produced this claim ("arbiter" | "empirical" | etc.)
+            evidence_summary: optional provenance note
+
+        Returns:
+            implementation-defined assertion object (stored and returned)
+        """
+        ...
+
+    def query(
+        self,
+        subject: str,
+        domain: str | None = None,
+        min_confidence: float | None = None,
+    ) -> list[Any]:
+        """
+        Retrieve active assertions matching subject.
+
+        Args:
+            subject:        partial-match subject string
+            domain:         optional domain filter
+            min_confidence: optional minimum effective confidence
+
+        Returns:
+            list of assertion objects (implementation-defined), highest confidence first
+        """
+        ...
+
+    def query_contradictions(
+        self,
+        subject: str,
+        new_claim: str,
+        domain: str | None = None,
+    ) -> list[tuple[Any, str]]:
+        """
+        Check if new_claim contradicts any stored assertion.
+
+        Returns:
+            list of (assertion_match, contradiction_description) tuples
+        """
+        ...
+
+
+# ── Routing Strategy (#51) ────────────────────────────────────────────────────
+
+
+@runtime_checkable
+class RoutingStrategyPlugin(Protocol):
+    """
+    Post-classifier routing hook. Receives the field classifier's probability
+    distribution and may reorder, override, or augment it before the router
+    decides which specialist(s) to call.
+
+    Use cases:
+      - Force traffic to a specific specialist based on external state
+      - Blend classifier output with a business-rule layer
+      - Implement A/B routing at the distribution level
+
+    YAML:
+        plugins:
+          routing_strategy:
+            import_path: my_plugins:BusinessRuleRouter
+            config:
+              tenant_overrides:
+                tenant-a: software_engineering
+    """
+
+    def route(
+        self,
+        query: str,
+        distribution: dict[str, float],
+        metadata: dict[str, Any],
+    ) -> dict[str, float]:
+        """
+        Adjust the domain probability distribution for a query.
+
+        Args:
+            query:        the raw user query
+            distribution: classifier output {domain: probability}
+            metadata:     context dict with session_id, tenant_id, trace_id, etc.
+
+        Returns:
+            adjusted distribution {domain: probability}
+            Must sum to ≤ 1.0. Return distribution unchanged to pass through.
+        """
+        ...
+
+
+# ── Scoring Component (#51) ───────────────────────────────────────────────────
+
+
+@runtime_checkable
+class ScoringComponentPlugin(Protocol):
+    """
+    Inject into a specific sub-score within the built-in U pipeline.
+
+    Unlike UtilityScorerPlugin which replaces the entire scorer,
+    ScoringComponentPlugin replaces ONE component (E, C, or K) while
+    leaving the others to the built-in implementation.
+
+    YAML:
+        plugins:
+          scoring_component:
+            import_path: my_plugins:DomainAwareEfficacyScorer
+            config:
+              component: efficacy   # "efficacy" | "confidence" | "curiosity"
+              baseline_source: external_api
+    """
+
+    def compute(
+        self,
+        component: str,
+        value: float,
+        field: str,
+        metadata: dict[str, Any],
+    ) -> float:
+        """
+        Compute or adjust one scoring component.
+
+        Args:
+            component: which component this is ("efficacy" | "confidence" | "curiosity")
+            value:     the built-in computed value for this component
+            field:     field name (e.g. "software_engineering")
+            metadata:  context: {query, response, pass_rate, contradiction_penalty, ...}
+
+        Returns:
+            adjusted component value in [0.0, 1.0]
         """
         ...
