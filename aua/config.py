@@ -252,7 +252,15 @@ _KNOWN_ROUTER_KEYS: set[str] = {
     "arbitration_mode",
     "cors_origins",
 }
-_KNOWN_BG_KEYS: set[str] = {"delta", "T_min", "tau"}
+_KNOWN_BG_KEYS: set[str] = {
+    "delta",
+    "T_min",
+    "tau",
+    "regression_dataset",
+    "regression_block",
+    "shadow_endpoint",
+    "shadow_min_queries",
+}
 _KNOWN_LOG_KEYS: set[str] = {"level", "format"}
 _KNOWN_SECRETS_KEYS: set[str] = {"provider", "region", "url", "token_env"}
 _KNOWN_STATE_KEYS: set[str] = {"backend", "path"}
@@ -514,6 +522,12 @@ class BlueGreenFieldConfig:
     T_min: int = 10  # minimum interactions in canary before shift decision
     tau: float = 0.20  # softmax temperature for traffic routing
     # tau(surgery)=0.05 (very conservative), tau(creative)=0.50 (aggressive)
+    # #49: regression gate on promotion
+    regression_dataset: str | None = None  # path to eval YAML; None = skip regression check
+    regression_block: bool = True  # True = block promotion on regression; False = warn only
+    # #48: shadow mode — GREEN receives traffic silently until threshold
+    shadow_endpoint: str | None = None  # HTTP endpoint of running GREEN specialist
+    shadow_min_queries: int = 50  # minimum shadow queries before promotion is considered
 
 
 @dataclass
@@ -810,6 +824,10 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
             delta=float(bg.get("delta", 0.025)),
             T_min=int(bg.get("T_min", 10)),
             tau=float(bg.get("tau", 0.20)),
+            regression_dataset=bg.get("regression_dataset") or None,
+            regression_block=bool(bg.get("regression_block", True)),
+            shadow_endpoint=bg.get("shadow_endpoint") or None,
+            shadow_min_queries=int(bg.get("shadow_min_queries", 50)),
         )
 
     # ── Logging ────────────────────────────────────────────────────────────

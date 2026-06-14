@@ -309,6 +309,20 @@ _MIGRATIONS = [
     "ALTER TABLE promotions ADD COLUMN tenant_id TEXT DEFAULT NULL",
     "ALTER TABLE audit_log ADD COLUMN tenant_id TEXT DEFAULT NULL",
     "ALTER TABLE model_runs ADD COLUMN tenant_id TEXT DEFAULT NULL",
+    # #48: shadow mode score accumulation table
+    (
+        "CREATE TABLE IF NOT EXISTS shadow_scores ("
+        "id TEXT PRIMARY KEY,"
+        "specialist TEXT NOT NULL,"
+        "query TEXT NOT NULL,"
+        "blue_u REAL NOT NULL,"
+        "green_u REAL NOT NULL,"
+        "u_delta REAL NOT NULL,"
+        "domain TEXT,"
+        "created_at REAL NOT NULL"
+        ")"
+    ),
+    "CREATE INDEX IF NOT EXISTS idx_shadow_specialist ON shadow_scores(specialist, created_at)",
 ]
 
 

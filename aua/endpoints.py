@@ -423,11 +423,28 @@ class DeployGreenRequest(BaseModel):
         ...,
         description="Path or HuggingFace ID of the GREEN model candidate.",
     )
+    green_endpoint: str | None = Field(
+        None,
+        description=(
+            "HTTP endpoint of the running GREEN specialist "
+            "(e.g. 'http://localhost:9011/v1/chat/completions'). "
+            "Required for live evaluation against a running GREEN process. "
+            "When omitted, evaluation runs against BLUE only (baseline comparison)."
+        ),
+    )
     n_eval_queries: int | None = Field(
         10,
         ge=1,
         le=100,
         description="Number of evaluation queries to run. Default 10.",
+    )
+    regression_dataset: str | None = Field(
+        None,
+        description=(
+            "Path to a YAML eval dataset to run before promoting. "
+            "Overrides the regression_dataset configured in blue_green: block. "
+            "Promotion is blocked when regression is detected."
+        ),
     )
 
     model_config = {
@@ -435,7 +452,9 @@ class DeployGreenRequest(BaseModel):
             "example": {
                 "specialist": "swe",
                 "green_model": "./models/swe_green_v1",
+                "green_endpoint": "http://localhost:9011/v1/chat/completions",
                 "n_eval_queries": 10,
+                "regression_dataset": "evals/coding_smoke.yaml",
             }
         }
     }
@@ -462,6 +481,58 @@ class DeployGreenResponse(BaseModel):
         ...,
         description="Human-readable explanation of the promotion decision.",
     )
+    # #49: regression gate results
+    regression: dict | None = Field(
+        None,
+        description=(
+            "Regression check results when a regression_dataset was provided. "
+            "Contains: regressed (bool), verdict ('OK'|'REGRESSION'|'SKIPPED'), "
+            "delta_pass_rate, delta_u_score, delta_latency_ms, dataset, blocked."
+        ),
+    )
+
+
+# ── Shadow mode (#48) ────────────────────────────────────────────────────────
+
+
+class ShadowActivateRequest(BaseModel):
+    """Activate shadow mode for a specialist."""
+
+    green_endpoint: str = Field(
+        ...,
+        description=(
+            "HTTP endpoint of the running GREEN specialist. "
+            "e.g. 'http://localhost:9011/v1/chat/completions'. "
+            "The router sends every production query here silently "
+            "and records (blue_u, green_u) pairs without returning GREEN's response."
+        ),
+    )
+    min_queries: int | None = Field(
+        None,
+        ge=1,
+        description=(
+            "Minimum shadow queries before promotion is considered. "
+            "Defaults to blue_green.shadow_min_queries from config (50)."
+        ),
+    )
+    threshold: float | None = Field(
+        None,
+        ge=0.0,
+        description=(
+            "Minimum mean U_delta required to promote. "
+            "Defaults to blue_green.delta from config (0.025)."
+        ),
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "green_endpoint": "http://localhost:9011/v1/chat/completions",
+                "min_queries": 50,
+                "threshold": 0.025,
+            }
+        }
+    }
 
 
 # ── Health ────────────────────────────────────────────────────────────────────

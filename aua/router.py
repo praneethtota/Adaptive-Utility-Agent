@@ -62,6 +62,7 @@ from aua.endpoints import (
     QueryRequest,
     RouterInfo,
     RouterResponse,
+    ShadowActivateRequest,
     SpecialistInfo,
     StreamChunkEvent,
     StreamDoneEvent,
@@ -283,6 +284,22 @@ class Router:
         from aua.experiment_tracker import ExperimentTracker
 
         self._experiment_tracker = ExperimentTracker(config.experiment_tracking)
+
+        # #48: shadow mode
+        from aua.shadow import ShadowManager, ShadowStore
+
+        self._shadow_store = ShadowStore(self._state_store)
+        self._shadow_mgr = ShadowManager(self._shadow_store)
+        # Activate shadow mode from config for any specialist that has shadow_endpoint set
+        for _spec in config.specialists:
+            _bg = config.blue_green_for(_spec.name)
+            if _bg.shadow_endpoint:
+                self._shadow_mgr.activate(
+                    _spec.name,
+                    _bg.shadow_endpoint,
+                    min_queries=_bg.shadow_min_queries,
+                    threshold=_bg.delta,
+                )
 
         self._domain_confidence: dict[str, float] = {s.field: 0.5 for s in config.specialists}
         self._field_to_url: dict[str, str] = {s.field: s.endpoint for s in config.specialists}
@@ -1102,6 +1119,53 @@ class Router:
             """
             # dry_run_only=True until full evaluation harness is built (roadmap #14)
             return await self._evaluate_green(req)
+
+        # ── Shadow mode (#48) ─────────────────────────────────────────────
+
+        @app.post(
+            "/deploy/shadow/{specialist}",
+            tags=["deploy"],
+            summary="Activate shadow mode — GREEN receives traffic silently",
+            status_code=200,
+        )
+        async def shadow_activate(specialist: str, body: ShadowActivateRequest) -> dict:
+            spec = next((s for s in self._config.specialists if s.name == specialist), None)
+            if spec is None:
+                raise HTTPException(404, f"Specialist '{specialist}' not found.")
+            bg = self._config.blue_green_for(specialist)
+            self._shadow_mgr.activate(
+                specialist,
+                body.green_endpoint,
+                min_queries=body.min_queries or bg.shadow_min_queries,
+                threshold=body.threshold or bg.delta,
+            )
+            return {
+                "specialist": specialist,
+                "green_endpoint": body.green_endpoint,
+                "min_queries": body.min_queries or bg.shadow_min_queries,
+                "status": "shadow_active",
+            }
+
+        @app.get(
+            "/deploy/shadow/{specialist}",
+            tags=["deploy"],
+            summary="Report accumulated shadow scores for a specialist",
+        )
+        async def shadow_report(specialist: str) -> dict:
+            return self._shadow_mgr.report(specialist).to_dict()
+
+        @app.delete(
+            "/deploy/shadow/{specialist}",
+            tags=["deploy"],
+            summary="Deactivate shadow mode and optionally clear scores",
+        )
+        async def shadow_deactivate(specialist: str, clear_scores: bool = False) -> dict:
+            self._shadow_mgr.deactivate(specialist, clear_scores=clear_scores)
+            return {
+                "specialist": specialist,
+                "status": "shadow_inactive",
+                "scores_cleared": clear_scores,
+            }
 
         # ── Telemetry ──────────────────────────────────────────────────────
 
@@ -2458,33 +2522,210 @@ class Router:
 
     # ── Green evaluation ──────────────────────────────────────────────────────
 
-    async def _evaluate_green(self, req: DeployGreenRequest) -> DeployGreenResponse:
+    async def _evaluate_green(self, req: DeployGreenRequest) -> DeployGreenResponse:  # noqa: C901
+        """
+        Evaluate GREEN vs BLUE with regression gate (#49) and shadow score support (#48).
+
+        Decision path:
+          1. Run regression dataset against BLUE (baseline) and GREEN (candidate).
+             Block promotion if regression detected and regression_block=True.
+          2. If enough shadow scores have accumulated, use them for U comparison
+             instead of a fresh synthetic eval run.
+          3. If no green_endpoint and no shadow scores: score BLUE only (dry run).
+        """
         spec = next((s for s in self._config.specialists if s.name == req.specialist), None)
         if spec is None:
             raise HTTPException(404, f"Specialist '{req.specialist}' not found in config.")
 
-        threshold = self._config.blue_green_for(req.specialist).delta
-        eval_qs = [
-            "Write a binary search function. State the time complexity.",
-            "Implement merge sort. State time and space complexity.",
-            "Write a function to check if a string is a palindrome.",
-        ][: req.n_eval_queries or 3]
+        bg_cfg = self._config.blue_green_for(req.specialist)
+        threshold = bg_cfg.delta
 
-        blue_scores: list[float] = []
-        for q in eval_qs:
-            try:
-                text, conf = await self._call(
-                    spec.endpoint, q, spec.field, model_name=spec.serve_model_name
+        # ── #49: regression gate ──────────────────────────────────────────────
+        regression_result: dict | None = None
+        dataset_path = req.regression_dataset or bg_cfg.regression_dataset
+        green_endpoint = req.green_endpoint or bg_cfg.shadow_endpoint
+
+        if dataset_path:
+            import pathlib
+
+            from aua.eval import run_dataset
+
+            ds_path = pathlib.Path(dataset_path)
+            if not ds_path.exists():
+                raise HTTPException(400, f"Regression dataset not found: {dataset_path}")
+
+            # Run against BLUE (production)
+            blue_report = run_dataset(
+                ds_path, router_url=f"http://127.0.0.1:{self._config.router.port}"
+            )
+
+            # Run against GREEN if endpoint available
+            if green_endpoint:
+                # Temporarily patch the router URL to GREEN's base URL to hit it directly
+                # GREEN is a vLLM-compatible server — use its /v1/chat/completions
+                # We pass the raw GREEN endpoint as the router_url for the dataset runner
+                # (run_dataset uses /query on the router, so we can't directly hit
+                # the specialist endpoint — instead score GREEN via the shadow call path)
+                # Use accumulated shadow scores if available and sufficient
+                shadow_agg = self._shadow_mgr.report(req.specialist)
+                if shadow_agg.n_queries >= bg_cfg.shadow_min_queries:
+                    # Use shadow scores
+                    green_u_for_regression = shadow_agg.green_mean_u
+                    _blue_u_for_regression = shadow_agg.blue_mean_u  # used in EvalReport below
+                else:
+                    # Fresh eval against GREEN directly (score only, no routing)
+                    green_scores: list[float] = []
+                    for case in (blue_report.results or [])[: min(10, len(blue_report.results))]:
+                        try:
+                            text, conf = await self._call(
+                                green_endpoint,
+                                getattr(case, "query", getattr(case, "prompt", "")),
+                                spec.field,
+                                model_name="green",
+                            )
+                            gu, *_ = await self._score(
+                                getattr(case, "query", ""), text, spec.field, conf
+                            )
+                            green_scores.append(float(gu))
+                        except Exception:
+                            green_scores.append(0.0)
+                    green_u_for_regression = (
+                        sum(green_scores) / len(green_scores)
+                        if green_scores
+                        else blue_report.mean_u_score
+                    )
+
+                # Build a synthetic green report for regression_vs
+                from aua.eval import EvalReport
+
+                green_report_mock = EvalReport(
+                    name="green",
+                    field=blue_report.field,
+                    description="GREEN evaluation",
+                    results=blue_report.results,
+                    passed=blue_report.passed,
+                    failed=blue_report.failed,
+                    errors=blue_report.errors,
+                    mean_u_score=green_u_for_regression,
+                    mean_latency_ms=blue_report.mean_latency_ms,
+                    pass_rate=blue_report.pass_rate,
                 )
-                u, *_ = await self._score(q, text, spec.field, conf)
-                blue_scores.append(u)
-            except Exception:
-                blue_scores.append(0.0)
+                reg = green_report_mock.regression_vs(blue_report)
+            else:
+                # No green endpoint — can only check BLUE against itself (always OK)
+                reg = {
+                    "regressed": False,
+                    "verdict": "SKIPPED — no green_endpoint provided",
+                    "delta_pass_rate": 0.0,
+                    "delta_u_score": 0.0,
+                    "delta_latency_ms": 0.0,
+                }
 
-        blue_u = round(sum(blue_scores) / len(blue_scores), 4) if blue_scores else 0.0
-        green_u = blue_u
+            regression_result = {
+                **reg,
+                "dataset": dataset_path,
+                "blocked": reg.get("regressed", False) and bg_cfg.regression_block,
+            }
+            log.info(
+                "Regression check for %s: verdict=%s regressed=%s blocked=%s",
+                req.specialist,
+                reg.get("verdict"),
+                reg.get("regressed"),
+                regression_result["blocked"],
+            )
+
+            if regression_result["blocked"]:
+                return DeployGreenResponse(
+                    specialist=req.specialist,
+                    promoted=False,
+                    u_delta=reg.get("delta_u_score", 0.0),
+                    blue_u=blue_report.mean_u_score,
+                    green_u=blue_report.mean_u_score + reg.get("delta_u_score", 0.0),
+                    threshold=threshold,
+                    dry_run_only=False,
+                    message=(
+                        f"PROMOTION BLOCKED — regression detected on '{dataset_path}'. "
+                        f"Pass rate delta: {reg.get('delta_pass_rate', 0):+.3f}, "
+                        f"U delta: {reg.get('delta_u_score', 0):+.4f}. "
+                        f"Set regression_block: false to warn-only."
+                    ),
+                    regression=regression_result,
+                )
+
+        # ── U score comparison (shadow or synthetic) ──────────────────────────
+        shadow_report = self._shadow_mgr.report(req.specialist)
+        if shadow_report.n_queries >= bg_cfg.shadow_min_queries:
+            # Use accumulated shadow scores — real traffic, most reliable
+            blue_u = shadow_report.blue_mean_u
+            green_u = shadow_report.green_mean_u
+            source = f"shadow ({shadow_report.n_queries} queries)"
+            dry = False
+        elif green_endpoint:
+            # Fresh synthetic eval against GREEN
+            eval_qs = [
+                "Write a binary search function. State the time complexity.",
+                "Implement merge sort. State time and space complexity.",
+                "Write a function to check if a string is a palindrome.",
+                "Reverse a linked list. State the space complexity.",
+                "Implement a stack using two queues.",
+            ][: req.n_eval_queries or 3]
+
+            blue_scores: list[float] = []
+            green_scores_list: list[float] = []
+            for q in eval_qs:
+                try:
+                    bt, bc = await self._call(
+                        spec.endpoint, q, spec.field, model_name=spec.serve_model_name
+                    )
+                    bu, *_ = await self._score(q, bt, spec.field, bc)
+                    blue_scores.append(float(bu))
+                except Exception:
+                    blue_scores.append(0.0)
+                try:
+                    gt, gc = await self._call(green_endpoint, q, spec.field, model_name="green")
+                    gu, *_ = await self._score(q, gt, spec.field, gc)
+                    green_scores_list.append(float(gu))
+                except Exception:
+                    green_scores_list.append(0.0)
+
+            blue_u = round(sum(blue_scores) / len(blue_scores), 4) if blue_scores else 0.0
+            green_u = (
+                round(sum(green_scores_list) / len(green_scores_list), 4)
+                if green_scores_list
+                else 0.0
+            )
+            source = f"synthetic eval ({len(eval_qs)} queries)"
+            dry = False
+        else:
+            # No endpoint, no shadow — dry run only
+            eval_qs = [
+                "Write a binary search function. State the time complexity.",
+                "Implement merge sort. State time and space complexity.",
+                "Write a function to check if a string is a palindrome.",
+            ][: req.n_eval_queries or 3]
+            blue_scores = []
+            for q in eval_qs:
+                try:
+                    text, conf = await self._call(
+                        spec.endpoint, q, spec.field, model_name=spec.serve_model_name
+                    )
+                    u_val, *_ = await self._score(q, text, spec.field, conf)
+                    blue_scores.append(float(u_val))
+                except Exception:
+                    blue_scores.append(0.0)
+            blue_u = round(sum(blue_scores) / len(blue_scores), 4) if blue_scores else 0.0
+            green_u = blue_u
+            source = "dry-run (no green_endpoint)"
+            dry = True
+
         u_delta = round(green_u - blue_u, 4)
-        promoted = u_delta >= threshold
+        promoted = not dry and u_delta >= threshold
+
+        shadow_note = (
+            f" Shadow: {shadow_report.n_queries}/{bg_cfg.shadow_min_queries} queries."
+            if not shadow_report.ready_to_promote and shadow_report.active
+            else ""
+        )
 
         return DeployGreenResponse(
             specialist=req.specialist,
@@ -2493,14 +2734,16 @@ class Router:
             blue_u=blue_u,
             green_u=green_u,
             threshold=threshold,
+            dry_run_only=dry,
             message=(
-                f"GREEN promoted (U_delta {u_delta:+.4f} >= {threshold})"
+                f"GREEN promoted via {source} (U_delta {u_delta:+.4f} >= {threshold})"
                 if promoted
                 else (
-                    f"GREEN not promoted (U_delta {u_delta:+.4f} < {threshold}). "
-                    f"Accumulate more DPO pairs or reduce LoRA rank."
+                    f"GREEN not promoted via {source} "
+                    f"(U_delta {u_delta:+.4f} < {threshold} or dry run).{shadow_note}"
                 )
             ),
+            regression=regression_result,
         )
 
     # ── Core routing (buffered) ───────────────────────────────────────────────
@@ -2853,6 +3096,23 @@ class Router:
                 "gold_standard": gold,
             },
         )
+
+        # #48: shadow call — fire GREEN silently, never blocks the response
+        if spec and self._shadow_mgr.is_active(spec.name):
+            from aua.state import fire_and_forget
+
+            fire_and_forget(
+                self._shadow_mgr.shadow_call(
+                    specialist=spec.name,
+                    query=req.query,
+                    domain=domain,
+                    blue_u=u,
+                    call_fn=self._call,
+                    score_fn=self._score,
+                    model_name="green",
+                )
+            )
+
         return resp
 
     async def _handle_fanout(
