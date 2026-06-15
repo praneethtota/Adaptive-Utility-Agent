@@ -251,6 +251,8 @@ _KNOWN_ROUTER_KEYS: set[str] = {
     "specialist_timeout",
     "arbitration_mode",
     "tau",
+    "retry",
+    "circuit_breaker",
     "cors_origins",
 }
 _KNOWN_BG_KEYS: set[str] = {
@@ -482,6 +484,52 @@ class ArbiterConfig:
 
 
 @dataclass
+class RetryConfig:
+    """
+    Transport-level retry configuration for specialist HTTP calls (#39).
+    Set max_retries: 0 to disable.
+    """
+
+    max_retries: int = 3
+    base_delay_ms: float = 200.0
+    max_delay_ms: float = 5000.0
+    jitter: bool = True
+    retryable_status_codes: list[int] = field(default_factory=lambda: [429, 502, 503, 504])
+
+    def delay_for_attempt(self, attempt: int) -> float:
+        """
+        Compute delay in seconds for attempt N (1-indexed).
+
+        attempt=1: 0.0 (first call, no delay)
+        attempt=2: base_delay * 2^0
+        attempt=3: base_delay * 2^1  ...capped at max_delay_ms
+        """
+        import random as _random
+
+        if attempt <= 1:
+            return 0.0
+        exp = attempt - 2
+        delay_ms = min(self.base_delay_ms * (2**exp), self.max_delay_ms)
+        if self.jitter:
+            delay_ms *= _random.uniform(0.75, 1.25)
+        return delay_ms / 1000.0
+
+
+@dataclass
+class CircuitBreakerConfig:
+    """
+    Per-specialist circuit breaker configuration (#37, #38).
+    Set enabled: false to disable entirely.
+    """
+
+    enabled: bool = True
+    failure_threshold: int = 5
+    failure_window_s: float = 60.0
+    recovery_timeout_s: float = 30.0
+    success_threshold: int = 2
+
+
+@dataclass
 class RouterConfig:
     """FastAPI router settings."""
 
@@ -493,6 +541,8 @@ class RouterConfig:
     cors_origins: list[str] = field(default_factory=lambda: ["*"])
     arbitration_mode: str = "pairwise"  # "pairwise" | "vcg" | "llm"
     tau: float = 1.0  # softmax temperature for routing; 1.0=off, <1=sharper, >1=softer
+    retry: RetryConfig = field(default_factory=RetryConfig)  # #39
+    circuit_breaker: CircuitBreakerConfig = field(default_factory=CircuitBreakerConfig)  # #37
 
 
 @dataclass
@@ -691,6 +741,26 @@ class AUAConfig:
 # ── YAML loader ───────────────────────────────────────────────────────────────
 
 
+def _load_retry_config(raw: dict) -> RetryConfig:
+    return RetryConfig(
+        max_retries=int(raw.get("max_retries", 3)),
+        base_delay_ms=float(raw.get("base_delay_ms", 200.0)),
+        max_delay_ms=float(raw.get("max_delay_ms", 5000.0)),
+        jitter=bool(raw.get("jitter", True)),
+        retryable_status_codes=list(raw.get("retryable_status_codes", [429, 502, 503, 504])),
+    )
+
+
+def _load_cb_config(raw: dict) -> CircuitBreakerConfig:
+    return CircuitBreakerConfig(
+        enabled=bool(raw.get("enabled", True)),
+        failure_threshold=int(raw.get("failure_threshold", 5)),
+        failure_window_s=float(raw.get("failure_window_s", 60.0)),
+        recovery_timeout_s=float(raw.get("recovery_timeout_s", 30.0)),
+        success_threshold=int(raw.get("success_threshold", 2)),
+    )
+
+
 def load_config(path: str | os.PathLike = "aua_config.yaml") -> AUAConfig:
     """
     Load and validate aua_config.yaml.
@@ -836,6 +906,8 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         cors_origins=list(cors),
         arbitration_mode=str(raw_router.get("arbitration_mode", "pairwise")),
         tau=float(raw_router.get("tau", 1.0)),
+        retry=_load_retry_config(raw_router.get("retry") or {}),
+        circuit_breaker=_load_cb_config(raw_router.get("circuit_breaker") or {}),
     )
 
     # ── Blue-green per specialist ──────────────────────────────────────────

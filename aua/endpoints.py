@@ -130,6 +130,18 @@ class RouterResponse(BaseModel):
             "Also returned in the X-Request-ID header."
         ),
     )
+    degraded_mode: bool = Field(
+        False,
+        description=(
+            "#38: True when one or more specialists had open circuits and the "
+            "router fell back to the arbiter with reduced specialist availability. "
+            "Check degraded_specialists for which ones were unavailable."
+        ),
+    )
+    degraded_specialists: list[str] | None = Field(
+        None,
+        description="#38: list of specialist domain names whose circuits were open.",
+    )
 
 
 # ── Batch ─────────────────────────────────────────────────────────────────────

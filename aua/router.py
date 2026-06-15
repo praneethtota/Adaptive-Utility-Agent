@@ -236,6 +236,20 @@ class Router:
         self._store = AssertionsStore()
         self._detector = ContradictionDetector(penalty_multiplier=2.0)
 
+        # #39: retry config — transport-level retry for specialist HTTP calls
+        from aua.config import RetryConfig as _RCfg
+
+        self._retry_config = config.router.retry if hasattr(config.router, "retry") else _RCfg()
+
+        # #37: circuit breaker registry — one CircuitBreaker per specialist
+        from aua.circuit_breaker import CircuitBreakerConfig as _CBCfg
+        from aua.circuit_breaker import CircuitBreakerRegistry
+
+        _cb_cfg = (
+            config.router.circuit_breaker if hasattr(config.router, "circuit_breaker") else _CBCfg()
+        )
+        self._circuit_breakers = CircuitBreakerRegistry(_cb_cfg)
+
         # ArbiterAgent — the full 4-check pipeline (logical, mathematical,
         # cross-session, empirical). Default for all routing arbitration.
         # Set arbitration_mode: "llm" in config to use the simplified LLM path.
@@ -2442,7 +2456,11 @@ class Router:
                     status[name] = "ok" if r.status_code == 200 else f"http_{r.status_code}"
                 except Exception:
                     status[name] = "unreachable"
-        return {"specialists": status, "domain_confidence": self._domain_confidence}
+        return {
+            "specialists": status,
+            "domain_confidence": self._domain_confidence,
+            "circuit_breakers": self._circuit_breakers.all_status(),  # #37
+        }
 
     async def _full_status(self) -> dict:
         import subprocess
@@ -3068,11 +3086,34 @@ class Router:
 
         top_domain = max(distribution, key=lambda k: distribution.get(k, 0.0))
         top_prob = distribution[top_domain]
-        active = [
-            s
-            for s in self._config.specialists
-            if distribution.get(s.field, 0) >= self._fanout_threshold
-        ]
+
+        # #37/#38: exclude specialists with open circuits before routing decision
+        _open_circuits: list[str] = []
+        active = []
+        for s in self._config.specialists:
+            if distribution.get(s.field, 0) < self._fanout_threshold:
+                continue
+            _cb = self._circuit_breakers.get(s.field)
+            if _cb.is_open:
+                _open_circuits.append(s.field)
+                log.warning("Circuit OPEN for %s — excluding from routing decision", s.field)
+            else:
+                active.append(s)
+
+        # Adjust top_domain if the top specialist has an open circuit
+        if top_domain in _open_circuits:
+            remaining = [s for s in self._config.specialists if s.field not in _open_circuits]
+            if remaining:
+                top_domain = max(
+                    (s.field for s in remaining),
+                    key=lambda f: distribution.get(f, 0.0),
+                )
+                top_prob = distribution.get(top_domain, 0.0)
+            else:
+                # All specialists degraded — fall to arbiter
+                top_prob = 0.0
+
+        _degraded = bool(_open_circuits)
 
         routing_mode = (
             "fanout"
@@ -3104,6 +3145,15 @@ class Router:
             resp = await self._handle_single(req, top_domain, distribution, t0, _sid, _tid)
         else:
             resp = await self._handle_arbiter(req, distribution, t0, _sid, _tid)
+
+        # #38: stamp degraded_mode if any circuits were open during routing
+        if _degraded:
+            resp = resp.model_copy(
+                update={
+                    "degraded_mode": True,
+                    "degraded_specialists": _open_circuits,
+                }
+            )
 
         # ── F-11: middleware after_response (reverse order, may rewrite) ─────
         if self._middleware.registered():
@@ -3900,7 +3950,18 @@ class Router:
 
         _prop_ctx = _gcon()
         _prop_headers = _prop_ctx.as_headers() if _prop_ctx else {}
-        try:
+        # #37: check circuit breaker before making the call
+        # domain is used as the specialist name key (consistent with routing)
+        _cb = self._circuit_breakers.get(domain)
+        if not _cb.allows_call():
+            raise HTTPException(
+                503,
+                f"Circuit open for {domain} — endpoint {url} is unavailable. "
+                f"Retry after {self._circuit_breakers._config.recovery_timeout_s:.0f}s.",
+            )
+
+        # #39: inner async callable that makes a single HTTP attempt
+        async def _single_attempt() -> tuple[str, float]:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 r = await client.post(
                     url,
@@ -3917,8 +3978,23 @@ class Router:
                 text = data["choices"][0]["message"]["content"].strip()
                 stop = data["choices"][0].get("finish_reason", "") == "stop"
                 return text, 0.75 if stop else 0.50
-        except httpx.ConnectError:
+
+        try:
+            from aua.retry import with_retry
+
+            result = await with_retry(
+                _single_attempt,
+                retry_config=self._retry_config,
+                specialist_name=domain,
+            )
+            _cb.record_success()  # #37: close circuit on success
+            return result
+        except httpx.ConnectError as exc:
+            _cb.record_failure(exc)  # #37
             raise HTTPException(503, f"Specialist at {url} is not reachable. Is it running?")
+        except HTTPException as exc:
+            _cb.record_failure(exc)  # #37: record 502/503/504 as circuit failures
+            raise
         except Exception as exc:
             log.error("Specialist call failed: %s", exc)
             raise HTTPException(500, str(exc))
