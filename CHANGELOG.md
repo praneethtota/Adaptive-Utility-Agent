@@ -5,6 +5,62 @@ Format: [Keep a Changelog](https://keepachangelog.com). Versioning: [SemVer](htt
 
 ---
 
+## [1.2.0] — 2026-06-15
+
+Resilience, security, the extended plugin system, and the operations toolkit
+(#37–#55 block), plus a full pre-release audit.
+
+### Added
+- **Retry with exponential backoff (#39)**: per-specialist transport-level
+  retry on `ConnectError`/`ReadTimeout`/429/502/503/504 with configurable
+  `base_delay_ms`, `max_delay_ms`, `±25%` jitter, and `retryable_status_codes`.
+  Non-transient codes (400/500) are never retried. `max_retries: 0` disables it.
+- **Circuit breaker per specialist (#37)**: CLOSED/OPEN/HALF_OPEN state machine
+  with sliding failure window, automatic HALF_OPEN probe after
+  `recovery_timeout_s`, and per-specialist status at `GET /health/ready`.
+- **Degraded-mode failover (#38)**: open circuits are excluded from routing;
+  responses carry `degraded_mode` and `degraded_specialists` so callers can
+  detect partial availability.
+- **Bearer token auth wiring**: `security.auth_enabled` activates HMAC-SHA256
+  token verification middleware (15 scopes, revocation). Public endpoints
+  (health/docs/version) pass through; zero overhead when disabled.
+- **mTLS wiring**: `security.mtls.key_file`/`cert_file`/`ca_file` are passed to
+  uvicorn; presence of `ca_file` requires client certs (mutual TLS).
+- **Extended plugin system (#51)**: four new Protocol interfaces —
+  `ContradictionDetectorPlugin`, `AssertionStorePlugin`,
+  `RoutingStrategyPlugin`, `ScoringComponentPlugin`.
+- **Custom utility function (#53)**: `FullUtilityScorerPlugin.score_full()`
+  bypasses the linear form (Axiom A5) for quadratic, multiplicative,
+  Cobb-Douglas, Rawlsian-min, and threshold-gate models.
+- **Extended middleware (#52)**: `on_chunk` (SSE token interception),
+  `before_batch`/`after_batch`, and `on_error` hooks on `AUAMiddleware`.
+- **Compatibility matrix (#55)**: model-format × hardware × backend matrix in
+  `aua/compat.py`; `aua doctor` check group 6 and `aua doctor --compat-matrix`.
+- **Operations toolkit**: `aua test` built-in suites (#54), `aua loadtest`
+  (#50), persistent batch queue (#56), model registry + version pinning (#46),
+  experiment tracking via MLflow/W&B (#47), shadow mode (#48), regression gate
+  (#49), multi-tenancy isolation (#44).
+- **ArbiterAgent live pipeline**: the four-check arbitration (logical,
+  mathematical, cross-session, empirical via SymPy/arXiv/PubMed) is now the
+  default; a simplified LLM-only path is available via `arbitration_mode: "llm"`.
+- **tau softmax routing** and **T_min promotion gate** wired into the router.
+- Hardware tiers `gaming-pc` and `h100-cluster` added.
+
+### Fixed
+- **Version source of truth** corrected to 1.2.0 (was 1.1.0).
+- `arbitration_mode` is now validated at config load time (was accepted
+  silently; only the runtime PATCH endpoint validated).
+- Retry and circuit-breaker numeric fields are validated at load time
+  (`max_retries >= 0`, `max_delay_ms >= base_delay_ms`, thresholds `>= 1`).
+- `infer_model_format()` is backend-aware: Ollama/llama.cpp tags without a
+  suffix resolve to GGUF (previously every Ollama user — including the default
+  `aua init --tier macbook` scaffold — saw "model format unknown" warnings).
+- Normalised the `aua.version` schema field across tier templates.
+- Packaging: explicit `aua/templates/prompts/*.txt` include; removed stale
+  committed build artifacts.
+
+---
+
 ## [1.1.0] — 2026-06-10
 
 The AUA-Veritas production backport plus the completed expert path.
