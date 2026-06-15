@@ -433,7 +433,7 @@ class Router:
                 from aua.batch_queue import BatchWorker as _BW
 
                 self._batch_queue.recover_interrupted()
-                self._batch_worker = _BW(self._batch_queue, self._handle)
+                self._batch_worker = _BW(self._batch_queue, self._handle, self._middleware)
                 self._batch_worker.start()
             except Exception as e:  # noqa: BLE001
                 log.warning("v1.1 startup tasks failed (continuing): %s", e)
@@ -2222,12 +2222,24 @@ class Router:
                 model_name = spec.serve_model_name if spec else "default_model"
 
                 full_text, index = "", 0
+                _stream_chunk_index = 0
+                _stream_meta: dict[str, Any] = {
+                    "session_id": req.session_id,
+                    "domain": top_domain,
+                    "routing_mode": routing_mode,
+                }
                 async for token in self._call_stream(
                     url, req.query, top_domain, req.conversation_history, model_name
                 ):
                     full_text += token
-                    yield _sse(StreamChunkEvent(type="chunk", text=token, index=index))
-                    index += 1
+                    # #52: streaming middleware on_chunk hook
+                    _stream_meta["chunk_index"] = _stream_chunk_index
+                    if self._middleware.registered():
+                        token = await self._middleware.on_chunk(token, _stream_meta)
+                    if token:  # suppressed chunks return ""
+                        yield _sse(StreamChunkEvent(type="chunk", text=token, index=index))
+                        index += 1
+                    _stream_chunk_index += 1
 
                 if spec:
                     self._requests_per_spec[spec.name] = (
@@ -3001,6 +3013,12 @@ class Router:
                 }
             )
             req.query = _mw_req.get("query", req.query)
+
+        # ── #52: on_error wrapper — captures pipeline exceptions for middleware ──
+        _mw_req_capture = {
+            "query": req.query,
+            "session_id": _sid,
+        }
 
         # ── pre_query: before field classification ────────────────────────────
         await _hooks.fire(

@@ -376,10 +376,25 @@ class HookPlugin(Protocol):
 @runtime_checkable
 class AUAMiddleware(Protocol):
     """
-    Request/response middleware. Runs before and after the query pipeline.
+    Request/response middleware — extended pipeline (#52).
 
-    Middleware is ordered (YAML list order). Each middleware receives the
-    output of the previous one.
+    Middleware is ordered (YAML list order). All hooks are optional; implement
+    only the ones you need. Middleware that does not implement a hook is skipped
+    silently for that hook point.
+
+    Hook execution order:
+      before_query  — stack order (first registered runs first)
+      after_response — reverse stack order (last registered runs first)
+      on_chunk      — stack order (each middleware sees the previous one's output)
+      before_batch  — stack order
+      after_batch   — reverse stack order
+      on_error      — reverse stack order (first to return a dict wins)
+
+    YAML:
+        middleware:
+          - import_path: my_plugins:MyMiddleware
+            config:
+              some_param: value
     """
 
     async def before_query(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -387,7 +402,9 @@ class AUAMiddleware(Protocol):
         Process a request before it enters the query pipeline.
 
         Return the (possibly modified) request dict.
-        Raise an exception to short-circuit (abort the request).
+        Raise an exception to short-circuit and abort the request.
+
+        request keys: query, session_id, conversation_history
         """
         ...
 
@@ -396,8 +413,29 @@ class AUAMiddleware(Protocol):
         Process a response after the query pipeline completes.
 
         Return the (possibly modified) response dict.
+        Called in reverse registration order.
         """
         ...
+
+    # ── Optional hooks (#52) ────────────────────────────────────────────────
+    # The following hooks are NOT part of the Protocol requirement.
+    # Implement them on your class to opt into those pipeline stages.
+    # The MiddlewarePipeline checks for them via hasattr() at call time.
+    #
+    #   on_chunk(chunk: str, metadata: dict) -> str
+    #       Intercept each SSE token chunk during streaming.
+    #       Return chunk unchanged to pass through; "" to suppress.
+    #       May be sync or async.
+    #
+    #   before_batch(job: dict) -> dict
+    #       Called before a batch job begins processing.
+    #
+    #   after_batch(job: dict, results: list) -> list
+    #       Called after all items in a batch complete. Return results list.
+    #
+    #   on_error(exc: Exception, request: dict) -> dict | None
+    #       Called when the query pipeline raises. Return a fallback response
+    #       dict to recover, or None to let the exception propagate.
 
 
 # ── Full Utility Function Replacement (#53) ───────────────────────────────────

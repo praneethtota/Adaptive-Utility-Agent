@@ -119,6 +119,9 @@ def run_doctor(
     if cfg:
         checks += _check_specialists_live(cfg)
 
+    # ── Group 6: Compatibility matrix (#55) ───────────────────────────────
+    checks += _check_compat(cfg)
+
     # ── Output ────────────────────────────────────────────────────────────
     if as_json:
         result = {
@@ -709,6 +712,123 @@ def _check_models(cfg) -> list[Check]:
                         fix=f"Pre-download with:\n" f"    huggingface-cli download {model}",
                     )
                 )
+
+    return checks
+
+
+def _check_compat(cfg) -> list[Check]:
+    """
+    Check group 6: Compatibility — model format × hardware × backend.
+
+    For each specialist, infers model format from the model name and checks
+    against the AUA compatibility matrix.
+    """
+    from aua.compat import BACKEND_ALIASES, TIER_TO_HARDWARE, check_config, infer_model_format
+
+    checks: list[Check] = []
+
+    if cfg is None:
+        return [Check("Compatibility", "Config not loaded", "skip", "No config available")]
+
+    # ── Detect hardware ───────────────────────────────────────────────────
+    import platform
+
+    hw = "cpu_avx2"
+    if platform.machine() in ("arm64", "aarch64") and platform.system() == "Darwin":
+        hw = "apple_silicon"
+    elif shutil.which("nvidia-smi"):
+        try:
+            import subprocess as _sp
+
+            cap_str = (
+                _sp.run(
+                    ["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                .stdout.strip()
+                .splitlines()[0]
+                .strip()
+            )
+            if cap_str:
+                cap = float(cap_str)
+                if cap >= 8.6:
+                    hw = "cuda_sm86+"
+                elif cap >= 8.0:
+                    hw = "cuda_sm80"
+                elif cap >= 7.5:
+                    hw = "cuda_sm75"
+                else:
+                    hw = "cuda_consumer"
+        except Exception:  # noqa: BLE001
+            hw = "cuda_consumer"
+
+    backend = BACKEND_ALIASES.get(getattr(cfg, "backend", "vllm") or "vllm", "vllm")
+
+    # ── Per-specialist checks ─────────────────────────────────────────────
+    specialists = getattr(cfg, "specialists", []) or []
+    for spec in specialists:
+        model = getattr(spec, "model", "") or ""
+        fmt = infer_model_format(model)
+
+        if fmt == "unknown":
+            checks.append(
+                Check(
+                    "Compatibility",
+                    f"{spec.name}: model format unknown",
+                    "info",
+                    f"Cannot infer format from '{model}'. Add a suffix like -awq, .gguf "
+                    "to enable compatibility checks.",
+                )
+            )
+            continue
+
+        status, notes = check_config(fmt, hw, backend)
+        ck = {
+            "supported": "pass",
+            "untested": "warn",
+            "unsupported": "fail",
+            "unknown": "warn",
+        }.get(status, "warn")
+
+        fix = None
+        if status == "unsupported":
+            from aua.compat import MATRIX, MODEL_FORMATS
+
+            hw_canon = TIER_TO_HARDWARE.get(hw, hw)
+            be_alts = [
+                b
+                for b in ("vllm", "ollama", "mlx_lm", "llamacpp", "transformers")
+                if b != backend
+                and ((e := MATRIX.get((fmt, hw_canon, b))) and e.status == "supported")
+            ]
+            if be_alts:
+                fix = f"Supported backends for {fmt}+{hw}: {', '.join(be_alts)}"
+            else:
+                fmt_alts = [
+                    f
+                    for f in MODEL_FORMATS
+                    if f != fmt
+                    and ((e := MATRIX.get((f, hw_canon, backend))) and e.status == "supported")
+                ]
+                if fmt_alts:
+                    fix = f"Supported formats for {hw}+{backend}: {', '.join(fmt_alts)}"
+
+        checks.append(
+            Check(
+                "Compatibility",
+                f"{spec.name}: {fmt} × {hw} × {backend}",
+                ck,
+                notes,
+                fix=fix,
+            )
+        )
+
+    if not specialists:
+        checks.append(
+            Check("Compatibility", "No specialists configured", "skip", "Nothing to check")
+        )
 
     return checks
 

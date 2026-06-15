@@ -41,7 +41,20 @@ log = logging.getLogger(__name__)
 
 
 class MiddlewarePipeline:
-    """Ordered list of middleware components."""
+    """
+    Ordered list of middleware components (#52: extended pipeline).
+
+    Supports four extension points:
+      before_query(request)           — runs before field classification
+      after_response(response)        — runs after specialist + arbiter (reverse order)
+      on_chunk(chunk, metadata)       — intercepts each SSE token chunk during streaming
+      before_batch(job)               — runs before a batch job starts processing
+      after_batch(job, results)       — runs after all batch items complete
+      on_error(exc, request)          — runs when the query pipeline raises an exception
+
+    Each hook is optional. If a middleware class does not implement a hook,
+    that hook is silently skipped for that middleware.
+    """
 
     def __init__(self) -> None:
         self._stack: list[Any] = []
@@ -76,6 +89,96 @@ class MiddlewarePipeline:
                         "Middleware %s.after_response failed", type(mw).__name__, exc_info=True
                     )
         return response
+
+    async def on_chunk(self, chunk: str, metadata: dict[str, Any]) -> str:
+        """
+        (#52) Run all on_chunk() methods in stack order during SSE streaming.
+
+        Each middleware receives the current chunk (possibly modified by a prior
+        middleware) and the stream metadata dict. Return the chunk unchanged to
+        pass it through. Return an empty string to suppress the chunk.
+
+        metadata keys: session_id, trace_id, domain, routing_mode, chunk_index
+        """
+        for mw in self._stack:
+            if hasattr(mw, "on_chunk"):
+                try:
+                    result = mw.on_chunk(chunk, metadata)
+                    if hasattr(result, "__await__"):
+                        result = await result
+                    if isinstance(result, str):
+                        chunk = result
+                except Exception:  # noqa: BLE001
+                    log.error(
+                        "Middleware %s.on_chunk failed (chunk passed through)",
+                        type(mw).__name__,
+                        exc_info=True,
+                    )
+        return chunk
+
+    async def before_batch(self, job: dict[str, Any]) -> dict[str, Any]:
+        """
+        (#52) Run all before_batch() methods in stack order before batch processing.
+
+        job dict keys: job_id, n_queries, priority, queries (list), submitted_at
+        """
+        for mw in self._stack:
+            if hasattr(mw, "before_batch"):
+                try:
+                    result = mw.before_batch(job)
+                    if hasattr(result, "__await__"):
+                        result = await result
+                    if isinstance(result, dict):
+                        job = result
+                except Exception:  # noqa: BLE001
+                    log.error("Middleware %s.before_batch failed", type(mw).__name__, exc_info=True)
+        return job
+
+    async def after_batch(
+        self, job: dict[str, Any], results: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        (#52) Run all after_batch() methods in reverse stack order after batch completion.
+
+        results: list of per-query result dicts (response, u_score, latency_ms, error)
+        """
+        for mw in reversed(self._stack):
+            if hasattr(mw, "after_batch"):
+                try:
+                    result = mw.after_batch(job, results)
+                    if hasattr(result, "__await__"):
+                        result = await result
+                    if isinstance(result, list):
+                        results = result
+                except Exception:  # noqa: BLE001
+                    log.error("Middleware %s.after_batch failed", type(mw).__name__, exc_info=True)
+        return results
+
+    async def on_error(self, exc: Exception, request: dict[str, Any]) -> dict[str, Any] | None:
+        """
+        (#52) Run all on_error() methods when the query pipeline raises an exception.
+
+        Called in reverse stack order (innermost middleware gets first chance to handle).
+        Return a fallback response dict to recover gracefully, or None to let the
+        exception propagate.
+
+        request: the before_query request dict that was in flight when the error occurred
+        """
+        for mw in reversed(self._stack):
+            if hasattr(mw, "on_error"):
+                try:
+                    result = mw.on_error(exc, request)
+                    if hasattr(result, "__await__"):
+                        result = await result
+                    if isinstance(result, dict):
+                        return result  # first middleware that returns a dict wins
+                except Exception:  # noqa: BLE001
+                    log.error(
+                        "Middleware %s.on_error raised another exception",
+                        type(mw).__name__,
+                        exc_info=True,
+                    )
+        return None  # let the exception propagate
 
     def registered(self) -> list[str]:
         return [type(mw).__name__ for mw in self._stack]

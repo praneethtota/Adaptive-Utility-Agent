@@ -286,7 +286,22 @@ def init(project_dir, tier, force, preset):
 )
 @click.option("--json", "as_json", is_flag=True, default=False, help="Emit results as JSON.")
 @click.option("--strict", is_flag=True, default=False, help="Treat warnings as failures (exit 2).")
-def doctor(config, as_json, strict):
+@click.option(
+    "--compat-matrix",
+    "compat_matrix",
+    is_flag=True,
+    default=False,
+    help="Print the full model × hardware × backend compatibility matrix and exit.",
+)
+@click.option(
+    "--compat-matrix-format",
+    "compat_format",
+    default="markdown",
+    show_default=True,
+    type=click.Choice(["markdown", "json"], case_sensitive=False),
+    help="Output format for --compat-matrix.",
+)
+def doctor(config, as_json, strict, compat_matrix, compat_format):
     """Check the entire setup before running aua serve.
 
     \b
@@ -296,6 +311,7 @@ def doctor(config, as_json, strict):
         3. Hardware     CUDA · VRAM projection · ports free
         4. Models       local paths exist · HuggingFace IDs flagged
         5. Specialists  live ping (warns, not fails, if not yet started)
+        6. Compatibility model format × hardware × backend matrix check (#55)
 
     Each check outputs PASS / FAIL / WARN with a fix instruction.
     Returns exit code 1 if any check fails.
@@ -304,7 +320,29 @@ def doctor(config, as_json, strict):
     Examples:
         aua doctor
         aua doctor --config /path/to/aua_config.yaml
+        aua doctor --compat-matrix
+        aua doctor --compat-matrix --compat-matrix-format json
     """
+    if compat_matrix:
+        import json as _json
+
+        from aua.compat import MATRIX, to_markdown
+
+        if compat_format == "json":
+            data = {
+                f"{fmt}×{hw}×{be}": {
+                    "status": e.status,
+                    "notes": e.notes,
+                    "min_vram_gb": e.min_vram_gb,
+                    "tier_aliases": e.tier_aliases,
+                }
+                for (fmt, hw, be), e in MATRIX.items()
+            }
+            click.echo(_json.dumps(data, indent=2))
+        else:
+            click.echo(to_markdown())
+        return
+
     from aua.doctor import run_doctor
 
     n_failures = run_doctor(config, as_json=as_json, strict=strict)

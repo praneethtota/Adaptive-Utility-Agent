@@ -413,9 +413,11 @@ class BatchWorker:
         self,
         queue: BatchQueue,
         handle_fn: Any,  # Callable[[QueryRequest], Awaitable[RouterResponse]]
+        middleware: Any | None = None,  # MiddlewarePipeline — for before/after_batch hooks (#52)
     ) -> None:
         self._queue = queue
         self._handle = handle_fn
+        self._middleware = middleware  # injected at router startup
         self._running = False
         self._task: asyncio.Task | None = None
 
@@ -465,12 +467,21 @@ class BatchWorker:
         session_id = job_row.get("session_id") or str(uuid.uuid4())
         sem = asyncio.Semaphore(max_parallel)
 
+        # #52: before_batch middleware hook
+        _job_meta = dict(job_row)
+        _job_meta["job_id"] = job_id
+        _job_meta["n_queries"] = len(items)
+        if self._middleware and self._middleware.registered():
+            _job_meta = await self._middleware.before_batch(_job_meta)
+
         log.info(
             "BatchWorker dispatching job_id=%s n_items=%d max_parallel=%d",
             job_id,
             len(items),
             max_parallel,
         )
+
+        _results: list[dict[str, Any]] = []
 
         async def _run_item(item: dict[str, Any]) -> None:
             item_id = item["item_id"]
@@ -484,11 +495,19 @@ class BatchWorker:
                         force_domain=None,
                     )
                     resp = await self._handle(req)
-                    self._queue.mark_item_done(item_id, resp.model_dump())
+                    result = resp.model_dump()
+                    self._queue.mark_item_done(item_id, result)
+                    _results.append(result)
                 except Exception as e:
                     log.error("BatchWorker item %s failed: %s", item_id, e)
+                    _results.append({"error": str(e), "item_id": item_id})
                     self._queue.mark_item_error(item_id, str(e))
 
         await asyncio.gather(*[_run_item(item) for item in items])
+
+        # #52: after_batch middleware hook
+        if self._middleware and self._middleware.registered():
+            _results = await self._middleware.after_batch(_job_meta, _results)
+
         self._queue.finish_job(job_id)
         log.info("BatchWorker finished job_id=%s", job_id)
