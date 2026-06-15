@@ -633,7 +633,7 @@ footer a:hover { text-decoration: underline; }
   <span class="scope-item"><span class="dot-measured"></span> Simulation: 69.6% error reduction, U↔quality correlation (r=0.461, p&lt;10⁻⁴⁰)</span>
   <span class="scope-item"><span class="dot-measured"></span> RTX 4090: VCG +43.3pp routing gain, 502 DPO pairs, full blue-green pipeline (p=0.0003, d=1.02)</span>
   <span class="scope-item"><span class="dot-analytical"></span> Analytical: 2–6× cost advantage on consumer hardware</span>
-  <span class="scope-item"><span class="dot-shipped"></span> Shipped v1.2: 651 tests · 28 endpoints · 11 plugin interfaces · 18 Prometheus metrics</span>
+  <span class="scope-item"><span class="dot-shipped"></span> Shipped v1.2: 759 tests · 28 endpoints · 11 plugin interfaces · 18 Prometheus metrics</span>
 </div>
 
 <!-- V1.2 ADDITIONS -->
@@ -643,7 +643,7 @@ footer a:hover { text-decoration: underline; }
   <p style="max-width:700px;font-size:1.02rem;color:#333;">
     v1.2 adds the full plugin system, shadow mode, regression gating, experiment tracking,
     the batch queue, model version pinning, hardware tiers, and the empirical arbiter check.
-    651 tests, all passing. CI green across Python 3.10/3.11/3.12.
+    759 tests, all passing. CI green across Python 3.10/3.11/3.12.
   </p>
   <div class="feature-grid">
     <div class="feature-card">
@@ -677,7 +677,7 @@ footer a:hover { text-decoration: underline; }
         MLflow + W&amp;B experiment tracking, 6 hardware tier templates,
         tensor parallelism per specialist (TP=1/2/4/8).
       </div>
-      <div class="fc-stat">aua models pin · Multi-tenant isolation · arXiv + PubMed + SymPy empirical check</div>
+      <div class="fc-stat">aua models pin · Multi-tenant isolation · arXiv + PubMed + SymPy empirical check · Retry + exponential backoff (#39) · Circuit breaker per specialist (#37) · Degraded-mode failover (#38)</div>
     </div>
   </div>
 </div>
@@ -1115,7 +1115,7 @@ Field-specific penalty multipliers route into DPO training:
         </li>
         <li>
           <a href="aua_roadmap.html">Full v1 Roadmap</a>
-          <span class="wp-desc">All 75 roadmap items tracked — #44–#54, #56–#58, #61, #65–#67 shipped in v1.2; #74–#75 planned</span>
+          <span class="wp-desc">All 75 roadmap items tracked — #37–#39, #44–#55, #56–#58, #61, #65–#67 shipped in v1.2; #74–#75 planned</span>
         </li>
         <li>
           <a href="whitepaper_results.html#open-questions">§13 — Open Questions</a>

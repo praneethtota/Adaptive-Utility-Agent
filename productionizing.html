@@ -878,6 +878,25 @@ Traffic %
 
 <p>For models that exceed a single GPU's VRAM, configure tensor parallelism per specialist. vLLM splits each weight matrix across <code>tensor_parallel_size</code> GPUs using NCCL all-reduce. On H100 SXM5 (NVLink 600 GB/s) this adds minimal latency; on PCIe (consumer GPUs, 64 GB/s) it adds measurable overhead. Use the minimum tensor_parallel_size that fits the model. Valid values: 1, 2, 4, 8.</p>
 
+<h3>16.6 Retry with exponential backoff (#39)</h3>
+
+<p>Transport-level retry wraps every specialist HTTP call. On <code>ConnectError</code>, <code>ReadTimeout</code>, HTTP 429/502/503/504 the router waits <code>base_delay_ms * 2^(n-2)</code> (capped at <code>max_delay_ms</code>, ±25% jitter) and retries up to <code>max_retries</code> times before raising. Non-transient codes (400, 500) are never retried. Set <code>max_retries: 0</code> to disable.</p>
+
+<h3>16.7 Circuit breaker and degraded-mode failover (#37, #38)</h3>
+
+<p>After <code>failure_threshold</code> availability failures within <code>failure_window_s</code> seconds, the circuit opens. Subsequent queries skip that specialist immediately (zero additional latency) and route to the arbiter or remaining healthy specialists. The response carries <code>degraded_mode: true</code> and <code>degraded_specialists: [...]</code> so callers can detect partial availability. After <code>recovery_timeout_s</code>, one probe fires; on success the circuit closes.</p>
+
+<p><strong>Production design notes:</strong></p>
+<ul>
+  <li>Set <code>failure_threshold</code> relative to your expected query rate. At 10 RPS and threshold=5, a dead specialist trips in ~0.5s. At 1 RPS it takes 5s. For high-traffic deployments, lower the threshold (3–5); for low-traffic, raise it.</li>
+  <li><code>recovery_timeout_s</code> should be longer than your worst-case model cold-start time. 30s is the default; set 90s+ for large models that take time to load after a restart.</li>
+  <li>Monitor <code>GET /health/ready</code> → <code>circuit_breakers[].state</code> in your observability stack. An OPEN circuit that doesn't recover within 2× <code>recovery_timeout_s</code> signals the specialist needs manual attention.</li>
+  <li><code>failure_window_s</code> is a sliding window, not a fixed interval. Failures older than the window don't count — a specialist that has a brief hiccup and then recovers won't trip the circuit if the failures spread out over time.</li>
+</ul>
+
+<p>See <a href="tutorial.html#part-18">Tutorial How-to 18.18–18.19</a> for full config reference and response examples.</p>
+
+
 <div class="read-next">
   <h3>Read next</h3>
   <ul>
