@@ -14,7 +14,7 @@
 # Recommended for: high-accuracy production, research, long-context workloads
 
 aua:
-  version: "0.6"
+  version: "1.2"
   mode: local
   backend: vllm
 

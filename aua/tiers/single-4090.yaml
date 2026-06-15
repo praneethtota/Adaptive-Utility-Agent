@@ -14,7 +14,7 @@
 # Recommended for: development, single-domain workloads, cost-sensitive POC
 
 aua:
-  version: "0.6"
+  version: "1.2"
   mode: local
   backend: vllm
 

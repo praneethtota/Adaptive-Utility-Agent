@@ -364,3 +364,87 @@ def test_unknown_tier_error_mentions_aliases():
     msg = str(exc_info.value)
     assert "single-4090" in msg
     assert "rtx4090" in msg  # alias should appear in help text
+
+
+# ── Pre-release validation regression tests (v1.2 audit) ─────────────────────
+
+
+def _write_cfg(tmp_path: Path, router_block: str) -> Path:
+    """Write a minimal valid config with a custom router: block."""
+    text = f"""
+aua: {{version: "1.2", mode: local, backend: ollama}}
+specialists:
+  - {{name: swe, model: qwen2.5-coder:7b, port: 11434, field: software_engineering}}
+arbiter: {{model: qwen2.5:3b, port: 11434}}
+router:
+{router_block}
+"""
+    p = tmp_path / "cfg.yaml"
+    p.write_text(text)
+    return p
+
+
+def test_invalid_arbitration_mode_rejected(tmp_path):
+    """arbitration_mode outside pairwise/vcg/llm must raise at load time, not silently load."""
+    p = _write_cfg(tmp_path, "  port: 8000\n  arbitration_mode: superduper")
+    with pytest.raises(ValueError) as exc:
+        load_config(p)
+    assert "arbitration_mode" in str(exc.value)
+    assert "superduper" in str(exc.value)
+
+
+def test_valid_arbitration_modes_accepted(tmp_path):
+    for mode in ("pairwise", "vcg", "llm"):
+        p = _write_cfg(tmp_path, f"  port: 8000\n  arbitration_mode: {mode}")
+        cfg = load_config(p)
+        assert cfg.router.arbitration_mode == mode
+
+
+def test_negative_max_retries_rejected(tmp_path):
+    p = _write_cfg(tmp_path, "  port: 8000\n  retry:\n    max_retries: -5")
+    with pytest.raises(ValueError) as exc:
+        load_config(p)
+    assert "max_retries" in str(exc.value)
+
+
+def test_max_retries_zero_allowed(tmp_path):
+    """max_retries: 0 is valid — it disables retry."""
+    p = _write_cfg(tmp_path, "  port: 8000\n  retry:\n    max_retries: 0")
+    cfg = load_config(p)
+    assert cfg.router.retry.max_retries == 0
+
+
+def test_max_delay_less_than_base_rejected(tmp_path):
+    p = _write_cfg(
+        tmp_path,
+        "  port: 8000\n  retry:\n    base_delay_ms: 5000\n    max_delay_ms: 100",
+    )
+    with pytest.raises(ValueError) as exc:
+        load_config(p)
+    assert "max_delay_ms" in str(exc.value)
+
+
+def test_circuit_breaker_zero_threshold_rejected(tmp_path):
+    p = _write_cfg(tmp_path, "  port: 8000\n  circuit_breaker:\n    failure_threshold: 0")
+    with pytest.raises(ValueError) as exc:
+        load_config(p)
+    assert "failure_threshold" in str(exc.value)
+
+
+def test_circuit_breaker_zero_success_threshold_rejected(tmp_path):
+    p = _write_cfg(tmp_path, "  port: 8000\n  circuit_breaker:\n    success_threshold: 0")
+    with pytest.raises(ValueError) as exc:
+        load_config(p)
+    assert "success_threshold" in str(exc.value)
+
+
+def test_valid_resilience_config_loads(tmp_path):
+    p = _write_cfg(
+        tmp_path,
+        "  port: 8000\n"
+        "  retry:\n    max_retries: 3\n    base_delay_ms: 200\n    max_delay_ms: 5000\n"
+        "  circuit_breaker:\n    failure_threshold: 5\n    success_threshold: 2",
+    )
+    cfg = load_config(p)
+    assert cfg.router.retry.max_retries == 3
+    assert cfg.router.circuit_breaker.failure_threshold == 5

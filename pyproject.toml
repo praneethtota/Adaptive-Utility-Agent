@@ -87,6 +87,7 @@ include = [
     "aua/**/*.py",
     "aua/tiers/*.yaml",
     "aua/fixtures/*.yaml",
+    "aua/templates/prompts/*.txt",
     "aua/py.typed",
 ]
 

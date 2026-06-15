@@ -770,7 +770,7 @@ def _check_compat(cfg) -> list[Check]:
     specialists = getattr(cfg, "specialists", []) or []
     for spec in specialists:
         model = getattr(spec, "model", "") or ""
-        fmt = infer_model_format(model)
+        fmt = infer_model_format(model, backend=backend)
 
         if fmt == "unknown":
             checks.append(

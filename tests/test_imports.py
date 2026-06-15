@@ -36,7 +36,12 @@ def test_version_export():
 
     assert hasattr(aua, "__version__")
     assert isinstance(aua.__version__, str)
-    assert aua.__version__ == "1.1.0"
+    # Version is asserted dynamically against the single source of truth
+    from aua.version import __version__ as _v
+
+    assert aua.__version__ == _v
+    # Sanity: must be a semver-like string
+    assert len(aua.__version__.split(".")) == 3
 
 
 def test_endpoint_models_exported():

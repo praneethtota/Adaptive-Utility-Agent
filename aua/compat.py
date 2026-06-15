@@ -338,12 +338,20 @@ def check_config(model_format: str, hardware: str, backend: str) -> tuple[str, s
     return entry.status, entry.notes
 
 
-def infer_model_format(model_name_or_path: str) -> str:
+def infer_model_format(model_name_or_path: str, backend: str | None = None) -> str:
     """
     Infer model format from a model name/path string.
 
-    Uses naming conventions common on HuggingFace Hub.
-    Returns "unknown" if no format can be inferred.
+    Uses naming conventions common on HuggingFace Hub. When an explicit
+    quantisation suffix is absent, the backend (if given) determines the
+    native format: Ollama and llama.cpp serve GGUF; mlx_lm serves MLX.
+
+    Args:
+        model_name_or_path: model tag, HF id, or path
+        backend:            optional backend hint (ollama/llamacpp/mlx_lm/vllm)
+
+    Returns "unknown" only when no suffix matches and the backend is
+    unknown or doesn't imply a native format (e.g. vllm/transformers).
     """
     name = model_name_or_path.lower()
     if ".gguf" in name or "gguf" in name:
@@ -362,7 +370,12 @@ def infer_model_format(model_name_or_path: str) -> str:
         return "fp16"
     if "bf16" in name:
         return "bf16"
-    # No quantisation suffix → assume the format the backend uses natively
+    # No quantisation suffix → infer from the backend's native format
+    be = BACKEND_ALIASES.get((backend or "").lower(), (backend or "").lower())
+    if be in ("ollama", "llamacpp"):
+        return "gguf"  # Ollama and llama.cpp always serve GGUF under the hood
+    if be == "mlx_lm":
+        return "mlx"
     return "unknown"
 
 

@@ -223,6 +223,32 @@ class TestInferModelFormat:
     def test_unknown_hf_id(self) -> None:
         assert infer_model_format("meta-llama/Meta-Llama-3-8B-Instruct") == "unknown"
 
+    # ── Backend-aware inference (v1.2 audit fix) ─────────────────────────────
+
+    def test_ollama_tag_infers_gguf(self) -> None:
+        """Ollama model tags without a suffix should resolve to gguf, not unknown."""
+        assert infer_model_format("qwen2.5-coder:7b", backend="ollama") == "gguf"
+        assert infer_model_format("qwen2.5:3b", backend="ollama") == "gguf"
+
+    def test_llamacpp_backend_infers_gguf(self) -> None:
+        assert infer_model_format("some-model", backend="llamacpp") == "gguf"
+        assert infer_model_format("some-model", backend="llama.cpp") == "gguf"
+
+    def test_mlx_lm_backend_infers_mlx(self) -> None:
+        assert infer_model_format("qwen2.5-7b", backend="mlx_lm") == "mlx"
+
+    def test_vllm_backend_no_suffix_still_unknown(self) -> None:
+        """vLLM has no single native format, so no suffix → unknown."""
+        assert infer_model_format("Qwen/Qwen2.5-7B-Instruct", backend="vllm") == "unknown"
+
+    def test_explicit_suffix_overrides_backend(self) -> None:
+        """An explicit format suffix wins over the backend hint."""
+        assert infer_model_format("model-AWQ", backend="ollama") == "awq"
+
+    def test_no_backend_preserves_unknown(self) -> None:
+        """Without a backend hint, a suffix-less name is still unknown (back-compat)."""
+        assert infer_model_format("qwen2.5-coder:7b") == "unknown"
+
 
 # ── to_markdown ───────────────────────────────────────────────────────────────
 

@@ -14,7 +14,7 @@
 # Recommended for: multi-domain production, high-throughput inference
 
 aua:
-  version: "0.6"
+  version: "1.2"
   mode: local
   backend: vllm
 

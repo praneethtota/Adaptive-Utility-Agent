@@ -38,7 +38,7 @@
 #   (Ollama will start automatically and pull models on first run)
 
 aua:
-  version: "1.0"
+  version: "1.2"
   mode: local
   backend: ollama               # vllm | ollama
 

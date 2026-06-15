@@ -742,22 +742,45 @@ class AUAConfig:
 
 
 def _load_retry_config(raw: dict) -> RetryConfig:
+    max_retries = int(raw.get("max_retries", 3))
+    if max_retries < 0:
+        raise ValueError(
+            f"router.retry.max_retries must be >= 0 (0 disables retry), got {max_retries}"
+        )
+    base_delay = float(raw.get("base_delay_ms", 200.0))
+    max_delay = float(raw.get("max_delay_ms", 5000.0))
+    if base_delay < 0 or max_delay < 0:
+        raise ValueError("router.retry delay values must be >= 0")
+    if max_delay < base_delay:
+        raise ValueError(
+            f"router.retry.max_delay_ms ({max_delay}) must be >= base_delay_ms ({base_delay})"
+        )
     return RetryConfig(
-        max_retries=int(raw.get("max_retries", 3)),
-        base_delay_ms=float(raw.get("base_delay_ms", 200.0)),
-        max_delay_ms=float(raw.get("max_delay_ms", 5000.0)),
+        max_retries=max_retries,
+        base_delay_ms=base_delay,
+        max_delay_ms=max_delay,
         jitter=bool(raw.get("jitter", True)),
         retryable_status_codes=list(raw.get("retryable_status_codes", [429, 502, 503, 504])),
     )
 
 
 def _load_cb_config(raw: dict) -> CircuitBreakerConfig:
+    failure_threshold = int(raw.get("failure_threshold", 5))
+    success_threshold = int(raw.get("success_threshold", 2))
+    if failure_threshold < 1:
+        raise ValueError(
+            f"router.circuit_breaker.failure_threshold must be >= 1, got {failure_threshold}"
+        )
+    if success_threshold < 1:
+        raise ValueError(
+            f"router.circuit_breaker.success_threshold must be >= 1, got {success_threshold}"
+        )
     return CircuitBreakerConfig(
         enabled=bool(raw.get("enabled", True)),
-        failure_threshold=int(raw.get("failure_threshold", 5)),
+        failure_threshold=failure_threshold,
         failure_window_s=float(raw.get("failure_window_s", 60.0)),
         recovery_timeout_s=float(raw.get("recovery_timeout_s", 30.0)),
-        success_threshold=int(raw.get("success_threshold", 2)),
+        success_threshold=success_threshold,
     )
 
 
@@ -897,6 +920,12 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
     cors = raw_router.get("cors_origins", ["*"])
     if isinstance(cors, str):
         cors = [cors]
+    _arb_mode = str(raw_router.get("arbitration_mode", "pairwise"))
+    if _arb_mode not in ("pairwise", "vcg", "llm"):
+        raise ValueError(
+            f"[{source}] router.arbitration_mode must be one of "
+            f"'pairwise', 'vcg', 'llm' — got {_arb_mode!r}"
+        )
     router = RouterConfig(
         port=int(raw_router.get("port", 8000)),
         single_domain_threshold=sdt,
@@ -904,7 +933,7 @@ def _parse_config(raw: dict, source: str = "<unknown>") -> AUAConfig:
         specialist_timeout=float(raw_router.get("specialist_timeout", 60.0)),
         host=str(raw_router.get("host", "0.0.0.0")),
         cors_origins=list(cors),
-        arbitration_mode=str(raw_router.get("arbitration_mode", "pairwise")),
+        arbitration_mode=_arb_mode,
         tau=float(raw_router.get("tau", 1.0)),
         retry=_load_retry_config(raw_router.get("retry") or {}),
         circuit_breaker=_load_cb_config(raw_router.get("circuit_breaker") or {}),

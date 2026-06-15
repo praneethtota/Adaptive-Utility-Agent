@@ -8,4 +8,4 @@ To release a new version, update ONLY this file.
 pyproject.toml reads this file via hatchling dynamic versioning.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"

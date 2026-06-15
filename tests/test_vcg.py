@@ -325,7 +325,8 @@ def test_vcg_select_no_history_uses_prior():
 # ── Version ───────────────────────────────────────────────────────────────────
 
 
-def test_version_is_110():
+def test_version_matches_source():
     import aua
+    from aua.version import __version__ as _v
 
-    assert aua.__version__ == "1.1.0"
+    assert aua.__version__ == _v
