@@ -114,6 +114,8 @@ tr:nth-child(even) td{background:#fafaf8}
     <li><a href="#scaling">Scaling considerations</a></li>
     <li><a href="#microexpert">Micro-Expert Architecture</a></li>
     <li><a href="#bluegreen-auto">Utility-driven automated deployment</a></li>
+    <li><a href="#physical-validation">15. Physical validation — RunPod RTX 4090</a></li>
+    <li><a href="#v12-features">16. v1.2 Feature additions</a></li>
   </ol>
 </div>
 
@@ -895,6 +897,27 @@ Traffic %
 </ul>
 
 <p>See <a href="tutorial.html#part-18">Tutorial How-to 18.18–18.19</a> for full config reference and response examples.</p>
+
+
+<h3 id="v12-retry">16.6 Retry with exponential backoff (#39)</h3>
+
+<p>Transport-level retry wraps every specialist HTTP call. On <code>ConnectError</code>, <code>ReadTimeout</code>, HTTP 429/502/503/504 the router waits <code>base_delay_ms * 2^(n-2)</code> (capped at <code>max_delay_ms</code>, ±25% jitter) and retries up to <code>max_retries</code> times before raising. Non-transient codes (400, 500) are never retried — those are bugs. Set <code>max_retries: 0</code> to disable entirely.</p>
+
+<p><strong>Production design notes:</strong> Retry adds latency on each attempt. Set <code>max_retries</code> to 1–2 for interactive paths where p99 matters; use 3+ only for batch or async contexts. <code>max_delay_ms: 5000</code> caps the worst-case additional latency per retry cycle.</p>
+
+<h3 id="v12-circuit-breaker">16.7 Circuit breaker and degraded-mode failover (#37, #38)</h3>
+
+<p>After <code>failure_threshold</code> availability failures within <code>failure_window_s</code> seconds, the circuit opens. Subsequent queries skip that specialist immediately (zero additional latency) and route to the arbiter or remaining healthy specialists. The response carries <code>degraded_mode: true</code> and <code>degraded_specialists: [...]</code> so callers can detect partial availability. After <code>recovery_timeout_s</code>, one probe fires; on success the circuit closes.</p>
+
+<p><strong>Production design notes:</strong></p>
+<ul>
+  <li>Set <code>failure_threshold</code> relative to your query rate. At 10 RPS, threshold=5 trips in ~0.5s. At 1 RPS it takes 5s. For high-traffic deployments, use 3–5; for low-traffic, raise to 10+.</li>
+  <li><code>recovery_timeout_s</code> should exceed your worst-case model cold-start time. Default 30s; use 90s+ for large models that take time to load after restart.</li>
+  <li>Monitor <code>GET /health/ready</code> → <code>circuit_breakers[].state</code>. A circuit that stays OPEN beyond 2× <code>recovery_timeout_s</code> signals the specialist needs manual intervention.</li>
+  <li>Failure window is sliding — failures older than <code>failure_window_s</code> don't count. A brief hiccup followed by recovery won't trip a properly-tuned circuit.</li>
+</ul>
+
+<p>See <a href="tutorial.html#part-18">Tutorial §18.18–18.19</a> for full config reference, state machine table, and response examples.</p>
 
 
 <div class="read-next">

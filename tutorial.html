@@ -4099,100 +4099,6 @@ curl -s -X POST localhost:8000/local/settings -H "Content-Type: application/json
 </div>
 
 
-<h3>18.18 Retry with exponential backoff (#39)</h3>
-
-<p>When a specialist endpoint returns a transient error (network hiccup, 503, 429 rate-limit), AUA automatically retries the HTTP call before raising an error to the user. Retry is configured per router in <code>aua_config.yaml</code>:</p>
-
-<div class="code-block">
-<div class="code-header">aua_config.yaml — retry configuration</div>
-<pre>router:
-  retry:
-    max_retries: 3          <span class="c"># 0 = disabled; default 3</span>
-    base_delay_ms: 200      <span class="c"># first retry delay in milliseconds</span>
-    max_delay_ms: 5000      <span class="c"># cap on computed delay</span>
-    jitter: true            <span class="c"># ±25% random jitter (prevents thundering-herd)</span>
-    retryable_status_codes: [429, 502, 503, 504]  <span class="c"># default</span></pre>
-</div>
-
-<p>Delay schedule: attempt 1 is immediate. Attempt 2 waits <code>base_delay_ms</code>. Each subsequent attempt doubles the delay, capped at <code>max_delay_ms</code>. Jitter adds ±25% randomness so that multiple concurrent requests don't all retry at the same instant after a hiccup.</p>
-
-<p><strong>What gets retried:</strong> <code>ConnectError</code>, <code>ConnectTimeout</code>, <code>ReadTimeout</code>, and HTTP 429/502/503/504 — all transient availability failures.</p>
-
-<p><strong>What is NOT retried:</strong> HTTP 400, 401, 403, 404, 422, 500. These indicate bugs in the request or the specialist — retrying won't help and would hide the problem.</p>
-
-<div class="callout blue">
-  <p>Retry is <strong>transport-level</strong> — it wraps the HTTP call to the specialist endpoint. It is separate from the <strong>assertion-level</strong> retry in <code>aua/policy.py</code>, which re-calls a specialist when a policy assertion fails. Both can be active simultaneously.</p>
-</div>
-
-<h3>18.19 Circuit breaker and degraded-mode failover (#37, #38)</h3>
-
-<p>Even with retry, a specialist that is completely down will still cause every query routed to it to time out. The circuit breaker solves this: after <code>failure_threshold</code> consecutive availability failures within <code>failure_window_s</code> seconds, the circuit <strong>opens</strong> — subsequent queries skip that specialist immediately and route to the arbiter or a remaining healthy specialist. The user gets a response; it's just produced with reduced specialist availability.</p>
-
-<h4>Configuration</h4>
-
-<div class="code-block">
-<div class="code-header">aua_config.yaml — circuit breaker</div>
-<pre>router:
-  circuit_breaker:
-    enabled: true                <span class="c"># false = disable entirely (default: true)</span>
-    failure_threshold: 5         <span class="c"># failures within window before opening</span>
-    failure_window_s: 60.0       <span class="c"># sliding window for counting failures</span>
-    recovery_timeout_s: 30.0     <span class="c"># seconds in OPEN before probing</span>
-    success_threshold: 2         <span class="c"># consecutive successes in probe → CLOSED</span></pre>
-</div>
-
-<h4>State machine</h4>
-
-<table>
-<tr><th>State</th><th>Behaviour</th><th>Transition</th></tr>
-<tr><td><strong>CLOSED</strong></td><td>Normal — all calls pass through</td><td>→ OPEN when <code>failure_threshold</code> failures occur within <code>failure_window_s</code></td></tr>
-<tr><td><strong>OPEN</strong></td><td>Circuit tripped — calls rejected immediately with 503</td><td>→ HALF_OPEN after <code>recovery_timeout_s</code> seconds</td></tr>
-<tr><td><strong>HALF_OPEN</strong></td><td>Probe mode — one call allowed through</td><td>Success → CLOSED (after <code>success_threshold</code> successes). Failure → OPEN</td></tr>
-</table>
-
-<p><strong>What trips the circuit:</strong> <code>ConnectError</code>, <code>ConnectTimeout</code>, <code>ReadTimeout</code>, HTTP 429/502/503/504.</p>
-
-<p><strong>What does NOT trip it:</strong> HTTP 400/401/403/404/422/500. These are caller or specialist bugs, not endpoint availability issues.</p>
-
-<h4>Degraded-mode response (#38)</h4>
-
-<p>When one or more specialists have open circuits during a query, the router routes to the arbiter or remaining healthy specialists and stamps the response with two fields:</p>
-
-<div class="code-block">
-<div class="code-header">Response when a circuit is open</div>
-<pre>{
-  "response":             "...",
-  "u_score":              0.71,
-  "routing_mode":         "arbiter",
-  "degraded_mode":        true,          <span class="c"># one or more circuits were open</span>
-  "degraded_specialists": ["mathematics"] <span class="c"># which domains were bypassed</span>
-}</pre>
-</div>
-
-<p>Your client can check <code>degraded_mode</code> to decide whether to display a "partial availability" notice, log an alert, or fall back to a cached response. When <code>degraded_mode: false</code> (the default), <code>degraded_specialists</code> is <code>null</code>.</p>
-
-<h4>Inspecting circuit breaker state</h4>
-
-<div class="code-block">
-<div class="code-header">bash</div>
-<pre><span class="c"># GET /health/ready — includes circuit_breakers array</span>
-curl -s localhost:8000/health/ready | python3 -m json.tool
-
-{
-  "specialists": {"swe": "ok", "math": "unreachable"},
-  "circuit_breakers": [
-    {"specialist": "swe",  "state": "closed",   "failure_count": 0},
-    {"specialist": "math", "state": "open",     "failure_count": 5,
-     "open_since": 1718900000.0, "recovery_timeout_s": 30.0}
-  ]
-}</pre>
-</div>
-
-<div class="callout green">
-  <p><strong>Typical failure arc.</strong> Specialist goes down → first 3 requests trigger retry (3× specialist_timeout delay each) → 5th failure trips the circuit → all subsequent requests skip instantly to arbiter with <code>degraded_mode: true</code> → after <code>recovery_timeout_s</code>, one probe fires → specialist back up → circuit closes → normal routing resumes.</p>
-</div>
-
-<div class="next-part"><p><strong>How-to 18 done.</strong> That covers persistence, search, the full v1.2 operations toolkit, retry, and circuit breaker failover. The reference sections below list every CLI command and REST endpoint.</p></div>
 
 
 <!-- ═══ 18.9–18.17: Operations toolkit (merged from former How-to 18) ════════ -->
@@ -4552,6 +4458,101 @@ aua serve --tier a100           <span class="c"># → a100-cluster</span></pre>
 
 <p>NVLink (H100 SXM5, A100 SXM) is 600 GB/s — tensor parallelism is fast here. PCIe (consumer GPUs) is 64 GB/s — use tensor parallelism only when necessary, prefer pipeline parallelism or smaller models on consumer hardware.</p>
 
+
+<h3>18.18 Retry with exponential backoff (#39)</h3>
+
+<p>When a specialist endpoint returns a transient error (network hiccup, 503, 429 rate-limit), AUA automatically retries the HTTP call before raising an error to the user. Retry is configured per router in <code>aua_config.yaml</code>:</p>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — retry configuration</div>
+<pre>router:
+  retry:
+    max_retries: 3          <span class="c"># 0 = disabled; default 3</span>
+    base_delay_ms: 200      <span class="c"># first retry delay in milliseconds</span>
+    max_delay_ms: 5000      <span class="c"># cap on computed delay</span>
+    jitter: true            <span class="c"># ±25% random jitter (prevents thundering-herd)</span>
+    retryable_status_codes: [429, 502, 503, 504]  <span class="c"># default</span></pre>
+</div>
+
+<p>Delay schedule: attempt 1 is immediate. Attempt 2 waits <code>base_delay_ms</code>. Each subsequent attempt doubles the delay, capped at <code>max_delay_ms</code>. Jitter adds ±25% randomness so that multiple concurrent requests don't all retry at the same instant after a hiccup.</p>
+
+<p><strong>What gets retried:</strong> <code>ConnectError</code>, <code>ConnectTimeout</code>, <code>ReadTimeout</code>, and HTTP 429/502/503/504 — all transient availability failures.</p>
+
+<p><strong>What is NOT retried:</strong> HTTP 400, 401, 403, 404, 422, 500. These indicate bugs in the request or the specialist — retrying won't help and would hide the problem.</p>
+
+<div class="callout blue">
+  <p>Retry is <strong>transport-level</strong> — it wraps the HTTP call to the specialist endpoint. It is separate from the <strong>assertion-level</strong> retry in <code>aua/policy.py</code>, which re-calls a specialist when a policy assertion fails. Both can be active simultaneously.</p>
+</div>
+
+<h3>18.19 Circuit breaker and degraded-mode failover (#37, #38)</h3>
+
+<p>Even with retry, a specialist that is completely down will still cause every query routed to it to time out. The circuit breaker solves this: after <code>failure_threshold</code> consecutive availability failures within <code>failure_window_s</code> seconds, the circuit <strong>opens</strong> — subsequent queries skip that specialist immediately and route to the arbiter or a remaining healthy specialist. The user gets a response; it's just produced with reduced specialist availability.</p>
+
+<h4>Configuration</h4>
+
+<div class="code-block">
+<div class="code-header">aua_config.yaml — circuit breaker</div>
+<pre>router:
+  circuit_breaker:
+    enabled: true                <span class="c"># false = disable entirely (default: true)</span>
+    failure_threshold: 5         <span class="c"># failures within window before opening</span>
+    failure_window_s: 60.0       <span class="c"># sliding window for counting failures</span>
+    recovery_timeout_s: 30.0     <span class="c"># seconds in OPEN before probing</span>
+    success_threshold: 2         <span class="c"># consecutive successes in probe → CLOSED</span></pre>
+</div>
+
+<h4>State machine</h4>
+
+<table>
+<tr><th>State</th><th>Behaviour</th><th>Transition</th></tr>
+<tr><td><strong>CLOSED</strong></td><td>Normal — all calls pass through</td><td>→ OPEN when <code>failure_threshold</code> failures occur within <code>failure_window_s</code></td></tr>
+<tr><td><strong>OPEN</strong></td><td>Circuit tripped — calls rejected immediately with 503</td><td>→ HALF_OPEN after <code>recovery_timeout_s</code> seconds</td></tr>
+<tr><td><strong>HALF_OPEN</strong></td><td>Probe mode — one call allowed through</td><td>Success → CLOSED (after <code>success_threshold</code> successes). Failure → OPEN</td></tr>
+</table>
+
+<p><strong>What trips the circuit:</strong> <code>ConnectError</code>, <code>ConnectTimeout</code>, <code>ReadTimeout</code>, HTTP 429/502/503/504.</p>
+
+<p><strong>What does NOT trip it:</strong> HTTP 400/401/403/404/422/500. These are caller or specialist bugs, not endpoint availability issues.</p>
+
+<h4>Degraded-mode response (#38)</h4>
+
+<p>When one or more specialists have open circuits during a query, the router routes to the arbiter or remaining healthy specialists and stamps the response with two fields:</p>
+
+<div class="code-block">
+<div class="code-header">Response when a circuit is open</div>
+<pre>{
+  "response":             "...",
+  "u_score":              0.71,
+  "routing_mode":         "arbiter",
+  "degraded_mode":        true,          <span class="c"># one or more circuits were open</span>
+  "degraded_specialists": ["mathematics"] <span class="c"># which domains were bypassed</span>
+}</pre>
+</div>
+
+<p>Your client can check <code>degraded_mode</code> to decide whether to display a "partial availability" notice, log an alert, or fall back to a cached response. When <code>degraded_mode: false</code> (the default), <code>degraded_specialists</code> is <code>null</code>.</p>
+
+<h4>Inspecting circuit breaker state</h4>
+
+<div class="code-block">
+<div class="code-header">bash</div>
+<pre><span class="c"># GET /health/ready — includes circuit_breakers array</span>
+curl -s localhost:8000/health/ready | python3 -m json.tool
+
+{
+  "specialists": {"swe": "ok", "math": "unreachable"},
+  "circuit_breakers": [
+    {"specialist": "swe",  "state": "closed",   "failure_count": 0},
+    {"specialist": "math", "state": "open",     "failure_count": 5,
+     "open_since": 1718900000.0, "recovery_timeout_s": 30.0}
+  ]
+}</pre>
+</div>
+
+<div class="callout green">
+  <p><strong>Typical failure arc.</strong> Specialist goes down → first 3 requests trigger retry (3× specialist_timeout delay each) → 5th failure trips the circuit → all subsequent requests skip instantly to arbiter with <code>degraded_mode: true</code> → after <code>recovery_timeout_s</code>, one probe fires → specialist back up → circuit closes → normal routing resumes.</p>
+</div>
+
+<div class="next-part"><p><strong>How-to 18 done.</strong> That covers persistence, search, the full v1.2 operations toolkit, retry, and circuit breaker failover. The reference sections below list every CLI command and REST endpoint.</p></div>
 <hr class="section-divider">
 <h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:1.4rem;color:#444;margin:1.5rem 0 .5rem;">Reference</h2>
 
@@ -4595,6 +4596,20 @@ router:
   single_domain_threshold: 0.75     <span class="c"># top prob ≥ this → single routing</span>
   fanout_threshold: 0.30            <span class="c"># 2+ domains ≥ this → fanout (race + arbiter)</span>
   specialist_timeout: 60.0          <span class="c"># seconds per specialist call</span>
+  tau: 1.0                          <span class="c"># routing softmax temperature (1.0 = off)</span>
+  arbitration_mode: pairwise        <span class="c"># pairwise | vcg | llm</span>
+  retry:
+    max_retries: 3                  <span class="c"># 0 to disable; default 3</span>
+    base_delay_ms: 200
+    max_delay_ms: 5000
+    jitter: true
+    retryable_status_codes: [429, 502, 503, 504]
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+    failure_window_s: 60.0
+    recovery_timeout_s: 30.0
+    success_threshold: 2
   tau: 1.0                          <span class="c"># routing softmax temperature (1.0 = off)</span>
   arbitration_mode: pairwise        <span class="c"># pairwise | vcg | llm</span>
   retry:
@@ -4668,6 +4683,8 @@ middleware:                         <span class="c"># How-to 14 — ordered pipe
 <tr><td><code>Specialist 'x' references unknown field 'devops'</code></td><td><code>field:</code> must be one of the 11 built-ins (§2.5). Map your domain to the closest risk profile and, if you want custom routing language, add a FieldClassifierPlugin (How-to 13).</td></tr>
 <tr><td><code>aua doctor</code>: Ollama not reachable</td><td><code>ollama serve &amp;</code> first, then re-run. If it's running on a non-default port, set <code>port:</code> on each specialist (or <code>endpoint_override</code>).</td></tr>
 <tr><td>Query returns <strong>503</strong> from the router</td><td>The specialist's model server is reachable but the model isn't available — usually the tag isn't pulled. <code>ollama list</code> must show the exact string in <code>model:</code>. <code>ollama pull &lt;tag&gt;</code> fixes it.</td></tr>
+<tr><td>Queries return <strong>503</strong> instantly with "Circuit open for X"</td><td>The circuit breaker has opened for specialist X after repeated failures. Check <code>GET /health/ready</code> → <code>circuit_breakers</code> for state and <code>open_since</code>. The circuit will probe automatically after <code>recovery_timeout_s</code> (default 30s). Tune with <code>circuit_breaker.failure_threshold</code>. Disable with <code>circuit_breaker.enabled: false</code>.</td></tr>
+<tr><td>Response has <code>degraded_mode: true</code></td><td>One or more specialists had open circuits — <code>degraded_specialists</code> lists which ones. Router served via arbiter or remaining healthy specialists. Check <code>GET /health/ready</code> → <code>circuit_breakers</code> and specialist logs.</td></tr>
 <tr><td>Queries return <strong>503</strong> instantly with "Circuit open for X"</td><td>The circuit breaker has opened for specialist X after repeated failures. Check <code>GET /health/ready</code> → <code>circuit_breakers</code> for state and <code>open_since</code>. The circuit will probe automatically after <code>recovery_timeout_s</code> (default 30s). To tune sensitivity: raise <code>circuit_breaker.failure_threshold</code> or lower <code>failure_window_s</code>. To disable: <code>circuit_breaker.enabled: false</code>.</td></tr>
 <tr><td>Response has <code>degraded_mode: true</code></td><td>One or more specialists had open circuits when the query arrived — <code>degraded_specialists</code> lists which ones. The router served the request via the arbiter or remaining healthy specialists. Check <code>/health/ready</code> and specialist logs. Normal routing resumes once the circuit closes.</td></tr>
 <tr><td>Query returns <strong>504</strong> / times out</td><td>The model is loading (first call after a pull can take a minute on CPU) or genuinely too slow. Raise <code>router.specialist_timeout</code>; warm the model with one direct <code>ollama run</code> first.</td></tr>
